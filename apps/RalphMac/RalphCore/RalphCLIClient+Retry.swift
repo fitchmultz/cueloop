@@ -57,8 +57,16 @@ public extension RalphCLIClient {
 public struct TimeoutError: Error, Sendable {}
 
 public extension RalphCLIClient.CollectedOutput {
+    var machineError: MachineErrorDocument? {
+        MachineErrorDocument.decode(from: stderr)
+    }
+
     var isRetryableFailure: Bool {
         guard status.code != 0 else { return false }
+
+        if let machineError {
+            return machineError.retryable
+        }
 
         let lowercasedStderr = stderr.lowercased()
         let retryablePatterns = [

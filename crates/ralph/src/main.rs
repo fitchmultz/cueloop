@@ -18,16 +18,31 @@ use ralph::{cli, redaction, sanity};
 use std::ffi::OsString;
 
 fn main() {
-    if let Err(err) = run() {
-        use colored::Colorize;
-        let msg = format!("{:#}", err);
-        let redacted = redaction::redact_text(&msg);
-        eprintln!("{} {}", "Error:".red().bold(), redacted);
+    let args = normalize_repo_prompt_args(std::env::args_os());
+    let is_machine_command = is_machine_command_args(&args);
+
+    if let Err(err) = run(args) {
+        if is_machine_command {
+            if let Err(print_err) = ralph::cli::machine::print_machine_error(&err) {
+                use colored::Colorize;
+                let msg = format!(
+                    "{:#}\nfailed to emit machine error JSON: {print_err:#}",
+                    err
+                );
+                let redacted = redaction::redact_text(&msg);
+                eprintln!("{} {}", "Error:".red().bold(), redacted);
+            }
+        } else {
+            use colored::Colorize;
+            let msg = format!("{:#}", err);
+            let redacted = redaction::redact_text(&msg);
+            eprintln!("{} {}", "Error:".red().bold(), redacted);
+        }
         std::process::exit(1);
     }
 }
 
-fn run() -> Result<()> {
+fn run(args: Vec<OsString>) -> Result<()> {
     // Load .env file, warning on errors but ignoring "not found"
     if let Err(e) = dotenvy::dotenv() {
         // Only warn on non-NotFound errors (e.g., permission denied, parse errors)
@@ -40,7 +55,6 @@ fn run() -> Result<()> {
             eprintln!("{}", redaction::redact_text(&msg));
         }
     }
-    let args = normalize_repo_prompt_args(std::env::args_os());
     let cli = cli::Cli::parse_from(args);
 
     // Initialize color output settings early, before any colored output
@@ -171,6 +185,29 @@ fn is_not_found_error(e: &dotenvy::Error) -> bool {
     }
 }
 
+fn is_machine_command_args(args: &[OsString]) -> bool {
+    let mut iter = args.iter().skip(1);
+
+    while let Some(arg) = iter.next() {
+        let Some(value) = arg.to_str() else {
+            return false;
+        };
+
+        match value {
+            "--force" | "-f" | "--verbose" | "-v" | "--no-color" | "--auto-fix"
+            | "--no-sanity-checks" => continue,
+            "--color" => {
+                let _ = iter.next();
+                continue;
+            }
+            _ if value.starts_with("--color=") => continue,
+            _ => return value == "machine",
+        }
+    }
+
+    false
+}
+
 fn normalize_repo_prompt_args<I>(args: I) -> Vec<OsString>
 where
     I: IntoIterator<Item = OsString>,
@@ -261,5 +298,31 @@ mod tests {
                 OsString::from("plan")
             ]
         );
+    }
+
+    #[test]
+    fn is_machine_command_args_detects_machine_after_globals() {
+        let args = vec![
+            OsString::from("ralph"),
+            OsString::from("--no-color"),
+            OsString::from("--color=never"),
+            OsString::from("machine"),
+            OsString::from("queue"),
+            OsString::from("read"),
+        ];
+
+        assert!(is_machine_command_args(&args));
+    }
+
+    #[test]
+    fn is_machine_command_args_rejects_non_machine_commands() {
+        let args = vec![
+            OsString::from("ralph"),
+            OsString::from("--verbose"),
+            OsString::from("queue"),
+            OsString::from("read"),
+        ];
+
+        assert!(!is_machine_command_args(&args));
     }
 }

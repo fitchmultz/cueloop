@@ -6,27 +6,7 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ## Active roadmap
 
-### 1. Replace phrase-based app recovery classification with shared machine error codes
-
-**Why next**: The macOS app still classifies many CLI failures by English substring matching and falls back to showing raw descriptions for unknown errors. That creates drift with Rust-side classification and can surface noisy internal stderr directly in UI.
-
-**Outcome**: Use one shared machine-readable recovery/error contract between CLI and app. Unknown failures should be sanitized and structured.
-
-**Steps**:
-- Audit current phrase-based classification in `apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift`, `RetryHelper.swift`, and `RalphCLIClient+Retry.swift`.
-- Extend the CLI/machine contract with stable recovery/error codes and any needed payload fields.
-- Cut the app over to structured decoding and remove duplicated phrase tables.
-- Verify app recovery surfaces and `make agent-ci`.
-
-**Exit criteria**:
-- App recovery classification does not depend on free-form English stderr matching.
-- Unknown recovery messages are structured/sanitized before display.
-
-**Files in scope**: `apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift`, `apps/RalphMac/RalphCore/RetryHelper.swift`, `apps/RalphMac/RalphCore/RalphCLIClient+Retry.swift`, relevant machine-contract files under `crates/ralph/src/cli/machine/`.
-
----
-
-### 2. Fix watch comment parsing so content extraction is stable across modes
+### 1. Fix watch comment parsing so content extraction is stable across modes
 
 **Why next**: `watch` comment detection currently uses capture-group position heuristics; `CommentType::All` produces different extracted content than specific modes, which then feeds watch task titles, notes, and identity/content hashes.
 
@@ -45,7 +25,7 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ---
 
-### 3. Split runner orchestration hotspots in Phase 3 and core execution handling
+### 2. Split runner orchestration hotspots in Phase 3 and core execution handling
 
 **Why next**: `run_prompt_with_handling_backend` and `execute_phase3_review` remain high-complexity orchestration hubs with retry, revert, continue-session, CI, integration, and finalization logic intertwined. They are the highest-risk change surfaces in the runtime.
 
@@ -65,7 +45,7 @@ This is the canonical near-term roadmap for active follow-up work.
 
 ---
 
-### 4. Deduplicate macOS task-mutation encoding and clean up portable-path test debt
+### 3. Deduplicate macOS task-mutation encoding and clean up portable-path test debt
 
 **Why next**: The app still hand-assembles task field edits with stringly-typed field names while some tests continue to hardcode `/tmp` paths despite portable temp helpers.
 

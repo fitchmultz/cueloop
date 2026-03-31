@@ -35,6 +35,19 @@ This surface exists for the macOS app and any other automation that needs stable
 
 ## Important versioned documents
 
+### machine command failures (`machine_error`, `version: 1`)
+
+When any `ralph machine ...` command fails before it can emit its success document, stderr now carries a structured JSON error document:
+
+- `version`
+- `code`
+- `message`
+- optional `detail`
+- `retryable`
+
+Machine clients should decode that document instead of scraping English stderr text.
+
+
 ### `machine config resolve` (`version: 3`)
 
 Includes:

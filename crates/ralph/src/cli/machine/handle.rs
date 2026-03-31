@@ -29,11 +29,11 @@ use crate::config;
 use crate::contracts::{
     MACHINE_CLI_SPEC_VERSION, MACHINE_DOCTOR_REPORT_VERSION, MACHINE_SYSTEM_INFO_VERSION,
     MachineCliSpecDocument, MachineConfigResolveDocument, MachineDashboardReadDocument,
-    MachineDecomposeDocument, MachineDoctorReportDocument, MachineGraphReadDocument,
-    MachineParallelStatusDocument, MachineQueueReadDocument, MachineQueueRepairDocument,
-    MachineQueueUndoDocument, MachineQueueValidateDocument, MachineRunEventEnvelope,
-    MachineRunSummaryDocument, MachineSystemInfoDocument, MachineTaskCreateDocument,
-    MachineTaskCreateRequest, MachineTaskMutationDocument,
+    MachineDecomposeDocument, MachineDoctorReportDocument, MachineErrorDocument,
+    MachineGraphReadDocument, MachineParallelStatusDocument, MachineQueueReadDocument,
+    MachineQueueRepairDocument, MachineQueueUndoDocument, MachineQueueValidateDocument,
+    MachineRunEventEnvelope, MachineRunSummaryDocument, MachineSystemInfoDocument,
+    MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
 };
 
 pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
@@ -96,6 +96,7 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
             "doctor_report": schema_for!(MachineDoctorReportDocument),
             "parallel_status": schema_for!(MachineParallelStatusDocument),
             "cli_spec": schema_for!(MachineCliSpecDocument),
+            "machine_error": schema_for!(MachineErrorDocument),
             "run_event": schema_for!(MachineRunEventEnvelope),
             "run_summary": schema_for!(MachineRunSummaryDocument),
         })),

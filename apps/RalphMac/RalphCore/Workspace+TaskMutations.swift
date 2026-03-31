@@ -231,7 +231,7 @@ private extension Workspace {
             if let conflict = await taskConflictFromMutationFailure(error, request: request) {
                 throw WorkspaceError.taskConflict(conflict)
             }
-            throw WorkspaceError.cliError(error.localizedDescription)
+            throw error
         }
     }
 
@@ -256,9 +256,19 @@ private extension Workspace {
         _ error: any Error,
         request: WorkspaceTaskMutationRequest
     ) async -> RalphTask? {
-        let description = error.localizedDescription
-        guard description.contains("Task mutation conflict for"),
-              request.tasks.count == 1 else {
+        let isTaskConflict = {
+            if let retryable = error as? RetryableError,
+               case .processError(_, let stderr) = retryable,
+               MachineErrorDocument.decode(from: stderr)?.code == .taskMutationConflict {
+                return true
+            }
+            if let machineError = MachineErrorDocument.decode(from: error.localizedDescription) {
+                return machineError.code == .taskMutationConflict
+            }
+            return error.localizedDescription.contains("Task mutation conflict for")
+        }()
+
+        guard isTaskConflict, request.tasks.count == 1 else {
             return nil
         }
 

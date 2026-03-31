@@ -87,6 +87,9 @@ public enum RetryableError: Error, Sendable, Equatable, LocalizedError {
         case .resourceTemporarilyUnavailable:
             return "Resource temporarily unavailable"
         case .processError(let exitCode, let stderr):
+            if let machineError = MachineErrorDocument.decode(from: stderr) {
+                return machineError.detail ?? machineError.message
+            }
             let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty {
                 return "CLI command failed with exit code \(exitCode)"
@@ -203,6 +206,9 @@ public final class RetryHelper: Sendable {
             case .fileLocked, .resourceBusy, .ioTimeout, .resourceTemporarilyUnavailable:
                 return true
             case .processError(let exitCode, let stderr):
+                if let machineError = MachineErrorDocument.decode(from: stderr) {
+                    return machineError.retryable
+                }
                 return isRetryableProcessError(exitCode: exitCode, stderr: stderr)
             case .underlying(let underlying):
                 return isRetryableUnderlyingError(underlying)

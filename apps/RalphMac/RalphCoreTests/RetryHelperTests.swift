@@ -172,6 +172,19 @@ final class RetryHelperTests: RalphCoreTestCase {
         XCTAssertTrue(RetryHelper.defaultShouldRetry(lockedError))
     }
 
+    func test_defaultShouldRetry_usesMachineErrorRetryableFlag() throws {
+        let document = MachineErrorDocument(
+            version: 1,
+            code: .resourceBusy,
+            message: "Resource temporarily unavailable.",
+            detail: "resource busy",
+            retryable: true
+        )
+        let stderr = String(decoding: try JSONEncoder().encode(document), as: UTF8.self)
+        let error = RetryableError.processError(exitCode: 1, stderr: stderr)
+        XCTAssertTrue(RetryHelper.defaultShouldRetry(error))
+    }
+
     func test_retryableProcessError_localizedDescriptionIncludesExitCodeAndStderr() {
         let error = RetryableError.processError(exitCode: 7, stderr: "queue read failed")
         XCTAssertEqual(
@@ -208,6 +221,23 @@ final class RetryHelperTests: RalphCoreTestCase {
             stderr: ""
         )
         XCTAssertFalse(successOutput.isRetryableFailure)
+    }
+
+    func test_isRetryableFailure_usesMachineErrorDocument() throws {
+        let document = MachineErrorDocument(
+            version: 1,
+            code: .resourceBusy,
+            message: "Resource temporarily unavailable.",
+            detail: "resource busy",
+            retryable: true
+        )
+        let output = RalphCLIClient.CollectedOutput(
+            status: RalphCLIExitStatus(code: 1, reason: .exit),
+            stdout: "",
+            stderr: String(decoding: try JSONEncoder().encode(document), as: UTF8.self)
+        )
+        XCTAssertTrue(output.isRetryableFailure)
+        XCTAssertEqual(output.machineError, document)
     }
     
     // MARK: - Configuration Tests

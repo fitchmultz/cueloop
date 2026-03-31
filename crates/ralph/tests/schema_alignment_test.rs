@@ -113,6 +113,7 @@ fn schema_alignment_machine_bundle_contains_expected_documents() {
         "doctor_report",
         "parallel_status",
         "cli_spec",
+        "machine_error",
         "run_event",
         "run_summary",
     ] {

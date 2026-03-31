@@ -180,6 +180,42 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         XCTAssertFalse(recoveryError.category.suggestedActions.contains(.validateQueue))
     }
 
+    func testClassifyMachineErrorDocumentUsesStructuredCode() throws {
+        let document = MachineErrorDocument(
+            version: 1,
+            code: .queueCorrupted,
+            message: "No Ralph queue file found.",
+            detail: "read queue file /tmp/example/.ralph/queue.jsonc: No such file or directory (os error 2)",
+            retryable: false
+        )
+        let stderr = String(decoding: try JSONEncoder().encode(document), as: UTF8.self)
+        let error = RetryableError.processError(exitCode: 1, stderr: stderr)
+
+        let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
+        XCTAssertEqual(recoveryError.category, .queueCorrupted)
+        XCTAssertEqual(recoveryError.message, "No Ralph queue file found.")
+        XCTAssertEqual(recoveryError.underlyingError, document.detail)
+    }
+
+    func testClassifyMachineUnknownErrorUsesStructuredSanitizedMessage() throws {
+        let document = MachineErrorDocument(
+            version: 1,
+            code: .unknown,
+            message: "Ralph CLI command failed.",
+            detail: "unexpected [REDACTED] failure",
+            retryable: false
+        )
+        let description = String(decoding: try JSONEncoder().encode(document), as: UTF8.self)
+        let error = NSError(domain: "RalphCore.CLIProcess", code: 1, userInfo: [
+            NSLocalizedDescriptionKey: description
+        ])
+
+        let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
+        XCTAssertEqual(recoveryError.category, .unknown)
+        XCTAssertEqual(recoveryError.message, document.message)
+        XCTAssertEqual(recoveryError.underlyingError, document.detail)
+    }
+
     func testClassifyDecodingErrorAsParseError() {
         let payload = Data("{\"invalid\":true}".utf8)
 

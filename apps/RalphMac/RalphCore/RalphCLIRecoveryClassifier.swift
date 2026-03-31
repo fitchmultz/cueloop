@@ -5,8 +5,8 @@
 //! - Provide the canonical CLI/app error-classification path used by recovery UI.
 //!
 //! Responsibilities:
-//! - Normalize typed errors and free-form stderr/localized descriptions into one recovery decision tree.
-//! - Keep phrase-based classification rules in one place so generic and process-failure paths cannot drift.
+//! - Normalize typed errors, machine error documents, and legacy free-form descriptions into one recovery decision tree.
+//! - Keep recovery-category mapping centralized so machine and fallback paths cannot drift.
 //!
 //! Scope:
 //! - Recovery classification only. It does not execute retries, health probes, or UI presentation.
@@ -15,8 +15,8 @@
 //! - `RecoveryError.classify` delegates here for every recovery payload.
 //!
 //! Invariants/Assumptions:
-//! - Phrase matching is best-effort and falls back to `.unknown`.
-//! - Process failures with stderr and generic localized descriptions must share the same phrase rules.
+//! - Structured machine error documents are preferred when present.
+//! - Legacy phrase matching is best-effort and falls back to `.unknown`.
 
 import Foundation
 
@@ -45,6 +45,13 @@ enum RalphCLIRecoveryClassifier {
                     workspaceURL: workspaceURL
                 )
             case .processError(let exitCode, let stderr):
+                if let machineError = MachineErrorDocument.decode(from: stderr) {
+                    return classifyMachineError(
+                        machineError,
+                        operation: operation,
+                        workspaceURL: workspaceURL
+                    )
+                }
                 let trimmed = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
                 if trimmed.isEmpty {
                     return makeRecovery(
@@ -119,6 +126,14 @@ enum RalphCLIRecoveryClassifier {
         operation: String,
         workspaceURL: URL?
     ) -> RecoveryError {
+        if let machineError = MachineErrorDocument.decode(from: description) {
+            return classifyMachineError(
+                machineError,
+                operation: operation,
+                workspaceURL: workspaceURL
+            )
+        }
+
         let normalized = description.lowercased()
 
         if normalized.contains("permission denied") {
@@ -228,6 +243,42 @@ enum RalphCLIRecoveryClassifier {
             category: .unknown,
             message: description,
             underlyingError: nil,
+            operation: operation,
+            workspaceURL: workspaceURL
+        )
+    }
+
+    private static func classifyMachineError(
+        _ document: MachineErrorDocument,
+        operation: String,
+        workspaceURL: URL?
+    ) -> RecoveryError {
+        let category: ErrorCategory
+        switch document.code {
+        case .cliUnavailable:
+            category = .cliUnavailable
+        case .permissionDenied:
+            category = .permissionDenied
+        case .configIncompatible:
+            category = .configIncompatible
+        case .parseError:
+            category = .parseError
+        case .networkError:
+            category = .networkError
+        case .queueCorrupted, .taskMutationConflict:
+            category = .queueCorrupted
+        case .resourceBusy:
+            category = .resourceBusy
+        case .versionMismatch:
+            category = .versionMismatch
+        case .unknown:
+            category = .unknown
+        }
+
+        return makeRecovery(
+            category: category,
+            message: document.message,
+            underlyingError: document.detail,
             operation: operation,
             workspaceURL: workspaceURL
         )

@@ -43,6 +43,34 @@ fn machine_queue_read_returns_versioned_snapshot() -> Result<()> {
 }
 
 #[test]
+fn machine_queue_read_failure_returns_structured_error_document() -> Result<()> {
+    let dir = tempdir()?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        !status.success(),
+        "machine queue read should fail outside a Ralph repo\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.trim().is_empty(),
+        "failure stdout should stay empty: {stdout}"
+    );
+
+    let document: Value = serde_json::from_str(&stderr)?;
+    assert_eq!(document["version"], 1);
+    assert_eq!(document["code"], "queue_corrupted");
+    assert_eq!(document["message"], "No Ralph queue file found.");
+    assert_eq!(document["retryable"], false);
+    assert!(
+        document["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("queue.jsonc")
+    );
+    Ok(())
+}
+
+#[test]
 fn machine_task_create_and_mutate_round_trip() -> Result<()> {
     let dir = tempdir()?;
     git_init(dir.path())?;

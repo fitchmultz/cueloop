@@ -3,7 +3,7 @@
 
  Responsibilities:
  - Provide Codable models for Ralph configuration parsing and serialization.
- - Mirror the machine-resolved config and path documents used by the app.
+ - Mirror the machine-resolved config, error, and path documents used by the app.
  - Decode structured resume preview and shared parallel-status payloads from machine surfaces.
 
  Does not handle:
@@ -126,6 +126,34 @@ public struct MachineSystemInfoDocument: Codable, Sendable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case version
         case cliVersion = "cli_version"
+    }
+}
+
+public enum MachineErrorCode: String, Codable, Sendable, Equatable {
+    case cliUnavailable = "cli_unavailable"
+    case permissionDenied = "permission_denied"
+    case configIncompatible = "config_incompatible"
+    case parseError = "parse_error"
+    case networkError = "network_error"
+    case queueCorrupted = "queue_corrupted"
+    case resourceBusy = "resource_busy"
+    case versionMismatch = "version_mismatch"
+    case taskMutationConflict = "task_mutation_conflict"
+    case unknown
+}
+
+public struct MachineErrorDocument: Codable, Sendable, Equatable {
+    public let version: Int
+    public let code: MachineErrorCode
+    public let message: String
+    public let detail: String?
+    public let retryable: Bool
+
+    public static func decode(from raw: String) -> MachineErrorDocument? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard let data = trimmed.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(MachineErrorDocument.self, from: data)
     }
 }
 

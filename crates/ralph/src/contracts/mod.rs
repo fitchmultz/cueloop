@@ -40,19 +40,19 @@ pub use blocking::{BlockingReason, BlockingState, BlockingStatus};
 // Re-exports from machine module (versioned app/CLI machine surfaces)
 pub use machine::{
     MACHINE_CLI_SPEC_VERSION, MACHINE_CONFIG_RESOLVE_VERSION, MACHINE_DASHBOARD_READ_VERSION,
-    MACHINE_DECOMPOSE_VERSION, MACHINE_DOCTOR_REPORT_VERSION, MACHINE_GRAPH_READ_VERSION,
-    MACHINE_PARALLEL_STATUS_VERSION, MACHINE_QUEUE_READ_VERSION, MACHINE_QUEUE_REPAIR_VERSION,
-    MACHINE_QUEUE_UNDO_VERSION, MACHINE_QUEUE_VALIDATE_VERSION, MACHINE_RUN_EVENT_VERSION,
-    MACHINE_RUN_SUMMARY_VERSION, MACHINE_SYSTEM_INFO_VERSION, MACHINE_TASK_CREATE_VERSION,
-    MACHINE_TASK_MUTATION_VERSION, MachineCliSpecDocument, MachineConfigResolveDocument,
-    MachineConfigSafetySummary, MachineContinuationAction, MachineContinuationSummary,
-    MachineDashboardReadDocument, MachineDecomposeDocument, MachineDoctorReportDocument,
-    MachineGraphReadDocument, MachineParallelStatusDocument, MachineQueuePaths,
-    MachineQueueReadDocument, MachineQueueRepairDocument, MachineQueueUndoDocument,
-    MachineQueueValidateDocument, MachineResumeDecision, MachineRunEventEnvelope,
-    MachineRunEventKind, MachineRunSummaryDocument, MachineSystemInfoDocument,
-    MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
-    MachineValidationWarning,
+    MACHINE_DECOMPOSE_VERSION, MACHINE_DOCTOR_REPORT_VERSION, MACHINE_ERROR_VERSION,
+    MACHINE_GRAPH_READ_VERSION, MACHINE_PARALLEL_STATUS_VERSION, MACHINE_QUEUE_READ_VERSION,
+    MACHINE_QUEUE_REPAIR_VERSION, MACHINE_QUEUE_UNDO_VERSION, MACHINE_QUEUE_VALIDATE_VERSION,
+    MACHINE_RUN_EVENT_VERSION, MACHINE_RUN_SUMMARY_VERSION, MACHINE_SYSTEM_INFO_VERSION,
+    MACHINE_TASK_CREATE_VERSION, MACHINE_TASK_MUTATION_VERSION, MachineCliSpecDocument,
+    MachineConfigResolveDocument, MachineConfigSafetySummary, MachineContinuationAction,
+    MachineContinuationSummary, MachineDashboardReadDocument, MachineDecomposeDocument,
+    MachineDoctorReportDocument, MachineErrorCode, MachineErrorDocument, MachineGraphReadDocument,
+    MachineParallelStatusDocument, MachineQueuePaths, MachineQueueReadDocument,
+    MachineQueueRepairDocument, MachineQueueUndoDocument, MachineQueueValidateDocument,
+    MachineResumeDecision, MachineRunEventEnvelope, MachineRunEventKind, MachineRunSummaryDocument,
+    MachineSystemInfoDocument, MachineTaskCreateDocument, MachineTaskCreateRequest,
+    MachineTaskMutationDocument, MachineValidationWarning,
 };
 
 // Re-exports from cli_spec module (versioned; suitable for tooling consumption)

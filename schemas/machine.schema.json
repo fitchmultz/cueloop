@@ -2512,6 +2512,57 @@
     "title": "MachineGraphReadDocument",
     "type": "object"
   },
+  "machine_error": {
+    "$defs": {
+      "MachineErrorCode": {
+        "enum": [
+          "cli_unavailable",
+          "permission_denied",
+          "config_incompatible",
+          "parse_error",
+          "network_error",
+          "queue_corrupted",
+          "resource_busy",
+          "version_mismatch",
+          "task_mutation_conflict",
+          "unknown"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "code": {
+        "$ref": "#/$defs/MachineErrorCode"
+      },
+      "detail": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "message": {
+        "type": "string"
+      },
+      "retryable": {
+        "type": "boolean"
+      },
+      "version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "code",
+      "message",
+      "retryable"
+    ],
+    "title": "MachineErrorDocument",
+    "type": "object"
+  },
   "parallel_status": {
     "$defs": {
       "BlockingReason": {

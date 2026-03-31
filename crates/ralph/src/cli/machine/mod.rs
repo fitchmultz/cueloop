@@ -23,6 +23,7 @@
 
 mod args;
 mod common;
+mod error;
 mod handle;
 mod io;
 mod queue;
@@ -38,6 +39,7 @@ pub use args::{
     MachineTaskArgs, MachineTaskCommand, MachineTaskCreateArgs, MachineTaskDecomposeArgs,
     MachineTaskMutateArgs,
 };
+pub use error::print_machine_error;
 pub use handle::handle_machine;
 pub(crate) use queue_docs::{
     build_repair_document as build_queue_repair_document,

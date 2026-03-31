@@ -40,6 +40,33 @@ pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 2;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 2;
 pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 2;
 pub const MACHINE_CLI_SPEC_VERSION: u32 = 2;
+pub const MACHINE_ERROR_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MachineErrorCode {
+    CliUnavailable,
+    PermissionDenied,
+    ConfigIncompatible,
+    ParseError,
+    NetworkError,
+    QueueCorrupted,
+    ResourceBusy,
+    VersionMismatch,
+    TaskMutationConflict,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineErrorDocument {
+    pub version: u32,
+    pub code: MachineErrorCode,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    pub retryable: bool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
