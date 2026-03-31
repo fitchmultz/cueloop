@@ -158,8 +158,11 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
     }
 
     func testClassifyLegacyConfigLoadFailure() {
+        let configPath = RalphCoreTestSupport.workspaceURL(label: "legacy-config-load")
+            .appendingPathComponent(".ralph/config.jsonc", isDirectory: false)
+            .path
         let error = NSError(domain: "RalphCore.CLIProcess", code: 1, userInfo: [
-            NSLocalizedDescriptionKey: "Error: load project config /tmp/.ralph/config.jsonc: parse config /tmp/.ralph/config.jsonc from JSONC: unknown field `git_commit_push_enabled`"
+            NSLocalizedDescriptionKey: "Error: load project config \(configPath): parse config \(configPath) from JSONC: unknown field `git_commit_push_enabled`"
         ])
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadRunnerConfiguration")
@@ -170,9 +173,12 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
     }
 
     func testClassifyUnsupportedConfigVersionAsConfigIncompatible() {
+        let configPath = RalphCoreTestSupport.workspaceURL(label: "unsupported-config-version")
+            .appendingPathComponent(".ralph/config.jsonc", isDirectory: false)
+            .path
         let error = RetryableError.processError(
             exitCode: 1,
-            stderr: "Error: load project config /tmp/.ralph/config.jsonc: Unsupported config version: 1. Ralph requires version 2."
+            stderr: "Error: load project config \(configPath): Unsupported config version: 1. Ralph requires version 2."
         )
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadRunnerConfiguration")
@@ -181,11 +187,14 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
     }
 
     func testClassifyMachineErrorDocumentUsesStructuredCode() throws {
+        let queuePath = RalphCoreTestSupport.workspaceURL(label: "machine-error-document")
+            .appendingPathComponent(".ralph/queue.jsonc", isDirectory: false)
+            .path
         let document = MachineErrorDocument(
             version: 1,
             code: .queueCorrupted,
             message: "No Ralph queue file found.",
-            detail: "read queue file /tmp/example/.ralph/queue.jsonc: No such file or directory (os error 2)",
+            detail: "read queue file \(queuePath): No such file or directory (os error 2)",
             retryable: false
         )
         let stderr = String(decoding: try JSONEncoder().encode(document), as: UTF8.self)
@@ -230,9 +239,12 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
     }
 
     func testClassifyRetryableProcessErrorUsesStderr() {
+        let queuePath = RalphCoreTestSupport.workspaceURL(label: "retryable-process-error")
+            .appendingPathComponent(".ralph/queue.jsonc", isDirectory: false)
+            .path
         let error = RetryableError.processError(
             exitCode: 2,
-            stderr: "Error: read queue file /tmp/.ralph/queue.jsonc: No such file or directory (os error 2)"
+            stderr: "Error: read queue file \(queuePath): No such file or directory (os error 2)"
         )
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
@@ -241,7 +253,10 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
     }
 
     func testCanonicalClassifierAlignsGenericAndProcessFailures() {
-        let stderr = "Error: read queue file /tmp/.ralph/queue.jsonc: No such file or directory (os error 2)"
+        let queuePath = RalphCoreTestSupport.workspaceURL(label: "canonical-classifier")
+            .appendingPathComponent(".ralph/queue.jsonc", isDirectory: false)
+            .path
+        let stderr = "Error: read queue file \(queuePath): No such file or directory (os error 2)"
         let genericError = NSError(
             domain: "RalphCore.CLIProcess",
             code: 2,

@@ -53,7 +53,7 @@ public extension Workspace {
             WorkspaceTaskMutationSpec(
                 taskID: taskID,
                 expectedUpdatedAt: encodeExpectedUpdatedAt(task.updatedAt),
-                edits: [WorkspaceTaskFieldEdit(field: "status", value: newStatus.rawValue)]
+                edits: [WorkspaceTaskMutationField.status.edit(value: newStatus.rawValue)]
             )
         ])
 
@@ -71,7 +71,7 @@ public extension Workspace {
             WorkspaceTaskMutationSpec(
                 taskID: task.id,
                 expectedUpdatedAt: encodeExpectedUpdatedAt(task.updatedAt),
-                edits: [WorkspaceTaskFieldEdit(field: "status", value: newStatus.rawValue)]
+                edits: [WorkspaceTaskMutationField.status.edit(value: newStatus.rawValue)]
             )
         })
 
@@ -91,7 +91,7 @@ public extension Workspace {
             WorkspaceTaskMutationSpec(
                 taskID: task.id,
                 expectedUpdatedAt: encodeExpectedUpdatedAt(task.updatedAt),
-                edits: [WorkspaceTaskFieldEdit(field: "priority", value: newPriority.rawValue)]
+                edits: [WorkspaceTaskMutationField.priority.edit(value: newPriority.rawValue)]
             )
         })
 
@@ -119,7 +119,7 @@ public extension Workspace {
             return WorkspaceTaskMutationSpec(
                 taskID: task.id,
                 expectedUpdatedAt: encodeExpectedUpdatedAt(task.updatedAt),
-                edits: [WorkspaceTaskFieldEdit(field: "tags", value: newTags.joined(separator: ", "))]
+                edits: [WorkspaceTaskMutationField.tags.edit(list: newTags, separator: ", ")]
             )
         })
 
@@ -137,57 +137,57 @@ private extension Workspace {
         var edits: [WorkspaceTaskFieldEdit] = []
 
         if original.title != updated.title {
-            edits.append(WorkspaceTaskFieldEdit(field: "title", value: updated.title))
+            edits.append(WorkspaceTaskMutationField.title.edit(value: updated.title))
         }
 
         if (original.description ?? "") != (updated.description ?? "") {
-            edits.append(WorkspaceTaskFieldEdit(field: "description", value: updated.description ?? ""))
+            edits.append(WorkspaceTaskMutationField.description.edit(value: updated.description ?? ""))
         }
 
         if original.status != updated.status {
-            edits.append(WorkspaceTaskFieldEdit(field: "status", value: updated.status.rawValue))
+            edits.append(WorkspaceTaskMutationField.status.edit(value: updated.status.rawValue))
         }
 
         if original.priority != updated.priority {
-            edits.append(WorkspaceTaskFieldEdit(field: "priority", value: updated.priority.rawValue))
+            edits.append(WorkspaceTaskMutationField.priority.edit(value: updated.priority.rawValue))
         }
 
         if original.tags != updated.tags {
-            edits.append(WorkspaceTaskFieldEdit(field: "tags", value: updated.tags.joined(separator: ", ")))
+            edits.append(WorkspaceTaskMutationField.tags.edit(list: updated.tags, separator: ", "))
         }
 
         if (original.scope ?? []) != (updated.scope ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "scope", value: (updated.scope ?? []).joined(separator: "\n")))
+            edits.append(WorkspaceTaskMutationField.scope.edit(list: updated.scope ?? [], separator: "\n"))
         }
 
         if (original.evidence ?? []) != (updated.evidence ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "evidence", value: (updated.evidence ?? []).joined(separator: "\n")))
+            edits.append(WorkspaceTaskMutationField.evidence.edit(list: updated.evidence ?? [], separator: "\n"))
         }
 
         if (original.plan ?? []) != (updated.plan ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "plan", value: (updated.plan ?? []).joined(separator: "\n")))
+            edits.append(WorkspaceTaskMutationField.plan.edit(list: updated.plan ?? [], separator: "\n"))
         }
 
         if (original.notes ?? []) != (updated.notes ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "notes", value: (updated.notes ?? []).joined(separator: "\n")))
+            edits.append(WorkspaceTaskMutationField.notes.edit(list: updated.notes ?? [], separator: "\n"))
         }
 
         if (original.dependsOn ?? []) != (updated.dependsOn ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "depends_on", value: (updated.dependsOn ?? []).joined(separator: ", ")))
+            edits.append(WorkspaceTaskMutationField.dependsOn.edit(list: updated.dependsOn ?? [], separator: ", "))
         }
 
         if (original.blocks ?? []) != (updated.blocks ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "blocks", value: (updated.blocks ?? []).joined(separator: ", ")))
+            edits.append(WorkspaceTaskMutationField.blocks.edit(list: updated.blocks ?? [], separator: ", "))
         }
 
         if (original.relatesTo ?? []) != (updated.relatesTo ?? []) {
-            edits.append(WorkspaceTaskFieldEdit(field: "relates_to", value: (updated.relatesTo ?? []).joined(separator: ", ")))
+            edits.append(WorkspaceTaskMutationField.relatesTo.edit(list: updated.relatesTo ?? [], separator: ", "))
         }
 
         let originalAgent = RalphTaskAgent.normalizedOverride(original.agent)
         let updatedAgent = RalphTaskAgent.normalizedOverride(updated.agent)
         if originalAgent != updatedAgent {
-            edits.append(WorkspaceTaskFieldEdit(field: "agent", value: try Self.encodeTaskAgentFieldValue(updatedAgent)))
+            edits.append(WorkspaceTaskMutationField.agent.edit(value: try Self.encodeTaskAgentFieldValue(updatedAgent)))
         }
 
         return edits

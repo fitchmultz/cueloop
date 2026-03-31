@@ -165,9 +165,42 @@ struct WorkspaceTaskMutationSpec: Codable, Sendable {
     }
 }
 
+enum WorkspaceTaskMutationField: String, Sendable {
+    case title
+    case description
+    case status
+    case priority
+    case tags
+    case scope
+    case evidence
+    case plan
+    case notes
+    case dependsOn = "depends_on"
+    case blocks
+    case relatesTo = "relates_to"
+    case agent
+
+    func edit(value: String) -> WorkspaceTaskFieldEdit {
+        WorkspaceTaskFieldEdit(field: self, value: value)
+    }
+
+    func edit(list values: [String], separator: String) -> WorkspaceTaskFieldEdit {
+        edit(value: values.joined(separator: separator))
+    }
+}
+
 struct WorkspaceTaskFieldEdit: Codable, Sendable {
     let field: String
     let value: String
+
+    init(field: String, value: String) {
+        self.field = field
+        self.value = value
+    }
+
+    init(field: WorkspaceTaskMutationField, value: String) {
+        self.init(field: field.rawValue, value: value)
+    }
 }
 
 struct WorkspaceTaskMutationReport: Codable, Sendable {

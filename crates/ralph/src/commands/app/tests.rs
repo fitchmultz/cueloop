@@ -108,7 +108,8 @@ fn plan_open_command_path_uses_open_a() -> anyhow::Result<()> {
 
 #[test]
 fn plan_open_command_default_prefers_injected_installed_app_path() -> anyhow::Result<()> {
-    let app_dir = PathBuf::from("/tmp/test/Applications").join(DEFAULT_APP_NAME);
+    let app_dir =
+        crate::testsupport::path::portable_abs_path("test/Applications").join(DEFAULT_APP_NAME);
     let args = AppOpenArgs {
         bundle_id: None,
         path: None,
@@ -271,7 +272,8 @@ fn plan_url_command_never_includes_cli_param() -> anyhow::Result<()> {
 
 #[test]
 fn plan_url_command_prefers_installed_app_path_over_bundle_lookup() -> anyhow::Result<()> {
-    let app_dir = PathBuf::from("/tmp/test/Applications").join(DEFAULT_APP_NAME);
+    let app_dir =
+        crate::testsupport::path::portable_abs_path("test/Applications").join(DEFAULT_APP_NAME);
     let workspace = PathBuf::from("/Users/test/workspace");
     let spec = plan_url_command_with_installed_path(
         &workspace,
