@@ -16,6 +16,7 @@ if [ -n "${RALPH_RELEASE_STATE_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_STATE_SOURCED=1
+set -euo pipefail
 
 release_state_reset_vars() {
     RELEASE_STATUS="${RELEASE_STATUS:-initialized}"

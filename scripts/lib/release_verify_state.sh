@@ -18,6 +18,7 @@ if [ -n "${RALPH_RELEASE_VERIFY_STATE_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_VERIFY_STATE_SOURCED=1
+set -euo pipefail
 
 release_verify_state_reset_vars() {
     VERIFY_STATUS="${VERIFY_STATUS:-initialized}"

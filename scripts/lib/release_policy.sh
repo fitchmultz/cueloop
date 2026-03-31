@@ -16,6 +16,7 @@ if [ -n "${RALPH_RELEASE_POLICY_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_POLICY_SOURCED=1
+set -euo pipefail
 
 RELEASE_METADATA_PATHS=(
     "VERSION"

@@ -16,6 +16,7 @@ if [ -n "${RALPH_RELEASE_PIPELINE_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_PIPELINE_SOURCED=1
+set -euo pipefail
 
 source "$SCRIPT_DIR/lib/release_verify_pipeline.sh"
 source "$SCRIPT_DIR/lib/release_publish_pipeline.sh"

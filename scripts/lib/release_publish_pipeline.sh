@@ -17,6 +17,7 @@ if [ -n "${RALPH_RELEASE_PUBLISH_PIPELINE_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_PUBLISH_PIPELINE_SOURCED=1
+set -euo pipefail
 
 release_query_github_release_state() {
     local draft_state

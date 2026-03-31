@@ -16,6 +16,7 @@ if [ -n "${RALPH_RELEASE_CHANGELOG_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_CHANGELOG_SOURCED=1
+set -euo pipefail
 
 release_render_notes_template() {
     local template_path="$1"

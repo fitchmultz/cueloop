@@ -16,6 +16,7 @@ if [ -n "${RALPH_RELEASE_VERIFY_PIPELINE_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_RELEASE_VERIFY_PIPELINE_SOURCED=1
+set -euo pipefail
 
 release_run_ship_gate() {
     local make_cmd

@@ -17,6 +17,7 @@ if [ -n "${RALPH_SHELL_LIB_SOURCED:-}" ]; then
     return 0
 fi
 RALPH_SHELL_LIB_SOURCED=1
+set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
