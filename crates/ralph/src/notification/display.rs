@@ -56,7 +56,10 @@ pub(super) fn show_task_notification(
             "Ralph: Task Failed",
             format!("{} - {}", task_id, task_title),
         ),
-        NotificationType::LoopComplete { .. } => unreachable!("loop notifications use loop path"),
+        NotificationType::LoopComplete { .. } => {
+            log::warn!("Loop notifications use the loop path; skipping task display");
+            return Ok(());
+        }
     };
     show_notification(summary, &body, timeout_ms)
 }

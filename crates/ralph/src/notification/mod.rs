@@ -239,6 +239,7 @@ fn play_sound_if_enabled(config: &NotificationConfig) {
 
 #[cfg(test)]
 mod tests {
+    use super::display::show_task_notification;
     use super::*;
 
     #[test]
@@ -267,6 +268,22 @@ mod tests {
             timeout_ms: 8000,
         };
         notify_task_complete("RQ-0001", "Test task", &config);
+    }
+
+    #[test]
+    fn show_task_notification_ignores_loop_complete_variant() {
+        let result = show_task_notification(
+            NotificationType::LoopComplete {
+                tasks_total: 3,
+                tasks_succeeded: 2,
+                tasks_failed: 1,
+            },
+            "RQ-0001",
+            "Test task",
+            8000,
+        );
+
+        assert!(result.is_ok());
     }
 
     #[test]
