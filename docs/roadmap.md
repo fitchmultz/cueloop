@@ -8,8 +8,8 @@ Source: comprehensive codebase audit (`docs/audits/codebase-audit-2026-03-31.md`
 ## Active roadmap
 
 ### 1. Split next 3 production files in 400–500 LOC range
-- `sanity/unknown_keys.rs`, `contracts/runner.rs`, `runner/execution/plugin_executor.rs`
-- Why: these are now the largest remaining non-test Rust files still clustered near the hard limit, so they are the next lowest-risk decomposition slice.
+- `git/status.rs`, `commands/run/supervision/ci.rs`, `commands/run/parallel/cleanup_guard.rs`
+- Why: these are now the largest remaining non-test Rust files still clustered near the hard limit, and each has clear extraction seams without changing runtime behavior.
 
 ---
 

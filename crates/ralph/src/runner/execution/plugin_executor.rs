@@ -31,6 +31,9 @@ use crate::runner::{
     OutputHandler, OutputStream, ResolvedRunnerCliOptions, RunnerError, RunnerOutput,
 };
 
+#[cfg(test)]
+mod tests;
+
 use super::builtin_plugins::BuiltInRunnerPlugin;
 use super::plugin_trait::{ResumeContext, RunContext, RunnerMetadata, RunnerPlugin};
 use super::process::run_with_streaming_json;
@@ -332,129 +335,5 @@ impl PluginExecutor {
             output_stream,
             plugin_config_json,
         )
-    }
-}
-
-/// Run a built-in plugin prompt (simplified interface for runner.rs).
-#[allow(clippy::too_many_arguments)]
-pub fn run_builtin_prompt(
-    plugin: BuiltInRunnerPlugin,
-    work_dir: &Path,
-    bin: &str,
-    runner_cli: ResolvedRunnerCliOptions,
-    model: Model,
-    prompt: &str,
-    timeout: Option<Duration>,
-    output_handler: Option<OutputHandler>,
-    output_stream: OutputStream,
-) -> Result<RunnerOutput, RunnerError> {
-    let executor = PluginExecutor::new();
-    let runner = match plugin {
-        BuiltInRunnerPlugin::Pi => Runner::Pi,
-        _ => {
-            return Err(RunnerError::Other(anyhow::anyhow!(
-                "run_builtin_prompt only supports Pi; use executor.run() for other runners"
-            )));
-        }
-    };
-
-    executor.run(
-        runner,
-        work_dir,
-        bin,
-        model,
-        None, // reasoning_effort
-        runner_cli,
-        prompt,
-        timeout,
-        None, // permission_mode
-        output_handler,
-        output_stream,
-        crate::commands::run::PhaseType::Planning,
-        None, // session_id
-        None, // plugins
-    )
-}
-
-/// Resume a built-in plugin session (simplified interface for runner.rs).
-#[allow(clippy::too_many_arguments)]
-pub fn run_builtin_resume(
-    plugin: BuiltInRunnerPlugin,
-    work_dir: &Path,
-    bin: &str,
-    runner_cli: ResolvedRunnerCliOptions,
-    model: Model,
-    session_id: &str,
-    message: &str,
-    timeout: Option<Duration>,
-    output_handler: Option<OutputHandler>,
-    output_stream: OutputStream,
-) -> Result<RunnerOutput, RunnerError> {
-    let executor = PluginExecutor::new();
-    let runner = match plugin {
-        BuiltInRunnerPlugin::Pi => Runner::Pi,
-        _ => {
-            return Err(RunnerError::Other(anyhow::anyhow!(
-                "run_builtin_resume only supports Pi; use executor.resume() for other runners"
-            )));
-        }
-    };
-
-    executor.resume(
-        runner,
-        work_dir,
-        bin,
-        model,
-        None, // reasoning_effort
-        runner_cli,
-        session_id,
-        message,
-        timeout,
-        None, // permission_mode
-        output_handler,
-        output_stream,
-        crate::commands::run::PhaseType::Planning,
-        None, // plugins
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn plugin_executor_creates_with_all_built_ins() {
-        let executor = PluginExecutor::new();
-
-        // Verify all built-in runners are registered
-        for runner in [
-            Runner::Codex,
-            Runner::Opencode,
-            Runner::Gemini,
-            Runner::Claude,
-            Runner::Kimi,
-            Runner::Pi,
-            Runner::Cursor,
-        ] {
-            let metadata = executor.metadata(&runner);
-            assert!(!metadata.id.is_empty());
-        }
-    }
-
-    #[test]
-    fn plugin_executor_kimi_requires_managed_session() {
-        let executor = PluginExecutor::new();
-        assert!(executor.requires_managed_session_id(&Runner::Kimi));
-        assert!(!executor.requires_managed_session_id(&Runner::Codex));
-    }
-
-    #[test]
-    fn plugin_executor_external_plugin_metadata() {
-        let executor = PluginExecutor::new();
-        let runner = Runner::Plugin("test.plugin".to_string());
-        let metadata = executor.metadata(&runner);
-
-        assert_eq!(metadata.id, "test.plugin");
-        assert!(metadata.supports_resume); // External plugins assume resume support
     }
 }
