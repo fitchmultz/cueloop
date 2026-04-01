@@ -39,7 +39,7 @@ pub(crate) fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize
         );
     }
 
-    let mut seen = HashSet::new();
+    let mut seen: HashSet<&str> = HashSet::new();
     for (idx, task) in queue.tasks.iter().enumerate() {
         validate_task_required_fields(idx, task)?;
         validate_task_agent_fields(idx, task)?;
@@ -49,8 +49,8 @@ pub(crate) fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize
             continue;
         }
 
-        let key = task.id.trim().to_string();
-        if !seen.insert(key.clone()) {
+        let key = task.id.trim();
+        if !seen.insert(key) {
             bail!(
                 "Duplicate task ID detected: {}. Ensure each task in .ralph/queue.jsonc has a unique ID.",
                 key

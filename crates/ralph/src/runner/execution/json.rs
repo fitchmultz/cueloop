@@ -23,20 +23,20 @@ pub(super) fn parse_json_line(line: &str) -> Option<JsonValue> {
     })
 }
 
-pub(super) fn extract_session_id_from_json(json: &JsonValue) -> Option<String> {
+pub(super) fn extract_session_id_from_json(json: &JsonValue) -> Option<&str> {
     if json.get("type").and_then(|t| t.as_str()) == Some("session")
         && let Some(id) = json.get("id").and_then(|v| v.as_str())
     {
-        return Some(id.to_string());
+        return Some(id);
     }
     if let Some(id) = json.get("thread_id").and_then(|v| v.as_str()) {
-        return Some(id.to_string());
+        return Some(id);
     }
     if let Some(id) = json.get("session_id").and_then(|v| v.as_str()) {
-        return Some(id.to_string());
+        return Some(id);
     }
     if let Some(id) = json.get("sessionID").and_then(|v| v.as_str()) {
-        return Some(id.to_string());
+        return Some(id);
     }
     None
 }
@@ -62,7 +62,7 @@ pub(super) fn extract_session_id_from_text(stdout: &str) -> Option<String> {
         if let Some(Ok(json)) = stream.next()
             && let Some(id) = extract_session_id_from_json(&json)
         {
-            return Some(id);
+            return Some(id.to_owned());
         }
     }
     None

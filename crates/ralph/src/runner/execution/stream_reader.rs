@@ -136,7 +136,7 @@ fn handle_completed_line(
         if let Some(id) = extract_session_id_from_json(&json)
             && let Ok(mut guard) = session_id_buf.lock()
         {
-            *guard = Some(id);
+            *guard = Some(id.to_owned());
         }
         display_filtered_json(&json, sink, output_handler, output_stream)?;
     } else if !line_buf.trim().is_empty() {
@@ -152,10 +152,11 @@ fn handle_plain_line(
     output_handler: Option<&OutputHandler>,
     output_stream: OutputStream,
 ) -> anyhow::Result<()> {
-    let mut emitted = line.to_string();
-    sink.write_all(emitted.as_bytes(), output_stream)?;
+    sink.write_all(line.as_bytes(), output_stream)?;
     sink.write_all(b"\n", output_stream)?;
     if let Some(handler) = output_handler {
+        let mut emitted = String::with_capacity(line.len() + 1);
+        emitted.push_str(line);
         emitted.push('\n');
         handler(&emitted);
     }

@@ -243,3 +243,31 @@ fn spawn_json_reader_handles_partial_line_at_eof() {
     let guard = buffer.lock().unwrap();
     assert!(guard.contains("partial"));
 }
+
+#[test]
+fn spawn_json_reader_plain_line_calls_output_handler_with_newline() {
+    let input = "plain line without json";
+    let reader = Cursor::new(input.as_bytes());
+    let buffer: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    let session_id_buf: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let handled = Arc::new(Mutex::new(Vec::new()));
+    let handler: OutputHandler = Arc::new(Box::new({
+        let handled = Arc::clone(&handled);
+        move |line: &str| handled.lock().unwrap().push(line.to_string())
+    }));
+
+    let handle = spawn_json_reader(
+        reader,
+        StreamSink::Stdout,
+        Arc::clone(&buffer),
+        Some(handler),
+        OutputStream::HandlerOnly,
+        session_id_buf,
+    );
+
+    let result = handle.join().unwrap();
+    assert!(result.is_ok());
+
+    let handled = handled.lock().unwrap();
+    assert_eq!(handled.as_slice(), ["plain line without json\n"]);
+}

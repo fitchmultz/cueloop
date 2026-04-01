@@ -47,10 +47,7 @@ fn extract_session_id_from_json_codex_thread_id() {
     let payload = json!({
         "thread_id": "thread-123"
     });
-    assert_eq!(
-        extract_session_id_from_json(&payload),
-        Some("thread-123".to_string())
-    );
+    assert_eq!(extract_session_id_from_json(&payload), Some("thread-123"));
 }
 
 #[test]
@@ -58,10 +55,7 @@ fn extract_session_id_from_json_claude_session_id() {
     let payload = json!({
         "session_id": "session-abc"
     });
-    assert_eq!(
-        extract_session_id_from_json(&payload),
-        Some("session-abc".to_string())
-    );
+    assert_eq!(extract_session_id_from_json(&payload), Some("session-abc"));
 }
 
 #[test]
@@ -69,10 +63,7 @@ fn extract_session_id_from_json_gemini_session_id() {
     let payload = json!({
         "session_id": "gemini-xyz"
     });
-    assert_eq!(
-        extract_session_id_from_json(&payload),
-        Some("gemini-xyz".to_string())
-    );
+    assert_eq!(extract_session_id_from_json(&payload), Some("gemini-xyz"));
 }
 
 #[test]
@@ -80,10 +71,7 @@ fn extract_session_id_from_json_opencode_session_id() {
     let payload = json!({
         "sessionID": "open-789"
     });
-    assert_eq!(
-        extract_session_id_from_json(&payload),
-        Some("open-789".to_string())
-    );
+    assert_eq!(extract_session_id_from_json(&payload), Some("open-789"));
 }
 
 #[test]
@@ -92,10 +80,7 @@ fn extract_session_id_from_json_pi_session_event() {
         "type": "session",
         "id": "pi-123"
     });
-    assert_eq!(
-        extract_session_id_from_json(&payload),
-        Some("pi-123".to_string())
-    );
+    assert_eq!(extract_session_id_from_json(&payload), Some("pi-123"));
 }
 
 #[test]

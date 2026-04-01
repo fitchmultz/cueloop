@@ -16,7 +16,7 @@ use crate::contracts::{QueueFile, Task};
 use std::collections::{HashMap, HashSet};
 
 pub(crate) struct TaskCatalog<'a> {
-    pub(crate) active_tasks: Vec<&'a Task>,
+    active_task_count: usize,
     pub(crate) tasks: Vec<&'a Task>,
     pub(crate) all_tasks: HashMap<&'a str, &'a Task>,
     pub(crate) all_task_ids: HashSet<&'a str>,
@@ -24,13 +24,15 @@ pub(crate) struct TaskCatalog<'a> {
 
 impl<'a> TaskCatalog<'a> {
     pub(crate) fn new(active: &'a QueueFile, done: Option<&'a QueueFile>) -> Self {
-        let active_tasks: Vec<&Task> = active.tasks.iter().collect();
-        let mut tasks = active_tasks.clone();
+        let active_task_count = active.tasks.len();
+        let done_task_count = done.map_or(0, |done_file| done_file.tasks.len());
+        let mut tasks = Vec::with_capacity(active_task_count + done_task_count);
+        tasks.extend(active.tasks.iter());
         if let Some(done_file) = done {
             tasks.extend(done_file.tasks.iter());
         }
 
-        let mut all_tasks = HashMap::new();
+        let mut all_tasks = HashMap::with_capacity(tasks.len());
         for task in &tasks {
             all_tasks.insert(task.id.trim(), *task);
         }
@@ -38,10 +40,14 @@ impl<'a> TaskCatalog<'a> {
         let all_task_ids = all_tasks.keys().copied().collect();
 
         Self {
-            active_tasks,
+            active_task_count,
             tasks,
             all_tasks,
             all_task_ids,
         }
+    }
+
+    pub(crate) fn active_tasks(&self) -> &[&'a Task] {
+        &self.tasks[..self.active_task_count]
     }
 }

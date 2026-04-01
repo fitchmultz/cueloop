@@ -24,7 +24,7 @@ pub(crate) fn validate_dependency_graph(
 ) -> Result<()> {
     let graph = build_dependency_graph(catalog, result)?;
     ensure_acyclic(&graph)?;
-    warn_on_dependency_depth(&catalog.active_tasks, &graph, max_dependency_depth, result);
+    warn_on_dependency_depth(catalog.active_tasks(), &graph, max_dependency_depth, result);
     warn_on_blocked_chains(catalog, &graph, result);
     Ok(())
 }
@@ -123,7 +123,7 @@ fn warn_on_blocked_chains(
     let mut blocked_cache = HashMap::new();
     let mut visiting = HashSet::new();
 
-    for task in &catalog.active_tasks {
+    for task in catalog.active_tasks() {
         let task_id = task.id.trim();
         if is_task_blocked(
             task_id,
