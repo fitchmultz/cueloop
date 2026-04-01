@@ -7,21 +7,16 @@ Source: comprehensive codebase audit (`docs/audits/codebase-audit-2026-03-31.md`
 
 ## Active roadmap
 
-### 1. Split top 3 test suites below 600 LOC
-- `queue/operations/tests/batch.rs` (753) → `batch_basic.rs`, `batch_edge_cases.rs`
-- `runner/execution/tests/plugin_trait_tests.rs` (736) → split by trait method
-- `runner/execution/tests/stream.rs` (708) → split by stream type
-
-### 2. Add test coverage for highest-value untested modules
+### 1. Add test coverage for highest-value untested modules
 - `cli/machine/queue_docs.rs` (494 LOC, 0 tests) — machine document generation
 - `commands/scan.rs` (454 LOC, 0 tests) — scan workflow orchestration
 - `commands/watch/processor.rs` (438 LOC, 0 tests) — watch event processing
 
-### 3. Clone audit for runner/queue hot paths
+### 2. Clone audit for runner/queue hot paths
 - Identify unnecessary `String`/`Vec` clones in streaming and queue loading
 - Consider `Cow<str>` or borrowing where lifetimes permit
 
-### 4. Proactive decomposition of files in 400–500 LOC range
+### 3. Proactive decomposition of files in 400–500 LOC range
 - `cli/scan.rs`, `cli/machine/task.rs`, `commands/init/writers.rs`, and 28 others
 - Split before they breach the hard limit
 
