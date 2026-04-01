@@ -7,9 +7,9 @@ Source: comprehensive codebase audit (`docs/audits/codebase-audit-2026-03-31.md`
 
 ## Active roadmap
 
-### 1. Proactive decomposition of files in 400–500 LOC range
-- `cli/scan.rs`, `cli/machine/task.rs`, `commands/init/writers.rs`, and 28 others
-- Split before they breach the hard limit
+### 1. Split next 3 production files in 400–500 LOC range
+- `commands/run/parallel/status.rs`, `commands/run/parallel/state.rs`, `cli/machine/queue_docs.rs`
+- Why: these are the current largest non-test files still sitting at or near 500 LOC, so they are the lowest-risk next cut before they breach the hard limit.
 
 ---
 

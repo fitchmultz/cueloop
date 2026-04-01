@@ -15,6 +15,10 @@
 //! - Task writes preserve queue locking, undo snapshots, and validation behavior.
 //! - Status and child-policy parsing remain strict.
 
+mod continuation;
+#[cfg(test)]
+mod tests;
+
 use std::collections::HashMap;
 
 use anyhow::{Context, Result, anyhow, bail};
@@ -26,13 +30,14 @@ use crate::cli::machine::io::{print_json, read_json_input};
 use crate::commands::task as task_cmd;
 use crate::config;
 use crate::contracts::{
-    BlockingState, BlockingStatus, MACHINE_DECOMPOSE_VERSION, MACHINE_TASK_CREATE_VERSION,
-    MACHINE_TASK_MUTATION_VERSION, MachineContinuationAction, MachineContinuationSummary,
+    MACHINE_DECOMPOSE_VERSION, MACHINE_TASK_CREATE_VERSION, MACHINE_TASK_MUTATION_VERSION,
     MachineDecomposeDocument, MachineTaskCreateDocument, MachineTaskCreateRequest,
     MachineTaskMutationDocument, RunnerCliOptionsPatch, Task, TaskStatus,
 };
 use crate::queue;
 use crate::timeutil;
+
+use continuation::{decompose_continuation, mutation_continuation};
 
 pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
@@ -145,131 +150,6 @@ pub(crate) fn build_decompose_document(
             "write": write,
         }),
         continuation,
-    }
-}
-
-fn step(title: &str, command: &str, detail: &str) -> MachineContinuationAction {
-    MachineContinuationAction {
-        title: title.to_string(),
-        command: command.to_string(),
-        detail: detail.to_string(),
-    }
-}
-
-fn mutation_continuation(task_count: usize, dry_run: bool) -> MachineContinuationSummary {
-    if dry_run {
-        return MachineContinuationSummary {
-            headline: "Mutation continuation is ready.".to_string(),
-            detail: format!(
-                "Ralph validated an atomic mutation affecting {task_count} task(s) without writing queue changes."
-            ),
-            blocking: None,
-            next_steps: vec![
-                step(
-                    "Apply the mutation",
-                    "ralph task mutate --input <PATH>",
-                    "Repeat without --dry-run to write the validated transaction.",
-                ),
-                step(
-                    "Refresh if the queue moved",
-                    "ralph queue validate",
-                    "Validate and retry from the latest queue state if another write landed first.",
-                ),
-            ],
-        };
-    }
-
-    MachineContinuationSummary {
-        headline: "Task mutation has been applied.".to_string(),
-        detail: format!(
-            "Ralph wrote {task_count} task mutation(s) atomically and created an undo checkpoint first."
-        ),
-        blocking: None,
-        next_steps: vec![
-            step(
-                "Continue work",
-                "ralph run resume",
-                "Proceed from the updated task state.",
-            ),
-            step(
-                "Restore if needed",
-                "ralph undo --dry-run",
-                "Preview the rollback path for this mutation.",
-            ),
-        ],
-    }
-}
-
-fn decompose_continuation(
-    preview: &task_cmd::DecompositionPreview,
-    write: Option<&task_cmd::TaskDecomposeWriteResult>,
-) -> MachineContinuationSummary {
-    if write.is_some() {
-        return MachineContinuationSummary {
-            headline: "Decomposition has been written.".to_string(),
-            detail: "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue."
-                .to_string(),
-            blocking: None,
-            next_steps: vec![
-                step(
-                    "Inspect the tree",
-                    "ralph queue tree",
-                    "Review the written parent/child structure.",
-                ),
-                step(
-                    "Restore if needed",
-                    "ralph undo --dry-run",
-                    "Preview the rollback path for this decomposition.",
-                ),
-            ],
-        };
-    }
-
-    if preview.write_blockers.is_empty() {
-        return MachineContinuationSummary {
-            headline: "Decomposition preview is ready.".to_string(),
-            detail: "Ralph planned a task tree that can be written when you are ready.".to_string(),
-            blocking: None,
-            next_steps: vec![step(
-                "Write the preview",
-                "ralph task decompose --write ...",
-                "Persist the planned tree into the queue.",
-            )],
-        };
-    }
-
-    MachineContinuationSummary {
-        headline: "Decomposition preview is blocked from being written.".to_string(),
-        detail: "Ralph preserved the proposed tree, but a queue invariant must be resolved before write mode can continue.".to_string(),
-        blocking: Some(BlockingState::operator_recovery(
-            BlockingStatus::Blocked,
-            "task_decompose",
-            "write_blocked",
-            preview
-                .attach_target
-                .as_ref()
-                .map(|target| target.task.id.clone()),
-            "Ralph is blocked from continuing this decomposition write.",
-            preview.write_blockers.join(" "),
-            Some("ralph task decompose --child-policy append --write ...".to_string()),
-        )),
-        next_steps: vec![
-            step(
-                "Append under the existing parent",
-                "ralph task decompose --child-policy append --write ...",
-                "Keep existing children and add the new subtree.",
-            ),
-            step(
-                "Replace the existing subtree",
-                "ralph task decompose --child-policy replace --write ...",
-                "Use only when the existing subtree can be safely replaced.",
-            ),
-            step(
-                "Keep the preview only",
-                "ralph task decompose ...",
-                "Retain the proposed tree while deciding how to proceed.",
-            ),
-        ],
     }
 }
 
@@ -395,42 +275,5 @@ fn parse_child_policy(value: &str) -> Result<task_cmd::DecompositionChildPolicy>
         "append" => Ok(task_cmd::DecompositionChildPolicy::Append),
         "replace" => Ok(task_cmd::DecompositionChildPolicy::Replace),
         other => bail!("Unsupported decomposition child policy '{}'", other),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{parse_child_policy, parse_task_status};
-    use crate::commands::task::DecompositionChildPolicy;
-    use crate::contracts::TaskStatus;
-
-    #[test]
-    fn parse_task_status_accepts_supported_values_case_insensitively() {
-        assert_eq!(
-            parse_task_status("TODO").expect("todo status"),
-            TaskStatus::Todo
-        );
-        assert_eq!(
-            parse_task_status("done").expect("done status"),
-            TaskStatus::Done
-        );
-    }
-
-    #[test]
-    fn parse_task_status_rejects_unknown_values() {
-        assert!(parse_task_status("later").is_err());
-    }
-
-    #[test]
-    fn parse_child_policy_accepts_supported_values_case_insensitively() {
-        assert_eq!(
-            parse_child_policy("Append").expect("append child policy"),
-            DecompositionChildPolicy::Append
-        );
-    }
-
-    #[test]
-    fn parse_child_policy_rejects_unknown_values() {
-        assert!(parse_child_policy("merge").is_err());
     }
 }
