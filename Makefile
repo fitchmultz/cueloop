@@ -314,7 +314,7 @@ clean-temp:
 	@rm -rf target/tmp
 
 check-env-safety:
-	@scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean
+	@scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean --allow-no-git
 
 check-backup-artifacts:
 	@bak_files="$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null || true)"; \
@@ -377,8 +377,8 @@ agent-ci:
 		exit 0; \
 	fi; \
 	if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
-		echo "  → Not in a git worktree; running macOS gate for safety"; \
-		$(MAKE) --no-print-directory macos-ci; \
+		echo "  → Not in a git worktree; using platform-aware release gate fallback"; \
+		$(MAKE) --no-print-directory release-gate; \
 		exit 0; \
 	fi; \
 	target_name="$$(scripts/agent-ci-surface.sh --target)"; \

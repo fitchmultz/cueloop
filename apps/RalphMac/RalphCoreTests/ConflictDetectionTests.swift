@@ -188,10 +188,10 @@ final class ConflictDetectionTests: RalphCoreTestCase {
             evidence: ["a"],
             plan: ["a"],
             notes: ["a"],
+            updatedAt: Date(),
             dependsOn: ["RQ-DEP-1"],
             blocks: ["RQ-BLK-1"],
-            relatesTo: ["RQ-REL-1"],
-            updatedAt: Date()
+            relatesTo: ["RQ-REL-1"]
         )
         
         let external = RalphTask(
@@ -205,10 +205,10 @@ final class ConflictDetectionTests: RalphCoreTestCase {
             evidence: ["b"],
             plan: ["b"],
             notes: ["b"],
+            updatedAt: Date(),
             dependsOn: ["RQ-DEP-2"],
             blocks: ["RQ-BLK-2"],
-            relatesTo: ["RQ-REL-2"],
-            updatedAt: Date()
+            relatesTo: ["RQ-REL-2"]
         )
         
         let fields = workspace.detectConflictedFields(local: local, external: external)

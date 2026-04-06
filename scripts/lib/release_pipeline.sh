@@ -69,8 +69,10 @@ release_validate_repo_state() {
     fi
     ralph_log_success "On main branch"
 
+    local collected_dirty_files
+    collected_dirty_files=$(release_collect_dirty_lines "$REPO_ROOT") || return 1
     local dirty_files
-    dirty_files=$(git status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
+    dirty_files=$(release_filter_dirty_lines "$collected_dirty_files")
     if [ -n "$dirty_files" ]; then
         if [ "$allow_release_metadata_drift" = "1" ] && release_assert_dirty_paths_allowed "$dirty_files"; then
             ralph_log_success "Working directory contains only release metadata drift"

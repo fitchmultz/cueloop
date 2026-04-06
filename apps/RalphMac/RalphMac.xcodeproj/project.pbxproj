@@ -92,6 +92,7 @@
 		90CEB62C49910ADBCC6E08F7 /* KanbanTransientState.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA88CA3C1D19F77EE6FDD31 /* KanbanTransientState.swift */; };
 		94A6A25C9EFCB2C4BA2EAEB5 /* CLIHealthCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */; };
 		94A6A25C9EFCB2C4BA2EAEB6 /* RalphCoreTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */; };
+		94A6A25C9EFCB2C4BA2EAEB7 /* ConflictDetectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E8D3607BFD28F72C5E9346 /* ConflictDetectionTests.swift */; };
 		96C8149938BD26BC5D7AEDC2 /* DependencyGraphViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB97FA944D6D29C68F8839A /* DependencyGraphViewModel.swift */; };
 		99887766554433221100AABB /* AnalyticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAA99887766554433221100 /* AnalyticsModels.swift */; };
 		9A3B7C4E5D6E7F8A901B2C3D /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718G9H0I1J2 /* TaskListView.swift */; };
@@ -332,6 +333,7 @@
 		57A3F5A71B329E532B37574E /* WorkspaceCorePerformanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceCorePerformanceTests.swift; sourceTree = "<group>"; };
 		58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIHealthCheckerTests.swift; sourceTree = "<group>"; };
 		58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCoreTestSupport.swift; sourceTree = "<group>"; };
+		58E8D3607BFD28F72C5E9346 /* ConflictDetectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConflictDetectionTests.swift; sourceTree = "<group>"; };
 		5CF4286D31194E8ABD65BF48 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
 		5D23656371D110092E913102 /* AppAppearanceController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppAppearanceController.swift; sourceTree = "<group>"; };
 		5EE8951D88274919856E798A /* RalphCLIExecutableLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIExecutableLocator.swift; sourceTree = "<group>"; };
@@ -644,6 +646,7 @@
 				C2F100000000000000000010 /* WorkspaceBackgroundTaskOwnershipTests.swift */,
 				WTDTFILEREF0012345678901 /* WorkspaceTaskDecomposeTests.swift */,
 				58E8D3607BFD28F72C5E9344 /* CLIHealthCheckerTests.swift */,
+				58E8D3607BFD28F72C5E9346 /* ConflictDetectionTests.swift */,
 				87DB6C6CD191F58338B4C774 /* ErrorRecoveryCategoryTests.swift */,
 				58E8D3607BFD28F72C5E9345 /* RalphCoreTestSupport.swift */,
 				C2F100000000000000000001 /* RalphCoreTestCase.swift */,
@@ -1068,6 +1071,7 @@
 				WTDTBUILD001234567890123 /* WorkspaceTaskDecomposeTests.swift in Sources */,
 				94A6A25C9EFCB2C4BA2EAEB5 /* CLIHealthCheckerTests.swift in Sources */,
 				94A6A25C9EFCB2C4BA2EAEB6 /* RalphCoreTestSupport.swift in Sources */,
+				94A6A25C9EFCB2C4BA2EAEB7 /* ConflictDetectionTests.swift in Sources */,
 				C2F200000000000000000001 /* RalphCoreTestCase.swift in Sources */,
 				C2F200000000000000000002 /* RalphCoreTestSupport+Filesystem.swift in Sources */,
 				C2F200000000000000000003 /* RalphCoreTestSupport+Async.swift in Sources */,

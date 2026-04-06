@@ -289,10 +289,10 @@ Every source file MUST start with `//!` docs covering:
 Never commit or print secrets. `.env` and `.env.*` are local-only and MUST remain untracked (`.env.example` is the only exception).
 
 ### Public-Release Guardrails
-- Required fast safety gate in CI: `check-env-safety` target now delegates to `scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean`.
+- Required fast safety gate in CI: `check-env-safety` target now delegates to `scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean --allow-no-git`, which keeps source snapshots usable while still rejecting local/runtime artifacts (including `target/`, unallowlisted `.ralph/*`, repo-local env files, and local note files).
 - Convenience alias: `make check-repo-safety`.
 - `scripts/pre-public-check.sh` delegates focused scans through `scripts/lib/public_readiness_scan.sh`, which invokes `scripts/lib/public_readiness_scan.py` with `PUBLIC_SCAN_EXCLUDES`; keep docs honest about that scope.
-- `scripts/pre-public-check.sh` supports `--release-context`, enforces the `.ralph` tracked-file allowlist, and blocks tracked runtime dirs (`cache`, `logs`, `lock`, `workspaces`, `undo`, `webhooks`).
+- `scripts/pre-public-check.sh` supports `--release-context`, enforces the `.ralph` tracked-file allowlist, and blocks tracked runtime/local-only files (including unallowlisted `.ralph/*`, repo-local env files, and local note files).
 - `scripts/release.sh` should derive the GitHub repo URL from `git remote origin` and set an explicit GitHub release title (`v<version>`); avoid hardcoded owner-specific release links inside automation.
 
 ### macOS UI Visual Artifacts

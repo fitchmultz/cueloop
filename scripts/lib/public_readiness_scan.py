@@ -23,21 +23,51 @@ import argparse
 import os
 import re
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterator
 
 
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+AWS_EXAMPLE_KEY = "AK" "IA" "IOSFODNN7EXAMPLE"
+OPENSSH_PRIVATE_KEY_TAG = "OPEN" "SSH PRIVATE KEY"
+RSA_PRIVATE_KEY_TAG = "RSA PRIVATE KEY"
+OPENSSH_PRIVATE_KEY_HEADER = "BEGIN " + OPENSSH_PRIVATE_KEY_TAG
+RSA_PRIVATE_KEY_HEADER = "BEGIN " + RSA_PRIVATE_KEY_TAG
+OPENSSH_PRIVATE_KEY_LINE = f"-----{OPENSSH_PRIVATE_KEY_HEADER}-----"
+RSA_PRIVATE_KEY_LINE = f"-----{RSA_PRIVATE_KEY_HEADER}-----"
+OPENSSH_PRIVATE_KEY_FOOTER = f"-----END {OPENSSH_PRIVATE_KEY_TAG}-----"
+RSA_PRIVATE_KEY_FOOTER = f"-----END {RSA_PRIVATE_KEY_TAG}-----"
+AWS_DOCS_ALLOWLIST_LINE = (
+    f"| **AWS Keys** | AKIA-prefixed access keys | `{AWS_EXAMPLE_KEY}` → `[REDACTED]` |"
+)
+REDACTION_EXPANSION_ALLOWLIST_LINES = {
+    f'"My key is {AWS_EXAMPLE_KEY} and secret is wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";',
+    f'assert!(!output.contains("{AWS_EXAMPLE_KEY}"));',
+    OPENSSH_PRIVATE_KEY_LINE,
+    (
+        f'let input = "private_key: |\\n  {RSA_PRIVATE_KEY_LINE}\\n'
+        '  MIIEpAIBAAKCAQEA75...\\n'
+        f'  {RSA_PRIVATE_KEY_FOOTER}";'
+    ),
+}
+FSUTIL_ALLOWLIST_LINES = {
+    f'let content = "AWS Access Key: {AWS_EXAMPLE_KEY}";',
+    f'!written.contains("{AWS_EXAMPLE_KEY}"),',
+    f'"SSH Key:\\n{OPENSSH_PRIVATE_KEY_LINE}\\nabc123\\n{OPENSSH_PRIVATE_KEY_FOOTER}";',
+}
 HIGH_CONFIDENCE_SECRET_PATTERNS = {
-    "aws_access_key": re.compile(r"AKIA[0-9A-Z]{16}"),
-    "github_classic_token": re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
-    "github_pat": re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
-    "slack_token": re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}"),
-    "openai_key": re.compile(r"sk-(?:proj-)?[A-Za-z0-9]{20,}"),
-    "anthropic_key": re.compile(r"sk-ant-[A-Za-z0-9_-]{20,}"),
-    "npm_token": re.compile(r"npm_[A-Za-z0-9]{36}"),
-    "stripe_live": re.compile(r"sk_live_[A-Za-z0-9]{16,}"),
-    "private_key": re.compile(r"BEGIN (?:RSA|OPENSSH|EC|DSA|PGP) PRIVATE KEY"),
+    "aws_access_key": re.compile(r"AK" r"IA[0-9A-Z]{16}"),
+    "github_classic_token": re.compile(r"gh[pousr]" r"_[A-Za-z0-9]{20,}"),
+    "github_pat": re.compile(r"github_pat" r"_[A-Za-z0-9_]{20,}"),
+    "slack_token": re.compile(r"xox[baprs]" r"-[A-Za-z0-9-]{10,}"),
+    "openai_key": re.compile(r"sk" r"-(?:proj-)?[A-Za-z0-9]{20,}"),
+    "anthropic_key": re.compile(r"sk-ant" r"-[A-Za-z0-9_-]{20,}"),
+    "npm_token": re.compile(r"npm" r"_[A-Za-z0-9]{36}"),
+    "stripe_live": re.compile(r"sk_live" r"_[A-Za-z0-9]{16,}"),
+    "private_key": re.compile(
+        r"BEGIN (?:RSA|OPEN" r"SSH|EC|DSA|PGP) PRIVATE " r"KEY"
+    ),
 }
 
 
@@ -48,24 +78,50 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def read_excludes() -> tuple[str, ...]:
-    raw = os.environ.get("RALPH_PUBLIC_SCAN_EXCLUDES", "")
-    excludes = []
+@lru_cache(maxsize=None)
+def read_env_lines(name: str) -> tuple[str, ...]:
+    raw = os.environ.get(name, "")
+    values = []
     for line in raw.splitlines():
         line = line.strip()
         if not line:
             continue
-        excludes.append(line.rstrip("/"))
-    return tuple(excludes)
+        values.append(line)
+    return tuple(values)
+
+
+@lru_cache(maxsize=1)
+def read_excludes() -> tuple[str, ...]:
+    return tuple(line.rstrip("/") for line in read_env_lines("RALPH_PUBLIC_SCAN_EXCLUDES"))
+
+
+@lru_cache(maxsize=1)
+def read_local_only_basenames() -> tuple[str, ...]:
+    configured = read_env_lines("RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES")
+    if configured:
+        return configured
+    return (".DS_Store", ".env", ".envrc", ".scratchpad.md", ".FIX_TRACKING.md")
+
+
+@lru_cache(maxsize=1)
+def read_local_only_basename_prefixes() -> tuple[str, ...]:
+    configured = read_env_lines("RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES")
+    if configured:
+        return configured
+    return (".env.",)
+
+
+def is_local_only_name(name: str) -> bool:
+    if name in read_local_only_basenames():
+        return True
+    for prefix in read_local_only_basename_prefixes():
+        if name.startswith(prefix) and name != ".env.example":
+            return True
+    return False
 
 
 def is_locally_sensitive_file(rel_path: str) -> bool:
-    name = Path(rel_path).name
-    if name == ".env":
-        return True
-    if name.startswith(".env.") and name != ".env.example":
-        return True
-    return name in {".scratchpad.md", ".FIX_TRACKING.md"}
+    return any(is_local_only_name(part) for part in Path(rel_path).parts if part not in ("", "."))
 
 
 def is_excluded(rel_path: str, excludes: tuple[str, ...]) -> bool:
@@ -124,18 +180,13 @@ def read_text(path: Path, repo_root: Path, excludes: tuple[str, ...]) -> str | N
 
 
 def allowlisted_secret(rel_path: str, line: str) -> bool:
+    stripped = line.strip()
     if rel_path == "crates/ralph/tests/redaction_expansion_test.rs":
-        return True
+        return stripped in REDACTION_EXPANSION_ALLOWLIST_LINES
     if rel_path == "docs/features/security.md":
-        return True
-    if rel_path == "scripts/pre-public-check.sh" and "PRIVATE KEY" in line:
-        return True
-    if rel_path == "scripts/lib/public_readiness_scan.py":
-        return True
-    if rel_path == "crates/ralph/src/fsutil/tests.rs" and "AKIA" in line and "EXAMPLE" in line:
-        return True
-    if rel_path == "crates/ralph/src/fsutil/tests.rs" and "OPENSSH PRIVATE KEY" in line:
-        return True
+        return stripped == AWS_DOCS_ALLOWLIST_LINE
+    if rel_path == "crates/ralph/src/fsutil/tests.rs":
+        return stripped in FSUTIL_ALLOWLIST_LINES
     return False
 
 

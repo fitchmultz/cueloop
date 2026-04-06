@@ -417,6 +417,12 @@ fn test_ci_docs_runs_focused_markdown_link_scan() -> Result<()> {
         "ci-docs should not rerun broader pre-public checks via skip-flag combinations"
     );
     assert!(
+        makefile.contains(
+            "scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean --allow-no-git"
+        ),
+        "check-env-safety should use source-snapshot-safe pre-public checks"
+    );
+    assert!(
         pre_public_check.contains("bash \"$SCRIPT_DIR/lib/public_readiness_scan.sh\" links"),
         "pre-public-check should reuse the focused markdown link scan entrypoint"
     );
@@ -449,6 +455,18 @@ fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
     assert!(
         agent_ci_block.contains("target_reason"),
         "agent-ci should surface the classifier's routing reason"
+    );
+    assert!(
+        agent_ci_block.contains("using platform-aware release gate fallback"),
+        "agent-ci should explain the non-git source-snapshot fallback"
+    );
+    assert!(
+        agent_ci_block.contains("$(MAKE) --no-print-directory release-gate"),
+        "agent-ci should use the shared release gate when git metadata is unavailable"
+    );
+    assert!(
+        !agent_ci_block.contains("running macOS gate for safety"),
+        "agent-ci should not force the macOS-only gate outside git worktrees"
     );
 
     Ok(())

@@ -54,12 +54,71 @@ PUBLIC_REQUIRED_FILES=(
 PUBLIC_SCAN_EXCLUDES=(
     ".git/"
     "target/"
-    ".ralph/"
+    ".ralph/cache/"
+    ".ralph/lock/"
+    ".ralph/logs/"
+    ".ralph/plugins/"
+    ".ralph/trust.json"
+    ".ralph/trust.jsonc"
+    ".ralph/undo/"
+    ".ralph/webhooks/"
+    ".ralph/workspaces/"
     "apps/RalphMac/build/"
     ".venv/"
     ".ruff_cache/"
     ".pytest_cache/"
     ".ty_cache/"
+)
+
+PUBLIC_LOCAL_ONLY_BASENAMES=(
+    ".DS_Store"
+    ".env"
+    ".envrc"
+    ".scratchpad.md"
+    ".FIX_TRACKING.md"
+)
+
+PUBLIC_LOCAL_ONLY_BASENAME_PREFIXES=(
+    ".env."
+)
+
+PUBLIC_SOURCE_SNAPSHOT_DISALLOWED_PATHS=(
+    "target"
+    "apps/RalphMac/build"
+    ".venv"
+    ".ruff_cache"
+    ".pytest_cache"
+    ".ty_cache"
+)
+
+PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
+    "target/"
+    "apps/RalphMac/build/"
+    ".venv/"
+    ".ruff_cache/"
+    ".pytest_cache/"
+    ".ty_cache/"
+    ".ralph/cache/"
+    ".ralph/lock/"
+    ".ralph/logs/"
+    ".ralph/workspaces/"
+    ".ralph/undo/"
+    ".ralph/webhooks/"
+)
+
+PUBLIC_IGNORED_DIRTY_PATHS=(
+    ".ralph/trust.json"
+    ".ralph/trust.jsonc"
+)
+
+PUBLIC_IGNORED_DIRTY_PATH_PREFIXES=(
+    ".ralph/cache/"
+    ".ralph/lock/"
+    ".ralph/logs/"
+    ".ralph/plugins/"
+    ".ralph/undo/"
+    ".ralph/webhooks/"
+    ".ralph/workspaces/"
 )
 
 RELEASE_TRANSACTION_DIR="$REPO_ROOT/target/release-transactions"
@@ -78,6 +137,116 @@ release_is_metadata_path() {
     return 1
 }
 
+release_parse_dirty_line_path() {
+    local line="$1"
+
+    if [ "${#line}" -lt 4 ]; then
+        return 1
+    fi
+
+    printf '%s\n' "${line:3}"
+}
+
+release_format_path_for_logs() {
+    printf '%q' "$1"
+}
+
+release_path_has_control_characters() {
+    python3 -c 'import sys; data = sys.argv[1].encode("utf-8", "surrogateescape"); sys.exit(0 if any(byte < 32 or byte == 127 for byte in data) else 1)' "$1"
+}
+
+release_require_safe_publication_path() {
+    local context="$1"
+    local path="$2"
+    local control_status=0
+
+    if release_path_has_control_characters "$path"; then
+        ralph_log_error "$context contains a path with unsupported control characters: $(release_format_path_for_logs "$path")"
+        return 1
+    else
+        control_status=$?
+    fi
+
+    if [ "$control_status" -ne 1 ]; then
+        ralph_log_error "$context path validation failed for $(release_format_path_for_logs "$path")"
+        return 1
+    fi
+
+    return 0
+}
+
+release_dirty_status_has_second_path() {
+    local status="$1"
+
+    case "$status" in
+        [RC]?|?[RC])
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+release_collect_git_output_z() {
+    local context="$1"
+    shift
+
+    local output_file
+    output_file=$(ralph_mktemp_file "ralph-git-output")
+    if ! "$@" >"$output_file" 2>/dev/null; then
+        rm -f "$output_file"
+        ralph_log_error "$context failed"
+        return 1
+    fi
+
+    printf '%s\n' "$output_file"
+}
+
+release_collect_dirty_lines() {
+    local repo_root="${1:-$REPO_ROOT}"
+    local entry
+    local status
+    local path
+    local lines=()
+    local failed=0
+    local dirty_file
+
+    dirty_file=$(release_collect_git_output_z "git status --porcelain=v1 -z" git -C "$repo_root" status --porcelain=v1 -z) || return 1
+
+    while IFS= read -r -d '' entry; do
+        [ -z "$entry" ] && continue
+        status="${entry:0:2}"
+        path="${entry:3}"
+        if ! release_require_safe_publication_path "Git status" "$path"; then
+            failed=1
+            break
+        fi
+        lines+=("$status $path")
+
+        if release_dirty_status_has_second_path "$status"; then
+            if ! IFS= read -r -d '' path; then
+                ralph_log_error "Git status rename/copy entry ended unexpectedly"
+                failed=1
+                break
+            fi
+            if ! release_require_safe_publication_path "Git status" "$path"; then
+                failed=1
+                break
+            fi
+            lines+=("$status $path")
+        fi
+    done <"$dirty_file"
+
+    rm -f "$dirty_file"
+    if [ "$failed" -ne 0 ]; then
+        return 1
+    fi
+
+    if [ "${#lines[@]}" -ne 0 ]; then
+        printf '%s\n' "${lines[@]}"
+    fi
+}
+
 release_assert_dirty_paths_allowed() {
     local dirty_lines="$1"
     local line
@@ -90,7 +259,10 @@ release_assert_dirty_paths_allowed() {
 
     while IFS= read -r line; do
         [ -z "$line" ] && continue
-        path=$(echo "$line" | awk '{print $NF}')
+        path=$(release_parse_dirty_line_path "$line") || {
+            disallowed+=("$line")
+            continue
+        }
         if ! release_is_metadata_path "$path"; then
             disallowed+=("$line")
         fi
@@ -116,6 +288,113 @@ release_is_allowed_tracked_ralph_path() {
         fi
     done
     return 1
+}
+
+release_is_local_only_name() {
+    local name="$1"
+    local exact
+    local prefix
+
+    for exact in "${PUBLIC_LOCAL_ONLY_BASENAMES[@]}"; do
+        if [ "$name" = "$exact" ]; then
+            return 0
+        fi
+    done
+
+    for prefix in "${PUBLIC_LOCAL_ONLY_BASENAME_PREFIXES[@]}"; do
+        if [[ "$name" == "$prefix"* ]] && [ "$name" != ".env.example" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+release_is_local_only_path() {
+    local path="${1#./}"
+    local component
+
+    IFS='/' read -r -a components <<< "$path"
+    for component in "${components[@]}"; do
+        [ -z "$component" ] && continue
+        if release_is_local_only_name "$component"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+release_path_matches_exact_or_dir_prefix() {
+    local path="${1#./}"
+    local prefix="${2#./}"
+    local exact="${prefix%/}"
+
+    if [ "$path" = "$exact" ]; then
+        return 0
+    fi
+
+    if [[ "$path" == "$prefix"* ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+release_is_disallowed_tracked_runtime_build_path() {
+    local path="${1#./}"
+    local prefix
+
+    for prefix in "${PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES[@]}"; do
+        if release_path_matches_exact_or_dir_prefix "$path" "$prefix"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+release_is_ignored_dirty_path() {
+    local path="${1#./}"
+    local exact
+    local prefix
+
+    for exact in "${PUBLIC_IGNORED_DIRTY_PATHS[@]}"; do
+        if [ "$path" = "$exact" ]; then
+            return 0
+        fi
+    done
+
+    for prefix in "${PUBLIC_IGNORED_DIRTY_PATH_PREFIXES[@]}"; do
+        if [[ "$path" == "$prefix"* ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+release_filter_dirty_lines() {
+    local dirty_lines="$1"
+    local filtered=()
+    local line
+    local path
+
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        path=$(release_parse_dirty_line_path "$line") || {
+            filtered+=("$line")
+            continue
+        }
+        if release_is_ignored_dirty_path "$path"; then
+            continue
+        fi
+        filtered+=("$line")
+    done <<< "$dirty_lines"
+
+    if [ "${#filtered[@]}" -ne 0 ]; then
+        printf '%s\n' "${filtered[@]}"
+    fi
 }
 
 public_is_docs_only_path() {

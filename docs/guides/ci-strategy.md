@@ -21,16 +21,18 @@ Behavior:
 - Routes docs/community-only changes to `make ci-docs`.
 - Routes non-app executable changes to `make ci-fast`.
 - Auto-escalates to macOS gate when the changed dependency surface can affect the bundled app contract (CLI/runtime/config/build/app paths).
+- On source snapshots without `.git/`, falls back to `make release-gate` so verification stays platform-aware instead of assuming macOS-only tooling.
+- The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.ralph/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/RalphMac/build/`.
 
 Docs/community-only gate is `make ci-docs`:
 
-- `check-env-safety` (delegates to pre-public safety checks: required-files + secret/runtime/env validation)
+- `check-env-safety` (runs required-file + secret checks everywhere, and adds tracked runtime/local-only file validation when git metadata is available)
 - `check-backup-artifacts`
 - repo-wide markdown link scan
 
 Fast Rust/CLI gate is `make ci-fast`:
 
-- `check-env-safety` (delegates to pre-public safety checks: required-files + secret/runtime/env validation)
+- `check-env-safety` (runs required-file + secret checks everywhere, and adds tracked runtime/local-only file validation when git metadata is available)
 - `check-backup-artifacts`
 - `deps`
 - `format`

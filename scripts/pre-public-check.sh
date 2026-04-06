@@ -27,6 +27,7 @@ SKIP_LINKS=0
 SKIP_SECRETS=0
 SKIP_CLEAN=0
 RELEASE_CONTEXT=0
+ALLOW_NO_GIT=0
 
 usage() {
     cat <<'EOF'
@@ -41,6 +42,7 @@ Options:
   --skip-secrets    Skip repo-wide working-tree secret-pattern scan
   --skip-clean      Skip worktree cleanliness checks
   --release-context Allow only canonical release metadata files to be dirty
+  --allow-no-git    Allow source-snapshot safety mode for `--skip-ci --skip-clean` flows
   -h, --help        Show this help message
 
 Exit codes:
@@ -59,63 +61,160 @@ check_required_files() {
         if [ ! -f "$REPO_ROOT/$path" ]; then
             ralph_log_error "Missing required file: $path"
             missing=1
+            continue
+        fi
+        if [ -L "$REPO_ROOT/$path" ]; then
+            ralph_log_error "Required file must be a regular repo file, not a symlink: $path"
+            missing=1
         fi
     done
 
     [ "$missing" -eq 0 ]
 }
 
-check_tracked_runtime_artifacts() {
-    ralph_log_info "Checking tracked runtime/build artifacts"
+git_worktree_available() {
+    git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
 
-    local tracked
-    tracked=$(git -C "$REPO_ROOT" ls-files \
-        apps/RalphMac/build \
-        '.ralph/cache' \
-        '.ralph/lock' \
-        '.ralph/logs' \
-        '.ralph/workspaces' \
-        '.ralph/undo' \
-        '.ralph/webhooks' || true)
+require_git_worktree() {
+    if git_worktree_available; then
+        return 0
+    fi
 
-    if [ -n "$tracked" ]; then
-        ralph_log_error "Tracked runtime/build artifacts detected"
-        printf '  %s\n' "$tracked" >&2
+    ralph_log_error "Pre-public checks require a git worktree; source snapshots cannot validate tracked-file or cleanliness invariants"
+    return 1
+}
+
+check_source_snapshot_artifacts() {
+    ralph_log_info "Checking source snapshot for local/runtime artifacts"
+
+    local violations=()
+    local rel_path
+    for rel_path in "${PUBLIC_SOURCE_SNAPSHOT_DISALLOWED_PATHS[@]}"; do
+        if [ -e "$REPO_ROOT/$rel_path" ] || [ -L "$REPO_ROOT/$rel_path" ]; then
+            violations+=("$rel_path")
+        fi
+    done
+
+    if [ -e "$REPO_ROOT/.ralph" ] || [ -L "$REPO_ROOT/.ralph" ]; then
+        if [ ! -d "$REPO_ROOT/.ralph" ] || [ -L "$REPO_ROOT/.ralph" ]; then
+            violations+=(".ralph")
+        else
+            while IFS= read -r -d '' rel_path; do
+                [ -z "$rel_path" ] && continue
+                rel_path="${rel_path#./}"
+                release_require_safe_publication_path "Source snapshot" "$rel_path" || return 1
+                if [ -L "$REPO_ROOT/$rel_path" ] || ! release_is_allowed_tracked_ralph_path "$rel_path"; then
+                    violations+=("$rel_path")
+                fi
+            done < <(
+                cd "$REPO_ROOT" && find .ralph -mindepth 1 -print0
+            )
+        fi
+    fi
+
+    while IFS= read -r -d '' rel_path; do
+        [ -z "$rel_path" ] && continue
+        rel_path="${rel_path#./}"
+        release_require_safe_publication_path "Source snapshot" "$rel_path" || return 1
+        if release_is_local_only_path "$rel_path"; then
+            violations+=("$rel_path")
+        fi
+    done < <(
+        cd "$REPO_ROOT" && find . \( -type f -o -type l \) -print0
+    )
+
+    if [ "${#violations[@]}" -ne 0 ]; then
+        ralph_log_error "Source snapshot contains local/runtime artifacts that must be excluded before publication checks can pass"
+        printf '  %s\n' "${violations[@]}" >&2
         return 1
     fi
 
-    local tracked_ralph
-    tracked_ralph=$(git -C "$REPO_ROOT" ls-files -- '.ralph' || true)
-    if [ -n "$tracked_ralph" ]; then
-        local unexpected=()
-        local path
-        while IFS= read -r path; do
-            [ -z "$path" ] && continue
-            if ! release_is_allowed_tracked_ralph_path "$path"; then
+    ralph_log_success "No local/runtime artifacts detected in source snapshot mode"
+}
+
+check_tracked_runtime_artifacts() {
+    ralph_log_info "Checking tracked runtime/build artifacts"
+
+    local tracked_violations=()
+    local unexpected=()
+    local path
+    local failed=0
+    local tracked_file
+
+    tracked_file=$(release_collect_git_output_z "git ls-files -z" git -C "$REPO_ROOT" ls-files -z) || return 1
+
+    while IFS= read -r -d '' path; do
+        [ -z "$path" ] && continue
+        if ! release_require_safe_publication_path "Tracked file list" "$path"; then
+            failed=1
+            break
+        fi
+        [ -e "$REPO_ROOT/$path" ] || [ -L "$REPO_ROOT/$path" ] || continue
+        if release_is_disallowed_tracked_runtime_build_path "$path"; then
+            tracked_violations+=("$path")
+        fi
+        if [ "$path" = ".ralph" ] || [[ "$path" == .ralph/* ]]; then
+            if [ "$path" = ".ralph" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_ralph_path "$path"; then
                 unexpected+=("$path")
             fi
-        done <<< "$tracked_ralph"
-
-        if [ "${#unexpected[@]}" -ne 0 ]; then
-            ralph_log_error "Tracked .ralph files outside the public allowlist detected"
-            printf '  %s\n' "${unexpected[@]}" >&2
-            return 1
         fi
+    done <"$tracked_file"
+
+    rm -f "$tracked_file"
+    if [ "$failed" -ne 0 ]; then
+        return 1
+    fi
+
+    if [ "${#tracked_violations[@]}" -ne 0 ]; then
+        ralph_log_error "Tracked runtime/build artifacts detected"
+        printf '  %s\n' "${tracked_violations[@]}" >&2
+        return 1
+    fi
+
+    if [ "${#unexpected[@]}" -ne 0 ]; then
+        ralph_log_error "Tracked .ralph files outside the public allowlist detected"
+        printf '  %s\n' "${unexpected[@]}" >&2
+        return 1
     fi
 
     ralph_log_success "No tracked runtime/build artifacts detected"
 }
 
-check_env_tracking() {
-    ralph_log_info "Checking .env tracking"
-    local tracked_env
-    tracked_env=$(git -C "$REPO_ROOT" ls-files | grep -E '(^|/)\.env($|\.)' | grep -Ev '(^|/)\.env\.example$' || true)
-    if [ -n "$tracked_env" ]; then
-        ralph_log_error "Tracked env files detected"
-        printf '  %s\n' "$tracked_env" >&2
+check_local_only_tracking() {
+    ralph_log_info "Checking tracked local-only files"
+
+    local violations=()
+    local path
+    local failed=0
+    local tracked_file
+
+    tracked_file=$(release_collect_git_output_z "git ls-files -z" git -C "$REPO_ROOT" ls-files -z) || return 1
+
+    while IFS= read -r -d '' path; do
+        [ -z "$path" ] && continue
+        if ! release_require_safe_publication_path "Tracked file list" "$path"; then
+            failed=1
+            break
+        fi
+        [ -e "$REPO_ROOT/$path" ] || [ -L "$REPO_ROOT/$path" ] || continue
+        if release_is_local_only_path "$path"; then
+            violations+=("$path")
+        fi
+    done <"$tracked_file"
+
+    rm -f "$tracked_file"
+    if [ "$failed" -ne 0 ]; then
         return 1
     fi
-    ralph_log_success "No tracked env files detected"
+
+    if [ "${#violations[@]}" -ne 0 ]; then
+        ralph_log_error "Tracked local-only files detected"
+        printf '  %s\n' "${violations[@]}" >&2
+        return 1
+    fi
+
+    ralph_log_success "No tracked local-only files detected"
 }
 
 check_worktree_clean() {
@@ -125,8 +224,10 @@ check_worktree_clean() {
     fi
 
     ralph_log_info "Checking git worktree cleanliness"
+    local collected_dirty
+    collected_dirty=$(release_collect_dirty_lines "$REPO_ROOT") || return 1
     local dirty
-    dirty=$(git -C "$REPO_ROOT" status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
+    dirty=$(release_filter_dirty_lines "$collected_dirty")
     if [ -z "$dirty" ]; then
         ralph_log_success "Working tree is clean"
         return 0
@@ -191,6 +292,9 @@ main() {
             --release-context)
                 RELEASE_CONTEXT=1
                 ;;
+            --allow-no-git)
+                ALLOW_NO_GIT=1
+                ;;
             -h|--help)
                 usage
                 exit 0
@@ -208,14 +312,33 @@ main() {
     echo "Pre-public readiness checks"
     echo "=========================="
 
+    local has_git=0
+    if git_worktree_available; then
+        has_git=1
+    elif [ "$ALLOW_NO_GIT" -eq 1 ]; then
+        if [ "$SKIP_CI" -ne 1 ] || [ "$SKIP_CLEAN" -ne 1 ]; then
+            ralph_log_error "--allow-no-git requires --skip-ci and --skip-clean because git-backed release and cleanliness checks remain mandatory otherwise"
+            exit 2
+        fi
+        ralph_log_warn "Git worktree unavailable; skipping tracked-file and cleanliness checks in source-snapshot safety mode"
+    else
+        require_git_worktree
+    fi
+
     check_required_files
-    check_tracked_runtime_artifacts
-    check_env_tracking
-    check_worktree_clean
+    if [ "$has_git" -eq 1 ]; then
+        check_tracked_runtime_artifacts
+        check_local_only_tracking
+        check_worktree_clean
+    else
+        check_source_snapshot_artifacts
+    fi
     check_secret_patterns
     check_markdown_links
     run_ci_gate
-    check_worktree_clean
+    if [ "$has_git" -eq 1 ]; then
+        check_worktree_clean
+    fi
 
     echo ""
     ralph_log_success "Pre-public checks passed"

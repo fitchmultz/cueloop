@@ -33,8 +33,10 @@ release_run_ship_gate() {
         "$make_cmd" ci
     fi
 
+    local collected_dirty_lines
+    collected_dirty_lines=$(release_collect_dirty_lines "$REPO_ROOT") || return 1
     local dirty_lines
-    dirty_lines=$(git status --porcelain | grep -vE '^..[[:space:]]+\.ralph/' || true)
+    dirty_lines=$(release_filter_dirty_lines "$collected_dirty_lines")
     if ! release_assert_dirty_paths_allowed "$dirty_lines"; then
         return 1
     fi

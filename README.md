@@ -149,7 +149,8 @@ Expected signals:
 
 - Help and queue commands succeed
 - `ralph doctor` exits successfully
-- `make agent-ci` completes with passing format/type/lint/test checks
+- `make agent-ci` completes with passing checks for the current dependency surface
+- Source snapshots without `.git/` fall back to `make release-gate` (`macos-ci` on macOS with Xcode, otherwise `ci`)
 
 Full scripted version: [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md)
 

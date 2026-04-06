@@ -41,6 +41,8 @@ If you want a shorter reviewer-oriented version of this flow, use [evaluator-pat
 - queue validation/list commands succeed
 - `ralph doctor` completes without critical failures in repo root
 - `make agent-ci` passes
+- source snapshots without `.git/` fall back to `make release-gate` (`macos-ci` on macOS with Xcode, otherwise `ci`)
+- source snapshots must exclude local/runtime artifacts such as `target/`, unallowlisted `.ralph/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/RalphMac/build/`
 
 ## Troubleshooting
 
