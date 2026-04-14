@@ -28,9 +28,11 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     std::fs::write(dir.path().join("Makefile"), makefile_content).context("write Makefile")?;
 
     // Create a "dirty runner" that creates a file and exits 0.
+    // Drain stdin first because Codex reads prompts from stdin and otherwise the
+    // fake runner can exit before Ralph finishes writing, causing a flaky broken pipe.
     let dirty_file = dir.path().join("dirty-file.txt");
     let script = format!(
-        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        "#!/bin/sh\ncat >/dev/null\necho 'creating dirty file' > {}\nexit 0\n",
         dirty_file.display()
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &script)
@@ -100,7 +102,7 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_disabled() -> Result<
 
     let dirty_file = dir.path().join("dirty-file.txt");
     let script = format!(
-        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        "#!/bin/sh\ncat >/dev/null\necho 'creating dirty file' > {}\nexit 0\n",
         dirty_file.display()
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &script)
@@ -153,7 +155,7 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_ask_non_tty() -> Resu
 
     let dirty_file = dir.path().join("dirty-file.txt");
     let script = format!(
-        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        "#!/bin/sh\ncat >/dev/null\necho 'creating dirty file' > {}\nexit 0\n",
         dirty_file.display()
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &script)

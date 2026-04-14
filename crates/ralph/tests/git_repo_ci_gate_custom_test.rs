@@ -25,7 +25,7 @@ fn run_one_fails_when_custom_ci_gate_command_fails() -> Result<()> {
 
     let dirty_file = dir.path().join("dirty-file.txt");
     let runner_script = format!(
-        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        "#!/bin/sh\ncat >/dev/null\necho 'creating dirty file' > {}\nexit 0\n",
         dirty_file.display()
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)
@@ -76,7 +76,7 @@ fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
 
     let dirty_file = dir.path().join("dirty-file.txt");
     let runner_script = format!(
-        "#!/bin/sh\necho 'creating dirty file' > {}\nexit 0\n",
+        "#!/bin/sh\ncat >/dev/null\necho 'creating dirty file' > {}\nexit 0\n",
         dirty_file.display()
     );
     let runner_path = test_support::create_fake_runner(dir.path(), "codex", &runner_script)

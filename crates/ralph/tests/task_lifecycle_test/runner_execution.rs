@@ -35,7 +35,9 @@ fn task_full_lifecycle_with_runner_execution() -> Result<()> {
     let marker_file = repo.path().join(".ralph/runner_executed.marker");
     let runner_script = format!(
         r#"#!/bin/bash
-# Mock runner that verifies it received task context
+# Mock runner that verifies it received task context.
+# Drain stdin first because Codex sends prompt text over stdin.
+cat >/dev/null
 echo "runner_executed" > "{}"
 exit 0
 "#,
@@ -90,7 +92,7 @@ fn task_runner_failure_prevents_auto_complete() -> Result<()> {
     let task_id = "RQ-9002";
     let task = test_support::make_test_task(task_id, "Task that will fail", TaskStatus::Todo);
     repo.write_queue(&[task])?;
-    repo.setup_runner_with_passing_ci("#!/bin/sh\nexit 1\n")?;
+    repo.setup_runner_with_passing_ci("#!/bin/sh\ncat >/dev/null\nexit 1\n")?;
 
     let (status, _, _stderr) = repo.run(&["run", "one"]);
     assert!(
@@ -161,7 +163,7 @@ fn task_lifecycle_queue_state_during_run() -> Result<()> {
     let task_id = "RQ-9003";
     let task = test_support::make_test_task(task_id, "State tracking task", TaskStatus::Todo);
     repo.write_queue(&[task])?;
-    repo.setup_runner_with_passing_ci("#!/bin/sh\nexit 0\n")?;
+    repo.setup_runner_with_passing_ci("#!/bin/sh\ncat >/dev/null\nexit 0\n")?;
 
     let queue = repo.read_queue()?;
     let task = find_task(&queue.tasks, task_id).expect("task should exist before run");

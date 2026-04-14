@@ -225,6 +225,7 @@ fn run_scan_backfills_new_tasks_added_by_runner() -> anyhow::Result<()> {
     let runner_script = format!(
         r#"#!/bin/sh
 set -e
+cat >/dev/null
 cp "{queue_after}" "{queue_path}"
 echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"scan complete"}}}}'
 "#,
@@ -274,6 +275,7 @@ fn run_scan_fails_before_runner_when_queue_is_invalid() -> anyhow::Result<()> {
     let runner_script = format!(
         r#"#!/bin/sh
 set -e
+cat >/dev/null
 touch "{sentinel}"
 echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"should not run"}}}}'
 "#,
