@@ -38,7 +38,7 @@ pub const MACHINE_DECOMPOSE_VERSION: u32 = 2;
 pub const MACHINE_RUN_EVENT_VERSION: u32 = 3;
 pub const MACHINE_RUN_SUMMARY_VERSION: u32 = 2;
 pub const MACHINE_DOCTOR_REPORT_VERSION: u32 = 2;
-pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 2;
+pub const MACHINE_PARALLEL_STATUS_VERSION: u32 = 3;
 pub const MACHINE_CLI_SPEC_VERSION: u32 = 2;
 pub const MACHINE_ERROR_VERSION: u32 = 1;
 
@@ -283,10 +283,23 @@ pub struct MachineDoctorReportDocument {
     pub report: JsonValue,
 }
 
+/// Worker counts by lifecycle for `machine run parallel-status` (document v3+).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineParallelLifecycleCounts {
+    pub running: u32,
+    pub integrating: u32,
+    pub completed: u32,
+    pub failed: u32,
+    pub blocked: u32,
+    pub total: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MachineParallelStatusDocument {
     pub version: u32,
+    pub lifecycle_counts: MachineParallelLifecycleCounts,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blocking: Option<BlockingState>,
     pub continuation: MachineContinuationSummary,

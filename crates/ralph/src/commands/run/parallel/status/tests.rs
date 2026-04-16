@@ -15,6 +15,7 @@
 use super::*;
 
 use crate::commands::run::parallel::{BLOCKED_PUSH_MARKER_FILE, state::WorkerRecord};
+use crate::contracts::MACHINE_PARALLEL_STATUS_VERSION;
 use anyhow::Result;
 use tempfile::TempDir;
 
@@ -53,6 +54,13 @@ fn parallel_status_describes_retained_blocked_workspace() -> Result<()> {
     state.upsert_worker(worker);
 
     let document = build_parallel_status_document(temp.path(), Some(&state))?;
+    assert_eq!(document.version, MACHINE_PARALLEL_STATUS_VERSION);
+    assert_eq!(document.lifecycle_counts.total, 1);
+    assert_eq!(document.lifecycle_counts.blocked, 1);
+    assert_eq!(document.lifecycle_counts.running, 0);
+    assert_eq!(document.lifecycle_counts.integrating, 0);
+    assert_eq!(document.lifecycle_counts.completed, 0);
+    assert_eq!(document.lifecycle_counts.failed, 0);
     assert_eq!(
         document.blocking.as_ref().map(|state| state.status),
         Some(BlockingStatus::Blocked)
@@ -129,6 +137,13 @@ fn parallel_status_distinguishes_success_failure_and_action_required() -> Result
     state.upsert_worker(blocked);
 
     let document = build_parallel_status_document(temp.path(), Some(&state))?;
+    assert_eq!(document.version, MACHINE_PARALLEL_STATUS_VERSION);
+    assert_eq!(document.lifecycle_counts.total, 3);
+    assert_eq!(document.lifecycle_counts.completed, 1);
+    assert_eq!(document.lifecycle_counts.failed, 1);
+    assert_eq!(document.lifecycle_counts.blocked, 1);
+    assert_eq!(document.lifecycle_counts.running, 0);
+    assert_eq!(document.lifecycle_counts.integrating, 0);
     assert!(
         document
             .continuation
@@ -161,6 +176,9 @@ fn parallel_status_surfaces_cleanup_drift_without_active_workers() -> Result<()>
     state.upsert_worker(worker);
 
     let document = build_parallel_status_document(temp.path(), Some(&state))?;
+    assert_eq!(document.lifecycle_counts.total, 1);
+    assert_eq!(document.lifecycle_counts.completed, 1);
+    assert_eq!(document.lifecycle_counts.running, 0);
     assert!(document.blocking.is_none());
     assert!(document.continuation.headline.contains("cleanup drift"));
     assert!(
@@ -175,5 +193,19 @@ fn parallel_status_surfaces_cleanup_drift_without_active_workers() -> Result<()>
             .detail
             .contains(&workspace_path.display().to_string())
     );
+    Ok(())
+}
+
+#[test]
+fn parallel_status_lifecycle_counts_zero_without_parallel_state() -> Result<()> {
+    let temp = TempDir::new()?;
+    let document = build_parallel_status_document(temp.path(), None)?;
+    assert_eq!(document.version, MACHINE_PARALLEL_STATUS_VERSION);
+    assert_eq!(document.lifecycle_counts.total, 0);
+    assert_eq!(document.lifecycle_counts.running, 0);
+    assert_eq!(document.lifecycle_counts.integrating, 0);
+    assert_eq!(document.lifecycle_counts.completed, 0);
+    assert_eq!(document.lifecycle_counts.failed, 0);
+    assert_eq!(document.lifecycle_counts.blocked, 0);
     Ok(())
 }

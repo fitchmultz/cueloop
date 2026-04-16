@@ -47,8 +47,16 @@ fn parallel_status_json_output() -> Result<()> {
         serde_json::from_str(&stdout).context("Status output should be valid JSON")?;
     assert_eq!(
         json["version"].as_u64(),
-        Some(2),
-        "Should report document version 2"
+        Some(3),
+        "Should report document version 3"
+    );
+    let lc = &json["lifecycle_counts"];
+    assert!(lc.is_object(), "lifecycle_counts should be present");
+    let worker_len = json["status"]["workers"].as_array().unwrap().len() as u64;
+    assert_eq!(
+        lc["total"].as_u64(),
+        Some(worker_len),
+        "lifecycle_counts.total should match workers length"
     );
     assert_eq!(
         json["status"]["schema_version"].as_u64(),
@@ -299,13 +307,22 @@ fn parallel_state_v2_to_v3_migration() -> Result<()> {
     let state: serde_json::Value = serde_json::from_str(&stdout)?;
     assert_eq!(
         state["version"].as_u64(),
-        Some(2),
-        "Should be wrapped in document v2"
+        Some(3),
+        "Should be wrapped in machine parallel-status document v3"
     );
     assert_eq!(
         state["status"]["schema_version"].as_u64(),
         Some(3),
         "Should be migrated to v3"
+    );
+    let worker_len = state["status"]["workers"]
+        .as_array()
+        .map(|workers| workers.len() as u64)
+        .unwrap_or(0);
+    assert_eq!(
+        state["lifecycle_counts"]["total"].as_u64(),
+        Some(worker_len),
+        "lifecycle_counts.total should match migrated worker list length"
     );
 
     Ok(())
