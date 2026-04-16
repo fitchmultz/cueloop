@@ -24,7 +24,7 @@ import Foundation
 @MainActor
 final class WorkspaceRunnerController {
     nonisolated static let supportedMachineConfigResolveVersion = 3
-    nonisolated static let supportedMachineParallelStatusVersion = 2
+    nonisolated static let supportedMachineParallelStatusVersion = 3
 
     weak var workspace: Workspace?
     var activeRun: RalphCLIRun?

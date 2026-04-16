@@ -267,22 +267,55 @@ public struct ParallelWorkerStatus: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-public struct ParallelLifecycleCounts: Sendable, Equatable {
+public struct ParallelLifecycleCounts: Codable, Sendable, Equatable {
     public let running: Int
     public let integrating: Int
     public let completed: Int
     public let failed: Int
     public let blocked: Int
+    public let total: Int
 
-    init(workers: [ParallelWorkerStatus]) {
-        running = workers.filter { $0.lifecycle == .running }.count
-        integrating = workers.filter { $0.lifecycle == .integrating }.count
-        completed = workers.filter { $0.lifecycle == .completed }.count
-        failed = workers.filter { $0.lifecycle == .failed }.count
-        blocked = workers.filter { $0.lifecycle == .blockedPush }.count
+    enum CodingKeys: String, CodingKey {
+        case running
+        case integrating
+        case completed
+        case failed
+        case blocked
+        case total
     }
 
-    public var total: Int { running + integrating + completed + failed + blocked }
+    public init(
+        running: Int,
+        integrating: Int,
+        completed: Int,
+        failed: Int,
+        blocked: Int,
+        total: Int
+    ) {
+        self.running = running
+        self.integrating = integrating
+        self.completed = completed
+        self.failed = failed
+        self.blocked = blocked
+        self.total = total
+    }
+
+    init(workers: [ParallelWorkerStatus]) {
+        let running = workers.filter { $0.lifecycle == .running }.count
+        let integrating = workers.filter { $0.lifecycle == .integrating }.count
+        let completed = workers.filter { $0.lifecycle == .completed }.count
+        let failed = workers.filter { $0.lifecycle == .failed }.count
+        let blocked = workers.filter { $0.lifecycle == .blockedPush }.count
+        self.init(
+            running: running,
+            integrating: integrating,
+            completed: completed,
+            failed: failed,
+            blocked: blocked,
+            total: running + integrating + completed + failed + blocked
+        )
+    }
+
     public var hasActive: Bool { running > 0 || integrating > 0 }
 }
 
@@ -290,14 +323,39 @@ public struct ParallelStatusSnapshot: Codable, Sendable, Equatable {
     public let schemaVersion: Int?
     public let targetBranch: String?
     public let workers: [ParallelWorkerStatus]
+    private let documentLifecycleCounts: ParallelLifecycleCounts?
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
         case targetBranch = "target_branch"
         case workers
+        case documentLifecycleCounts = "lifecycle_counts"
     }
 
-    public var lifecycleCounts: ParallelLifecycleCounts { ParallelLifecycleCounts(workers: workers) }
+    public init(
+        schemaVersion: Int?,
+        targetBranch: String?,
+        workers: [ParallelWorkerStatus],
+        documentLifecycleCounts: ParallelLifecycleCounts? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.targetBranch = targetBranch
+        self.workers = workers
+        self.documentLifecycleCounts = documentLifecycleCounts
+    }
+
+    public var lifecycleCounts: ParallelLifecycleCounts {
+        documentLifecycleCounts ?? ParallelLifecycleCounts(workers: workers)
+    }
+
+    func withDocumentLifecycleCounts(_ counts: ParallelLifecycleCounts) -> ParallelStatusSnapshot {
+        ParallelStatusSnapshot(
+            schemaVersion: schemaVersion,
+            targetBranch: targetBranch,
+            workers: workers,
+            documentLifecycleCounts: counts
+        )
+    }
 }
 
 public struct ParallelStatusStep: Sendable, Equatable {
@@ -307,9 +365,18 @@ public struct ParallelStatusStep: Sendable, Equatable {
 
 struct MachineParallelStatusDocument: Decodable, Sendable, Equatable {
     let version: Int
+    let lifecycleCounts: ParallelLifecycleCounts
     let blocking: WorkspaceRunnerController.MachineBlockingState?
     let continuation: WorkspaceContinuationSummary
     let status: ParallelStatusSnapshot
+
+    enum CodingKeys: String, CodingKey {
+        case version
+        case lifecycleCounts = "lifecycle_counts"
+        case blocking
+        case continuation
+        case status
+    }
 
     var effectiveBlocking: WorkspaceRunnerController.MachineBlockingState? {
         blocking ?? continuation.blocking
@@ -321,7 +388,7 @@ struct MachineParallelStatusDocument: Decodable, Sendable, Equatable {
             detail: continuation.detail,
             blocking: effectiveBlocking?.asWorkspaceBlockingState(),
             nextSteps: continuation.nextSteps.map { ParallelStatusStep(command: $0.command, detail: $0.detail) },
-            snapshot: status
+            snapshot: status.withDocumentLifecycleCounts(lifecycleCounts)
         )
     }
 }

@@ -158,10 +158,11 @@ Task mutation and decomposition documents now include:
 
 When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation surfaces can consume a single canonical field after preview, write, and write-blocked flows.
 
-### `machine run parallel-status` (`version: 2`)
+### `machine run parallel-status` (`version: 3`)
 
-Parallel status now returns a continuation-oriented document instead of a raw state blob alone:
+Parallel status returns a continuation-oriented document instead of a raw state blob alone:
 - optional top-level `blocking`
+- `lifecycle_counts` with aggregate worker counts by lifecycle (`running`, `integrating`, `completed`, `failed`, `blocked`, `total`)
 - `continuation` with a headline, detail, optional blocking payload, and explicit next-step commands
 - raw `status` payload with the persisted worker snapshot
 
