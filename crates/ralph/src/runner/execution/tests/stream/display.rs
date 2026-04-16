@@ -340,6 +340,21 @@ fn extract_display_lines_pi_message_end_tool_result() {
 }
 
 #[test]
+fn extract_display_lines_pi_message_end_tool_result_without_tool_name() {
+    let payload = json!({
+        "type": "message_end",
+        "message": {
+            "role": "toolResult",
+            "isError": false
+        }
+    });
+    assert_eq!(
+        extract_display_lines(&payload),
+        vec!["[Tool] Tool (completed)"]
+    );
+}
+
+#[test]
 fn extract_display_lines_pi_message_update_thinking_end() {
     let payload = json!({
         "type": "message_update",

@@ -83,7 +83,7 @@ fn push_tool_result(message: &JsonValue, lines: &mut Vec<String>) {
     let tool = message
         .get("toolName")
         .and_then(|t| t.as_str())
-        .unwrap_or("tool");
+        .unwrap_or("Tool");
     let is_error = message
         .get("isError")
         .and_then(|v| v.as_bool())

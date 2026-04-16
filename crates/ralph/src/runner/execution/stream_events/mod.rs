@@ -114,12 +114,7 @@ fn classify_protocol(json: &JsonValue) -> StreamProtocol {
     match event_type {
         Some("item.completed" | "item.started") => StreamProtocol::Codex,
         Some("tool_call") => StreamProtocol::Cursor,
-        Some(
-            "message_update"
-            | "tool_execution_start"
-            | "tool_execution_update"
-            | "tool_execution_end",
-        ) => StreamProtocol::Pi,
+        Some("message_update" | "tool_execution_start") => StreamProtocol::Pi,
         Some("message_end") if is_pi_message_end(json) => StreamProtocol::Pi,
         Some("assistant" | "message_end" | "result") => StreamProtocol::Claude,
         Some("message") if role == Some("assistant") => StreamProtocol::Gemini,
