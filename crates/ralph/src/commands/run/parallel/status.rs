@@ -13,7 +13,7 @@ use crate::commands::run::queue_lock::{
 };
 use crate::contracts::{
     BlockingState, BlockingStatus, MACHINE_PARALLEL_STATUS_VERSION, MachineContinuationSummary,
-    MachineParallelStatusDocument,
+    MachineParallelLifecycleCounts, MachineParallelStatusDocument,
 };
 use anyhow::{Context, Result};
 use serde_json::json;
@@ -61,8 +61,31 @@ pub(crate) fn build_parallel_status_document(
     let queue_lock = inspect_queue_lock(repo_root);
     let (blocking, continuation) = build_parallel_status_guidance(state, queue_lock.as_ref());
 
+    let lifecycle_counts = match state {
+        Some(parallel_state) => {
+            let c = lifecycle_counts(parallel_state);
+            MachineParallelLifecycleCounts {
+                running: c.running as u32,
+                integrating: c.integrating as u32,
+                completed: c.completed as u32,
+                failed: c.failed as u32,
+                blocked: c.blocked as u32,
+                total: c.total as u32,
+            }
+        }
+        None => MachineParallelLifecycleCounts {
+            running: 0,
+            integrating: 0,
+            completed: 0,
+            failed: 0,
+            blocked: 0,
+            total: 0,
+        },
+    };
+
     Ok(MachineParallelStatusDocument {
         version: MACHINE_PARALLEL_STATUS_VERSION,
+        lifecycle_counts,
         blocking,
         continuation,
         status,

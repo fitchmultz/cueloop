@@ -48,11 +48,12 @@ pub use machine::{
     MachineConfigResolveDocument, MachineConfigSafetySummary, MachineContinuationAction,
     MachineContinuationSummary, MachineDashboardReadDocument, MachineDecomposeDocument,
     MachineDoctorReportDocument, MachineErrorCode, MachineErrorDocument, MachineGraphReadDocument,
-    MachineParallelStatusDocument, MachineQueuePaths, MachineQueueReadDocument,
-    MachineQueueRepairDocument, MachineQueueUndoDocument, MachineQueueValidateDocument,
-    MachineResumeDecision, MachineRunEventEnvelope, MachineRunEventKind, MachineRunSummaryDocument,
-    MachineSystemInfoDocument, MachineTaskCreateDocument, MachineTaskCreateRequest,
-    MachineTaskMutationDocument, MachineValidationWarning,
+    MachineParallelLifecycleCounts, MachineParallelStatusDocument, MachineQueuePaths,
+    MachineQueueReadDocument, MachineQueueRepairDocument, MachineQueueUndoDocument,
+    MachineQueueValidateDocument, MachineResumeDecision, MachineRunEventEnvelope,
+    MachineRunEventKind, MachineRunSummaryDocument, MachineSystemInfoDocument,
+    MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
+    MachineValidationWarning,
 };
 
 // Re-exports from cli_spec module (versioned; suitable for tooling consumption)

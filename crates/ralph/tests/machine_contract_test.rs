@@ -372,7 +372,13 @@ fn machine_parallel_status_returns_versioned_continuation_document() -> Result<(
     );
 
     let document: Value = serde_json::from_str(&stdout)?;
-    assert_eq!(document["version"], 2);
+    assert_eq!(document["version"], 3);
+    assert_eq!(document["lifecycle_counts"]["running"], 0);
+    assert_eq!(document["lifecycle_counts"]["integrating"], 0);
+    assert_eq!(document["lifecycle_counts"]["completed"], 0);
+    assert_eq!(document["lifecycle_counts"]["failed"], 0);
+    assert_eq!(document["lifecycle_counts"]["blocked"], 0);
+    assert_eq!(document["lifecycle_counts"]["total"], 0);
     assert_eq!(document["blocking"], Value::Null);
     assert_eq!(
         document["continuation"]["headline"],
@@ -405,7 +411,8 @@ fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<
     );
 
     let document: Value = serde_json::from_str(&stdout)?;
-    assert_eq!(document["version"], 2);
+    assert_eq!(document["version"], 3);
+    assert_eq!(document["lifecycle_counts"]["total"], 0);
     assert_eq!(document["blocking"]["status"], "stalled");
     assert_eq!(document["blocking"]["reason"]["kind"], "lock_blocked");
     assert_eq!(
@@ -465,7 +472,13 @@ fn machine_parallel_status_surfaces_blocked_worker_operator_state() -> Result<()
     );
 
     let document: Value = serde_json::from_str(&stdout)?;
-    assert_eq!(document["version"], 2);
+    assert_eq!(document["version"], 3);
+    assert_eq!(document["lifecycle_counts"]["blocked"], 1);
+    assert_eq!(document["lifecycle_counts"]["total"], 1);
+    assert_eq!(document["lifecycle_counts"]["running"], 0);
+    assert_eq!(document["lifecycle_counts"]["integrating"], 0);
+    assert_eq!(document["lifecycle_counts"]["completed"], 0);
+    assert_eq!(document["lifecycle_counts"]["failed"], 0);
     assert_eq!(document["blocking"]["status"], "blocked");
     assert_eq!(document["blocking"]["reason"]["kind"], "operator_recovery");
     assert_eq!(document["blocking"]["reason"]["scope"], "parallel");
