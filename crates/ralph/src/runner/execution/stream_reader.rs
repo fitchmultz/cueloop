@@ -8,6 +8,13 @@
 //! Does not handle:
 //! - Event formatting internals (see `stream_events`).
 //! - Sink rendering policy (see `stream_render`).
+//!
+//! Invariants/Assumptions:
+//! - Child output is read in fixed-size byte chunks; `Utf8ChunkDecoder` keeps trailing
+//!   incomplete UTF-8 in a pending buffer so handlers and line assembly see whole
+//!   scalar boundaries instead of spurious U+FFFD from mid-sequence splits.
+//! - Truly invalid bytes and any incomplete trailing sequence at EOF are decoded
+//!   lossily (replacement character only where the byte sequence is not valid UTF-8).
 
 use anyhow::Context;
 use std::io::Read;

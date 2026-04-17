@@ -310,7 +310,7 @@
       "id": "RQ-0008",
       "status": "done",
       "title": "Make runner stream decoding UTF-8 safe across fixed read chunks",
-      "description": "`runner/execution/stream_reader.rs` uses `String::from_utf8_lossy` on fixed 8KB chunks, which can split UTF-8 sequences and emit replacement characters. Buffer partial UTF-8 across reads or use a line-oriented decode strategy appropriate for the stream format. Outcome: non-ASCII runner output renders correctly without U+FFFD artifacts from chunk boundaries.\n\nValidation: Both `spawn_reader` and `spawn_json_reader` use `let mut buf = [0u8; 8192]` then `String::from_utf8_lossy(&buf[..read])` before line assembly / `append_to_buffer`, so multibyte sequences split across reads can surface as U+FFFD in the lossy string path.",
+      "description": "Historical issue: `String::from_utf8_lossy` on each fixed read could split UTF-8 sequences and emit U+FFFD at chunk boundaries. Resolution: `Utf8ChunkDecoder` in `crates/ralph/src/runner/execution/stream_reader.rs` buffers trailing incomplete UTF-8 across reads for both `spawn_reader` and `spawn_json_reader`; lossy decoding applies only to invalid bytes or an incomplete tail at EOF.",
       "priority": "medium",
       "tags": [
         "audit",
@@ -324,7 +324,7 @@
       ],
       "evidence": [
         "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #3, Rust-specific section, Short-term #6).",
-        "Repo: `crates/ralph/src/runner/execution/stream_reader.rs` (`spawn_reader` ~35–42, `spawn_json_reader` ~68–80); `queue validate` passed (2026-04-16)."
+        "Repo: `crates/ralph/src/runner/execution/stream_reader.rs` (`Utf8ChunkDecoder`, `spawn_reader`, `spawn_json_reader`); `queue validate` passed (2026-04-16)."
       ],
       "plan": [
         "Re-read audit Finding #3 and proposed fixes if available.",
