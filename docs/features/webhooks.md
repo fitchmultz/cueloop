@@ -471,10 +471,12 @@ Ralph's webhook system follows **best-effort delivery semantics**:
 Failed deliveries are automatically retried with exponential backoff:
 
 1. Initial attempt (immediate)
-2. Retry 1: after `retry_backoff_ms * 1`
-3. Retry 2: after `retry_backoff_ms * 2`
-4. Retry 3: after `retry_backoff_ms * 3`
+2. Retry 1: after roughly `retry_backoff_ms`
+3. Retry 2: after roughly `retry_backoff_ms * 2`
+4. Retry 3: after roughly `retry_backoff_ms * 4`
 - ...up to `retry_count` attempts
+
+Retry timing includes bounded jitter to avoid synchronized retry storms and is capped at 30 seconds.
 
 **Retryable failures**: Timeouts, connection errors, HTTP 5xx responses  
 **Non-retryable failures**: HTTP 4xx responses (except 429), invalid URL
