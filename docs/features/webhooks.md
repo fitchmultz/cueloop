@@ -32,6 +32,8 @@ Webhooks are configured via the `agent.webhook` section in your config file (`.r
 |--------|------|---------|-------------|
 | `enabled` | boolean | `false` | Master switch for webhook notifications |
 | `url` | string | `null` | Webhook endpoint URL (required when enabled) |
+| `allow_insecure_http` | boolean | `false` | Allow `http://` URLs (default HTTPS-only) |
+| `allow_private_targets` | boolean | `false` | Allow loopback, link-local, and metadata-style hosts |
 | `secret` | string | `null` | Secret key for HMAC-SHA256 signature generation |
 | `events` | string[] | `null` | List of events to subscribe to (see [Event Filtering](#event-filtering)) |
 | `timeout_secs` | number | `30` | HTTP request timeout (1-300 seconds) |
@@ -39,6 +41,8 @@ Webhooks are configured via the `agent.webhook` section in your config file (`.r
 | `retry_backoff_ms` | number | `1000` | Base backoff between retries in ms (100-30000) |
 | `queue_capacity` | number | `100` | Maximum pending webhooks in queue (1-10000) |
 | `queue_policy` | string | `"drop_oldest"` | Backpressure policy when queue is full |
+
+When `enabled` is `true`, Ralph validates `url` before delivery: HTTPS is the default; `http://` needs `allow_insecure_http: true`. Loopback, link-local, and common metadata hostnames are blocked unless `allow_private_targets: true`.
 
 ### Queue Policy Options
 

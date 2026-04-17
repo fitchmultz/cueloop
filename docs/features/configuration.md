@@ -510,6 +510,8 @@ HTTP webhook configuration for external integrations.
 |-------|------|---------|-------------|
 | `enabled` | `boolean` | `false` | Enable webhooks |
 | `url` | `string` | `null` | Webhook endpoint URL |
+| `allow_insecure_http` | `boolean` | `false` | Allow `http://` URLs (default HTTPS-only) |
+| `allow_private_targets` | `boolean` | `false` | Allow loopback, link-local, and metadata-style hosts |
 | `secret` | `string` | `null` | HMAC-SHA256 secret for signatures |
 | `events` | `string[]` | `null` | Events to subscribe to (use `["*"]` for all) |
 | `timeout_secs` | `number` | `30` | Request timeout (1-300) |

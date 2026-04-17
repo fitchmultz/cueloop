@@ -449,6 +449,8 @@ Platform notes:
 Supported fields:
 - `enabled`: enable webhook notifications (default: `false`).
 - `url`: webhook endpoint URL (required when enabled).
+- `allow_insecure_http`: when `true`, allow `http://` URLs (default: `false` / unset; HTTPS-only).
+- `allow_private_targets`: when `true`, allow loopback, link-local, and common cloud-metadata hostnames/IPs (default: `false` / unset).
 - `secret`: secret key for HMAC-SHA256 signature generation (optional).
   When set, webhooks include an `X-Ralph-Signature` header for verification.
 - `events`: list of events to subscribe to (default: legacy task events only).
@@ -465,6 +467,8 @@ Supported fields:
   - `drop_oldest`: Drop new webhooks when queue is full (preserves existing queue contents).
   - `drop_new`: Drop the new webhook if the queue is full.
   - `block_with_timeout`: Briefly block the caller (100ms), then drop if queue is still full.
+
+URL validation (when `enabled` is `true`): only `http://` and `https://` are accepted; `http://` requires `allow_insecure_http: true`. Loopback, IPv4 link-local (`169.254.0.0/16`), IPv6 link-local, unspecified addresses, and `metadata.google.internal` are rejected unless `allow_private_targets: true`.
 
 ### Event Filtering
 
