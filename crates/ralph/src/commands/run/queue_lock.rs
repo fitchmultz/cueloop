@@ -18,7 +18,7 @@ use anyhow::Result;
 use std::path::Path;
 
 use crate::contracts::{BlockingReason, BlockingState, BlockingStatus};
-use crate::lock::{pid_liveness, queue_lock_dir, read_lock_owner};
+use crate::lock::{classify_lock_owner, queue_lock_dir, read_lock_owner};
 
 const QUEUE_LOCK_ALREADY_HELD_PREFIX: &str = "Queue lock already held at:";
 
@@ -97,7 +97,8 @@ pub(crate) fn inspect_queue_lock(repo_root: &Path) -> Option<QueueLockInspection
         Ok(Some(owner)) => {
             let owner_label = Some(owner.label.clone());
             let owner_pid = Some(owner.pid);
-            if pid_liveness(owner.pid).is_definitely_not_running() {
+            let staleness = classify_lock_owner(&owner);
+            if staleness.is_stale() {
                 Some(QueueLockInspection {
                     condition: QueueLockCondition::Stale,
                     blocking_state: BlockingState::new(
@@ -118,9 +119,15 @@ pub(crate) fn inspect_queue_lock(repo_root: &Path) -> Option<QueueLockInspection
                     ),
                 })
             } else {
+                let mut blocking_state =
+                    BlockingState::lock_blocked(lock_path, owner_label, owner_pid);
+                if let Some(note) = staleness.advisory_note() {
+                    blocking_state.detail.push(' ');
+                    blocking_state.detail.push_str(note.trim());
+                }
                 Some(QueueLockInspection {
                     condition: QueueLockCondition::Live,
-                    blocking_state: BlockingState::lock_blocked(lock_path, owner_label, owner_pid),
+                    blocking_state,
                 })
             }
         }

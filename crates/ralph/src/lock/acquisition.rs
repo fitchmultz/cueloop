@@ -92,6 +92,7 @@ pub fn acquire_dir_lock(lock_dir: &Path, label: &str, force: bool) -> Result<Dir
                     existing.owner.as_ref(),
                     existing.is_stale,
                     existing.owner_unreadable,
+                    existing.staleness,
                 )));
             }
         }

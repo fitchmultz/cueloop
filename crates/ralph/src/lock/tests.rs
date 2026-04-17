@@ -9,7 +9,17 @@
 //! Invariants/assumptions:
 //! - Current-process PID should be observable on supported platforms.
 
+use super::stale::{LockStalenessAdvisory, classify_lock_owner_at, format_lock_error};
 use super::*;
+
+fn test_owner(started_at: &str) -> LockOwner {
+    LockOwner {
+        pid: 42,
+        started_at: started_at.to_string(),
+        command: "ralph run loop".to_string(),
+        label: "run loop".to_string(),
+    }
+}
 
 #[test]
 fn pid_is_running_current_process() {
@@ -54,4 +64,62 @@ fn pid_liveness_helpers_are_consistent() {
 fn pid_liveness_wraps_pid_is_running() {
     assert_eq!(pid_liveness(std::process::id()), PidLiveness::Running);
     assert_ne!(pid_liveness(0xFFFF_FFFE), PidLiveness::Running);
+}
+
+#[test]
+fn lock_staleness_only_auto_stales_definitely_dead_pid() {
+    let now = crate::timeutil::parse_rfc3339("2026-04-17T00:00:00Z").unwrap();
+    let owner = test_owner("not-a-timestamp");
+
+    let staleness = classify_lock_owner_at(&owner, now, PidLiveness::NotRunning);
+
+    assert!(staleness.is_stale());
+    assert_eq!(staleness.advisory, LockStalenessAdvisory::None);
+}
+
+#[test]
+fn lock_staleness_flags_aged_live_pid_for_review_without_auto_stale() {
+    let now = crate::timeutil::parse_rfc3339("2026-04-17T00:00:00Z").unwrap();
+    let owner = test_owner("2026-04-09T00:00:00Z");
+
+    let staleness = classify_lock_owner_at(&owner, now, PidLiveness::Running);
+
+    assert!(!staleness.is_stale());
+    assert_eq!(staleness.advisory, LockStalenessAdvisory::AgedLivePid);
+}
+
+#[test]
+fn lock_staleness_flags_unclear_owner_time_for_review_without_auto_stale() {
+    let now = crate::timeutil::parse_rfc3339("2026-04-17T00:00:00Z").unwrap();
+
+    let invalid = classify_lock_owner_at(&test_owner("unknown"), now, PidLiveness::Indeterminate);
+    assert!(!invalid.is_stale());
+    assert_eq!(invalid.advisory, LockStalenessAdvisory::InvalidStartedAt);
+
+    let future = classify_lock_owner_at(
+        &test_owner("2026-04-17T00:06:00Z"),
+        now,
+        PidLiveness::Running,
+    );
+    assert!(!future.is_stale());
+    assert_eq!(future.advisory, LockStalenessAdvisory::FutureStartedAt);
+}
+
+#[test]
+fn lock_error_explains_pid_reuse_review_policy() {
+    let now = crate::timeutil::parse_rfc3339("2026-04-17T00:00:00Z").unwrap();
+    let owner = test_owner("2026-04-09T00:00:00Z");
+    let staleness = classify_lock_owner_at(&owner, now, PidLiveness::Running);
+
+    let message = format_lock_error(
+        std::path::Path::new("/tmp/ralph-lock"),
+        Some(&owner),
+        staleness.is_stale(),
+        false,
+        Some(staleness),
+    );
+
+    assert!(message.contains("PID REUSE REVIEW"));
+    assert!(message.contains("Ralph does not auto-clear it"));
+    assert!(message.contains("verify the PID, command, and timestamp"));
 }

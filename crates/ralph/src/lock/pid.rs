@@ -10,6 +10,8 @@
 //!
 //! Invariants/assumptions:
 //! - Indeterminate liveness is treated conservatively by callers.
+//! - `Running` means the numeric PID exists now; it does not prove that the
+//!   process is the same owner that originally wrote a lock file.
 
 /// Tri-state PID liveness result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

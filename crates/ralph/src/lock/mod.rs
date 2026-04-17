@@ -24,6 +24,7 @@ use std::path::PathBuf;
 pub use acquisition::{acquire_dir_lock, is_supervising_process, queue_lock_dir};
 pub use owner::{LockOwner, TASK_OWNER_PREFIX, is_task_owner_file, read_lock_owner};
 pub use pid::{PidLiveness, pid_is_running, pid_liveness};
+pub(crate) use stale::{LockStaleness, classify_lock_owner};
 
 /// Held directory lock guard.
 #[derive(Debug)]
