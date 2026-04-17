@@ -113,10 +113,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "runner_used": "cursor",
         "model_used": "composer-2",
         "roadmap_item": "1",
-        "runner_used": "cursor"
+        "audit_reference": "/tmp/ralph-codebase-audit.md"
       }
     },
     {
@@ -157,8 +157,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "executive_finding": "10",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "executive_finding": "10",
         "runner_used": "cursor",
         "model_used": "composer-2"
       }
@@ -206,10 +206,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "cursor",
         "roadmap_item": "2",
         "model_used": "composer-2",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "runner_used": "cursor"
       }
     },
     {
@@ -252,10 +252,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "roadmap_item": "4"
       }
     },
     {
@@ -302,8 +302,8 @@
       "custom_fields": {
         "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "roadmap_item": "3",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "roadmap_item": "3"
       }
     },
     {
@@ -346,8 +346,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "model_used": "gpt-5.4",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "roadmap_item": "6"
       }
     },
@@ -394,8 +394,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "7",
         "model_used": "gpt-5.4",
+        "roadmap_item": "7",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "codex"
       }
@@ -441,10 +441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "roadmap_item": "9",
-        "runner_used": "codex"
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -486,10 +486,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "5",
+        "model_used": "gpt-5.4",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "roadmap_item": "5"
       }
     },
     {
@@ -532,10 +532,57 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "roadmap_item": "10",
         "runner_used": "codex",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "roadmap_item": "10",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "gpt-5.4"
+      }
+    },
+    {
+      "id": "RQ-0010",
+      "status": "done",
+      "title": "Clarify PID-lock staleness policy for PID reuse edge cases",
+      "description": "Audit notes PID-based liveness checks cannot detect PID recycling; timestamp staleness mitigates implicitly. Add an explicit, documented policy in `lock/stale.rs` (e.g. age-based escalation when `started_at` is inconsistent with observed liveness) so operators understand behavior in the narrow TOCTOU window. Outcome: lock behavior is predictable and defensible under PID reuse.\n\nValidation: `inspect_existing_lock` marks stale only when `pid_liveness(owner.pid).is_definitely_not_running()` (`stale.rs`); `pid.rs` documents indeterminate liveness as conservative. There is no explicit narrative tying PID reuse / `started_at` to operator-visible guarantees in `stale.rs` today beyond the `(STALE PID)` message path.",
+      "priority": "medium",
+      "tags": [
+        "audit",
+        "lock",
+        "correctness"
+      ],
+      "scope": [
+        "crates/ralph/src/lock/pid.rs",
+        "crates/ralph/src/lock/stale.rs",
+        "crates/ralph/src/lock/owner.rs",
+        "cargo test -p ralph"
+      ],
+      "evidence": [
+        "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #9, Resource Management PID-reuse note, Short-term #8).",
+        "Repo: `crates/ralph/src/lock/stale.rs` `inspect_existing_lock`; `crates/ralph/src/lock/pid.rs` `PidLiveness`; `queue validate` passed (2026-04-16)."
+      ],
+      "plan": [
+        "Read audit Finding #9 and current `pid_liveness` + `inspect_existing_lock` + lock error formatting.",
+        "Design explicit escalation rules and implement with tests covering edge timing scenarios where feasible.",
+        "Update module docs/comments to match actual guarantees."
+      ],
+      "notes": [
+        "Centralized PID-lock staleness classification in lock/stale.rs.",
+        "Preserved conservative auto-cleanup: only definitely-dead PIDs are stale.",
+        "Added PID-reuse/timestamp review advisory text for aged, invalid, or future started_at values.",
+        "Covered policy with lock unit tests and queue-lock operator-state regression coverage."
+      ],
+      "request": "Document and implement an explicit PID-lock staleness policy for PID-reuse edge cases in `crates/ralph/src/lock/stale.rs` (and related `pid.rs` / `owner.rs` as needed): tie `started_at`, liveness checks, and operator-visible messages to a clear, test-backed guarantee. Run lock tests. Scope: this task only—no new queue items.",
+      "created_at": "2026-04-16T18:52:52Z",
+      "updated_at": "2026-04-17T21:59:42.652746000Z",
+      "completed_at": "2026-04-17T21:59:42.652746000Z",
+      "started_at": "2026-04-17T21:45:08.558434000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "roadmap_item": "8",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     }
   ]

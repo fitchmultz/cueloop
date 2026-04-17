@@ -53,14 +53,14 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueUnlockArgs) -> Result<()> {
     let owner_info = format_owner_info(&owner);
 
     // Check if lock holder process is still active
-    let liveness = owner.as_ref().map(|o| lock::pid_liveness(o.pid));
-    let is_active = liveness
+    let staleness = owner.as_ref().map(lock::classify_lock_owner);
+    let is_active = staleness
         .as_ref()
-        .is_some_and(|l| l.is_running_or_indeterminate());
+        .is_some_and(|staleness| !staleness.is_stale());
 
     // Determine action based on state and flags
     if args.dry_run {
-        handle_dry_run(&lock_dir, &owner_info, is_active, liveness.as_ref())?;
+        handle_dry_run(&lock_dir, &owner_info, is_active, staleness)?;
         return Ok(());
     }
 
@@ -119,12 +119,12 @@ fn handle_dry_run(
     lock_dir: &Path,
     owner_info: &str,
     is_active: bool,
-    liveness: Option<&PidLiveness>,
+    staleness: Option<lock::LockStaleness>,
 ) -> Result<()> {
     println!("Lock directory: {}", lock_dir.display());
     println!("Lock holder: {}", owner_info);
 
-    match liveness {
+    match staleness.map(|staleness| staleness.liveness) {
         Some(PidLiveness::Running) => {
             println!("Process status: RUNNING (unlock would be blocked without --force)");
         }
@@ -137,6 +137,10 @@ fn handle_dry_run(
         None => {
             println!("Process status: UNKNOWN (no owner metadata)");
         }
+    }
+
+    if let Some(note) = staleness.and_then(lock::LockStaleness::advisory_note) {
+        println!("Staleness policy: {}", note.trim());
     }
 
     if is_active {

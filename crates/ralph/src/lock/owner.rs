@@ -12,6 +12,8 @@
 //! Invariants/assumptions:
 //! - Owner files are small text blobs with one `key: value` pair per line.
 //! - Task owner sidecars use the `owner_task_` filename prefix.
+//! - `started_at` is advisory age metadata for lock review; it is not a
+//!   process identity proof.
 
 use crate::fsutil::sync_dir_best_effort;
 use anyhow::{Context, Result, anyhow};

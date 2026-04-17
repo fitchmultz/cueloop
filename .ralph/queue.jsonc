@@ -1,43 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0010",
-      "status": "todo",
-      "title": "Clarify PID-lock staleness policy for PID reuse edge cases",
-      "description": "Audit notes PID-based liveness checks cannot detect PID recycling; timestamp staleness mitigates implicitly. Add an explicit, documented policy in `lock/stale.rs` (e.g. age-based escalation when `started_at` is inconsistent with observed liveness) so operators understand behavior in the narrow TOCTOU window. Outcome: lock behavior is predictable and defensible under PID reuse.\n\nValidation: `inspect_existing_lock` marks stale only when `pid_liveness(owner.pid).is_definitely_not_running()` (`stale.rs`); `pid.rs` documents indeterminate liveness as conservative. There is no explicit narrative tying PID reuse / `started_at` to operator-visible guarantees in `stale.rs` today beyond the `(STALE PID)` message path.",
-      "priority": "medium",
-      "tags": [
-        "audit",
-        "lock",
-        "correctness"
-      ],
-      "scope": [
-        "crates/ralph/src/lock/pid.rs",
-        "crates/ralph/src/lock/stale.rs",
-        "crates/ralph/src/lock/owner.rs",
-        "cargo test -p ralph"
-      ],
-      "evidence": [
-        "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #9, Resource Management PID-reuse note, Short-term #8).",
-        "Repo: `crates/ralph/src/lock/stale.rs` `inspect_existing_lock`; `crates/ralph/src/lock/pid.rs` `PidLiveness`; `queue validate` passed (2026-04-16)."
-      ],
-      "plan": [
-        "Read audit Finding #9 and current `pid_liveness` + `inspect_existing_lock` + lock error formatting.",
-        "Design explicit escalation rules and implement with tests covering edge timing scenarios where feasible.",
-        "Update module docs/comments to match actual guarantees."
-      ],
-      "notes": [],
-      "request": "Document and implement an explicit PID-lock staleness policy for PID-reuse edge cases in `crates/ralph/src/lock/stale.rs` (and related `pid.rs` / `owner.rs` as needed): tie `started_at`, liveness checks, and operator-visible messages to a clear, test-backed guarantee. Run lock tests. Scope: this task only—no new queue items.",
-      "created_at": "2026-04-16T18:52:52Z",
-      "updated_at": "2026-04-16T20:37:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "roadmap_item": "8",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
-      }
-    }
-  ]
+  "tasks": []
 }

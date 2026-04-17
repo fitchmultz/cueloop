@@ -187,6 +187,46 @@ fn inspect_queue_lock_reports_stale_lock_as_stale_operator_state() -> anyhow::Re
 }
 
 #[test]
+fn inspect_queue_lock_reports_pid_reuse_review_for_aged_live_owner() -> anyhow::Result<()> {
+    let temp = tempfile::TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+
+    let lock_dir = crate::lock::queue_lock_dir(&repo_root);
+    std::fs::create_dir_all(&lock_dir)?;
+    std::fs::write(
+        lock_dir.join("owner"),
+        format!(
+            "pid: {}\nstarted_at: 2020-01-01T00:00:00Z\ncommand: ralph run loop --parallel 4\nlabel: run loop\n",
+            std::process::id()
+        ),
+    )?;
+
+    let inspection = crate::commands::run::queue_lock::inspect_queue_lock(&repo_root)
+        .expect("expected queue lock inspection");
+
+    assert_eq!(
+        inspection.condition,
+        crate::commands::run::queue_lock::QueueLockCondition::Live
+    );
+    assert!(
+        inspection.blocking_state.detail.contains("reused PID"),
+        "expected PID-reuse review detail, got: {}",
+        inspection.blocking_state.detail
+    );
+    assert!(
+        inspection
+            .blocking_state
+            .detail
+            .contains("does not auto-clear"),
+        "expected conservative cleanup detail, got: {}",
+        inspection.blocking_state.detail
+    );
+
+    Ok(())
+}
+
+#[test]
 fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyhow::Result<()> {
     use std::sync::atomic::Ordering;
 
