@@ -462,7 +462,8 @@ Supported fields:
 - `timeout_secs`: request timeout in seconds (default: `30`, max: `300`).
 - `retry_count`: number of retry attempts for failed deliveries (default: `3`, max: `10`).
 - `retry_backoff_ms`: retry backoff base in milliseconds (default: `1000`, max: `30000`).
-- `queue_capacity`: maximum number of pending webhooks in the delivery queue (default: `100`, range: `10-10000`).
+- `queue_capacity`: maximum number of pending webhooks in the delivery queue (default: `500`, range: `10-10000`).
+- `parallel_queue_multiplier`: multiplier for effective queue capacity in parallel mode (default: `2.0`, range: `1.0-10.0`).
 - `queue_policy`: backpressure policy when queue is full (default: `drop_oldest`).
   - `drop_oldest`: Drop new webhooks when queue is full (preserves existing queue contents).
   - `drop_new`: Drop the new webhook if the queue is full.

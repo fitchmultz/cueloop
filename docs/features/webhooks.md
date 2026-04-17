@@ -39,7 +39,8 @@ Webhooks are configured via the `agent.webhook` section in your config file (`.r
 | `timeout_secs` | number | `30` | HTTP request timeout (1-300 seconds) |
 | `retry_count` | number | `3` | Retry attempts for failed deliveries (0-10) |
 | `retry_backoff_ms` | number | `1000` | Base backoff between retries in ms (100-30000) |
-| `queue_capacity` | number | `100` | Maximum pending webhooks in queue (1-10000) |
+| `queue_capacity` | number | `500` | Maximum pending webhooks in queue (10-10000) |
+| `parallel_queue_multiplier` | number | `2.0` | Parallel-mode queue capacity multiplier (1.0-10.0) |
 | `queue_policy` | string | `"drop_oldest"` | Backpressure policy when queue is full |
 
 When `enabled` is `true`, Ralph validates `url` before delivery: HTTPS is the default; `http://` needs `allow_insecure_http: true`. Loopback, link-local, and common metadata hostnames are blocked unless `allow_private_targets: true`.
