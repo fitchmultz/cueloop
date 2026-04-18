@@ -27,6 +27,7 @@ RELEASE_METADATA_PATHS=(
     "CHANGELOG.md"
     "schemas/config.schema.json"
     "schemas/queue.schema.json"
+    "schemas/machine.schema.json"
 )
 
 RALPH_TRACKED_ALLOWLIST=(
