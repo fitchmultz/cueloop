@@ -12,7 +12,7 @@
 //! - Contract files live at stable repo-relative paths.
 
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 fn repo_root() -> PathBuf {
     let exe = std::env::current_exe().expect("resolve current test executable path");
@@ -70,6 +70,19 @@ fn write_file(path: &Path, content: &str) {
             .unwrap_or_else(|err| panic!("create {}: {err}", parent.display()));
     }
     std::fs::write(path, content).unwrap_or_else(|err| panic!("write {}: {err}", path.display()));
+}
+
+fn assert_output_redacts_secret(output: &Output, secret: &str) {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains(secret),
+        "scanner stdout must not echo matched secret material"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains(secret),
+        "scanner stderr must not echo matched secret material"
+    );
 }
 
 fn init_git_repo(repo_root: &Path) {
@@ -2839,10 +2852,10 @@ fn public_readiness_scan_scans_allowlisted_ralph_files_for_secrets() {
         Some(1),
         "public-readiness scan should inspect allowlisted .ralph files for secrets"
     );
+    assert_output_redacts_secret(&output, &secret_token);
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let expected = format!(".ralph/config.jsonc:1: github_classic_token: {secret_token}");
     assert!(
-        stdout.contains(&expected),
+        stdout.contains(".ralph/config.jsonc:1: github_classic_token: [REDACTED length=24]"),
         "secret scan should report secrets inside allowlisted .ralph files\nstdout:\n{}",
         stdout
     );
@@ -2875,9 +2888,11 @@ fn public_readiness_scan_rejects_injected_secret_in_scan_helper_source() {
         Some(1),
         "secret scan should not file-wide allowlist the scan helper source"
     );
+    assert_output_redacts_secret(&output, &secret_token);
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("scripts/lib/public_readiness_scan.py:") && stdout.contains(&secret_token),
+        stdout.contains("scripts/lib/public_readiness_scan.py:")
+            && stdout.contains("github_classic_token: [REDACTED length=24]"),
         "injected helper secret should be reported\nstdout:\n{}",
         stdout
     );
@@ -2912,9 +2927,11 @@ fn public_readiness_scan_rejects_same_line_secret_in_security_docs_allowlist() {
         Some(1),
         "secret scan should reject same-line injected secrets in allowlisted docs lines"
     );
+    assert_output_redacts_secret(&output, &secret_token);
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("docs/features/security.md:") && stdout.contains(&secret_token),
+        stdout.contains("docs/features/security.md:")
+            && stdout.contains("github_classic_token: [REDACTED length=24]"),
         "same-line injected docs secret should be reported\nstdout:\n{}",
         stdout
     );
@@ -2955,9 +2972,11 @@ fn public_readiness_scan_rejects_same_line_secret_in_scan_helper_source() {
         Some(1),
         "secret scan should reject same-line injected secrets in scan-helper source"
     );
+    assert_output_redacts_secret(&output, &secret_token);
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("scripts/lib/public_readiness_scan.py:") && stdout.contains(&secret_token),
+        stdout.contains("scripts/lib/public_readiness_scan.py:")
+            && stdout.contains("github_classic_token: [REDACTED length=24]"),
         "same-line injected scan-helper secret should be reported\nstdout:\n{}",
         stdout
     );
@@ -2967,10 +2986,14 @@ fn public_readiness_scan_rejects_same_line_secret_in_scan_helper_source() {
 fn public_readiness_scan_rejects_private_key_in_pre_public_check_script() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path().join("repo");
+    let private_key_body = "MIIEpAIBAAKCAQEA75abcdef1234567890";
     std::fs::create_dir_all(repo_root.join("scripts")).expect("create scripts dir");
     std::fs::write(
         repo_root.join("scripts/pre-public-check.sh"),
-        format!("-----BEGIN {} PRIVATE KEY-----\n", "RSA"),
+        format!(
+            "-----BEGIN {} PRIVATE KEY-----\n{}\n-----END {} PRIVATE KEY-----\n",
+            "RSA", private_key_body, "RSA"
+        ),
     )
     .expect("write pre-public-check fixture");
     std::fs::write(repo_root.join("README.md"), "ok\n").expect("write readme fixture");
@@ -2988,12 +3011,12 @@ fn public_readiness_scan_rejects_private_key_in_pre_public_check_script() {
         Some(1),
         "secret scan should reject private keys in pre-public-check.sh"
     );
+    let private_key_header = ["BEGIN", " RSA PRIVATE KEY"].concat();
+    assert_output_redacts_secret(&output, &private_key_header);
+    assert_output_redacts_secret(&output, private_key_body);
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains(&format!(
-            "scripts/pre-public-check.sh:1: private_key: BEGIN {} PRIVATE KEY",
-            "RSA"
-        )),
+        stdout.contains("scripts/pre-public-check.sh:1: private_key: [REDACTED length=21]"),
         "private key in pre-public-check.sh should be reported\nstdout:\n{}",
         stdout
     );

@@ -190,6 +190,10 @@ def allowlisted_secret(rel_path: str, line: str) -> bool:
     return False
 
 
+def render_secret_finding(name: str, matched_secret: str) -> str:
+    return f"{name}: [REDACTED length={len(matched_secret)}]"
+
+
 def scan_links(repo_root: Path, excludes: tuple[str, ...]) -> int:
     missing: list[str] = []
     for path in iter_repo_files(repo_root, excludes):
@@ -238,7 +242,8 @@ def scan_secrets(repo_root: Path, excludes: tuple[str, ...]) -> int:
                     continue
                 if allowlisted_secret(rel_path, line):
                     continue
-                problems.append(f"{rel_path}:{line_number}: {name}: {match.group(0)}")
+                finding = render_secret_finding(name, match.group(0))
+                problems.append(f"{rel_path}:{line_number}: {finding}")
 
     if problems:
         print("\n".join(problems))

@@ -2,46 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0014",
-      "status": "doing",
-      "title": "Redact public-readiness secret scan findings",
-      "description": "Principles violated: I) Security baseline, F) Fail fast appropriately, H) Operational hygiene. The public-readiness scanner detects high-confidence secrets but prints the exact matched secret with match.group(0). That can leak credentials into terminal logs, release evidence, copied reports, or CI transcripts. Minimal fix: replace raw match output with a redacted finding format that still identifies file, line, and pattern type, and update tests so injected tokens are detected but never echoed.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "security",
-        "release"
-      ],
-      "scope": [
-        "scripts/lib/public_readiness_scan.py",
-        "crates/ralph/tests/release_integration_contract_test.rs",
-        "scripts/pre-public-check.sh"
-      ],
-      "evidence": [
-        "path: scripts/lib/public_readiness_scan.py:241 :: scan_secrets appends match.group(0) directly to each problem line.",
-        "path: crates/ralph/tests/release_integration_contract_test.rs:2836 :: existing test coverage explicitly expects the scanner output to contain the full injected token.",
-        "workflow: python3 scripts/lib/public_readiness_scan.py secrets <temp repo with a fake GitHub token> :: status=1 and stdout printed README.md:1: github_classic_token followed by the raw token value.",
-        "path: AGENTS.md:288 :: repository guidance says to never print secrets."
-      ],
-      "plan": [
-        "Add a helper that renders secret matches as redacted metadata, for example pattern name plus length or short digest, without including the matched value.",
-        "Update the secret-scan tests to assert the scanner reports the file, line, and pattern while stdout/stderr do not contain the injected token or private-key body.",
-        "Run the focused proof command with a disposable fake token and confirm the scan still exits nonzero without echoing the token.",
-        "Verify by running cargo test -p ralph-agent-loop --test release_integration_contract_test public_readiness and make check-env-safety."
-      ],
-      "notes": [],
-      "request": "scan: Simplify code while preserving nuanced runner behavior",
-      "created_at": "2026-04-17T23:11:06Z",
-      "updated_at": "2026-04-18T20:33:26.246479000Z",
-      "started_at": "2026-04-18T20:33:26.246479000Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0020",
       "status": "todo",
       "title": "Make built-in profile behavior visible in CLI and docs",
