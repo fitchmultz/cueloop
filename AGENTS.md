@@ -288,7 +288,7 @@ Every source file MUST start with `//!` docs covering:
 - `scripts/versioning.sh sync` also refreshes `Cargo.lock`; treat lockfile drift as a release/versioning failure, not incidental noise.
 - `scripts/release.sh` is expected to sync `VERSION`, `Cargo.lock`, `crates/ralph/Cargo.toml`, `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`, and `apps/RalphMac/RalphCore/VersionValidator.swift` together.
 - Make targets automatically prefer the rustup-managed toolchain pinned by `rust-toolchain.toml` when available; use the same pinned toolchain explicitly for direct script invocations if your shell resolves an older Homebrew `rustc`.
-- `make release-verify` intentionally leaves release metadata dirty in the working tree until `make release` turns that snapshot into the release commit.
+- `make release-verify` intentionally leaves release metadata dirty in the working tree until `make release` turns that snapshot into the release commit; that drift includes the committed JSON schemas under `schemas/` produced by `make generate` (`schemas/config.schema.json`, `schemas/queue.schema.json`, `schemas/machine.schema.json`), as enumerated in `scripts/lib/release_policy.sh` (`RELEASE_METADATA_PATHS`).
 - `scripts/release.sh` records transaction state under `target/release-transactions/v<version>/state.env`; reconcile that same version instead of inventing skip/partial reruns.
 - `scripts/build-release-artifacts.sh` owns `target/release-artifacts/`: it clears stale artifacts before packaging, so do not rely on leftover tarballs in that directory.
 - Shared Xcode-build lock wait logging is intentionally one-shot per invocation; if a macOS target is blocked, expect a single wait line rather than repeated per-second spam.

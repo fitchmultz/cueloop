@@ -117,6 +117,7 @@ Ralph uses JSON schemas for validation:
 
 - **[Config Schema](../../schemas/config.schema.json)** — Configuration schema
 - **[Queue Schema](../../schemas/queue.schema.json)** — Queue and task schema
+- **[Machine Schema](../../schemas/machine.schema.json)** — Machine / structured integration schema
 
 ---
 
