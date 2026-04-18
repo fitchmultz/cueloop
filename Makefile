@@ -66,19 +66,23 @@ endif
 MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: help install macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast ci-docs deps \
+.PHONY: help install install-verify macos-install-app update lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast ci-docs deps \
 	changelog changelog-preview changelog-check version-check version-sync publish-check release release-dry-run release-verify release-artifacts pre-commit pre-public-check release-gate \
 	profile-ship-gate profile-ship-gate-clean agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
 	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean
 help:
-	@echo "Common targets:"
+	@echo "Everyday commands:"
+	@echo "  make agent-ci    # Required pre-commit gate: routes from the current local diff"
+	@echo "  make release-gate # Heaviest final gate: macOS when available, otherwise Rust-only"
+	@echo "  make pre-public-check # Publication audit + full local CI"
+	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
+	@echo ""
+	@echo "Lower-level / power-user gates:"
 	@echo "  make ci-docs     # Docs/community-only gate with markdown link checks"
 	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
-	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install)"
-	@echo "  make agent-ci    # Agent gate: routes to ci-docs, ci-fast, ci, or macos-ci from changed paths"
+	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install verification)"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test + deterministic contract smoke (requires Xcode)"
-	@echo "  make release-gate # Canonical ship gate: macOS when available, otherwise Rust-only"
 	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
 	@echo "  make coverage     # Generate code coverage report (requires cargo-llvm-cov)"
 	@echo "  make coverage-clean  # Remove coverage artifacts"
@@ -94,15 +98,13 @@ help:
 	@echo "  make profile-ship-gate-clean # Remove ship-gate profiling bundles"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
-	@echo "  make update       # Update Rust deps to latest stable; use macos-ci to verify the bundled Swift app toolchain"
-	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
+	@echo "  make update       # Update Rust deps to latest stable; use release-gate/macos-ci to verify the app toolchain"
 	@echo "  make macos-install-app # Copy latest Release RalphMac.app into Applications"
 	@echo "  make version-check # Verify VERSION, Cargo, and Xcode version metadata are synchronized"
 	@echo "  make version-sync VERSION=x.y.z # Sync repo version metadata from one canonical semver"
 	@echo "  make publish-check # Run cargo package review + crates.io dry-run for $(CARGO_PACKAGE_NAME)"
 	@echo "  make release-verify VERSION=x.y.z # Prepare the exact local release snapshot that make release will publish"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
-	@echo "  make pre-public-check # Publication audit + full local CI"
 	@echo ""
 	@echo "Resource knobs (optional):"
 	@echo "  RALPH_CI_JOBS=4     # Example cap for shared workstations (0 = tool default, fastest local iteration)"
@@ -129,21 +131,23 @@ deps:
 	@./scripts/versioning.sh check
 	@echo "  ✓ Deps fetched"
 
-install: $(RALPH_RELEASE_BUILD_STAMP)
+install-verify: $(RALPH_RELEASE_BUILD_STAMP)
 	@ralph_bin_path="$(CURDIR)/target/release/$(BIN_NAME)"; \
 	if [ ! -x "$$ralph_bin_path" ]; then \
-		echo "install: missing release binary at $$ralph_bin_path (run make build first)" >&2; \
+		echo "install-verify: missing release binary at $$ralph_bin_path (run make build first)" >&2; \
 		exit 1; \
 	fi; \
 	bin_dir="$(BIN_DIR)"; \
 	if [ ! -w "$$bin_dir" ]; then \
 		bin_dir="$(HOME)/.local/bin"; \
-		echo "install: $(BIN_DIR) not writable; using $$bin_dir"; \
+		echo "install-verify: $(BIN_DIR) not writable; using $$bin_dir"; \
 	fi; \
 	mkdir -p "$$bin_dir"; \
 	install -m 0755 "$$ralph_bin_path" "$$bin_dir/$(BIN_NAME)"; \
-	"$$bin_dir/$(BIN_NAME)" --help >/dev/null; \
-	if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
+	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
+
+install: install-verify
+	@if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
 		$(MAKE) --no-print-directory macos-install-app; \
 	fi
 
@@ -355,9 +359,9 @@ ci-fast: check-env-safety check-backup-artifacts deps format-check type-check li
 	@echo ""
 	@echo "  ✓ Fast CI completed"
 
-# Full Rust release gate (includes release build/schema generation/install checks).
-ci: ci-fast build generate install
-	@echo "→ Full CI gate (ci-fast + release build/generate/install)..."
+# Full Rust release gate (includes release build/schema generation/CLI install verification).
+ci: ci-fast build generate install-verify
+	@echo "→ Full CI gate (ci-fast + release build/generate/install verification)..."
 	@echo ""
 	@echo "  ✓ CI completed"
 
@@ -376,10 +380,10 @@ profile-ship-gate: macos-preflight
 profile-ship-gate-clean:
 	@bash scripts/profile-ship-gate.sh clean
 
-# Agent CI: route to the smallest valid gate (ci-docs / ci-fast / ci / macos-ci) from changed paths.
+# Agent CI: route to the smallest valid gate for the current local working-tree diff.
 # Set RALPH_AGENT_CI_FORCE_MACOS=1 to force macos-ci. Optional RALPH_AGENT_CI_MIN_TIER raises the floor.
 agent-ci:
-	@echo "→ Agent CI gate (dependency-surface routing: docs, fast Rust, full Rust release, macOS ship)..."
+	@echo "→ Agent CI gate (current local diff routing: docs, fast Rust, full Rust release, macOS ship)..."
 	@force_macos="$${RALPH_AGENT_CI_FORCE_MACOS:-0}"; \
 	if [ "$$force_macos" = "1" ]; then \
 		echo "  → RALPH_AGENT_CI_FORCE_MACOS=1; running macOS gate"; \
@@ -393,6 +397,11 @@ agent-ci:
 	fi; \
 	eval "$$(scripts/agent-ci-surface.sh --emit-eval)"; \
 	target_name="$$RALPH_AGENT_CI_TARGET"; \
+	if [ "$$target_name" = "noop" ]; then \
+		echo "  → $$RALPH_AGENT_CI_REASON"; \
+		echo "  ✓ No local changes; nothing to validate"; \
+		exit 0; \
+	fi; \
 	min_tier="$${RALPH_AGENT_CI_MIN_TIER:-}"; \
 	if [ -n "$$min_tier" ]; then \
 		case "$$min_tier" in \

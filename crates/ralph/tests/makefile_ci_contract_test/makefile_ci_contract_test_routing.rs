@@ -441,6 +441,10 @@ fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
         extract_target_block(&makefile, "agent-ci").context("extract agent-ci block")?;
 
     assert!(
+        agent_ci_block.contains("current local diff routing"),
+        "agent-ci should explain that routing is based on the current working tree"
+    );
+    assert!(
         agent_ci_block.contains("full Rust release, macOS ship"),
         "agent-ci should advertise the four-way routing contract"
     );
@@ -455,6 +459,10 @@ fn test_agent_ci_routes_between_docs_ci_fast_and_macos_ci() -> Result<()> {
     assert!(
         agent_ci_block.contains("RALPH_AGENT_CI_REASON"),
         "agent-ci should surface the classifier's routing reason"
+    );
+    assert!(
+        agent_ci_block.contains("target_name\" = \"noop\""),
+        "agent-ci should no-op when the working tree has no local changes"
     );
     assert!(
         agent_ci_block.contains("using platform-aware release gate fallback"),

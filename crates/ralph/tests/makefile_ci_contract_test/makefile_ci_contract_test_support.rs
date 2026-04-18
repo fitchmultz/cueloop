@@ -29,7 +29,7 @@ pub(super) const REQUIRED_CI_STEPS: &[&str] = &[
     "test",
     "build",
     "generate",
-    "install",
+    "install-verify",
 ];
 
 pub(super) const REQUIRED_CI_FAST_STEPS: &[&str] = &[
