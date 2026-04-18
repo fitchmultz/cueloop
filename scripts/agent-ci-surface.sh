@@ -4,13 +4,15 @@
 # Responsibilities:
 # - Inspect local working-tree changes plus committed branch delta versus trunk.
 # - Route docs/community-only surfaces to `ci-docs`.
-# - Route non-app executable changes to `ci-fast`.
-# - Escalate CLI/build/runtime/app contract changes to `macos-ci`.
+# - Route ancillary non-code surfaces to `ci-fast`.
+# - Route Rust crate work to `ci` (release-shaped Rust gate).
+# - Escalate app/toolchain/bundling/schema/script surfaces to `macos-ci`.
 # Scope:
 # - Classification only; it does not execute make targets itself.
 # Usage:
 # - scripts/agent-ci-surface.sh --target
 # - scripts/agent-ci-surface.sh --reason
+# - scripts/agent-ci-surface.sh --emit-eval   # shell-evaluable RALPH_AGENT_CI_* assignments
 # Invariants/assumptions:
 # - When no git worktree or trunk baseline is available, callers should conservatively run `macos-ci`.
 # - `ci-docs` is reserved for changes that cannot alter executable behavior.
@@ -29,10 +31,12 @@ usage() {
 Usage:
   scripts/agent-ci-surface.sh --target
   scripts/agent-ci-surface.sh --reason
+  scripts/agent-ci-surface.sh --emit-eval
 
 Outputs:
-  --target   Print the target name (`ci-docs`, `ci-fast`, or `macos-ci`)
-  --reason   Print a short routing explanation
+  --target     Print the target name (`ci-docs`, `ci-fast`, `ci`, or `macos-ci`)
+  --reason     Print a short routing explanation
+  --emit-eval  Print `RALPH_AGENT_CI_TARGET=...` and `RALPH_AGENT_CI_REASON=...` for `eval` in bash
 EOF
 }
 
@@ -43,6 +47,9 @@ while [ $# -gt 0 ]; do
             ;;
         --reason)
             MODE="reason"
+            ;;
+        --emit-eval)
+            MODE="emit-eval"
             ;;
         -h|--help)
             usage
@@ -58,11 +65,16 @@ while [ $# -gt 0 ]; do
 done
 
 if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if [ "$MODE" = "reason" ]; then
-        echo "not in a git worktree"
-    else
-        echo "macos-ci"
-    fi
+    target="macos-ci"
+    reason="not in a git worktree"
+    case "$MODE" in
+        target) printf '%s\n' "$target" ;;
+        reason) printf '%s\n' "$reason" ;;
+        emit-eval)
+            printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+            printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+            ;;
+    esac
     exit 0
 fi
 
@@ -109,40 +121,97 @@ changed_paths="$(
 )"
 
 if [ -z "$trunk_ref" ]; then
-    if [ "$MODE" = "reason" ]; then
-        echo "no trunk baseline found; conservatively running macos-ci"
-    else
-        echo "macos-ci"
-    fi
+    target="macos-ci"
+    reason="no trunk baseline found; conservatively running macos-ci"
+    case "$MODE" in
+        target) printf '%s\n' "$target" ;;
+        reason) printf '%s\n' "$reason" ;;
+        emit-eval)
+            printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+            printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+            ;;
+    esac
     exit 0
 fi
 
 if [ -z "$changed_paths" ]; then
-    if [ "$MODE" = "reason" ]; then
-        echo "no local or branch-delta changes; defaulting to ci-fast"
-    else
-        echo "ci-fast"
-    fi
+    target="ci-fast"
+    reason="no local or branch-delta changes; defaulting to ci-fast"
+    case "$MODE" in
+        target) printf '%s\n' "$target" ;;
+        reason) printf '%s\n' "$reason" ;;
+        emit-eval)
+            printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+            printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+            ;;
+    esac
     exit 0
 fi
 
-target="ci-docs"
-reason="docs/community metadata only"
+all_docs_only=1
 while IFS= read -r path; do
     [ -z "$path" ] && continue
-    if public_requires_macos_ci_for_path "$path"; then
-        target="macos-ci"
-        reason="dependency-surface change touched app/CLI/build/runtime contract: $path"
-        break
-    fi
     if ! public_is_docs_only_path "$path"; then
-        target="ci-fast"
-        reason="non-app executable change requires Rust/CLI verification: $path"
+        all_docs_only=0
+        break
     fi
 done <<< "$changed_paths"
 
-if [ "$MODE" = "reason" ]; then
-    echo "$reason"
-else
-    echo "$target"
+if [ "$all_docs_only" = "1" ]; then
+    target="ci-docs"
+    reason="docs/community metadata only"
+    case "$MODE" in
+        target) printf '%s\n' "$target" ;;
+        reason) printf '%s\n' "$reason" ;;
+        emit-eval)
+            printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+            printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+            ;;
+    esac
+    exit 0
 fi
+
+while IFS= read -r path; do
+    [ -z "$path" ] && continue
+    if public_requires_macos_ship_gate_for_path "$path"; then
+        target="macos-ci"
+        reason="dependency-surface change requires macOS ship gate (app/toolchain/bundle/scripts/schemas): $path"
+        case "$MODE" in
+            target) printf '%s\n' "$target" ;;
+            reason) printf '%s\n' "$reason" ;;
+            emit-eval)
+                printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+                printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+                ;;
+        esac
+        exit 0
+    fi
+done <<< "$changed_paths"
+
+while IFS= read -r path; do
+    [ -z "$path" ] && continue
+    if public_requires_rust_release_gate_for_path "$path"; then
+        target="ci"
+        reason="Rust crate change requires release-shaped verification: $path"
+        case "$MODE" in
+            target) printf '%s\n' "$target" ;;
+            reason) printf '%s\n' "$reason" ;;
+            emit-eval)
+                printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+                printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+                ;;
+        esac
+        exit 0
+    fi
+done <<< "$changed_paths"
+
+target="ci-fast"
+reason="non-docs change requires fast Rust/CLI verification"
+case "$MODE" in
+    target) printf '%s\n' "$target" ;;
+    reason) printf '%s\n' "$reason" ;;
+    emit-eval)
+        printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
+        printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+        ;;
+esac

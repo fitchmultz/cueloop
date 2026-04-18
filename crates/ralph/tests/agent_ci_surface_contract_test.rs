@@ -2,7 +2,7 @@
 //!
 //! Responsibilities:
 //! - Verify the classifier reasons about committed branch delta, not only dirty files.
-//! - Guard representative path routing for docs-only and app-affecting changes.
+//! - Guard representative path routing for `ci-docs`, `ci-fast`, `ci`, and `macos-ci`.
 //!
 //! Not handled here:
 //! - Executing the Makefile targets selected by the classifier.
@@ -96,6 +96,10 @@ fn init_temp_repo() -> TempDir {
     write_file(&repo_path.join("README.md"), "# Temp repo\n");
     write_file(&repo_path.join("docs/guide.md"), "# Docs\n");
     write_file(&repo_path.join("Makefile"), "help:\n\t@echo ok\n");
+    write_file(
+        &repo_path.join("crates/ralph/src/lib.rs"),
+        "// stub crate\n",
+    );
 
     git(repo_path, &["init", "-b", "main"]);
     git(repo_path, &["config", "user.name", "Codex"]);
@@ -159,4 +163,82 @@ fn classifier_routes_clean_main_without_branch_delta_to_ci_fast() {
     let repo_path = temp_repo.path();
 
     assert_eq!(run_classifier(repo_path, "--target"), "ci-fast");
+}
+
+#[test]
+fn classifier_routes_clean_crates_branch_delta_to_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    git(repo_path, &["checkout", "-b", "feature/rust-surface"]);
+    write_file(
+        &repo_path.join("crates/ralph/src/lib.rs"),
+        "// stub crate\n\npub fn touched() {}\n",
+    );
+    git(repo_path, &["add", "crates/ralph/src/lib.rs"]);
+    git(repo_path, &["commit", "-m", "touch rust surface"]);
+
+    assert_eq!(run_classifier(repo_path, "--target"), "ci");
+    assert!(
+        run_classifier(repo_path, "--reason").contains("Rust crate"),
+        "expected Rust release gate routing explanation"
+    );
+}
+
+#[test]
+fn classifier_routes_schemas_branch_delta_to_macos_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    git(repo_path, &["checkout", "-b", "feature/schema"]);
+    write_file(&repo_path.join("schemas/config.schema.json"), "{}\n");
+    git(repo_path, &["add", "schemas/config.schema.json"]);
+    git(repo_path, &["commit", "-m", "touch schema"]);
+
+    assert_eq!(run_classifier(repo_path, "--target"), "macos-ci");
+}
+
+#[test]
+fn classifier_routes_apps_ralphmac_branch_delta_to_macos_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    git(repo_path, &["checkout", "-b", "feature/swift"]);
+    write_file(
+        &repo_path.join("apps/RalphMac/Stub.swift"),
+        "// placeholder\n",
+    );
+    git(repo_path, &["add", "apps/RalphMac/Stub.swift"]);
+    git(repo_path, &["commit", "-m", "touch app surface"]);
+
+    assert_eq!(run_classifier(repo_path, "--target"), "macos-ci");
+}
+
+#[test]
+fn classifier_emit_eval_exports_assignments() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    let output = Command::new("bash")
+        .arg(repo_path.join("scripts/agent-ci-surface.sh"))
+        .arg("--emit-eval")
+        .current_dir(repo_path)
+        .output()
+        .expect("run emit-eval");
+
+    assert!(
+        output.status.success(),
+        "emit-eval failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("RALPH_AGENT_CI_TARGET=") && stdout.contains("ci-fast"),
+        "emit-eval should assign RALPH_AGENT_CI_TARGET=ci-fast on clean tree:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("RALPH_AGENT_CI_REASON="),
+        "emit-eval should assign RALPH_AGENT_CI_REASON:\n{stdout}"
+    );
 }

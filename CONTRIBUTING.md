@@ -75,11 +75,14 @@ make docs
 
 **All contributions MUST pass `make agent-ci` before being considered complete.** This is a hard requirement.
 
-`make agent-ci` behavior:
+`make agent-ci` behavior (see `docs/guides/ci-strategy.md` for the full matrix):
 
-- Docs/community-only changes: runs docs safety gate (`make ci-docs`)
-- Non-app executable changes: runs fast deterministic Rust/CLI gate (`make ci-fast`)
-- App/CLI/build/runtime contract changes: escalates to `make macos-ci`
+- Docs/community-only changes: `make ci-docs`
+- Ancillary non-docs changes (not `crates/**` and not macOS ship surface): `make ci-fast`
+- Rust crate changes (`crates/**`) when no macOS ship path matched: `make ci` (release-shaped Rust gate)
+- App bundle, schemas, scripts, toolchain, or Makefile/Cargo changes: `make macos-ci`
+
+**Merge safety:** tier `ci` does not run Xcode or Swift tests. Before merging work that could affect the mac app, run `make macos-ci` or `RALPH_AGENT_CI_MIN_TIER=macos-ci make agent-ci` at least once.
 
 Docs-only gate (`ci-docs`) pipeline:
 
@@ -90,7 +93,7 @@ check-env-safety → check-backup-artifacts
 Fast gate (`ci-fast`) pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test
+check-env-safety → check-backup-artifacts → deps → format-check → type-check → lint → test
 ```
 
 Full Rust release gate (`ci`) adds:
@@ -102,7 +105,7 @@ build → generate → install
 Canonical full `make ci` pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format → type-check → lint → test → build → generate → install
+check-env-safety → check-backup-artifacts → deps → format-check → type-check → lint → test → build → generate → install
 ```
 
 Run required gate with:
@@ -110,6 +113,8 @@ Run required gate with:
 ```bash
 make agent-ci
 # Optional (shared workstation): RALPH_CI_JOBS=4 make agent-ci
+# Optional (raise floor): RALPH_AGENT_CI_MIN_TIER=macos-ci make agent-ci
+# Optional (faster local Xcode iteration): RALPH_XCODE_KEEP_DERIVED_DATA=1 make macos-ci
 ```
 
 Do not commit or push changes if `make agent-ci` is failing. Fix all issues first.

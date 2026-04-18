@@ -18,11 +18,33 @@ make agent-ci
 
 Behavior:
 
-- Routes docs/community-only changes to `make ci-docs`.
-- Routes non-app executable changes to `make ci-fast`.
-- Auto-escalates to macOS gate when the changed dependency surface can affect the bundled app contract (CLI/runtime/config/build/app paths).
+- **Tier A — `make ci-docs`**: all changed paths are docs/community-only (see classifier allowlist in `scripts/lib/release_policy.sh`).
+- **Tier B — `make ci-fast`**: any non-docs path that is not a Rust crate path and not a macOS ship-surface path (for example repo-only metadata like `.gitignore`).
+- **Tier C — `make ci`**: any change under `crates/**` when no macOS ship-surface path fired (release-shaped Rust: `ci-fast` + release build + schema generation + install checks).
+- **Tier D — `make macos-ci`**: any path that affects the app bundle, committed schemas, scripts, toolchain, or build orchestration (`apps/RalphMac/**`, `apps/AGENTS.md`, `schemas/**`, `scripts/**`, `VERSION`, `Cargo.toml`, `Cargo.lock`, `Makefile`, `rust-toolchain.toml`, `.cargo/**`).
+- Tier C **does not** run Xcode or Swift tests; it can miss Swift-side integration drift until a tier D run. Use `RALPH_AGENT_CI_MIN_TIER=macos-ci` or run `make macos-ci` before merge when that risk matters (see below).
 - On source snapshots without `.git/`, falls back to `make release-gate` so verification stays platform-aware instead of assuming macOS-only tooling.
 - The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.ralph/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/RalphMac/build/`.
+
+Optional environment (see `make help`):
+
+- `RALPH_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.
+- `RALPH_AGENT_CI_MIN_TIER=ci-fast|ci|macos-ci` — raise the selected gate to at least that tier (for example `macos-ci` before merge).
+- `RALPH_XCODE_KEEP_DERIVED_DATA=1` — skip deleting Xcode derived data under `target/tmp/xcode-deriveddata` for `macos-build` / default `macos-test` (faster local iteration; default remains clean derived data per run).
+
+### `make ci` on macOS and `macos-ci` dependency graph
+
+On Darwin, `make ci` runs `install`, which invokes `macos-install-app` when Xcode is available; that target depends on `macos-build`. So a full Rust release gate already builds the Release app bundle once before `macos-ci` runs its own `macos-build` prerequisite (GNU Make deduplicates the shared `macos-build` node in one invocation).
+
+### Release build stamp and bundling
+
+- The release stamp `target/tmp/stamps/ralph-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, `scripts/ralph-cli-bundle.sh`, or tracked Rust sources under `crates/**` are newer than the stamp (no unconditional `FORCE` rebuild).
+- `install` copies from `target/release/ralph` after the stamp recipe runs, avoiding a second `ralph-cli-bundle.sh` invocation in the same gate.
+- Xcode’s “Build and Bundle ralph” phase copies `target/release/ralph` into the app bundle for **Release** when that binary already exists; otherwise it falls back to `ralph-cli-bundle.sh` (for example Debug builds or cold Xcode-only builds).
+
+### Cleaning `target/tmp`
+
+`make clean-temp` removes `target/tmp`, which holds the release stamp and Xcode derived data defaults. The next gate run will behave like a cold build.
 
 Docs/community-only gate is `make ci-docs`:
 
@@ -35,7 +57,7 @@ Fast Rust/CLI gate is `make ci-fast`:
 - `check-env-safety` (runs required-file + secret checks everywhere, and adds tracked runtime/local-only file validation when git metadata is available)
 - `check-backup-artifacts`
 - `deps`
-- `format`
+- `format-check`
 - `type-check`
 - `lint`
 - `test`
@@ -120,6 +142,7 @@ Defaults:
 
 - `RALPH_CI_JOBS=0` lets cargo/nextest use tool-managed parallelism for fastest local iteration.
 - `RALPH_XCODE_JOBS=0` keeps xcodebuild on tool-managed parallelism by default; set `RALPH_XCODE_JOBS=4` on shared workstations when you need a cap.
+- `RALPH_XCODE_KEEP_DERIVED_DATA=0` deletes Xcode derived data for `macos-build` / default `macos-test` before building (reproducible; slower when iterating).
 - Set either value explicitly (for example `RALPH_CI_JOBS=4`) on shared workstations.
 
 ## Suggested Cadence

@@ -31,6 +31,11 @@ RALPH_XCODE_JOBS ?= 0
 # Build stamp path to avoid duplicate release builds in a single make invocation.
 RALPH_STAMP_DIR ?= target/tmp/stamps
 RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/ralph-release-build.stamp
+# Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `ralph-cli-bundle.sh`.
+RALPH_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/ralph-cli-bundle.sh
+RALPH_CRATE_SOURCE_FILES := $(shell find crates -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) 2>/dev/null | LC_ALL=C sort)
+# Set to 1 to keep Xcode derived data between runs (faster local iteration; less pristine than default).
+RALPH_XCODE_KEEP_DERIVED_DATA ?= 0
 # Prefer the rustup-managed pinned toolchain from rust-toolchain.toml when present.
 RALPH_RUST_TOOLCHAIN_FILE := rust-toolchain.toml
 RALPH_PINNED_RUST_TOOLCHAIN := $(shell sed -n 's/^[[:space:]]*channel = "\(.*\)"/\1/p' $(RALPH_RUST_TOOLCHAIN_FILE) 2>/dev/null | head -1)
@@ -65,13 +70,13 @@ MAKEFLAGS += --no-builtin-rules
 	changelog changelog-preview changelog-check version-check version-sync publish-check release release-dry-run release-verify release-artifacts pre-commit pre-public-check release-gate \
 	profile-ship-gate profile-ship-gate-clean agent-ci check-env-safety check-backup-artifacts check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
-	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean FORCE
+	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean
 help:
 	@echo "Common targets:"
 	@echo "  make ci-docs     # Docs/community-only gate with markdown link checks"
 	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
 	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install)"
-	@echo "  make agent-ci    # Agent gate: dependency-surface routing between ci-docs, ci-fast, and macos-ci"
+	@echo "  make agent-ci    # Agent gate: routes to ci-docs, ci-fast, ci, or macos-ci from changed paths"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test + deterministic contract smoke (requires Xcode)"
 	@echo "  make release-gate # Canonical ship gate: macOS when available, otherwise Rust-only"
 	@echo "  make test         # Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing)"
@@ -106,10 +111,11 @@ help:
 	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
 	@echo "  RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
 	@echo "  RALPH_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
+	@echo "  RALPH_XCODE_KEEP_DERIVED_DATA=1 # Keep Xcode incremental caches (default 0 = clean derived data per gate)"
+	@echo "  RALPH_AGENT_CI_MIN_TIER=macos-ci|ci|ci-fast # Floor for agent-ci routing (optional)"
+	@echo "  RALPH_AGENT_CI_FORCE_MACOS=1 # Always run macos-ci from agent-ci"
 
-FORCE:
-
-$(RALPH_RELEASE_BUILD_STAMP): FORCE
+$(RALPH_RELEASE_BUILD_STAMP): $(RALPH_RELEASE_STAMP_INPUTS) $(RALPH_CRATE_SOURCE_FILES)
 	@mkdir -p "$(RALPH_STAMP_DIR)"
 	@echo "→ Release build..."
 	@$(RALPH_ENV_RESET); scripts/ralph-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path >/dev/null
@@ -124,7 +130,11 @@ deps:
 	@echo "  ✓ Deps fetched"
 
 install: $(RALPH_RELEASE_BUILD_STAMP)
-	@ralph_bin_path="$$(scripts/ralph-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
+	@ralph_bin_path="$(CURDIR)/target/release/$(BIN_NAME)"; \
+	if [ ! -x "$$ralph_bin_path" ]; then \
+		echo "install: missing release binary at $$ralph_bin_path (run make build first)" >&2; \
+		exit 1; \
+	fi; \
 	bin_dir="$(BIN_DIR)"; \
 	if [ ! -w "$$bin_dir" ]; then \
 		bin_dir="$(HOME)/.local/bin"; \
@@ -340,8 +350,8 @@ ci-docs: check-env-safety check-backup-artifacts
 	@echo "  ✓ Docs-only CI completed"
 
 # Fast deterministic Rust/CLI gate for routine development and PR-equivalent checks.
-ci-fast: check-env-safety check-backup-artifacts deps format type-check lint test
-	@echo "→ Fast CI gate (format/type/lint/test)..."
+ci-fast: check-env-safety check-backup-artifacts deps format-check type-check lint test
+	@echo "→ Fast CI gate (format-check/type/lint/test)..."
 	@echo ""
 	@echo "  ✓ Fast CI completed"
 
@@ -366,10 +376,10 @@ profile-ship-gate: macos-preflight
 profile-ship-gate-clean:
 	@bash scripts/profile-ship-gate.sh clean
 
-# Agent CI compromise: route to the smallest valid gate and escalate only when the dependency surface demands it.
-# Set RALPH_AGENT_CI_FORCE_MACOS=1 to force the macOS app gate.
+# Agent CI: route to the smallest valid gate (ci-docs / ci-fast / ci / macos-ci) from changed paths.
+# Set RALPH_AGENT_CI_FORCE_MACOS=1 to force macos-ci. Optional RALPH_AGENT_CI_MIN_TIER raises the floor.
 agent-ci:
-	@echo "→ Agent CI gate (dependency-surface routing between docs, Rust, and macOS ship gates)..."
+	@echo "→ Agent CI gate (dependency-surface routing: docs, fast Rust, full Rust release, macOS ship)..."
 	@force_macos="$${RALPH_AGENT_CI_FORCE_MACOS:-0}"; \
 	if [ "$$force_macos" = "1" ]; then \
 		echo "  → RALPH_AGENT_CI_FORCE_MACOS=1; running macOS gate"; \
@@ -381,9 +391,27 @@ agent-ci:
 		$(MAKE) --no-print-directory release-gate; \
 		exit 0; \
 	fi; \
-	target_name="$$(scripts/agent-ci-surface.sh --target)"; \
-	target_reason="$$(scripts/agent-ci-surface.sh --reason)"; \
-	echo "  → $$target_reason"; \
+	eval "$$(scripts/agent-ci-surface.sh --emit-eval)"; \
+	target_name="$$RALPH_AGENT_CI_TARGET"; \
+	min_tier="$${RALPH_AGENT_CI_MIN_TIER:-}"; \
+	if [ -n "$$min_tier" ]; then \
+		case "$$min_tier" in \
+			macos-ci) \
+				case "$$target_name" in ci-docs|ci-fast|ci) target_name=macos-ci ;; esac \
+				;; \
+			ci) \
+				case "$$target_name" in ci-docs|ci-fast) target_name=ci ;; esac \
+				;; \
+			ci-fast) \
+				case "$$target_name" in ci-docs) target_name=ci-fast ;; esac \
+				;; \
+			*) \
+				echo "  → ERROR: unknown RALPH_AGENT_CI_MIN_TIER=$$min_tier (use macos-ci, ci, or ci-fast)" >&2; \
+				exit 2 \
+				;; \
+		esac; \
+	fi; \
+	echo "  → $$RALPH_AGENT_CI_REASON"; \
 	$(MAKE) --no-print-directory "$$target_name"
 
 macos-preflight:
@@ -407,7 +435,7 @@ macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	acquired=1; \
 	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/build"; \
 	echo "→ macOS build (Xcode build)..."; \
-	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	if [ "$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 	xcodebuild \
 		-project apps/RalphMac/RalphMac.xcodeproj \
 		-scheme RalphMac \
@@ -456,7 +484,7 @@ macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		acquired=1; \
 		echo "→ macOS tests (Xcode, skipping UI tests - use RALPH_UI_TESTS=1 to include)..."; \
 		skipped_tests="-skip-testing RalphMacUITests"; \
-		rm -rf "$$derived_data_path" 2>/dev/null || true; \
+		if [ "$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 		xcodebuild \
 			-project apps/RalphMac/RalphMac.xcodeproj \
 			-scheme RalphMac \

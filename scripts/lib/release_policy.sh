@@ -407,12 +407,35 @@ public_is_docs_only_path() {
     return 1
 }
 
-public_requires_macos_ci_for_path() {
+# Tier D (`make macos-ci`): app bundle, toolchain, bundling scripts, committed schemas, build orchestration.
+public_requires_macos_ship_gate_for_path() {
     local path="$1"
     case "$path" in
-        apps/RalphMac/*|apps/AGENTS.md|crates/*|schemas/*|scripts/*|VERSION|Cargo.toml|Cargo.lock|Makefile|rust-toolchain.toml|.cargo/*)
+        apps/RalphMac/*|apps/AGENTS.md|schemas/*|scripts/*|VERSION|Cargo.toml|Cargo.lock|Makefile|rust-toolchain.toml|.cargo/*)
             return 0
             ;;
     esac
+    return 1
+}
+
+# Tier C (`make ci`): Rust crate sources and crate-local metadata (release-shaped CLI gate).
+public_requires_rust_release_gate_for_path() {
+    local path="$1"
+    case "$path" in
+        crates/*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+# Backward-compatible union used by older call sites: true if either ship gate or Rust crates changed.
+public_requires_macos_ci_for_path() {
+    if public_requires_macos_ship_gate_for_path "$1"; then
+        return 0
+    fi
+    if public_requires_rust_release_gate_for_path "$1"; then
+        return 0
+    fi
     return 1
 }
