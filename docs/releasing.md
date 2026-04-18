@@ -52,7 +52,7 @@ That ordering is intentional: crates.io publication no longer happens before the
 
 If `make release-verify` fails, fix the issue and rerun the full preflight. Do not skip phases manually.
 
-After `make release-verify` succeeds, expect release metadata files such as `VERSION`, `Cargo.lock`, `CHANGELOG.md`, and versioned app metadata to remain dirty in the working tree until `make release VERSION=<x.y.z>` commits them as the release commit.
+After `make release-verify` succeeds, expect release metadata files such as `VERSION`, `Cargo.lock`, `CHANGELOG.md`, versioned app metadata, and the committed JSON schemas under `schemas/` produced by `make generate` (`schemas/config.schema.json`, `schemas/queue.schema.json`, `schemas/machine.schema.json`) to remain dirty in the working tree until `make release VERSION=<x.y.z>` commits them as the release commit.
 
 ## Reconcile
 
