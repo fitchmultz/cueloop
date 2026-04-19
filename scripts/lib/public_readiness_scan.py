@@ -4,12 +4,14 @@ Purpose: Scan the Ralph working tree for public-readiness issues.
 Responsibilities:
 - Walk the repository working tree with explicit exclude rules.
 - Validate markdown links across repo-local documentation files.
+- Reject stale documented session-cache paths that omit the JSONC extension.
 - Reject markdown links that resolve outside the repository root.
 - Detect high-confidence secret patterns in working-tree text files outside local-only exclusions.
 Scope:
 - Repository working-tree scanning only; release orchestration stays in shell scripts.
 Usage:
 - python3 scripts/lib/public_readiness_scan.py links /path/to/repo
+- python3 scripts/lib/public_readiness_scan.py session-paths /path/to/repo
 - python3 scripts/lib/public_readiness_scan.py secrets /path/to/repo
 Invariants/assumptions:
 - The caller provides the repository root as the final argument.
@@ -29,6 +31,7 @@ from typing import Iterator
 
 
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+STALE_SESSION_CACHE_PATH_RE = re.compile(r"\.ralph/cache/session\.json(?!c)")
 AWS_EXAMPLE_KEY = "AK" "IA" "IOSFODNN7EXAMPLE"
 OPENSSH_PRIVATE_KEY_TAG = "OPEN" "SSH PRIVATE KEY"
 RSA_PRIVATE_KEY_TAG = "RSA PRIVATE KEY"
@@ -73,7 +76,7 @@ HIGH_CONFIDENCE_SECRET_PATTERNS = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=True)
-    parser.add_argument("mode", choices=("links", "secrets"))
+    parser.add_argument("mode", choices=("links", "secrets", "session-paths"))
     parser.add_argument("repo_root")
     return parser.parse_args()
 
@@ -194,6 +197,10 @@ def render_secret_finding(name: str, matched_secret: str) -> str:
     return f"{name}: [REDACTED length={len(matched_secret)}]"
 
 
+def scans_session_path_contract(rel_path: str, path: Path) -> bool:
+    return path.suffix == ".md" or rel_path == "AGENTS.md" or rel_path.endswith("/AGENTS.md")
+
+
 def scan_links(repo_root: Path, excludes: tuple[str, ...]) -> int:
     missing: list[str] = []
     for path in iter_repo_files(repo_root, excludes):
@@ -224,6 +231,25 @@ def scan_links(repo_root: Path, excludes: tuple[str, ...]) -> int:
 
     if missing:
         print("\n".join(missing))
+        return 1
+    return 0
+
+
+def scan_session_paths(repo_root: Path, excludes: tuple[str, ...]) -> int:
+    problems: list[str] = []
+    for path in iter_repo_files(repo_root, excludes):
+        rel_path = path.relative_to(repo_root).as_posix()
+        if not scans_session_path_contract(rel_path, path):
+            continue
+        text = read_text(path, repo_root, excludes)
+        if text is None:
+            continue
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            if STALE_SESSION_CACHE_PATH_RE.search(line):
+                problems.append(f"{rel_path}:{line_number}: use .ralph/cache/session.jsonc")
+
+    if problems:
+        print("\n".join(problems))
         return 1
     return 0
 
@@ -269,6 +295,8 @@ def main() -> int:
 
     if args.mode == "links":
         return scan_links(repo_root, excludes)
+    if args.mode == "session-paths":
+        return scan_session_paths(repo_root, excludes)
     if args.mode == "secrets":
         return scan_secrets(repo_root, excludes)
     return 2

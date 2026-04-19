@@ -2,53 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0025",
-      "status": "todo",
-      "title": "Update session cache path references to session.jsonc",
-      "description": "Principles violated: G) Least astonishment, H) Operational hygiene, J) Consistency/Integrity. Runtime code and tests use .ralph/cache/session.jsonc, but several operator docs and AGENTS guidance still reference .ralph/cache/session.json. That sends users and agents to delete or inspect the wrong file during resume recovery and parallel-worker cleanup. Minimal fix: replace stale session.json references with session.jsonc and add a lightweight docs/search guard for this path.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "docs",
-        "session",
-        "recovery"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "docs/workflow.md",
-        "docs/features/phases.md",
-        "docs/guides/advanced.md",
-        "crates/ralph/src/session/persistence.rs",
-        "crates/ralph/src/constants.rs"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/constants.rs:239 :: SESSION_FILENAME is session.jsonc.",
-        "path: crates/ralph/src/session/persistence.rs:4 :: module docs say it reads, writes, clears, and locates .ralph/cache/session.jsonc.",
-        "path: docs/workflow.md:189 :: workflow docs say session state is persisted to .ralph/cache/session.json.",
-        "path: docs/features/phases.md:483 :: phases docs say session state is persisted to .ralph/cache/session.json.",
-        "path: docs/guides/advanced.md:973 :: advanced guide tells users to jq .ralph/cache/session.json.",
-        "path: docs/guides/advanced.md:1129 :: advanced guide tells users to rm .ralph/cache/session.json.",
-        "path: AGENTS.md:168 :: parallel worker cleanup guidance still references cache/session.json.",
-        "workflow: rg -n \"session\\.jsonc|session\\.json\" docs crates/ralph/src apps README.md AGENTS.md :: showed code on session.jsonc and stale docs on session.json."
-      ],
-      "plan": [
-        "Replace stale .ralph/cache/session.json references in docs and AGENTS guidance with .ralph/cache/session.jsonc.",
-        "Check whether any compatibility note is needed for legacy session.json files; if not, avoid adding compatibility shims.",
-        "Add a targeted docs contract or search assertion if the existing test structure has a good home.",
-        "Verify by running rg -n \"\\.ralph/cache/session\\.json(?!c)\" docs AGENTS.md with an appropriate regex tool, and run make ci-docs or the relevant docs check."
-      ],
-      "notes": [],
-      "request": "scan: Simplify code while preserving nuanced runner behavior",
-      "created_at": "2026-04-17T23:11:06Z",
-      "updated_at": "2026-04-17T23:11:06Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0022",
       "status": "todo",
       "title": "Refuse lossy legacy CI gate shell-string migration",

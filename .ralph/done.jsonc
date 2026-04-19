@@ -113,10 +113,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "roadmap_item": "1",
         "model_used": "composer-2",
         "runner_used": "cursor",
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "1"
+        "audit_reference": "/tmp/ralph-codebase-audit.md"
       }
     },
     {
@@ -157,10 +157,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "cursor",
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "composer-2",
         "executive_finding": "10",
-        "model_used": "composer-2"
+        "runner_used": "cursor",
+        "audit_reference": "/tmp/ralph-codebase-audit.md"
       }
     },
     {
@@ -206,10 +206,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "cursor",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "composer-2",
-        "roadmap_item": "2"
+        "roadmap_item": "2",
+        "runner_used": "cursor",
+        "model_used": "composer-2"
       }
     },
     {
@@ -254,8 +254,8 @@
       "custom_fields": {
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "codex",
-        "roadmap_item": "4",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "roadmap_item": "4"
       }
     },
     {
@@ -300,10 +300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "3"
+        "roadmap_item": "3",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -345,10 +345,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "roadmap_item": "6",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "roadmap_item": "6"
       }
     },
     {
@@ -395,8 +395,8 @@
       "relates_to": [],
       "custom_fields": {
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "7",
         "model_used": "gpt-5.4",
+        "roadmap_item": "7",
         "runner_used": "codex"
       }
     },
@@ -443,8 +443,8 @@
       "custom_fields": {
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "roadmap_item": "9",
-        "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -487,9 +487,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4",
+        "roadmap_item": "5",
         "runner_used": "codex",
-        "roadmap_item": "5"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -579,10 +579,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "roadmap_item": "8",
-        "runner_used": "codex"
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -631,9 +631,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
+        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "codex"
       }
     },
     {
@@ -737,9 +737,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
+        "scan_agent": "scan-maintenance",
         "runner_used": "codex",
-        "scan_agent": "scan-maintenance"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -853,9 +853,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "scan_agent": "scan-maintenance",
-        "model_used": "gpt-5.4"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -901,9 +901,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "codex"
       }
     },
     {
@@ -1009,8 +1009,64 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
+        "scan_agent": "scan-maintenance",
+        "runner_used": "codex"
+      }
+    },
+    {
+      "id": "RQ-0025",
+      "status": "done",
+      "title": "Update session cache path references to session.jsonc",
+      "description": "Principles violated: G) Least astonishment, H) Operational hygiene, J) Consistency/Integrity. Runtime code and tests use .ralph/cache/session.jsonc, but several operator docs and AGENTS guidance still reference .ralph/cache/session.json. That sends users and agents to delete or inspect the wrong file during resume recovery and parallel-worker cleanup. Minimal fix: replace stale session.json references with session.jsonc and add a lightweight docs/search guard for this path.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "session",
+        "recovery"
+      ],
+      "scope": [
+        "AGENTS.md",
+        "docs/workflow.md",
+        "docs/features/phases.md",
+        "docs/guides/advanced.md",
+        "crates/ralph/src/session/persistence.rs",
+        "crates/ralph/src/constants.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/constants.rs:239 :: SESSION_FILENAME is session.jsonc.",
+        "path: crates/ralph/src/session/persistence.rs:4 :: module docs say it reads, writes, clears, and locates .ralph/cache/session.jsonc.",
+        "path: docs/workflow.md:189 :: workflow docs say session state is persisted to .ralph/cache/session.json.",
+        "path: docs/features/phases.md:483 :: phases docs say session state is persisted to .ralph/cache/session.json.",
+        "path: docs/guides/advanced.md:973 :: advanced guide tells users to jq .ralph/cache/session.json.",
+        "path: docs/guides/advanced.md:1129 :: advanced guide tells users to rm .ralph/cache/session.json.",
+        "path: AGENTS.md:168 :: parallel worker cleanup guidance still references cache/session.json.",
+        "workflow: rg -n \"session\\.jsonc|session\\.json\" docs crates/ralph/src apps README.md AGENTS.md :: showed code on session.jsonc and stale docs on session.json."
+      ],
+      "plan": [
+        "Replace stale .ralph/cache/session.json references in docs and AGENTS guidance with .ralph/cache/session.jsonc.",
+        "Check whether any compatibility note is needed for legacy session.json files; if not, avoid adding compatibility shims.",
+        "Add a targeted docs contract or search assertion if the existing test structure has a good home.",
+        "Verify by running rg -n \"\\.ralph/cache/session\\.json(?!c)\" docs AGENTS.md with an appropriate regex tool, and run make ci-docs or the relevant docs check."
+      ],
+      "notes": [
+        "Updated operator docs and AGENTS guidance to use .ralph/cache/session.jsonc.",
+        "Added a focused public-readiness session-path scan and wired it into ci-docs/pre-public checks.",
+        "Extended Makefile contract coverage so ci-docs keeps the session-path guard.",
+        "Verified stale .ralph/cache/session.json references are absent from docs/source guidance and make agent-ci passes."
+      ],
+      "request": "scan: Simplify code while preserving nuanced runner behavior",
+      "created_at": "2026-04-17T23:11:06Z",
+      "updated_at": "2026-04-19T03:26:20.362515000Z",
+      "completed_at": "2026-04-19T03:26:20.362515000Z",
+      "started_at": "2026-04-19T03:15:44.165396000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "gpt-5.4",
+        "scan_agent": "scan-maintenance",
         "runner_used": "codex"
       }
     }

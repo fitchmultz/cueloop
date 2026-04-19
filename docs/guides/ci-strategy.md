@@ -57,6 +57,7 @@ Docs/community-only gate is `make ci-docs`:
 - `check-env-safety` (runs required-file + secret checks everywhere, and adds tracked runtime/local-only file validation when git metadata is available)
 - `check-backup-artifacts`
 - repo-wide markdown link scan
+- documented session-cache path guard
 
 Fast Rust/CLI gate is `make ci-fast`:
 
