@@ -50,7 +50,7 @@ pub struct RunnerCliArgs {
 /// Used by `task` and `scan` commands.
 #[derive(Args, Clone, Debug, Default)]
 pub struct AgentArgs {
-    /// Runner override for this invocation (codex, opencode, gemini, claude, cursor).
+    /// Runner override for this invocation (codex, opencode, gemini, claude, cursor, kimi, pi).
     /// Overrides task.agent and config.
     #[arg(long)]
     pub runner: Option<String>,
@@ -82,7 +82,7 @@ pub struct RunAgentArgs {
     #[arg(long, value_name = "NAME")]
     pub profile: Option<String>,
 
-    /// Runner override for this invocation (codex, opencode, gemini, claude, cursor).
+    /// Runner override for this invocation (codex, opencode, gemini, claude, cursor, kimi, pi).
     /// Overrides task.agent and config.
     #[arg(long)]
     pub runner: Option<String>,

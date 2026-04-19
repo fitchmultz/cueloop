@@ -405,12 +405,17 @@ fn test_ci_docs_runs_focused_markdown_link_scan() -> Result<()> {
             .context("read scripts/pre-public-check.sh")?;
 
     assert!(
-        makefile.contains("make ci-docs     # Docs/community-only gate with markdown link checks"),
-        "Makefile help should advertise the markdown-link behavior of ci-docs"
+        makefile
+            .contains("make ci-docs     # Docs/community-only gate with markdown and path checks"),
+        "Makefile help should advertise the docs-check behavior of ci-docs"
     );
     assert!(
         ci_docs_block.contains("bash ./scripts/lib/public_readiness_scan.sh links"),
         "ci-docs should run the focused markdown link scan entrypoint"
+    );
+    assert!(
+        ci_docs_block.contains("bash ./scripts/lib/public_readiness_scan.sh session-paths"),
+        "ci-docs should run the documented session-cache path guard"
     );
     assert!(
         !ci_docs_block.contains("pre-public-check.sh --skip-ci --skip-clean --skip-secrets"),
@@ -425,6 +430,11 @@ fn test_ci_docs_runs_focused_markdown_link_scan() -> Result<()> {
     assert!(
         pre_public_check.contains("bash \"$SCRIPT_DIR/lib/public_readiness_scan.sh\" links"),
         "pre-public-check should reuse the focused markdown link scan entrypoint"
+    );
+    assert!(
+        pre_public_check
+            .contains("bash \"$SCRIPT_DIR/lib/public_readiness_scan.sh\" session-paths"),
+        "pre-public-check should reuse the documented session-cache path guard"
     );
     assert!(
         pre_public_check.contains("bash \"$SCRIPT_DIR/lib/public_readiness_scan.sh\" secrets"),

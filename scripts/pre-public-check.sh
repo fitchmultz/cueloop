@@ -4,6 +4,7 @@
 # Responsibilities:
 # - Validate required public-facing files and forbid tracked runtime/build artifacts.
 # - Scan the repo working tree for broken markdown links and high-confidence secret material.
+# - Guard documented runtime paths that affect operator recovery.
 # - Run the local CI gate when requested and enforce clean or release-context worktrees.
 # Scope:
 # - Repository hygiene and publication safety only; it does not tag or publish releases.
@@ -259,6 +260,7 @@ check_markdown_links() {
     fi
 
     bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" links
+    bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" session-paths
 }
 
 run_ci_gate() {

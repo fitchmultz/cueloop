@@ -50,6 +50,7 @@ Out of scope:
   - tracked env-file detection
   - repo-wide working-tree high-confidence secret-pattern scan with explicit allowlisting
   - repo-wide working-tree markdown link scan
+  - documented session-cache path validation
   - optional shared release gate (`make release-gate`)
 
 ## Operator Checklist

@@ -3,12 +3,14 @@
 # Purpose: Run focused public-readiness scans for the Ralph repository.
 # Responsibilities:
 # - Reuse the shared repo-wide markdown-link and secret-pattern scan policy.
+# - Guard documented session-cache paths against stale `.json` references.
 # - Provide lightweight entrypoints for docs-only and targeted safety gates.
 # - Resolve the Ralph repository root and exclusion policy consistently.
 # Scope:
 # - Focused scan execution only; required-file checks, worktree checks, and CI gating stay in pre-public-check.sh.
 # Usage:
 # - scripts/lib/public_readiness_scan.sh links
+# - scripts/lib/public_readiness_scan.sh session-paths
 # - scripts/lib/public_readiness_scan.sh secrets
 # - scripts/lib/public_readiness_scan.sh --help
 # Invariants/assumptions:
@@ -28,12 +30,13 @@ usage() {
 Run a focused public-readiness scan for Ralph.
 
 Usage:
-  scripts/lib/public_readiness_scan.sh <links|secrets>
+  scripts/lib/public_readiness_scan.sh <links|secrets|session-paths>
   scripts/lib/public_readiness_scan.sh -h
   scripts/lib/public_readiness_scan.sh --help
 
 Examples:
   scripts/lib/public_readiness_scan.sh links
+  scripts/lib/public_readiness_scan.sh session-paths
   scripts/lib/public_readiness_scan.sh secrets
 
 Exit codes:
@@ -61,6 +64,11 @@ run_scan() {
             python3 "$scan_py_path" links "$repo_root"
             ralph_log_success "Markdown links look valid"
             ;;
+        session-paths)
+            ralph_log_info "Checking documented session-cache paths"
+            python3 "$scan_py_path" session-paths "$repo_root"
+            ralph_log_success "Session-cache path references use session.jsonc"
+            ;;
         secrets)
             ralph_log_info "Scanning repo-wide working-tree text files for high-confidence secret patterns"
             python3 "$scan_py_path" secrets "$repo_root"
@@ -74,7 +82,7 @@ run_scan() {
 }
 
 case "${1:-}" in
-    links|secrets)
+    links|secrets|session-paths)
         if [ "$#" -ne 1 ]; then
             usage >&2
             exit 2

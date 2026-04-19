@@ -535,8 +535,9 @@ Use comments in config for documentation:
   // Schema version - must be 2
   "version": 2,
   "agent": {
-    /* Runner configuration
-       Choose from: codex, opencode, gemini, claude, cursor */
+    /* Runner configuration.
+       Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi.
+       Plugin runner IDs are also supported as non-empty strings. */
     "runner": "claude",
     "phases": 3, // 1 = single-pass, 2 = plan+implement, 3 = full workflow
     
@@ -970,13 +971,13 @@ ralph queue list --sort priority | head -10
 **Problem:** Session resume fails
 ```bash
 # Check session state
-jq '.' .ralph/cache/session.json
+jq '.' .ralph/cache/session.jsonc
 
 # Force fresh start
 ralph run loop --force
 
 # Or clear session manually
-rm .ralph/cache/session.json
+rm .ralph/cache/session.jsonc
 ```
 
 ### Parallel Run Issues
@@ -1126,7 +1127,7 @@ jq '.tasks[] | select(.id == "RQ-0000")' .ralph/done.jsonc
 ralph daemon stop
 
 # 2. Clear all state
-rm -f .ralph/cache/session.json
+rm -f .ralph/cache/session.jsonc
 rm -f .ralph/cache/parallel/state.json
 rm -f .ralph/cache/daemon.json
 rm -f .ralph/cache/stop_requested
@@ -1203,7 +1204,7 @@ ralph run loop --wait-when-blocked --wait-timeout-seconds 3600
 | Done archive | `.ralph/done.jsonc` |
 | Project config | `.ralph/config.jsonc` |
 | Global config | `~/.config/ralph/config.jsonc` |
-| Session state | `.ralph/cache/session.json` |
+| Session state | `.ralph/cache/session.jsonc` |
 | Parallel state | `.ralph/cache/parallel/state.json` |
 | Daemon logs | `.ralph/logs/daemon.log` |
 | Debug logs | `.ralph/logs/debug.log` |

@@ -20,6 +20,11 @@ use std::collections::BTreeMap;
 
 use crate::contracts::model::{Model, ReasoningEffort};
 
+pub(crate) const RUNNER_SCHEMA_DESCRIPTION: &str = concat!(
+    "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. ",
+    "Plugin runner IDs are also supported as non-empty strings."
+);
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub enum Runner {
     Codex,
@@ -107,11 +112,8 @@ impl JsonSchema for Runner {
     fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
         let mut schema = <String as JsonSchema>::json_schema(generator);
         let obj = schema.ensure_object();
-        obj.entry("description".to_string()).or_insert_with(|| {
-            json!(
-                "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; plugin runners: any other non-empty string)"
-            )
-        });
+        obj.entry("description".to_string())
+            .or_insert_with(|| json!(RUNNER_SCHEMA_DESCRIPTION));
         obj.insert(
             "examples".to_string(),
             json!(["claude", "acme.super_runner"]),

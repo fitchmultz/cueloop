@@ -186,7 +186,7 @@ Runner and model selection are driven by a combination of CLI flags, task overri
 
 ## Session State
 
-Session state is persisted to `.ralph/cache/session.json` for crash recovery. It includes:
+Session state is persisted to `.ralph/cache/session.jsonc` for crash recovery. It includes:
 - Task ID and session metadata
 - Iteration and phase progress
 - **Per-phase runner/model settings** (for display in recovery prompts)

@@ -59,7 +59,7 @@ fn init_creates_missing_files() -> anyhow::Result<()> {
     assert_eq!(report.config_status, FileInitStatus::Created);
     assert!(matches!(
         report.readme_status,
-        Some((FileInitStatus::Created, Some(6)))
+        Some((FileInitStatus::Created, Some(README_VERSION)))
     ));
     let queue = crate::queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue.version, 1);
@@ -164,7 +164,7 @@ fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
     assert_eq!(report.config_status, FileInitStatus::Valid);
     assert!(matches!(
         report.readme_status,
-        Some((FileInitStatus::Created, Some(6)))
+        Some((FileInitStatus::Created, Some(README_VERSION)))
     ));
     let raw = std::fs::read_to_string(&resolved.queue_path)?;
     assert!(raw.contains("Keep"));
@@ -198,7 +198,7 @@ fn init_overwrites_when_forced() -> anyhow::Result<()> {
     assert_eq!(report.config_status, FileInitStatus::Created);
     assert!(matches!(
         report.readme_status,
-        Some((FileInitStatus::Created, Some(6)))
+        Some((FileInitStatus::Created, Some(README_VERSION)))
     ));
     let cfg_raw = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
     let cfg: Config = serde_json::from_str(&cfg_raw)?;
@@ -469,7 +469,7 @@ fn init_update_readme_flag_updates_outdated() -> anyhow::Result<()> {
 
     assert!(matches!(
         report.readme_status,
-        Some((FileInitStatus::Updated, Some(6)))
+        Some((FileInitStatus::Updated, Some(README_VERSION)))
     ));
 
     let content = std::fs::read_to_string(resolved.repo_root.join(".ralph/README.md"))?;

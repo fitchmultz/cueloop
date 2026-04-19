@@ -76,7 +76,7 @@ fn format_argv(argv: &[String]) -> String {
         .join(" ")
 }
 
-/// Agent runner defaults (Claude, Codex, OpenCode, Gemini, or Cursor).
+/// Agent runner defaults. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct AgentConfig {

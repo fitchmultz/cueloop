@@ -225,7 +225,7 @@
     "$defs": {
       "AgentConfig": {
         "additionalProperties": false,
-        "description": "Agent runner defaults (Claude, Codex, OpenCode, Gemini, or Cursor).",
+        "description": "Agent runner defaults. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.",
         "properties": {
           "ci_gate": {
             "anyOf": [
@@ -649,7 +649,7 @@
                 "url": null
               }
             },
-            "description": "Agent runner defaults (Claude, Codex, OpenCode, Gemini, or Cursor)."
+            "description": "Agent runner defaults. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings."
           },
           "loop": {
             "$ref": "#/$defs/LoopConfig",
@@ -1381,7 +1381,7 @@
         "type": "string"
       },
       "Runner": {
-        "description": "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; plugin runners: any other non-empty string)",
+        "description": "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.",
         "examples": [
           "claude",
           "acme.super_runner"
@@ -3144,7 +3144,7 @@
         "type": "string"
       },
       "Runner": {
-        "description": "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; plugin runners: any other non-empty string)",
+        "description": "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.",
         "examples": [
           "claude",
           "acme.super_runner"
@@ -5195,7 +5195,7 @@
         "type": "string"
       },
       "Runner": {
-        "description": "Runner id (built-ins: codex, opencode, gemini, cursor, claude, kimi, pi; plugin runners: any other non-empty string)",
+        "description": "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.",
         "examples": [
           "claude",
           "acme.super_runner"

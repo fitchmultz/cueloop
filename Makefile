@@ -79,7 +79,7 @@ help:
 	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
 	@echo ""
 	@echo "Lower-level / power-user gates:"
-	@echo "  make ci-docs     # Docs/community-only gate with markdown link checks"
+	@echo "  make ci-docs     # Docs/community-only gate with markdown and path checks"
 	@echo "  make ci-fast     # Fast deterministic Rust/CLI gate for day-to-day development"
 	@echo "  make ci          # Full Rust release gate (ci-fast + build/generate/install verification)"
 	@echo "  make macos-ci     # Rust gate + macOS app build+test + deterministic contract smoke (requires Xcode)"
@@ -350,6 +350,7 @@ pre-commit: check-env-safety check-backup-artifacts format-check
 ci-docs: check-env-safety check-backup-artifacts
 	@echo "→ Docs-only CI gate (no executable surface changed)..."
 	@bash ./scripts/lib/public_readiness_scan.sh links
+	@bash ./scripts/lib/public_readiness_scan.sh session-paths
 	@echo ""
 	@echo "  ✓ Docs-only CI completed"
 

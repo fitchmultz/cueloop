@@ -483,7 +483,7 @@ Session management is primarily for **Kimi** (which doesn't emit session IDs in 
 
 ### Continue Session State
 
-Session state is persisted to `.ralph/cache/session.json`:
+Session state is persisted to `.ralph/cache/session.jsonc`:
 
 ```json
 {

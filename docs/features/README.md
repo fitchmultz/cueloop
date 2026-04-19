@@ -172,6 +172,6 @@ When adding new features or updating existing ones:
 1. Update the relevant feature document in `docs/features/`
 2. Update this index if adding a new feature category
 3. Update `docs/index.md` with any new top-level references
-4. Run `make agent-ci` to validate docs-only checks, including markdown links
+4. Run `make agent-ci` to validate docs-only checks, including markdown links and documented path guards
 
 See [Contributing Guidelines](../../CONTRIBUTING.md) for more details.

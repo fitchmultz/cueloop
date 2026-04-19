@@ -253,7 +253,7 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
 
     let resolved = resolved_with_repo_root(repo_root.clone());
 
-    // Valid resumable session: Doing task + session.json present.
+    // Valid resumable session: Doing task + session.jsonc present.
     queue::save_queue(
         &resolved.queue_path,
         &QueueFile {
