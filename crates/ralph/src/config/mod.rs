@@ -41,8 +41,7 @@ pub use resolution::{
     resolve_from_cwd_with_profile, resolve_id_prefix, resolve_id_width, resolve_queue_path,
 };
 pub use trust::{
-    RepoTrust, TrustFileInitStatus, initialize_repo_trust_file, load_repo_trust,
-    project_trust_path,
+    RepoTrust, TrustFileInitStatus, initialize_repo_trust_file, load_repo_trust, project_trust_path,
 };
 pub use validation::{
     git_ref_invalid_reason, validate_agent_binary_paths, validate_agent_patch, validate_config,

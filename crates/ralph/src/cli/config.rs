@@ -249,9 +249,7 @@ pub enum ConfigCommand {
     )]
     Profiles(ConfigProfilesArgs),
     /// Manage repo-local execution trust (`.ralph/trust.jsonc`).
-    #[command(
-        after_long_help = "Examples:\n  ralph config trust init"
-    )]
+    #[command(after_long_help = "Examples:\n  ralph config trust init")]
     Trust(ConfigTrustArgs),
 }
 

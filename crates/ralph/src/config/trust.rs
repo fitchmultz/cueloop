@@ -67,8 +67,8 @@ pub enum TrustFileInitStatus {
 }
 
 fn write_trust_file(path: &Path, trust: &RepoTrust) -> Result<()> {
-    let rendered =
-        crate::jsonc::to_string_pretty(trust).with_context(|| format!("serialize {}", path.display()))?;
+    let rendered = crate::jsonc::to_string_pretty(trust)
+        .with_context(|| format!("serialize {}", path.display()))?;
     fsutil::write_atomic(path, rendered.as_bytes())
         .with_context(|| format!("write {}", path.display()))
 }
