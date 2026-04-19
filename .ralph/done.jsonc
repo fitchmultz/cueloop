@@ -113,10 +113,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "1",
-        "model_used": "composer-2",
         "runner_used": "cursor",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "roadmap_item": "1",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "composer-2"
       }
     },
     {
@@ -157,10 +157,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "composer-2",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "executive_finding": "10",
-        "runner_used": "cursor",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "model_used": "composer-2",
+        "runner_used": "cursor"
       }
     },
     {
@@ -206,10 +206,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "model_used": "composer-2",
         "roadmap_item": "2",
-        "runner_used": "cursor",
-        "model_used": "composer-2"
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "runner_used": "cursor"
       }
     },
     {
@@ -252,10 +252,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "runner_used": "codex",
+        "roadmap_item": "4",
         "model_used": "gpt-5.4",
-        "roadmap_item": "4"
+        "runner_used": "codex",
+        "audit_reference": "/tmp/ralph-codebase-audit.md"
       }
     },
     {
@@ -300,10 +300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "3",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "roadmap_item": "3"
       }
     },
     {
@@ -345,9 +345,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "roadmap_item": "6"
       }
     },
@@ -394,9 +394,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "roadmap_item": "7",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "model_used": "gpt-5.4",
-        "roadmap_item": "7",
         "runner_used": "codex"
       }
     },
@@ -441,8 +441,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "roadmap_item": "9",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "model_used": "gpt-5.4",
         "runner_used": "codex"
       }
@@ -486,10 +486,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "5",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "roadmap_item": "5",
+        "audit_reference": "/tmp/ralph-codebase-audit.md"
       }
     },
     {
@@ -579,10 +579,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "roadmap_item": "8",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "roadmap_item": "8",
+        "runner_used": "codex"
       }
     },
     {
@@ -631,9 +631,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "codex"
       }
     },
     {
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -737,9 +737,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -853,9 +853,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "scan_agent": "scan-maintenance"
+        "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -901,9 +901,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "scan_agent": "scan-maintenance",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -1009,8 +1009,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4",
         "runner_used": "codex"
       }
     },
@@ -1065,8 +1065,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4",
         "runner_used": "codex"
       }
     },
@@ -1115,6 +1115,55 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0023",
+      "status": "done",
+      "title": "Capture multi-word runner subcommand help",
+      "description": "Principles violated: C) DRY knowledge, H) Operational hygiene, J) Consistency/Integrity. runner_cli_inventory.sh is intended to preserve nuanced runner CLI behavior, but it parses and invokes only single-token subcommands. Multi-word surfaces such as exec resume are dropped, which weakens the inventory exactly where session-resume behavior is runner-specific. Minimal fix: represent discovered commands as argv arrays plus filesystem-safe labels and capture help for multi-word commands.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "runner",
+        "tooling"
+      ],
+      "scope": [
+        "scripts/runner_cli_inventory.sh",
+        "crates/ralph/tests/runner_cli_inventory_script_test.rs"
+      ],
+      "evidence": [
+        "path: scripts/runner_cli_inventory.sh:319 :: parser captures only one command token from tool command style help lines.",
+        "path: scripts/runner_cli_inventory.sh:324 :: standard-format parser also captures only a single command token.",
+        "path: scripts/runner_cli_inventory.sh:377 :: help capture invokes only \"$bin\" \"$subcmd\" \"--help\".",
+        "path: crates/ralph/tests/runner_cli_inventory_script_test.rs:37 :: test fixture includes exec resume Resume a previous session.",
+        "path: crates/ralph/tests/runner_cli_inventory_script_test.rs:137 :: test asserts help.exec.txt only, not help.exec.resume.txt.",
+        "workflow: disposable fake runner with exec and exec resume help; run scripts/runner_cli_inventory.sh --out <tmp> :: captured help.exec.txt only and logged captured 1 subcommand(s)."
+      ],
+      "plan": [
+        "Change runner inventory discovery to store subcommands as argv arrays and generate safe file labels such as help.exec.resume.txt.",
+        "Invoke multi-word help as \"$bin\" exec resume --help while preserving single-token behavior.",
+        "Update consolidated markdown output to include multi-word subcommands.",
+        "Add a regression test using the existing exec resume fixture and assert help.exec.resume.txt is created.",
+        "Verify by running cargo test -p ralph-agent-loop --test runner_cli_inventory_script_test."
+      ],
+      "notes": [
+        "Captured multi-word runner subcommand help as argv paths with safe dot labels.",
+        "Added regression coverage for codex exec resume help file, argv invocation, and markdown heading.",
+        "Verified with bash -n, cargo fmt, targeted runner CLI inventory test, make agent-ci, and queue validation."
+      ],
+      "request": "scan: Simplify code while preserving nuanced runner behavior",
+      "created_at": "2026-04-17T23:11:06Z",
+      "updated_at": "2026-04-19T18:37:07.960295000Z",
+      "completed_at": "2026-04-19T18:37:07.960295000Z",
+      "started_at": "2026-04-19T18:28:18.827698000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "scan_agent": "scan-maintenance"
       }
     }

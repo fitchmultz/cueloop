@@ -138,6 +138,17 @@ fn inventory_succeeds_with_fake_runners() -> Result<()> {
         out_dir.join("codex/help.exec.txt").exists(),
         "missing codex exec help capture"
     );
+    let codex_exec_resume_help = out_dir.join("codex/help.exec.resume.txt");
+    anyhow::ensure!(
+        codex_exec_resume_help.exists(),
+        "missing codex exec resume help capture"
+    );
+    let codex_exec_resume_contents =
+        std::fs::read_to_string(&codex_exec_resume_help).context("read codex exec resume help")?;
+    anyhow::ensure!(
+        codex_exec_resume_contents.contains("codex help: exec resume --help"),
+        "codex exec resume help should be invoked as a multi-word argv command"
+    );
     anyhow::ensure!(
         out_dir.join("opencode/help.run.txt").exists(),
         "missing opencode run help capture"
@@ -146,6 +157,12 @@ fn inventory_succeeds_with_fake_runners() -> Result<()> {
     anyhow::ensure!(
         out_dir.join("codex/codex.md").exists(),
         "missing codex consolidated markdown file"
+    );
+    let codex_markdown =
+        std::fs::read_to_string(out_dir.join("codex/codex.md")).context("read codex markdown")?;
+    anyhow::ensure!(
+        codex_markdown.contains("### exec resume"),
+        "codex markdown should include multi-word subcommand heading"
     );
     anyhow::ensure!(
         out_dir.join("opencode/opencode.md").exists(),

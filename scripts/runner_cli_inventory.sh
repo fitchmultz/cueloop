@@ -8,13 +8,13 @@
 #
 # Subcommand discovery:
 # - After capturing base `--help`, the script attempts to parse subcommands from the output
-# - It then runs `<runner> <subcommand> --help` for each discovered subcommand
+# - It then runs `<runner> <subcommand...> --help` for each discovered command path
 # - This process is generic and works for all runners without hardcoded lists
 #
 # Does NOT:
 # - Validate that a runner is correctly configured/authenticated
 # - Execute any runner workloads beyond help/version commands
-# - Parse or interpret help text beyond extracting subcommand names
+# - Parse or interpret help text beyond extracting subcommand command paths
 #
 # Assumptions / invariants:
 # - Runner binaries are either on PATH or provided via `--bin NAME=PATH`
@@ -56,7 +56,7 @@ OUTPUT:
     resolved_path.txt
     version.txt (best effort)
     help.base.txt (main --help output)
-    help.<subcommand>.txt (one per discovered subcommand)
+    help.<subcommand.path>.txt (one per discovered subcommand path)
     <runner>.md (consolidated file with all of the above)
 
 EXAMPLES:
@@ -254,8 +254,49 @@ write_resolved_path() {
 }
 
 # Extract subcommands from help output.
-# Reads from stdin (help text) and outputs one subcommand per line.
+# Reads from stdin (help text) and outputs one subcommand argv path per line.
 # Handles multiple common CLI help formats.
+extract_command_path_from_text() {
+  local text="$1"
+  local command_field="$text"
+
+  # Trim outer whitespace and keep only the command column when descriptions are
+  # separated with the common two-or-more-space help-table delimiter.
+  command_field="${command_field#"${command_field%%[![:space:]]*}"}"
+  command_field="${command_field%"${command_field##*[![:space:]]}"}"
+  if [[ "$command_field" =~ ^(.*[^[:space:]])[[:space:]]{2,}.+$ ]]; then
+    command_field="${BASH_REMATCH[1]}"
+  fi
+
+  local tokens=()
+  read -r -a tokens <<< "$command_field"
+
+  local cmd=""
+  local token
+  for token in "${tokens[@]}"; do
+    if [[ -z "$cmd" ]]; then
+      case "$token" in
+        opencode|gemini|codex|claude|kimi|pi|agent)
+          continue
+          ;;
+      esac
+    fi
+
+    # Stop when the help line starts listing args or shifts into description text.
+    if [[ ! "$token" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+      break
+    fi
+
+    if [[ -z "$cmd" ]]; then
+      cmd="$token"
+    else
+      cmd="$cmd $token"
+    fi
+  done
+
+  printf '%s\n' "$cmd"
+}
+
 extract_subcommands() {
   local in_commands_section=0
   local line
@@ -306,23 +347,15 @@ extract_subcommands() {
         # Extract content between vertical bars
         local content
         content=$(echo "$line" | sed -E 's/^[[:space:]]*[│┃][[:space:]]*//; s/[[:space:]]*[│┃][[:space:]]*$//')
-        # First word is the command
-        cmd=$(echo "$content" | awk '{print $1}')
+        cmd=$(extract_command_path_from_text "$content")
       fi
 
       # Pattern 2: Standard format like "  command    description"
       # or "  opencode command    description" (where command is the actual subcommand)
-      # Only match lines starting with exactly 2 spaces (not more, which indicates wrapped text)
+      # Only match table rows with a two-space command-column indent.
       if [[ -z "$cmd" ]]; then
-        # First, try to match "  toolname command  description" format
-        # The command is followed by either: space(s) then description, bracket/angle bracket (for args), or end of line
-        if [[ "$line" =~ ^[[:space:]]{2}(opencode|gemini|codex|claude|kimi|pi|agent)[[:space:]]+([a-z][a-z0-9_-]*)[[:space:]]+ ]]; then
-          # Second word is the actual command (extract before any brackets)
-          local second_word="${BASH_REMATCH[2]}"
-          cmd="${second_word%%[\[\<\|]*}"
-        # Then try "  command    description" format (at least 2 spaces before description)
-        elif [[ "$line" =~ ^[[:space:]]{2}([a-z][a-z0-9_-]*)[[:space:]]{2,} ]]; then
-          cmd="${BASH_REMATCH[1]}"
+        if [[ "$line" =~ ^[[:space:]]{2}([a-z][a-z0-9_-]*)([[:space:]][a-z][a-z0-9_-]*)*([[:space:]]{2,}|[[:space:]][^a-z]|$) ]]; then
+          cmd=$(extract_command_path_from_text "$line")
         fi
       fi
 
@@ -334,17 +367,23 @@ extract_subcommands() {
             continue
             ;;
         esac
-        # Skip lines that look like timestamps or metadata
-        if [[ "$cmd" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]]; then
-          continue
-        fi
-        # Only output valid-looking commands (lowercase, hyphens, numbers)
-        if [[ "$cmd" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+        # Only output valid-looking command paths (lowercase words, hyphens, numbers)
+        if [[ "$cmd" =~ ^[a-z][a-z0-9_-]*([[:space:]][a-z][a-z0-9_-]*)*$ ]]; then
           echo "$cmd"
         fi
       fi
     fi
   done | sort -u
+}
+
+subcommand_label() {
+  local subcmd="$1"
+  local label
+  label=$(printf '%s' "$subcmd" | tr -s '[:space:]' '.' | tr -c 'A-Za-z0-9._-' '_' | sed -E 's/^[._-]+//; s/[._-]+$//')
+  if [[ -z "$label" ]]; then
+    label="subcommand"
+  fi
+  printf '%s\n' "$label"
 }
 
 # Capture help for all discovered subcommands
@@ -373,8 +412,13 @@ capture_subcommand_helps() {
     # Skip empty lines
     [[ -z "$subcmd" ]] && continue
 
+    local label
+    local subcmd_argv=()
+    label=$(subcommand_label "$subcmd")
+    read -r -a subcmd_argv <<< "$subcmd"
+
     echo "    capturing: $subcmd --help"
-    run_and_capture "$runner" "$subcmd" "$bin" "$subcmd" "--help" || true
+    run_and_capture "$runner" "$label" "$bin" "${subcmd_argv[@]}" "--help" || true
     count=$((count + 1))
   done < <(echo "$subcommands")
 
@@ -435,7 +479,7 @@ create_consolidated_file() {
       echo ""
       while IFS= read -r subcmd_file; do
         local subcmd_name
-        subcmd_name=$(basename "$subcmd_file" .txt | sed 's/help\.//')
+        subcmd_name=$(basename "$subcmd_file" .txt | sed 's/help\.//; s/\./ /g')
         echo "### ${subcmd_name}"
         echo ""
         echo "\`\`\`"
