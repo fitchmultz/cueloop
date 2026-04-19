@@ -30,7 +30,8 @@ fn config_trust_init_unlocks_sensitive_project_config() -> Result<()> {
         "expected trust error in stderr, got:\n{stderr}"
     );
 
-    let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "trust", "init"]);
+    let (status, _stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["config", "trust", "init"]);
     assert!(
         status.success(),
         "ralph config trust init failed\nstderr:\n{stderr}"
@@ -44,8 +45,12 @@ fn config_trust_init_unlocks_sensitive_project_config() -> Result<()> {
 
     let trust_path = dir.path().join(".ralph/trust.jsonc");
     let first = std::fs::read_to_string(&trust_path)?;
-    let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "trust", "init"]);
-    assert!(status.success(), "second trust init failed\nstderr:\n{stderr}");
+    let (status, _stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["config", "trust", "init"]);
+    assert!(
+        status.success(),
+        "second trust init failed\nstderr:\n{stderr}"
+    );
     let second = std::fs::read_to_string(&trust_path)?;
     assert_eq!(
         first, second,
@@ -61,7 +66,12 @@ fn init_trust_project_commands_allows_later_sensitive_config() -> Result<()> {
     test_support::git_init(dir.path())?;
     let (status, _stdout, stderr) = test_support::run_in_dir(
         dir.path(),
-        &["init", "--force", "--non-interactive", "--trust-project-commands"],
+        &[
+            "init",
+            "--force",
+            "--non-interactive",
+            "--trust-project-commands",
+        ],
     );
     assert!(
         status.success(),
