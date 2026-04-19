@@ -706,7 +706,7 @@ Plugins are discovered from:
 - Project: `.ralph/plugins/<plugin_id>/plugin.json`
 - Global: `~/.config/ralph/plugins/<plugin_id>/plugin.json`
 
-Project-local plugin settings and project-scope plugin directories require repo trust via `.ralph/trust.jsonc`.
+Project-local plugin settings and project-scope plugin directories require repo trust (see [Repo execution trust](../configuration.md#repo-execution-trust)).
 
 ### Example
 
