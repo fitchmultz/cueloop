@@ -11,6 +11,26 @@ Ralph reads JSON configuration from two locations, with project config taking pr
 
 CLI flags override both for a single run. Defaults are defined by `schemas/config.schema.json`.
 
+## Repo execution trust
+
+Project `.ralph/config.jsonc` may define execution-sensitive settings (for example `agent.*_bin`, plugin runner IDs, `agent.ci_gate`, and `plugins.*`). Ralph applies those project-layer values only when the repository is explicitly marked trusted via a **local-only** `.ralph/trust.jsonc` file. Legacy `.ralph/trust.json` is ignored. `trusted_at` is optional in the file; `allow_project_commands: true` is what marks the repo trusted.
+
+**Supported ways to create the trust file (explicit opt-in):**
+
+- **`ralph config trust init`** — Preferred for existing repos. Creates `.ralph/` if needed, then creates or merges `.ralph/trust.jsonc` with `allow_project_commands: true` and a `trusted_at` RFC3339 UTC timestamp when the file is missing. If the file already marks the repo trusted (both flags set), the command leaves the file byte-for-byte unchanged. If `allow_project_commands` is true but `trusted_at` is absent, the file is updated to add a timestamp.
+- **`ralph init --trust-project-commands`** (alias **`--trust`**) — Runs the normal init scaffold, resolves configuration without enforcing trust until files exist, then writes the same trust file. Use when bootstrapping a new Ralph layout and you want trust created in the same step.
+
+Ralph prints a short warning before writing or changing the trust file. **Do not commit** `.ralph/trust.jsonc`; keep it untracked (see repository `AGENTS.md`).
+
+Manual example:
+
+```jsonc
+{
+  "allow_project_commands": true,
+  "trusted_at": "2026-04-19T00:00:00Z"
+}
+```
+
 ## JSONC Support (JSON with Comments)
 
 Ralph supports JSONC (JSON with Comments) for configuration and queue files. This allows you to add comments to your config and task files for better documentation.
@@ -676,7 +696,7 @@ CLI overrides:
 
 **Security warning:** Plugins are NOT sandboxed. Enabling a plugin is equivalent to trusting it with full system access. Only enable plugins from trusted sources.
 
-Project-local plugin settings and project-scope plugin directories require repo trust via `.ralph/trust.jsonc`. In untrusted repos, Ralph ignores `.ralph/plugins/*` during runtime discovery.
+Project-local plugin settings and project-scope plugin directories require repo trust (see [Repo execution trust](#repo-execution-trust)). In untrusted repos, Ralph ignores `.ralph/plugins/*` during runtime discovery.
 
 Supported fields:
 - `plugins.plugins.<id>.enabled`: enable/disable the plugin (default: `false`).

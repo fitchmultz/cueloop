@@ -37,10 +37,13 @@ mod tests;
 pub use layer::{ConfigLayer, apply_layer, load_layer, save_layer};
 pub use resolution::{
     find_repo_root, global_config_path, project_config_path, resolve_done_path, resolve_from_cwd,
-    resolve_from_cwd_for_doctor, resolve_from_cwd_with_profile, resolve_id_prefix,
-    resolve_id_width, resolve_queue_path,
+    resolve_from_cwd_for_doctor, resolve_from_cwd_skipping_project_execution_trust,
+    resolve_from_cwd_with_profile, resolve_id_prefix, resolve_id_width, resolve_queue_path,
 };
-pub use trust::{RepoTrust, load_repo_trust, project_trust_path};
+pub use trust::{
+    RepoTrust, TrustFileInitStatus, initialize_repo_trust_file, load_repo_trust,
+    project_trust_path,
+};
 pub use validation::{
     git_ref_invalid_reason, validate_agent_binary_paths, validate_agent_patch, validate_config,
     validate_project_execution_trust, validate_queue_done_file_override,

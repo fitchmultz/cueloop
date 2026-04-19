@@ -12,12 +12,15 @@
 //! Invariants/assumptions:
 //! - Trust is local-only and must not be committed to version control.
 //! - Missing trust files mean the repo is untrusted.
+//! - Trust file writes use the same JSONC parse path on read and standard JSON on write.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use crate::fsutil;
 
 /// Local trust file for execution-sensitive project configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
@@ -52,6 +55,80 @@ pub fn load_repo_trust(repo_root: &Path) -> Result<RepoTrust> {
     crate::jsonc::parse_jsonc::<RepoTrust>(&raw, &format!("trust {}", path.display()))
 }
 
+/// Outcome of [`initialize_repo_trust_file`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrustFileInitStatus {
+    /// Wrote a new `.ralph/trust.jsonc`.
+    Created,
+    /// Updated an existing file (enabled trust or backfilled `trusted_at`).
+    Updated,
+    /// File already marked the repo trusted; left unchanged on disk.
+    Unchanged,
+}
+
+fn write_trust_file(path: &Path, trust: &RepoTrust) -> Result<()> {
+    let rendered =
+        crate::jsonc::to_string_pretty(trust).with_context(|| format!("serialize {}", path.display()))?;
+    fsutil::write_atomic(path, rendered.as_bytes())
+        .with_context(|| format!("write {}", path.display()))
+}
+
+fn print_trust_warning() {
+    eprintln!(
+        "Warning: Trusting this repo allows project-local execution settings under .ralph/config.jsonc\n\
+         (runner binary overrides, plugin runners, agent.ci_gate, plugins.*) to take effect. Review that file first.\n\
+         Keep .ralph/trust.jsonc untracked; do not commit it."
+    );
+}
+
+/// Create or update `.ralph/trust.jsonc` so [`RepoTrust::is_trusted`] becomes true.
+///
+/// - Creates `.ralph/` when missing.
+/// - If the file is absent, writes `allow_project_commands: true` and `trusted_at` set to the
+///   current UTC instant.
+/// - If the file exists: when already trusted with a `trusted_at` timestamp, leaves the file
+///   unchanged; otherwise merges in trust (backfills `trusted_at` or enables `allow_project_commands`).
+pub fn initialize_repo_trust_file(repo_root: &Path) -> Result<TrustFileInitStatus> {
+    let ralph_dir = repo_root.join(".ralph");
+    fs::create_dir_all(&ralph_dir).with_context(|| format!("create {}", ralph_dir.display()))?;
+
+    let path = project_trust_path(repo_root);
+    if !path.exists() {
+        print_trust_warning();
+        let trust = RepoTrust {
+            allow_project_commands: true,
+            trusted_at: Some(Utc::now()),
+        };
+        write_trust_file(&path, &trust)?;
+        eprintln!(
+            "trust: created {} (do not commit this file)",
+            path.display()
+        );
+        return Ok(TrustFileInitStatus::Created);
+    }
+
+    let existing = load_repo_trust(repo_root)?;
+    if existing.allow_project_commands && existing.trusted_at.is_some() {
+        eprintln!(
+            "trust: unchanged ({} already allows project commands)",
+            path.display()
+        );
+        return Ok(TrustFileInitStatus::Unchanged);
+    }
+
+    print_trust_warning();
+    let trust = RepoTrust {
+        allow_project_commands: true,
+        trusted_at: Some(Utc::now()),
+    };
+    write_trust_file(&path, &trust)?;
+    eprintln!(
+        "trust: updated {} (do not commit this file)",
+        path.display()
+    );
+    Ok(TrustFileInitStatus::Updated)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -81,5 +158,50 @@ mod tests {
             load_repo_trust(repo_root.path()).expect("load trust"),
             RepoTrust::default()
         );
+    }
+
+    #[test]
+    fn initialize_repo_trust_file_creates_valid_trust_roundtrip() {
+        let repo_root = TempDir::new().expect("temp dir");
+        let status = initialize_repo_trust_file(repo_root.path()).expect("init trust");
+        assert_eq!(status, TrustFileInitStatus::Created);
+        let loaded = load_repo_trust(repo_root.path()).expect("reload");
+        assert!(loaded.is_trusted());
+        assert!(loaded.trusted_at.is_some());
+    }
+
+    #[test]
+    fn initialize_repo_trust_file_idempotent_when_fully_trusted() {
+        let repo_root = TempDir::new().expect("temp dir");
+        assert_eq!(
+            initialize_repo_trust_file(repo_root.path()).expect("first"),
+            TrustFileInitStatus::Created
+        );
+        let first = fs::read_to_string(project_trust_path(repo_root.path())).expect("read");
+        assert_eq!(
+            initialize_repo_trust_file(repo_root.path()).expect("second"),
+            TrustFileInitStatus::Unchanged
+        );
+        let second = fs::read_to_string(project_trust_path(repo_root.path())).expect("read");
+        assert_eq!(first, second, "second run must not rewrite bytes");
+    }
+
+    #[test]
+    fn initialize_repo_trust_file_backfills_trusted_at() {
+        let repo_root = TempDir::new().expect("temp dir");
+        let ralph_dir = repo_root.path().join(".ralph");
+        fs::create_dir_all(&ralph_dir).expect("create .ralph");
+        fs::write(
+            project_trust_path(repo_root.path()),
+            r#"{"allow_project_commands":true}"#,
+        )
+        .expect("write trust");
+
+        assert_eq!(
+            initialize_repo_trust_file(repo_root.path()).expect("merge"),
+            TrustFileInitStatus::Updated
+        );
+        let loaded = load_repo_trust(repo_root.path()).expect("reload");
+        assert!(loaded.trusted_at.is_some());
     }
 }

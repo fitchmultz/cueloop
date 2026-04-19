@@ -1,7 +1,8 @@
 //! `ralph config ...` command group: Clap types and handler.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Args, Subcommand, ValueEnum};
+use std::env;
 
 use crate::{agent, config, contracts};
 
@@ -62,6 +63,15 @@ pub fn handle_config(cmd: ConfigCommand) -> Result<()> {
         }
         ConfigCommand::Profiles(profiles_args) => {
             handle_profiles(profiles_args)?;
+        }
+        ConfigCommand::Trust(trust_args) => {
+            let cwd = env::current_dir().context("resolve current working directory")?;
+            let repo_root = config::find_repo_root(&cwd);
+            match trust_args.command {
+                ConfigTrustCommand::Init => {
+                    config::initialize_repo_trust_file(&repo_root)?;
+                }
+            }
         }
     }
     Ok(())
@@ -197,10 +207,23 @@ fn format_reasoning_effort(effort: contracts::ReasoningEffort) -> &'static str {
     }
 }
 
+/// Arguments for `ralph config trust ...`.
+#[derive(Args, Debug)]
+pub struct ConfigTrustArgs {
+    #[command(subcommand)]
+    pub command: ConfigTrustCommand,
+}
+
+#[derive(Subcommand, Debug, Clone, Copy)]
+pub enum ConfigTrustCommand {
+    /// Create or update `.ralph/trust.jsonc` so execution-sensitive project settings are allowed.
+    Init,
+}
+
 #[derive(Args)]
 #[command(
     about = "Inspect and manage Ralph configuration",
-    after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config paths\n  ralph config schema\n  ralph config profiles list\n  ralph config profiles show fast-local"
+    after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config paths\n  ralph config schema\n  ralph config trust init\n  ralph config profiles list\n  ralph config profiles show fast-local"
 )]
 pub struct ConfigArgs {
     #[command(subcommand)]
@@ -225,6 +248,11 @@ pub enum ConfigCommand {
         after_long_help = "Examples:\n  ralph config profiles list\n  ralph config profiles show fast-local\n  ralph config profiles show deep-review"
     )]
     Profiles(ConfigProfilesArgs),
+    /// Manage repo-local execution trust (`.ralph/trust.jsonc`).
+    #[command(
+        after_long_help = "Examples:\n  ralph config trust init"
+    )]
+    Trust(ConfigTrustArgs),
 }
 
 /// Arguments for the `ralph config profiles` command.
