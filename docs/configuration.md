@@ -33,8 +33,9 @@ When writing files, Ralph always outputs standard JSON format (comments are not 
   // Schema version - must be 2
   "version": 2,
   "agent": {
-    /* Runner configuration
-       Choose from: codex, opencode, gemini, claude, cursor */
+    /* Runner configuration.
+       Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi.
+       Plugin runner IDs are also supported as non-empty strings. */
     "runner": "codex",
     "model": "gpt-5.4",
     "phases": 3, // 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review
@@ -59,7 +60,7 @@ When writing files, Ralph always outputs standard JSON format (comments are not 
 `agent` controls default execution settings. Defaults are schema-defined.
 
 Supported fields:
-- `runner`: `codex`, `opencode`, `gemini`, `claude`, or `cursor`.
+- `runner`: Built-in runner ID (`codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, or `pi`) or plugin runner ID.
 - `model`: default model id (string).
 - `phases`: number of phases (1, 2, or 3).
 - `reasoning_effort`: `low`, `medium`, `high`, `xhigh` (Codex only).
@@ -75,7 +76,7 @@ Supported fields:
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
   **Safety warning:** Disabling the CI gate skips validation before commit/push, which may allow broken code to be pushed.
-- `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `cursor_bin`: override runner executable path/name (Cursor uses the `agent` binary).
+- `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `cursor_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name (Cursor uses the `agent` binary).
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.

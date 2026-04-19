@@ -50,7 +50,7 @@ Common optional fields:
     - These fields are observational (what actually ran) and should not be confused with `agent.runner`/`agent.model` which express intent/override.
 
 Per-task agent overrides:
-- `agent.runner`: `codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, or `pi` (plugin runners are also supported).
+- `agent.runner`: Built-in runner ID (`codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, or `pi`) or plugin runner ID.
 - `agent.model`: model id string.
 - `agent.model_effort`: `default`, `low`, `medium`, `high`, `xhigh` (Codex only).
 - `agent.phases`: number of phases for this task (`1`, `2`, or `3`).

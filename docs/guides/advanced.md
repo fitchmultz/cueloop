@@ -535,8 +535,9 @@ Use comments in config for documentation:
   // Schema version - must be 2
   "version": 2,
   "agent": {
-    /* Runner configuration
-       Choose from: codex, opencode, gemini, claude, cursor */
+    /* Runner configuration.
+       Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi.
+       Plugin runner IDs are also supported as non-empty strings. */
     "runner": "claude",
     "phases": 3, // 1 = single-pass, 2 = plan+implement, 3 = full workflow
     

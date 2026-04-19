@@ -2,55 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0024",
-      "status": "todo",
-      "title": "Centralize supported-runner wording in docs and schema",
-      "description": "Principles violated: C) DRY knowledge, G) Least astonishment, J) Consistency/Integrity. The source supports Kimi, Pi, and plugin runner IDs, but multiple config docs and schema descriptions still list only Codex/OpenCode/Gemini/Claude/Cursor. Users relying on editor schema help or config docs can incorrectly conclude newer runners are unsupported. Minimal fix: update the Rust doc comments that generate schema descriptions plus stale docs, and prefer one canonical supported-runner wording.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "docs",
-        "schema",
-        "runner"
-      ],
-      "scope": [
-        "docs/configuration.md",
-        "docs/guides/advanced.md",
-        "schemas/config.schema.json",
-        "crates/ralph/src/contracts/config/mod.rs",
-        "crates/ralph/src/contracts/config/agent.rs",
-        "crates/ralph/src/contracts/runner.rs"
-      ],
-      "evidence": [
-        "path: docs/configuration.md:37 :: config example says choose from codex, opencode, gemini, claude, cursor.",
-        "path: docs/guides/advanced.md:539 :: advanced guide repeats the stale runner list.",
-        "path: schemas/config.schema.json:8 :: schema description says Agent runner defaults are Claude, Codex, OpenCode, Gemini, or Cursor.",
-        "path: schemas/config.schema.json:188 :: nested schema repeats the stale runner description.",
-        "path: crates/ralph/src/contracts/config/mod.rs:74 :: Rust doc comment feeding schema omits Kimi, Pi, and plugin runners.",
-        "path: crates/ralph/src/contracts/config/agent.rs:79 :: AgentConfig doc comment also omits Kimi, Pi, and plugin runners.",
-        "path: crates/ralph/src/contracts/runner.rs:45 :: Runner::Kimi serializes to kimi.",
-        "path: crates/ralph/src/contracts/runner.rs:46 :: Runner::Pi serializes to pi.",
-        "workflow: rg -n \"codex, opencode, gemini, claude, cursor|Agent runner defaults|Runner::Kimi|Runner::Pi\" docs schemas/config.schema.json crates/ralph/src/contracts :: showed stale docs/schema alongside source support for Kimi and Pi."
-      ],
-      "plan": [
-        "Update Rust doc comments on config agent defaults to include codex, opencode, gemini, claude, cursor, kimi, pi, and plugin runner IDs.",
-        "Update docs/configuration.md and docs/guides/advanced.md examples to use the same canonical wording.",
-        "Regenerate schemas/config.schema.json from source rather than hand-editing generated output.",
-        "Add or update a schema/doc alignment test for the supported runner list if practical.",
-        "Verify by running make generate and rg for the stale partial runner list."
-      ],
-      "notes": [],
-      "request": "scan: Simplify code while preserving nuanced runner behavior",
-      "created_at": "2026-04-17T23:11:06Z",
-      "updated_at": "2026-04-17T23:11:06Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0025",
       "status": "todo",
       "title": "Update session cache path references to session.jsonc",

@@ -1,9 +1,21 @@
-//! Validates generated JSON schemas against runtime config constraints.
+//! Purpose: Validate generated JSON schemas against runtime contract constraints.
+//! Responsibilities: Read committed schemas and assert key fields align with
+//! runtime validation and documented wire contracts.
+//! Scope: Schema-alignment regression coverage only; schema generation remains
+//! owned by the CLI and Makefile.
+//! Usage: Run with `cargo test -p ralph-agent-loop --test schema_alignment_test`.
+//! Invariants/assumptions: The committed `schemas/` files are regenerated from
+//! current Rust contracts before assertions are updated.
 
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
+
+const BUILT_IN_RUNNER_IDS: [&str; 7] = [
+    "codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi",
+];
+const PLUGIN_RUNNER_PHRASE: &str = "Plugin runner IDs";
 
 fn load_config_schema() -> Value {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -57,6 +69,43 @@ fn schema_alignment_config_agent_phases_matches_runtime_validation() {
         max, 3.0,
         "schema maximum must align with runtime validation"
     );
+}
+
+#[test]
+fn schema_alignment_config_runner_descriptions_include_all_supported_ids() {
+    let schema = load_config_schema();
+
+    for (description, context) in [
+        (
+            schema["properties"]["agent"]["description"]
+                .as_str()
+                .expect("root agent description missing"),
+            "root agent description",
+        ),
+        (
+            schema["$defs"]["AgentConfig"]["description"]
+                .as_str()
+                .expect("AgentConfig description missing"),
+            "AgentConfig description",
+        ),
+        (
+            schema["$defs"]["Runner"]["description"]
+                .as_str()
+                .expect("Runner description missing"),
+            "Runner description",
+        ),
+    ] {
+        for runner_id in BUILT_IN_RUNNER_IDS {
+            assert!(
+                description.contains(runner_id),
+                "{context} should mention built-in runner id {runner_id}"
+            );
+        }
+        assert!(
+            description.contains(PLUGIN_RUNNER_PHRASE),
+            "{context} should mention plugin runner IDs"
+        );
+    }
 }
 
 #[test]

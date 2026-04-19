@@ -249,7 +249,7 @@ The `agent` field allows per-task runner/model configuration:
 
 | Field | Description |
 |-------|-------------|
-| `runner` | Runner to use (codex, opencode, gemini, claude, cursor, kimi, pi) |
+| `runner` | Built-in runner ID (codex, opencode, gemini, claude, cursor, kimi, pi) or plugin runner ID |
 | `model` | Model identifier string |
 | `model_effort` | Reasoning effort: default, low, medium, high, xhigh |
 | `iterations` | Number of iterations (default: 1) |

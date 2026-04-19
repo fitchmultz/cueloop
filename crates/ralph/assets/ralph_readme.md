@@ -1,4 +1,4 @@
-<!-- RALPH_README_VERSION: 6 -->
+<!-- RALPH_README_VERSION: 7 -->
 # Ralph runtime files
 
 This repo is using Ralph. The `.ralph/` directory holds repo-local state.
@@ -197,9 +197,9 @@ To export and customize prompts:
 - `ralph prompt sync --dry-run` — Preview what would change
 - `ralph prompt sync` — Sync with embedded defaults (preserves your modifications)
 
-## Runners (Codex + OpenCode + Gemini + Claude + Cursor)
+## Runners
 
-Ralph can use Codex, OpenCode, Gemini, Claude, or Cursor CLI as a runner.
+Ralph can use built-in runner IDs (`codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, `pi`) or plugin runner IDs.
 
 One-off usage:
 - `ralph task --runner opencode --model gpt-5.2 "Add tests for X"`
@@ -319,7 +319,7 @@ ralph run one --debug
 - `--include-draft`: Include draft tasks (`status: draft`) when selecting what to run
 
 ### Runner Configuration
-- `--runner <codex|opencode|gemini|claude|cursor>`: Override runner
+- `--runner <codex|opencode|gemini|claude|cursor|kimi|pi>`: Override runner
 - `--model <model-id>`: Override model
 - `--effort <low|medium|high|xhigh>`: Override reasoning effort (Codex only)
 - `--repo-prompt <tools|plan|off>` / `-rp`: RepoPrompt mode control

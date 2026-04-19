@@ -100,7 +100,7 @@ Tasks serve as the fundamental interface between you and AI agents:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `agent.runner` | string \| null | Override runner: `codex`, `claude`, `opencode`, `gemini`, `cursor` |
+| `agent.runner` | string \| null | Override runner with a built-in runner ID (`codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, `pi`) or plugin runner ID |
 | `agent.model` | string \| null | Override model identifier |
 | `agent.model_effort` | enum | Override reasoning effort: `default`, `low`, `medium`, `high`, `xhigh` |
 | `agent.iterations` | integer \| null | Number of iterations for this task (default: 1) |
@@ -403,7 +403,7 @@ The `agent` field allows overriding global configuration for individual tasks.
 
 | Field | Values | Description |
 |-------|--------|-------------|
-| `runner` | `codex`, `claude`, `opencode`, `gemini`, `cursor`, `kimi`, `pi` | Which AI runner to use |
+| `runner` | Built-in runner ID or plugin runner ID | Which AI runner to use |
 | `model` | model identifier string | Specific model version |
 | `model_effort` | `default`, `low`, `medium`, `high`, `xhigh` | Reasoning effort (Codex only) |
 | `iterations` | integer ≥ 1 | Number of execution iterations |

@@ -113,10 +113,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "cursor",
-        "roadmap_item": "1",
         "model_used": "composer-2",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "runner_used": "cursor",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "roadmap_item": "1"
       }
     },
     {
@@ -157,8 +157,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "cursor",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "executive_finding": "10",
         "model_used": "composer-2"
       }
@@ -206,10 +206,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "2",
-        "model_used": "composer-2",
+        "runner_used": "cursor",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "runner_used": "cursor"
+        "model_used": "composer-2",
+        "roadmap_item": "2"
       }
     },
     {
@@ -252,10 +252,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "4",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "roadmap_item": "4",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -300,10 +300,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "3",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "runner_used": "codex",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
+        "roadmap_item": "3"
       }
     },
     {
@@ -345,9 +345,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "roadmap_item": "6",
         "model_used": "gpt-5.4",
+        "roadmap_item": "6",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "runner_used": "codex"
       }
     },
@@ -395,8 +395,8 @@
       "relates_to": [],
       "custom_fields": {
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4",
         "roadmap_item": "7",
+        "model_used": "gpt-5.4",
         "runner_used": "codex"
       }
     },
@@ -441,10 +441,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
         "roadmap_item": "9",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -486,10 +486,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "roadmap_item": "5",
         "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "roadmap_item": "5"
       }
     },
     {
@@ -532,10 +532,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "10",
         "runner_used": "codex",
-        "audit_reference": "/tmp/ralph-codebase-audit.md",
-        "model_used": "gpt-5.4"
+        "roadmap_item": "10",
+        "model_used": "gpt-5.4",
+        "audit_reference": "/tmp/ralph-codebase-audit.md"
       }
     },
     {
@@ -579,10 +579,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "roadmap_item": "8",
-        "runner_used": "codex",
+        "audit_reference": "/tmp/ralph-codebase-audit.md",
         "model_used": "gpt-5.4",
-        "audit_reference": "/tmp/ralph-codebase-audit.md"
+        "roadmap_item": "8",
+        "runner_used": "codex"
       }
     },
     {
@@ -631,9 +631,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
+        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4",
-        "scan_agent": "scan-maintenance"
+        "runner_used": "codex"
       }
     },
     {
@@ -686,8 +686,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "scan_agent": "scan-maintenance"
       }
     },
@@ -737,9 +737,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -800,8 +800,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-maintenance",
-        "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -853,8 +853,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
         "runner_used": "codex",
+        "scan_agent": "scan-maintenance",
         "model_used": "gpt-5.4"
       }
     },
@@ -901,9 +901,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "scan_agent": "scan-maintenance"
       }
     },
     {
@@ -954,6 +954,64 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0024",
+      "status": "done",
+      "title": "Centralize supported-runner wording in docs and schema",
+      "description": "Principles violated: C) DRY knowledge, G) Least astonishment, J) Consistency/Integrity. The source supports Kimi, Pi, and plugin runner IDs, but multiple config docs and schema descriptions still list only Codex/OpenCode/Gemini/Claude/Cursor. Users relying on editor schema help or config docs can incorrectly conclude newer runners are unsupported. Minimal fix: update the Rust doc comments that generate schema descriptions plus stale docs, and prefer one canonical supported-runner wording.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "schema",
+        "runner"
+      ],
+      "scope": [
+        "docs/configuration.md",
+        "docs/guides/advanced.md",
+        "schemas/config.schema.json",
+        "crates/ralph/src/contracts/config/mod.rs",
+        "crates/ralph/src/contracts/config/agent.rs",
+        "crates/ralph/src/contracts/runner.rs"
+      ],
+      "evidence": [
+        "path: docs/configuration.md:37 :: config example says choose from codex, opencode, gemini, claude, cursor.",
+        "path: docs/guides/advanced.md:539 :: advanced guide repeats the stale runner list.",
+        "path: schemas/config.schema.json:8 :: schema description says Agent runner defaults are Claude, Codex, OpenCode, Gemini, or Cursor.",
+        "path: schemas/config.schema.json:188 :: nested schema repeats the stale runner description.",
+        "path: crates/ralph/src/contracts/config/mod.rs:74 :: Rust doc comment feeding schema omits Kimi, Pi, and plugin runners.",
+        "path: crates/ralph/src/contracts/config/agent.rs:79 :: AgentConfig doc comment also omits Kimi, Pi, and plugin runners.",
+        "path: crates/ralph/src/contracts/runner.rs:45 :: Runner::Kimi serializes to kimi.",
+        "path: crates/ralph/src/contracts/runner.rs:46 :: Runner::Pi serializes to pi.",
+        "workflow: rg -n \"codex, opencode, gemini, claude, cursor|Agent runner defaults|Runner::Kimi|Runner::Pi\" docs schemas/config.schema.json crates/ralph/src/contracts :: showed stale docs/schema alongside source support for Kimi and Pi."
+      ],
+      "plan": [
+        "Update Rust doc comments on config agent defaults to include codex, opencode, gemini, claude, cursor, kimi, pi, and plugin runner IDs.",
+        "Update docs/configuration.md and docs/guides/advanced.md examples to use the same canonical wording.",
+        "Regenerate schemas/config.schema.json from source rather than hand-editing generated output.",
+        "Add or update a schema/doc alignment test for the supported runner list if practical.",
+        "Verify by running make generate and rg for the stale partial runner list."
+      ],
+      "notes": [
+        "Centralized config/schema runner wording across Rust doc comments, docs, generated schemas, and README template.",
+        "Regenerated schemas from source with make generate.",
+        "Added schema alignment coverage for built-in runner IDs plus plugin runner IDs.",
+        "Verified with targeted tests and make agent-ci."
+      ],
+      "request": "scan: Simplify code while preserving nuanced runner behavior",
+      "created_at": "2026-04-17T23:11:06Z",
+      "updated_at": "2026-04-19T03:08:58.329124000Z",
+      "completed_at": "2026-04-19T03:08:58.329124000Z",
+      "started_at": "2026-04-19T02:48:19.528766000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     }
   ]

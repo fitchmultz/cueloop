@@ -71,7 +71,7 @@ pub struct Config {
     /// Queue-related configuration.
     pub queue: QueueConfig,
 
-    /// Agent runner defaults (Claude, Codex, OpenCode, Gemini, or Cursor).
+    /// Agent runner defaults. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.
     pub agent: AgentConfig,
 
     /// Parallel run-loop configuration.
