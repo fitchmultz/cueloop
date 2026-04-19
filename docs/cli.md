@@ -17,7 +17,7 @@ These are available on most commands:
 ## Core Commands
 
 - `ralph queue` - Inspect and manage queue/done files
-- `ralph config` - Show resolved config, schema, paths, profiles
+- `ralph config` - Show resolved config, schema, paths, profiles, repo trust (`config trust init`)
 - `ralph run` - Execute tasks (`one`, `loop`, `resume`, `parallel`)
 - `ralph task` - Build/create and manage task lifecycle
 - `ralph scan` - Create tasks by scanning repository state
@@ -56,6 +56,13 @@ These are available on most commands:
 ```bash
 ralph init
 ralph init --non-interactive
+ralph init --trust-project-commands
+```
+
+When project config includes execution-sensitive settings (`agent.*_bin`, plugin runners, `agent.ci_gate`, `plugins.*`), create `.ralph/trust.jsonc` explicitly:
+
+```bash
+ralph config trust init
 ```
 
 ### Create and Run

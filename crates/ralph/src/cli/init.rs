@@ -63,7 +63,13 @@ fn resolve_interactive_mode(
 }
 
 pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
-    let resolved = config::resolve_from_cwd()?;
+    let resolved = if args.check {
+        config::resolve_from_cwd()?
+    } else if args.trust_project_commands {
+        config::resolve_from_cwd_skipping_project_execution_trust()?
+    } else {
+        config::resolve_from_cwd()?
+    };
 
     // Handle --check mode: verify README is current and exit
     // This runs before interactive resolution so it works in non-TTY environments
@@ -113,6 +119,10 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
             update_readme: args.update_readme,
         },
     )?;
+
+    if args.trust_project_commands {
+        config::initialize_repo_trust_file(&resolved.repo_root)?;
+    }
 
     fn report_status(label: &str, status: init_cmd::FileInitStatus, path: &std::path::Path) {
         match status {
@@ -175,7 +185,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Bootstrap Ralph files in the current repository",
-    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --update-readme\n  ralph init --check"
+    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --trust-project-commands\n  ralph init --update-readme\n  ralph init --check"
 )]
 pub struct InitArgs {
     /// Overwrite existing files if they already exist.
@@ -197,6 +207,10 @@ pub struct InitArgs {
     /// Check if README is current and exit (exit 0 if current, 1 if outdated/missing).
     #[arg(long)]
     pub check: bool,
+
+    /// After initializing Ralph, create `.ralph/trust.jsonc` so execution-sensitive project settings apply.
+    #[arg(long = "trust-project-commands", visible_alias = "trust")]
+    pub trust_project_commands: bool,
 }
 
 #[cfg(test)]
