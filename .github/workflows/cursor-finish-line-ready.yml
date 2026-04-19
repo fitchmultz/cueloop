@@ -1,9 +1,10 @@
 # Purpose: Publish a PR-head GitHub check that turns green only after the demo Cursor
 #   propagation automations have all completed successfully for the current PR head SHA.
 # Responsibilities: Watch target Cursor Automation check completions, wait for the
-#   full set to settle on the same head SHA, mirror readiness onto a dedicated
+#   full set to settle on the current PR head SHA, mirror readiness onto a dedicated
 #   `Cursor Finish Line Ready` check run attached to that PR head SHA, and add/remove
-#   a deterministic PR label that downstream Cursor automations can target.
+#   a deterministic PR label that downstream Cursor automations can target while
+#   suppressing stale superseded SHA results.
 # Scope: Demo automation sequencing only; this is not canonical repository CI.
 # Usage: Runs on check_run.completed for the three prerequisite check names only; resolves
 #   the PR via REST when the webhook payload omits pull_requests (common for GitHub App
@@ -28,8 +29,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: cursor-finish-line-ready-${{ github.event.check_run.check_suite.head_sha
-    || github.sha }}
+  group: cursor-finish-line-ready-${{ github.event.check_run.check_suite.head_branch
+    || github.event.check_run.check_suite.head_sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -62,7 +63,7 @@ jobs:
             const deadlineMs = Date.now() + 35 * 60 * 1000;
             const detailsUrl = `${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             let finishLineCheckRunId = null;
-            let finishLineLabelState = null;
+            let finishLineLabelStateKey = null;
 
             if (!headSha) {
               core.setFailed('Missing check_suite.head_sha on check_run payload.');
@@ -98,7 +99,10 @@ jobs:
 
             prs = Array.from(new Map(prs.map((pr) => [pr.number, pr])).values());
 
-            const prLabel = prs.map((pr) => `#${pr.number}`).join(', ');
+            const trackedPrNumbers = prs.map((pr) => pr.number);
+
+            const formatPrLabel = (items) =>
+              items.length > 0 ? items.map((pr) => `#${pr.number}`).join(', ') : 'none';
 
             const compareCheckRuns = (left, right) => {
               const leftKey = `${left.started_at || ''}|${left.completed_at || ''}|${left.id}`;
@@ -224,14 +228,64 @@ jobs:
               }
             };
 
-            const syncFinishLineLabels = async ({ ready, reason }) => {
-              if (finishLineLabelState === ready) {
+            const loadTrackedPrs = async () => {
+              const current = await Promise.all(
+                trackedPrNumbers.map(async (pull_number) => {
+                  try {
+                    const { data } = await github.rest.pulls.get({
+                      owner,
+                      repo,
+                      pull_number,
+                    });
+                    return data;
+                  } catch (error) {
+                    if (error.status === 404) {
+                      return null;
+                    }
+                    throw error;
+                  }
+                })
+              );
+
+              return current.filter(
+                (pr) =>
+                  pr && pr.base?.repo?.full_name === `${owner}/${repo}` && pr.state === 'open'
+              );
+            };
+
+            const partitionTrackedPrs = (currentPrs) => {
+              const currentHeadPrs = [];
+              const supersededPrs = [];
+
+              for (const pr of currentPrs) {
+                if (pr.head?.sha === headSha) {
+                  currentHeadPrs.push(pr);
+                } else {
+                  supersededPrs.push(pr);
+                }
+              }
+
+              return { currentHeadPrs, supersededPrs };
+            };
+
+            const formatSupersededPrSummary = (items) =>
+              items.map((pr) => `- #${pr.number}: current head is ${pr.head?.sha || 'unknown'}`).join('\n');
+
+            const syncFinishLineLabels = async ({ prsToSync, ready, reason }) => {
+              const labelTarget = formatPrLabel(prsToSync);
+              const stateKey = `${ready}:${prsToSync.map((pr) => pr.number).sort((left, right) => left - right).join(',')}`;
+              if (finishLineLabelStateKey === stateKey) {
+                return;
+              }
+
+              if (prsToSync.length === 0) {
+                finishLineLabelStateKey = stateKey;
                 return;
               }
 
               if (ready) {
                 await ensureFinishLineLabelDefinition();
-                for (const pr of prs) {
+                for (const pr of prsToSync) {
                   await github.rest.issues.addLabels({
                     owner,
                     repo,
@@ -239,9 +293,9 @@ jobs:
                     labels: [finishLineLabelName],
                   });
                 }
-                core.notice(`Applied ${finishLineLabelName} to ${prLabel} (${reason}).`);
+                core.notice(`Applied ${finishLineLabelName} to ${labelTarget} (${reason}).`);
               } else {
-                for (const pr of prs) {
+                for (const pr of prsToSync) {
                   try {
                     await github.rest.issues.removeLabel({
                       owner,
@@ -256,14 +310,53 @@ jobs:
                   }
                 }
                 core.info(
-                  `Ensured ${finishLineLabelName} is absent from ${prLabel} (${reason}).`
+                  `Ensured ${finishLineLabelName} is absent from ${labelTarget} (${reason}).`
                 );
               }
 
-              finishLineLabelState = ready;
+              finishLineLabelStateKey = stateKey;
             };
 
             while (true) {
+              const currentPrs = await loadTrackedPrs();
+              if (currentPrs.length === 0) {
+                core.notice(
+                  `Tracked PRs #${trackedPrNumbers.join(', #')} are no longer open; nothing to gate.`
+                );
+                return;
+              }
+
+              const { currentHeadPrs, supersededPrs } = partitionTrackedPrs(currentPrs);
+              const currentPrLabel = formatPrLabel(currentHeadPrs);
+              const trackedPrLabel = formatPrLabel(currentPrs);
+
+              await syncFinishLineLabels({
+                prsToSync: supersededPrs,
+                ready: false,
+                reason: 'their current head SHA advanced beyond this readiness run',
+              });
+
+              if (currentHeadPrs.length === 0) {
+                await upsertFinishLineCheckRun({
+                  status: 'completed',
+                  conclusion: 'neutral',
+                  title: 'Cursor automation prerequisites superseded by newer PR head',
+                  summary: [
+                    `Tracked PRs: ${trackedPrLabel}`,
+                    `Observed commit: ${headSha}`,
+                    `Label: ${finishLineLabelName} (removed)`,
+                    '',
+                    'A newer commit became the current PR head before readiness completed. This stale SHA will not trigger PR Finish Line.',
+                    '',
+                    formatSupersededPrSummary(supersededPrs),
+                  ].join('\n'),
+                });
+                core.notice(
+                  `Skipping stale readiness result for ${headSha}; current PR heads moved on for ${trackedPrLabel}.`
+                );
+                return;
+              }
+
               const { data } = await github.rest.checks.listForRef({
                 owner,
                 repo,
@@ -292,6 +385,7 @@ jobs:
               if (failed.length > 0) {
                 const message = `Finish-line prerequisites failed for ${headSha}: ${failed.map((entry) => `${entry.name}=${entry.conclusion}`).join(', ')}`;
                 await syncFinishLineLabels({
+                  prsToSync: currentHeadPrs,
                   ready: false,
                   reason: 'a prerequisite check failed',
                 });
@@ -300,7 +394,7 @@ jobs:
                   conclusion: 'failure',
                   title: 'Cursor automation prerequisites failed',
                   summary: [
-                    `PRs: ${prLabel}`,
+                    `PRs: ${currentPrLabel}`,
                     `Commit: ${headSha}`,
                     `Label: ${finishLineLabelName} (removed)`,
                     '',
@@ -314,20 +408,53 @@ jobs:
               }
 
               if (missing.length === 0 && pending.length === 0) {
+                const finalPrs = await loadTrackedPrs();
+                const { currentHeadPrs: finalCurrentHeadPrs, supersededPrs: finalSupersededPrs } = partitionTrackedPrs(finalPrs);
+                const finalPrLabel = formatPrLabel(finalCurrentHeadPrs);
+                const finalTrackedPrLabel = formatPrLabel(finalPrs);
+
                 await syncFinishLineLabels({
+                  prsToSync: finalSupersededPrs,
+                  ready: false,
+                  reason: 'their current head SHA advanced beyond this readiness run',
+                });
+
+                if (finalCurrentHeadPrs.length === 0) {
+                  await upsertFinishLineCheckRun({
+                    status: 'completed',
+                    conclusion: 'neutral',
+                    title: 'Cursor automation prerequisites superseded by newer PR head',
+                    summary: [
+                      `Tracked PRs: ${finalTrackedPrLabel}`,
+                      `Observed commit: ${headSha}`,
+                      `Label: ${finishLineLabelName} (removed)`,
+                      '',
+                      'A newer commit became the current PR head just before readiness completed. This stale SHA will not trigger PR Finish Line.',
+                      '',
+                      formatSupersededPrSummary(finalSupersededPrs),
+                    ].join('\n'),
+                  });
+                  core.notice(
+                    `Skipping stale readiness result for ${headSha}; current PR heads moved on for ${finalTrackedPrLabel}.`
+                  );
+                  return;
+                }
+
+                await syncFinishLineLabels({
+                  prsToSync: finalCurrentHeadPrs,
                   ready: true,
-                  reason: 'all prerequisite checks succeeded',
+                  reason: 'all prerequisite checks succeeded on the current PR head SHA',
                 });
                 await upsertFinishLineCheckRun({
                   status: 'completed',
                   conclusion: 'success',
                   title: 'Cursor automation prerequisites ready',
                   summary: [
-                    `PRs: ${prLabel}`,
+                    `PRs: ${finalPrLabel}`,
                     `Commit: ${headSha}`,
                     `Label: ${finishLineLabelName} (applied)`,
                     '',
-                    'All required Cursor automation checks completed successfully.',
+                    'All required Cursor automation checks completed successfully on the current PR head SHA.',
                     '',
                     formatSnapshot(snapshot),
                   ].join('\n'),
@@ -339,6 +466,7 @@ jobs:
               if (Date.now() >= deadlineMs) {
                 const message = `Timed out waiting for Cursor automation prerequisites on ${headSha}. Missing: ${missing.map((entry) => entry.name).join(', ') || 'none'}. Pending: ${pending.map((entry) => `${entry.name}=${entry.status}`).join(', ') || 'none'}.`;
                 await syncFinishLineLabels({
+                  prsToSync: currentHeadPrs,
                   ready: false,
                   reason: 'the readiness poll timed out',
                 });
@@ -347,7 +475,7 @@ jobs:
                   conclusion: 'failure',
                   title: 'Cursor automation prerequisites timed out',
                   summary: [
-                    `PRs: ${prLabel}`,
+                    `PRs: ${currentPrLabel}`,
                     `Commit: ${headSha}`,
                     `Label: ${finishLineLabelName} (removed)`,
                     '',
@@ -361,6 +489,7 @@ jobs:
               }
 
               await syncFinishLineLabels({
+                prsToSync: currentHeadPrs,
                 ready: false,
                 reason: 'prerequisite checks are still pending',
               });
@@ -368,11 +497,11 @@ jobs:
                 status: 'in_progress',
                 title: 'Waiting for Cursor automation prerequisites',
                 summary: [
-                  `PRs: ${prLabel}`,
+                  `PRs: ${currentPrLabel}`,
                   `Commit: ${headSha}`,
                   `Label: ${finishLineLabelName} (not applied yet)`,
                   '',
-                  'Waiting for all required Cursor automation checks to complete successfully.',
+                  'Waiting for all required Cursor automation checks to complete successfully on the current PR head SHA.',
                   '',
                   formatSnapshot(snapshot),
                 ].join('\n'),
