@@ -218,7 +218,11 @@
 		F0991C52FCDBA422BDD86604 /* VersionValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D9B54003005176B3196572 /* VersionValidator.swift */; };
 		F6A75F8963921FE53D465FF3 /* RalphLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86FB79CF874558CF63AAAB3 /* RalphLoggerTests.swift */; };
 		F840487D12000534308C7AE2 /* QuickActionsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB332D2325D439859B8655F /* QuickActionsSection.swift */; };
-		F8E9C54A0D15DA15A90B7403 /* WorkspaceRunControlTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E2C5883E22BDB9AE4683A0C /* WorkspaceRunControlTests.swift */; };
+		B3F1A2C4D5E6789012345672 /* WorkspaceRunNextInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */; };
+		B3F1A2C4D5E6789012345674 /* WorkspaceRunStateResumeBlockingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */; };
+		B3F1A2C4D5E6789012345676 /* WorkspaceRunCancelAndLoopTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */; };
+		B3F1A2C4D5E6789012345678 /* WorkspaceParallelRunControlTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */; };
+		B3F1A2C4D5E678901234567A /* WorkspaceRunControlWatcherHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */; };
 		FF6677889900AA11BB22CC33DD44EE55 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */; };
 		QD7890123456ABCDEF012345 /* QueueDirectParseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = QF7890123456ABCDEF012345 /* QueueDirectParseTests.swift */; };
 		SETTINGSVIEW0012345678901 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = SETTINGSVIEWREF0012345678901 /* AppSettings.swift */; };
@@ -312,7 +316,11 @@
 		2210239A7D74679BF50C4EC0 /* WorkspaceRunnerController+MachineOutput.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceRunnerController+MachineOutput.swift"; sourceTree = "<group>"; };
 		29D9B54003005176B3196572 /* VersionValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VersionValidator.swift; sourceTree = "<group>"; };
 		2D1F92AF6B0E855CEA96B886 /* WorkspaceView+Lifecycle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceView+Lifecycle.swift"; sourceTree = "<group>"; };
-		2E2C5883E22BDB9AE4683A0C /* WorkspaceRunControlTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunControlTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunNextInvocationTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunStateResumeBlockingTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunCancelAndLoopTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceParallelRunControlTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunControlWatcherHealthTests.swift; sourceTree = "<group>"; };
 		30412AD055A0A3EA93DF756C /* WorkspaceTaskMutationAgentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTaskMutationAgentTests.swift; sourceTree = "<group>"; };
 		31B301E8A7CC431E930E7539 /* RalphCLIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIClient.swift; sourceTree = "<group>"; };
 		31B301E8A7CC431E930E753A /* RalphCLIClient+Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphCLIClient+Recovery.swift"; sourceTree = "<group>"; };
@@ -660,7 +668,11 @@
 				C739A307267F8D9F41171236 /* TimeoutConfigurationTests.swift */,
 				57A3F5A71B329E532B37574E /* WorkspaceCorePerformanceTests.swift */,
 				E8F87AC97D36BA700C78EB3D /* WorkspaceOfflineCachingTests.swift */,
-				2E2C5883E22BDB9AE4683A0C /* WorkspaceRunControlTests.swift */,
+				B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */,
+				B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */,
+				B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */,
+				B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */,
+				B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */,
 				13E5C2ED7D03FC4696F7E341 /* WorkspaceRunnerConfigurationTests.swift */,
 				C2F100000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift */,
 				C2F100000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift */,
@@ -1085,7 +1097,11 @@
 				DC16DAA1BDC57EE79483F12A /* TimeoutConfigurationTests.swift in Sources */,
 				BA4DAD1BA3631E1351694BEB /* WorkspaceCorePerformanceTests.swift in Sources */,
 				A694F3F0E2099C84A74C6E8F /* WorkspaceOfflineCachingTests.swift in Sources */,
-				F8E9C54A0D15DA15A90B7403 /* WorkspaceRunControlTests.swift in Sources */,
+				B3F1A2C4D5E6789012345672 /* WorkspaceRunNextInvocationTests.swift in Sources */,
+				B3F1A2C4D5E6789012345674 /* WorkspaceRunStateResumeBlockingTests.swift in Sources */,
+				B3F1A2C4D5E6789012345676 /* WorkspaceRunCancelAndLoopTests.swift in Sources */,
+				B3F1A2C4D5E6789012345678 /* WorkspaceParallelRunControlTests.swift in Sources */,
+				B3F1A2C4D5E678901234567A /* WorkspaceRunControlWatcherHealthTests.swift in Sources */,
 				A8D48D6992FD8E5F56018280 /* WorkspaceRunnerConfigurationTests.swift in Sources */,
 				C2F200000000000000000007 /* WorkspaceRunnerConfigurationTestSupport.swift in Sources */,
 				C2F200000000000000000008 /* WorkspaceRunnerConfigurationLoadingTests.swift in Sources */,
