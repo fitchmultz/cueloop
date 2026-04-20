@@ -289,6 +289,7 @@ public extension Workspace {
             identityState.workingDirectoryBookmarkData = restoredBookmarkData
             identityState.recentWorkingDirectoryBookmarks = snapshot.recentWorkingDirectoryBookmarks ?? [:]
             identityState.name = snapshot.name
+            backfillWorkingDirectoryBookmarkIfNeeded()
             clearPersistenceIssue(domain: .workspaceState)
         } catch {
             recordPersistenceIssue(
@@ -329,6 +330,21 @@ public extension Workspace {
                 )
             )
         }
+    }
+
+    func backfillWorkingDirectoryBookmarkIfNeeded() {
+        guard identityState.workingDirectoryBookmarkData == nil else { return }
+
+        let standardizedURL = normalizedWorkingDirectoryURL
+        guard Self.directoryExists(standardizedURL) else { return }
+        guard let bookmarkData = Self.securityScopedBookmarkData(for: standardizedURL) else { return }
+
+        identityState.workingDirectoryBookmarkData = bookmarkData
+        identityState.replaceSecurityScopedWorkingDirectoryAccess(
+            with: standardizedURL,
+            bookmarkData: bookmarkData
+        )
+        updateRecentWorkingDirectories(with: standardizedURL, bookmarkData: bookmarkData)
     }
 
     func shutdown() {
@@ -379,6 +395,9 @@ public extension Workspace {
             bookmarkData: resolvedBookmarkData
         )
         updateRecentWorkingDirectories(with: standardizedURL, bookmarkData: resolvedBookmarkData)
+        if resolvedBookmarkData == nil {
+            backfillWorkingDirectoryBookmarkIfNeeded()
+        }
 
         persistState()
         refreshOperationalHealth()

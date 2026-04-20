@@ -59,6 +59,68 @@ final class WindowStateRestorationTests: WindowStateTestCase {
         XCTAssertEqual(restored.first?.workspaceIDs.count, 2)
     }
 
+    func test_restoreWindows_doesNotBootstrapRestoredWorkspacesBeforeTheyAppear() async throws {
+        let originalClient = manager.client
+        defer { manager.client = originalClient }
+
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "restore-no-eager-bootstrap",
+            workspaceName: "workspace",
+            logFileName: "workspace-overview.log",
+            seedQueueTasks: []
+        )
+        defer { RalphCoreTestSupport.assertRemoved(fixture.rootURL) }
+
+        let overviewURL = try WorkspaceRunnerConfigurationTestSupport.writeWorkspaceOverviewDocument(
+            in: fixture.rootURL,
+            name: "overview.json",
+            workspaceURL: fixture.workspaceURL,
+            activeTasks: [],
+            model: "restored-model",
+            phases: 2,
+            iterations: 3
+        )
+        let script = """
+            #!/bin/sh
+            printf '%s\n' "$*" >> "\(fixture.logURL!.path)"
+            case "$*" in
+            *"--no-color machine workspace overview"*)
+              cat "\(overviewURL.path)"
+              exit 0
+              ;;
+            esac
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: "mock-ralph-restore-no-eager-bootstrap",
+            body: script
+        )
+        manager.client = try RalphCLIClient(executableURL: scriptURL)
+
+        let workspaceID = UUID()
+        let snapshot = RalphWorkspaceDefaultsSnapshot(
+            name: "workspace",
+            workingDirectoryURL: fixture.workspaceURL,
+            recentWorkingDirectories: []
+        )
+        let snapshotData = try JSONEncoder().encode(snapshot)
+        defaults.set(snapshotData, forKey: workspaceSnapshotKey(for: workspaceID))
+
+        let state = WindowState(workspaceIDs: [workspaceID], selectedTabIndex: 0)
+        manager.saveWindowState(state)
+
+        let restored = manager.restoreWindows()
+
+        XCTAssertEqual(restored.first?.workspaceIDs, [workspaceID])
+        let loggedCommands = (try? String(contentsOf: fixture.logURL!, encoding: .utf8)) ?? ""
+        XCTAssertTrue(loggedCommands.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        if let restoredWorkspace = manager.workspaces.first(where: { $0.id == workspaceID }) {
+            manager.closeWorkspace(restoredWorkspace)
+        }
+    }
+
     func test_claimWindowState_returnsDistinctStates_forMultipleClaims() throws {
         let directory1 = try makeSeededWorkspaceDirectory(prefix: "claim-window-state-a")
         let directory2 = try makeSeededWorkspaceDirectory(prefix: "claim-window-state-b")
@@ -182,5 +244,67 @@ final class WindowStateRestorationTests: WindowStateTestCase {
 
         XCTAssertFalse(workspace.isURLRoutingPlaceholderWorkspace)
         XCTAssertEqual(workspace.identityState.workingDirectoryURL.path, targetDirectory.path)
+    }
+
+    func test_scheduleInitialRepositoryBootstrapIfNeeded_bootstrapsRestoredWorkspaceOnDemand() async throws {
+        var workspace: Workspace!
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "workspace-on-demand-bootstrap",
+            workspaceName: "workspace",
+            logFileName: "workspace-overview.log",
+            seedQueueTasks: []
+        )
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let task = RalphMockCLITestSupport.task(
+            id: "RQ-RESTORE",
+            status: .todo,
+            title: "Restore Task",
+            priority: .medium,
+            createdAt: "2026-03-12T00:00:00Z",
+            updatedAt: "2026-03-12T00:00:00Z"
+        )
+        let overviewURL = try WorkspaceRunnerConfigurationTestSupport.writeWorkspaceOverviewDocument(
+            in: fixture.rootURL,
+            name: "overview-on-demand.json",
+            workspaceURL: fixture.workspaceURL,
+            activeTasks: [task],
+            nextRunnableTaskID: task.id,
+            model: "on-demand-model",
+            phases: 2,
+            iterations: 3
+        )
+        let script = """
+            #!/bin/sh
+            printf '%s\n' "$*" >> "\(fixture.logURL!.path)"
+            case "$*" in
+            *"--no-color machine workspace overview"*)
+              cat "\(overviewURL.path)"
+              exit 0
+              ;;
+            esac
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: "mock-ralph-on-demand-bootstrap",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+
+        workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client,
+            bootstrapRepositoryStateOnInit: false
+        )
+
+        workspace.scheduleInitialRepositoryBootstrapIfNeeded()
+
+        let bootstrapped = await WorkspacePerformanceTestSupport.waitFor(timeout: 3.0) {
+            workspace.taskState.tasks.map(\.id) == ["RQ-RESTORE"]
+                && workspace.runState.currentRunnerConfig?.model == "on-demand-model"
+        }
+        XCTAssertTrue(bootstrapped)
     }
 }
