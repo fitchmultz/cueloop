@@ -3,7 +3,6 @@
 
  Responsibilities:
  - Persist workspace identity state through a single snapshot store.
- - Preserve user-selected workspace folder access with security-scoped bookmarks.
  - Track machine-resolved workspace paths from the active working directory.
  - Handle working-directory changes and associated watcher/config refreshes.
  - Surface persistence failures as workspace-scoped operational state.
@@ -28,19 +27,14 @@ public final class WorkspaceIdentityState: ObservableObject {
     @Published public var name: String
     @Published public var workingDirectoryURL: URL
     @Published public var recentWorkingDirectories: [URL]
-    @Published public var workingDirectoryBookmarkData: Data?
-    @Published public var recentWorkingDirectoryBookmarks: [String: Data]
     @Published public var resolvedPaths: MachineQueuePaths?
     @Published public internal(set) var repositoryGeneration: UInt64
     @Published public internal(set) var retargetRevision: UInt64
-    private var securityScopedWorkingDirectoryURL: URL?
 
     public init(
         name: String,
         workingDirectoryURL: URL,
         recentWorkingDirectories: [URL],
-        workingDirectoryBookmarkData: Data? = nil,
-        recentWorkingDirectoryBookmarks: [String: Data] = [:],
         resolvedPaths: MachineQueuePaths? = nil,
         repositoryGeneration: UInt64 = 0,
         retargetRevision: UInt64 = 0
@@ -48,25 +42,9 @@ public final class WorkspaceIdentityState: ObservableObject {
         self.name = name
         self.workingDirectoryURL = workingDirectoryURL
         self.recentWorkingDirectories = recentWorkingDirectories
-        self.workingDirectoryBookmarkData = workingDirectoryBookmarkData
-        self.recentWorkingDirectoryBookmarks = recentWorkingDirectoryBookmarks
         self.resolvedPaths = resolvedPaths
         self.repositoryGeneration = repositoryGeneration
         self.retargetRevision = retargetRevision
-    }
-
-    deinit {
-        securityScopedWorkingDirectoryURL?.stopAccessingSecurityScopedResource()
-    }
-
-    func replaceSecurityScopedWorkingDirectoryAccess(with url: URL?, bookmarkData: Data?) {
-        securityScopedWorkingDirectoryURL?.stopAccessingSecurityScopedResource()
-        securityScopedWorkingDirectoryURL = nil
-
-        guard bookmarkData != nil, let url else { return }
-        if url.startAccessingSecurityScopedResource() {
-            securityScopedWorkingDirectoryURL = url
-        }
     }
 }
 
@@ -128,22 +106,6 @@ struct RalphWorkspaceDefaultsSnapshot: Codable, Sendable {
     let name: String
     let workingDirectoryURL: URL
     let recentWorkingDirectories: [URL]
-    let workingDirectoryBookmarkData: Data?
-    let recentWorkingDirectoryBookmarks: [String: Data]?
-
-    init(
-        name: String,
-        workingDirectoryURL: URL,
-        recentWorkingDirectories: [URL],
-        workingDirectoryBookmarkData: Data? = nil,
-        recentWorkingDirectoryBookmarks: [String: Data]? = nil
-    ) {
-        self.name = name
-        self.workingDirectoryURL = workingDirectoryURL
-        self.recentWorkingDirectories = recentWorkingDirectories
-        self.workingDirectoryBookmarkData = workingDirectoryBookmarkData
-        self.recentWorkingDirectoryBookmarks = recentWorkingDirectoryBookmarks
-    }
 }
 
 struct WorkspaceStateStore {
@@ -261,33 +223,13 @@ public extension Workspace {
                 return
             }
 
-            let bookmarkResolution = Self.resolveSecurityScopedBookmark(
-                snapshot.workingDirectoryBookmarkData,
-                fallbackURL: snapshot.workingDirectoryURL
-            )
-            identityState.replaceSecurityScopedWorkingDirectoryAccess(
-                with: bookmarkResolution.url,
-                bookmarkData: bookmarkResolution.bookmarkData
-            )
-
-            let restoredRecents = Self.restoreRecentWorkingDirectories(from: snapshot)
-            let restoredWorkingDirectory = Self.directoryExists(bookmarkResolution.url)
-                ? bookmarkResolution.url
+            let restoredRecents = snapshot.recentWorkingDirectories.filter(Self.directoryExists)
+            let restoredWorkingDirectory = Self.directoryExists(snapshot.workingDirectoryURL)
+                ? snapshot.workingDirectoryURL
                 : identityState.workingDirectoryURL
-            let restoredBookmarkData = restoredWorkingDirectory == bookmarkResolution.url
-                ? bookmarkResolution.bookmarkData
-                : identityState.workingDirectoryBookmarkData
-            if restoredWorkingDirectory != bookmarkResolution.url {
-                identityState.replaceSecurityScopedWorkingDirectoryAccess(
-                    with: identityState.workingDirectoryURL,
-                    bookmarkData: identityState.workingDirectoryBookmarkData
-                )
-            }
 
             identityState.recentWorkingDirectories = restoredRecents
             identityState.workingDirectoryURL = restoredWorkingDirectory
-            identityState.workingDirectoryBookmarkData = restoredBookmarkData
-            identityState.recentWorkingDirectoryBookmarks = snapshot.recentWorkingDirectoryBookmarks ?? [:]
             identityState.name = snapshot.name
             clearPersistenceIssue(domain: .workspaceState)
         } catch {
@@ -307,9 +249,7 @@ public extension Workspace {
         let snapshot = RalphWorkspaceDefaultsSnapshot(
             name: identityState.name,
             workingDirectoryURL: identityState.workingDirectoryURL,
-            recentWorkingDirectories: identityState.recentWorkingDirectories,
-            workingDirectoryBookmarkData: identityState.workingDirectoryBookmarkData,
-            recentWorkingDirectoryBookmarks: identityState.recentWorkingDirectoryBookmarks
+            recentWorkingDirectories: identityState.recentWorkingDirectories
         )
 
         do {
@@ -342,26 +282,17 @@ public extension Workspace {
         identityState.retargetRevision &+= 1
         runnerController.prepareForRepositoryRetarget()
         queueRuntime.stopWatching()
-        identityState.replaceSecurityScopedWorkingDirectoryAccess(with: nil, bookmarkData: nil)
         refreshOperationalHealth()
     }
 
-    func setWorkingDirectory(_ url: URL, bookmarkData: Data? = nil) {
+    func setWorkingDirectory(_ url: URL) {
         guard !isShutDown else { return }
 
         markStartupPlaceholderConsumed()
         let standardizedURL = Self.normalizedWorkingDirectoryURL(url)
         let currentURL = normalizedWorkingDirectoryURL
-        let resolvedBookmarkData = bookmarkData
-            ?? identityState.recentWorkingDirectoryBookmarks[standardizedURL.path]
-            ?? (standardizedURL == currentURL ? identityState.workingDirectoryBookmarkData : nil)
         guard standardizedURL != currentURL else {
-            identityState.workingDirectoryBookmarkData = resolvedBookmarkData
-            identityState.replaceSecurityScopedWorkingDirectoryAccess(
-                with: standardizedURL,
-                bookmarkData: resolvedBookmarkData
-            )
-            updateRecentWorkingDirectories(with: standardizedURL, bookmarkData: resolvedBookmarkData)
+            updateRecentWorkingDirectories(with: standardizedURL)
             persistState()
             return
         }
@@ -373,12 +304,7 @@ public extension Workspace {
         resetRepositoryDerivedStateForRetarget()
 
         let repositoryContext = beginRepositoryRetarget(to: standardizedURL)
-        identityState.workingDirectoryBookmarkData = resolvedBookmarkData
-        identityState.replaceSecurityScopedWorkingDirectoryAccess(
-            with: standardizedURL,
-            bookmarkData: resolvedBookmarkData
-        )
-        updateRecentWorkingDirectories(with: standardizedURL, bookmarkData: resolvedBookmarkData)
+        updateRecentWorkingDirectories(with: standardizedURL)
 
         persistState()
         queueRuntime.restartWatching()
@@ -399,95 +325,23 @@ public extension Workspace {
         panel.prompt = "Choose"
 
         if panel.runModal() == .OK, let url = panel.url {
-            setWorkingDirectory(url, bookmarkData: Self.securityScopedBookmarkData(for: url))
+            setWorkingDirectory(url)
         }
     }
 
     func selectRecentWorkingDirectory(_ url: URL) {
-        let standardizedURL = Self.normalizedWorkingDirectoryURL(url)
-        let bookmarkData = identityState.recentWorkingDirectoryBookmarks[standardizedURL.path]
-        let resolution = Self.resolveSecurityScopedBookmark(bookmarkData, fallbackURL: standardizedURL)
-        setWorkingDirectory(resolution.url, bookmarkData: resolution.bookmarkData)
+        setWorkingDirectory(url)
     }
 }
 
 extension Workspace {
-    static func securityScopedBookmarkData(for url: URL) -> Data? {
-        do {
-            return try url.bookmarkData(
-                options: .withSecurityScope,
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
-        } catch {
-            RalphLogger.shared.debug(
-                "Failed to create security-scoped bookmark for \(url.path): \(error)",
-                category: .workspace
-            )
-            return nil
-        }
-    }
-
-    static func resolveSecurityScopedBookmark(
-        _ bookmarkData: Data?,
-        fallbackURL: URL
-    ) -> (url: URL, bookmarkData: Data?) {
-        guard let bookmarkData else {
-            return (Self.normalizedWorkingDirectoryURL(fallbackURL), nil)
-        }
-
-        do {
-            var isStale = false
-            let resolvedURL = try URL(
-                resolvingBookmarkData: bookmarkData,
-                options: [.withSecurityScope, .withoutUI],
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            )
-            let normalizedURL = Self.normalizedWorkingDirectoryURL(resolvedURL)
-            let refreshedBookmarkData = isStale
-                ? Self.securityScopedBookmarkData(for: normalizedURL)
-                : bookmarkData
-            return (normalizedURL, refreshedBookmarkData)
-        } catch {
-            RalphLogger.shared.debug(
-                "Failed to resolve security-scoped workspace bookmark for \(fallbackURL.path): \(error)",
-                category: .workspace
-            )
-            return (Self.normalizedWorkingDirectoryURL(fallbackURL), nil)
-        }
-    }
-
-    static func restoreRecentWorkingDirectories(from snapshot: RalphWorkspaceDefaultsSnapshot) -> [URL] {
-        let bookmarks = snapshot.recentWorkingDirectoryBookmarks ?? [:]
-        var restored: [URL] = []
-        for recentURL in snapshot.recentWorkingDirectories {
-            let normalizedURL = Self.normalizedWorkingDirectoryURL(recentURL)
-            if let bookmarkData = bookmarks[normalizedURL.path] {
-                restored.append(
-                    Self.resolveSecurityScopedBookmark(bookmarkData, fallbackURL: normalizedURL).url
-                )
-            } else {
-                restored.append(normalizedURL)
-            }
-        }
-        return restored
-    }
-
-    private func updateRecentWorkingDirectories(with url: URL, bookmarkData: Data?) {
+    private func updateRecentWorkingDirectories(with url: URL) {
         var newRecents = identityState.recentWorkingDirectories.filter { $0.path != url.path }
         newRecents.insert(url, at: 0)
         if newRecents.count > 12 {
             newRecents = Array(newRecents.prefix(12))
         }
         identityState.recentWorkingDirectories = newRecents
-
-        if let bookmarkData {
-            identityState.recentWorkingDirectoryBookmarks[url.path] = bookmarkData
-        }
-        let activePaths = Set(newRecents.map(\.path))
-        identityState.recentWorkingDirectoryBookmarks = identityState.recentWorkingDirectoryBookmarks
-            .filter { activePaths.contains($0.key) }
     }
 
     func resetRepositoryDerivedStateForRetarget() {

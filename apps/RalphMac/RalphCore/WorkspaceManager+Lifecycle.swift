@@ -4,7 +4,6 @@
  Responsibilities:
  - Manage workspace creation, duplication, closure, and legacy-state migration.
  - Restore workspace-level persisted directories when rebuilding sessions.
- - Resolve persisted folder bookmarks before probing restorable workspaces.
 
  Does not handle:
  - Window-state claiming/persistence.
@@ -156,18 +155,8 @@ public extension WorkspaceManager {
             )
             return nil
         }
-        let resolution = Workspace.resolveSecurityScopedBookmark(
-            snapshot.workingDirectoryBookmarkData,
-            fallbackURL: snapshot.workingDirectoryURL
-        )
-        let didStartAccessing = resolution.bookmarkData != nil
-            && resolution.url.startAccessingSecurityScopedResource()
-        defer {
-            if didStartAccessing {
-                resolution.url.stopAccessingSecurityScopedResource()
-            }
-        }
-        return workspaceIsRestorable(resolution.url) ? resolution.url : nil
+        let url = snapshot.workingDirectoryURL
+        return workspaceIsRestorable(url) ? url : nil
     }
 
     @discardableResult
