@@ -4,7 +4,7 @@
 //! - Execute the planned launcher commands for `ralph app open`.
 //!
 //! Responsibilities:
-//! - Spawn the initial app-launch command with managed subprocess handling.
+//! - Spawn the initial app-launch command when no workspace routing is needed.
 //! - Retry workspace URL handoff until the app is ready to accept it.
 //! - Keep runtime behavior separate from pure planning helpers.
 //!
@@ -15,7 +15,6 @@
 //! - Re-exported as `crate::commands::app::open`.
 //!
 //! Invariants/assumptions:
-//! - The app launch happens before URL handoff so the bootstrap window exists.
 //! - URL handoff retries preserve the last launch error for diagnostics.
 
 use anyhow::{Context, Result};
@@ -41,20 +40,19 @@ pub(super) fn execute_launch_command(spec: &OpenCommandSpec) -> Result<()> {
 
 /// Open the Ralph macOS app.
 ///
-/// On macOS, this always launches the app bundle first so the primary workspace
-/// window is guaranteed to exist on cold start. If workspace context is available,
-/// a follow-up URL handoff repurposes that bootstrap window for the requested
-/// workspace.
+/// On macOS, workspace-aware launches use a single URL handoff so the app can
+/// cold-start directly into the requested workspace. Plain app opens still use
+/// the normal launcher path.
 pub fn open(args: AppOpenArgs) -> Result<()> {
     let cli_executable = current_executable_for_gui();
-    let open_spec = plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?;
-    execute_launch_command(&open_spec)?;
-
     let Some(workspace_path) = resolve_workspace_path(&args)? else {
+        let open_spec =
+            plan_open_command(cfg!(target_os = "macos"), &args, cli_executable.as_deref())?;
+        execute_launch_command(&open_spec)?;
         return Ok(());
     };
 
-    let url_spec = plan_url_command(&workspace_path, &args)?;
+    let url_spec = plan_url_command(&workspace_path, &args, cli_executable.as_deref())?;
     let mut last_error = None;
     for attempt in 0..10 {
         match execute_launch_command(&url_spec) {

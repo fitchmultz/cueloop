@@ -72,7 +72,8 @@ public final class Workspace: ObservableObject, Identifiable {
         name: String? = nil,
         workingDirectoryURL: URL,
         launchDisposition: LaunchDisposition = .regular,
-        client: RalphCLIClient? = nil
+        client: RalphCLIClient? = nil,
+        bootstrapRepositoryStateOnInit: Bool = true
     ) {
         self.id = id
         identityState = WorkspaceIdentityState(
@@ -93,10 +94,11 @@ public final class Workspace: ObservableObject, Identifiable {
         bindDomainStateChanges()
         bindOperationalDependencies()
         loadState()
+        backfillWorkingDirectoryBookmarkIfNeeded()
         persistState()
         refreshOperationalHealth()
 
-        if client != nil {
+        if client != nil, bootstrapRepositoryStateOnInit {
             scheduleRepositoryActivity {
                 await $0.refreshWorkspaceOverviewState(retryConfiguration: .minimal)
             }
@@ -165,6 +167,21 @@ public final class Workspace: ObservableObject, Identifiable {
     public func refreshRunControlData() async {
         await awaitPendingRepositoryActivityIfNeeded()
         await refreshWorkspaceOverviewState(retryConfiguration: .minimal)
+    }
+
+    public func scheduleInitialRepositoryBootstrapIfNeeded() {
+        guard !isShutDown else { return }
+        guard client != nil else { return }
+        guard repositoryActivityTask == nil else { return }
+        guard !taskState.tasksLoading, !runState.runnerConfigLoading else { return }
+        guard taskState.tasks.isEmpty else { return }
+        guard taskState.tasksErrorMessage == nil else { return }
+        guard runState.currentRunnerConfig == nil else { return }
+        guard runState.runnerConfigErrorMessage == nil else { return }
+
+        scheduleRepositoryActivity {
+            await $0.refreshWorkspaceOverviewState(retryConfiguration: .minimal)
+        }
     }
 
     func refreshWorkspaceOverviewState(

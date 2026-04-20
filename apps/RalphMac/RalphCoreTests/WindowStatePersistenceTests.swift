@@ -108,6 +108,30 @@ final class WindowStatePersistenceTests: WindowStateTestCase {
         XCTAssertEqual(snapshot.name, temp.lastPathComponent)
     }
 
+    func test_createWorkspace_backfillsWorkingDirectoryBookmarkDataWhenAvailable() throws {
+        let temp = try makeWorkspaceDirectory(prefix: "persist-working-directory-bookmark")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
+
+        guard Workspace.securityScopedBookmarkData(for: temp) != nil else {
+            throw XCTSkip("Security-scoped bookmarks unavailable in this test environment")
+        }
+
+        let workspace = manager.createWorkspace(workingDirectory: temp)
+        let snapshotData = try XCTUnwrap(defaults.data(forKey: workspaceSnapshotKey(for: workspace.id)))
+        let snapshot = try JSONDecoder().decode(RalphWorkspaceDefaultsSnapshot.self, from: snapshotData)
+
+        XCTAssertNotNil(workspace.identityState.workingDirectoryBookmarkData)
+        XCTAssertEqual(
+            workspace.identityState.recentWorkingDirectoryBookmarks[temp.path],
+            workspace.identityState.workingDirectoryBookmarkData
+        )
+        XCTAssertEqual(snapshot.workingDirectoryBookmarkData, workspace.identityState.workingDirectoryBookmarkData)
+        XCTAssertEqual(
+            snapshot.recentWorkingDirectoryBookmarks?[temp.path],
+            workspace.identityState.workingDirectoryBookmarkData
+        )
+    }
+
     func test_workspaceSnapshotDecode_acceptsLegacySnapshotsWithoutBookmarks() throws {
         let data = """
             {
@@ -140,6 +164,45 @@ final class WindowStatePersistenceTests: WindowStateTestCase {
 
         XCTAssertEqual(snapshot.workingDirectoryBookmarkData, bookmarkData)
         XCTAssertEqual(snapshot.recentWorkingDirectoryBookmarks?[temp.path], bookmarkData)
+    }
+
+    func test_loadState_backfillsLegacyWorkspaceBookmarkDataWhenAvailable() throws {
+        let temp = try makeWorkspaceDirectory(prefix: "legacy-bookmark-backfill")
+        defer { RalphCoreTestSupport.assertRemoved(temp) }
+
+        guard Workspace.securityScopedBookmarkData(for: temp) != nil else {
+            throw XCTSkip("Security-scoped bookmarks unavailable in this test environment")
+        }
+
+        let workspaceID = UUID()
+        let snapshot = RalphWorkspaceDefaultsSnapshot(
+            name: temp.lastPathComponent,
+            workingDirectoryURL: temp,
+            recentWorkingDirectories: []
+        )
+        let snapshotData = try JSONEncoder().encode(snapshot)
+        defaults.set(snapshotData, forKey: workspaceSnapshotKey(for: workspaceID))
+
+        let workspace = Workspace(id: workspaceID, workingDirectoryURL: temp)
+
+        XCTAssertNotNil(workspace.identityState.workingDirectoryBookmarkData)
+        XCTAssertEqual(
+            workspace.identityState.recentWorkingDirectoryBookmarks[temp.path],
+            workspace.identityState.workingDirectoryBookmarkData
+        )
+
+        let persistedData = try XCTUnwrap(defaults.data(forKey: workspaceSnapshotKey(for: workspaceID)))
+        let persistedSnapshot = try JSONDecoder().decode(RalphWorkspaceDefaultsSnapshot.self, from: persistedData)
+        XCTAssertEqual(
+            persistedSnapshot.workingDirectoryBookmarkData,
+            workspace.identityState.workingDirectoryBookmarkData
+        )
+        XCTAssertEqual(
+            persistedSnapshot.recentWorkingDirectoryBookmarks?[temp.path],
+            workspace.identityState.workingDirectoryBookmarkData
+        )
+
+        workspace.shutdown()
     }
 
     func test_unitTestDefaults_areIsolatedFromStandardDefaults() {

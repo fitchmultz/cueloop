@@ -97,10 +97,11 @@ public extension WorkspaceManager {
 
     func restoreWindows() -> [WindowState] {
         let states = loadAllWindowStates()
+        var restorabilityCache: [String: Bool] = [:]
 
         if states.isEmpty {
             let restorableExisting = workspaces.filter {
-                workspaceIsRestorable($0.identityState.workingDirectoryURL)
+                cachedWorkspaceIsRestorable($0.identityState.workingDirectoryURL, cache: &restorabilityCache)
             }
             if !restorableExisting.isEmpty {
                 return [
@@ -120,10 +121,12 @@ public extension WorkspaceManager {
             var rebuiltState = state
             rebuiltState.workspaceIDs = state.workspaceIDs.filter { workspaceID in
                 if let existing = workspaces.first(where: { $0.id == workspaceID }) {
-                    return workspaceIsRestorable(existing.identityState.workingDirectoryURL)
+                    return cachedWorkspaceIsRestorable(
+                        existing.identityState.workingDirectoryURL,
+                        cache: &restorabilityCache
+                    )
                 }
-                guard let restored = restoreWorkspace(id: workspaceID) else { return false }
-                return workspaceIsRestorable(restored.identityState.workingDirectoryURL)
+                return restoreWorkspace(id: workspaceID, restorabilityCache: &restorabilityCache) != nil
             }
             rebuiltState.validateSelection()
             if !rebuiltState.workspaceIDs.isEmpty {

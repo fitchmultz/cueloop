@@ -80,6 +80,7 @@ struct WorkspaceView: View {
             }
             .sheet(isPresented: $showingOperationalHealth) { operationalHealthSheet() }
             .onAppear {
+                workspace.scheduleInitialRepositoryBootstrapIfNeeded()
                 configureCommandActions()
                 registerWorkspaceRouteActions()
                 refreshContractDiagnostics()

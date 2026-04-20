@@ -16,43 +16,56 @@
 //!
 //! Invariants/assumptions:
 //! - URL query values must be percent-encoded.
-//! - App-path launches use AppleScript so the installed bundle opens the URL directly.
+//! - URL launches should be able to start the app and deliver the workspace handoff in one command.
 
 use anyhow::{Result, bail};
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
-
 #[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
+use std::path::{Path, PathBuf};
 
 use crate::cli::app::AppOpenArgs;
 
-use super::launch_plan::{default_installed_app_path, resolve_launch_target};
-use super::model::{LaunchTarget, OpenCommandSpec};
+use super::launch_plan::{
+    append_open_launch_target_args, default_installed_app_path, env_assignment_for_path,
+    resolve_launch_target,
+};
+use super::model::OpenCommandSpec;
 
-pub(super) fn plan_url_command(workspace: &Path, args: &AppOpenArgs) -> Result<OpenCommandSpec> {
-    plan_url_command_with_installed_path(workspace, args, default_installed_app_path())
+pub(super) fn plan_url_command(
+    workspace: &Path,
+    args: &AppOpenArgs,
+    cli_executable: Option<&Path>,
+) -> Result<OpenCommandSpec> {
+    plan_url_command_with_installed_path(
+        workspace,
+        args,
+        cli_executable,
+        default_installed_app_path(),
+    )
 }
 
 pub(super) fn plan_url_command_with_installed_path(
     workspace: &Path,
     args: &AppOpenArgs,
+    cli_executable: Option<&Path>,
     installed_app_path: Option<PathBuf>,
 ) -> Result<OpenCommandSpec> {
     let encoded_path = percent_encode_path(workspace);
     let url = format!("ralph://open?workspace={}", encoded_path);
     let launch_target = resolve_launch_target(args, installed_app_path)?;
 
-    Ok(match launch_target {
-        LaunchTarget::AppPath(path) => plan_applescript_url_command(&path, &url),
-        LaunchTarget::BundleId(bundle_id) => OpenCommandSpec {
-            program: OsString::from("open"),
-            args: vec![
-                OsString::from("-b"),
-                OsString::from(bundle_id),
-                OsString::from(url),
-            ],
-        },
+    let mut args_out: Vec<OsString> = Vec::new();
+    if let Some(cli_executable) = cli_executable {
+        args_out.push(OsString::from("--env"));
+        args_out.push(env_assignment_for_path(cli_executable));
+    }
+    append_open_launch_target_args(&mut args_out, &launch_target);
+    args_out.push(OsString::from(url));
+
+    Ok(OpenCommandSpec {
+        program: OsString::from("open"),
+        args: args_out,
     })
 }
 
@@ -88,20 +101,4 @@ pub(super) fn percent_encode(input: &[u8]) -> String {
         }
     }
     result
-}
-
-fn plan_applescript_url_command(app_path: &Path, url: &str) -> OpenCommandSpec {
-    OpenCommandSpec {
-        program: OsString::from("osascript"),
-        args: vec![
-            OsString::from("-e"),
-            OsString::from("on run argv"),
-            OsString::from("-e"),
-            OsString::from("tell application (item 1 of argv) to open location (item 2 of argv)"),
-            OsString::from("-e"),
-            OsString::from("end run"),
-            app_path.as_os_str().to_os_string(),
-            OsString::from(url),
-        ],
-    }
 }

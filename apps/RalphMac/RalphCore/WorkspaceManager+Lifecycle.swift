@@ -21,16 +21,23 @@ public extension WorkspaceManager {
     @discardableResult
     func createWorkspace(
         workingDirectory: URL? = nil,
-        launchDisposition: Workspace.LaunchDisposition = .regular
+        launchDisposition: Workspace.LaunchDisposition = .regular,
+        bootstrapRepositoryStateOnInit: Bool = true
     ) -> Workspace {
-        createWorkspace(id: UUID(), workingDirectory: workingDirectory, launchDisposition: launchDisposition)
+        createWorkspace(
+            id: UUID(),
+            workingDirectory: workingDirectory,
+            launchDisposition: launchDisposition,
+            bootstrapRepositoryStateOnInit: bootstrapRepositoryStateOnInit
+        )
     }
 
     @discardableResult
     func createWorkspace(
         id: UUID,
         workingDirectory: URL? = nil,
-        launchDisposition: Workspace.LaunchDisposition = .regular
+        launchDisposition: Workspace.LaunchDisposition = .regular,
+        bootstrapRepositoryStateOnInit: Bool = true
     ) -> Workspace {
         if let existing = workspaces.first(where: { $0.id == id }) {
             return existing
@@ -44,7 +51,8 @@ public extension WorkspaceManager {
             id: id,
             workingDirectoryURL: directory,
             launchDisposition: launchDisposition,
-            client: client
+            client: client,
+            bootstrapRepositoryStateOnInit: bootstrapRepositoryStateOnInit
         )
         workspaces.append(workspace)
         if focusedWorkspace == nil && lastActiveWorkspaceID == nil {
@@ -137,13 +145,50 @@ public extension WorkspaceManager {
     }
 
     func workspaceWorkingDirectory(_ workspaceID: UUID) -> URL? {
+        guard let snapshot = workspaceSnapshot(workspaceID) else {
+            return nil
+        }
+        let workingDirectory = restoredWorkingDirectory(for: snapshot)
+        return workspaceIsRestorable(workingDirectory) ? workingDirectory : nil
+    }
+
+    @discardableResult
+    func restoreWorkspace(id: UUID, restorabilityCache: inout [String: Bool]) -> Workspace? {
+        if let existing = workspaces.first(where: { $0.id == id }) {
+            return cachedWorkspaceIsRestorable(
+                existing.identityState.workingDirectoryURL,
+                cache: &restorabilityCache
+            ) ? existing : nil
+        }
+        guard let snapshot = workspaceSnapshot(id) else {
+            return nil
+        }
+        let workingDirectory = restoredWorkingDirectory(for: snapshot)
+        guard cachedWorkspaceIsRestorable(workingDirectory, cache: &restorabilityCache) else {
+            return nil
+        }
+
+        return createWorkspace(
+            id: id,
+            workingDirectory: workingDirectory,
+            bootstrapRepositoryStateOnInit: false
+        )
+    }
+
+    func workspaceDirectoryExists(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    func workspaceIsRestorable(_ url: URL) -> Bool {
+        guard workspaceDirectoryExists(url) else { return false }
+        return Workspace.existingQueueFileURL(in: url) != nil
+    }
+
+    private func workspaceSnapshot(_ workspaceID: UUID) -> RalphWorkspaceDefaultsSnapshot? {
         let snapshotKeyPrefix = RalphAppDefaults.productionDomainIdentifier + ".workspace."
-        let snapshot: RalphWorkspaceDefaultsSnapshot
         do {
-            guard let loaded = try WorkspaceStateStore().load(id: workspaceID, keyPrefix: snapshotKeyPrefix) else {
-                return nil
-            }
-            snapshot = loaded
+            return try WorkspaceStateStore().load(id: workspaceID, keyPrefix: snapshotKeyPrefix)
         } catch {
             recordPersistenceIssue(
                 PersistenceIssue(
@@ -155,59 +200,23 @@ public extension WorkspaceManager {
             )
             return nil
         }
-        let resolution = Workspace.resolveSecurityScopedBookmark(
+    }
+
+    private func restoredWorkingDirectory(for snapshot: RalphWorkspaceDefaultsSnapshot) -> URL {
+        Workspace.resolveSecurityScopedBookmark(
             snapshot.workingDirectoryBookmarkData,
             fallbackURL: snapshot.workingDirectoryURL
-        )
-        let didStartAccessing = resolution.bookmarkData != nil
-            && resolution.url.startAccessingSecurityScopedResource()
-        defer {
-            if didStartAccessing {
-                resolution.url.stopAccessingSecurityScopedResource()
-            }
-        }
-        return workspaceIsRestorable(resolution.url) ? resolution.url : nil
+        ).url
     }
 
-    @discardableResult
-    func restoreWorkspace(id: UUID) -> Workspace? {
-        if let existing = workspaces.first(where: { $0.id == id }) {
-            return workspaceIsRestorable(existing.identityState.workingDirectoryURL) ? existing : nil
-        }
-        let snapshotKeyPrefix = RalphAppDefaults.productionDomainIdentifier + ".workspace."
-        let snapshot: RalphWorkspaceDefaultsSnapshot
-        do {
-            guard let loaded = try WorkspaceStateStore().load(id: id, keyPrefix: snapshotKeyPrefix) else {
-                return nil
-            }
-            snapshot = loaded
-        } catch {
-            recordPersistenceIssue(
-                PersistenceIssue(
-                    domain: .workspaceState,
-                    operation: .load,
-                    context: "\(snapshotKeyPrefix)\(id.uuidString).snapshot",
-                    error: error
-                )
-            )
-            return nil
+    func cachedWorkspaceIsRestorable(_ url: URL, cache: inout [String: Bool]) -> Bool {
+        let normalizedURL = Workspace.normalizedWorkingDirectoryURL(url)
+        if let cached = cache[normalizedURL.path] {
+            return cached
         }
 
-        let workspace = createWorkspace(id: id, workingDirectory: snapshot.workingDirectoryURL)
-        guard workspaceIsRestorable(workspace.identityState.workingDirectoryURL) else {
-            closeWorkspace(workspace)
-            return nil
-        }
-        return workspace
-    }
-
-    func workspaceDirectoryExists(_ url: URL) -> Bool {
-        var isDirectory: ObjCBool = false
-        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
-    }
-
-    func workspaceIsRestorable(_ url: URL) -> Bool {
-        guard workspaceDirectoryExists(url) else { return false }
-        return Workspace.existingQueueFileURL(in: url) != nil
+        let restorable = workspaceIsRestorable(normalizedURL)
+        cache[normalizedURL.path] = restorable
+        return restorable
     }
 }

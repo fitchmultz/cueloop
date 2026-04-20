@@ -154,13 +154,15 @@ fn plan_url_command_encodes_workspace() -> anyhow::Result<()> {
             path: None,
             workspace: None,
         },
+        None,
         Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
     )?;
 
-    assert_eq!(spec.program, OsString::from("osascript"));
-    assert_eq!(spec.args.len(), 8);
+    assert_eq!(spec.program, OsString::from("open"));
+    assert_eq!(spec.args.len(), 3);
+    assert_eq!(spec.args[0], OsString::from("-a"));
 
-    let url = spec.args[7].to_str().unwrap();
+    let url = spec.args[2].to_str().unwrap();
     assert!(url.starts_with("ralph://open?workspace="));
     assert!(
         url.contains("my%20project"),
@@ -179,10 +181,11 @@ fn plan_url_command_handles_special_chars() -> anyhow::Result<()> {
             path: None,
             workspace: None,
         },
+        None,
         Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
     )?;
 
-    let url = spec.args[7].to_str().unwrap();
+    let url = spec.args.last().unwrap().to_str().unwrap();
     assert!(url.contains("%26"), "& should be encoded as %26");
     assert!(url.contains("%3D"), "= should be encoded as %3D");
     Ok(())
@@ -261,6 +264,7 @@ fn plan_url_command_never_includes_cli_param() -> anyhow::Result<()> {
             path: None,
             workspace: None,
         },
+        None,
         Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
     )?;
 
@@ -282,13 +286,15 @@ fn plan_url_command_prefers_installed_app_path_over_bundle_lookup() -> anyhow::R
             path: None,
             workspace: None,
         },
+        None,
         Some(app_dir.clone()),
     )?;
 
-    assert_eq!(spec.program, OsString::from("osascript"));
-    assert_eq!(spec.args[6], app_dir.as_os_str().to_os_string());
+    assert_eq!(spec.program, OsString::from("open"));
+    assert_eq!(spec.args[0], OsString::from("-a"));
+    assert_eq!(spec.args[1], app_dir.as_os_str().to_os_string());
     assert!(
-        spec.args[7]
+        spec.args[2]
             .to_string_lossy()
             .starts_with("ralph://open?workspace=")
     );
@@ -305,6 +311,7 @@ fn plan_url_command_bundle_id_uses_open_launcher() -> anyhow::Result<()> {
             path: None,
             workspace: None,
         },
+        None,
         Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
     )?;
 
@@ -313,6 +320,34 @@ fn plan_url_command_bundle_id_uses_open_launcher() -> anyhow::Result<()> {
     assert_eq!(spec.args[1], OsString::from("com.example.override"));
     assert!(
         spec.args[2]
+            .to_string_lossy()
+            .starts_with("ralph://open?workspace=")
+    );
+    Ok(())
+}
+
+#[test]
+fn plan_url_command_includes_cli_env_when_provided() -> anyhow::Result<()> {
+    let workspace = PathBuf::from("/Users/test/workspace");
+    let cli = crate::testsupport::path::portable_abs_path("ralph-bin");
+    let spec = plan_url_command_with_installed_path(
+        &workspace,
+        &AppOpenArgs {
+            bundle_id: Some("com.example.override".to_string()),
+            path: None,
+            workspace: None,
+        },
+        Some(&cli),
+        Some(PathBuf::from("/Applications").join(DEFAULT_APP_NAME)),
+    )?;
+
+    assert_eq!(spec.program, OsString::from("open"));
+    assert_eq!(spec.args[0], OsString::from("--env"));
+    assert_eq!(spec.args[1], env_assignment_for_path(&cli));
+    assert_eq!(spec.args[2], OsString::from("-b"));
+    assert_eq!(spec.args[3], OsString::from("com.example.override"));
+    assert!(
+        spec.args[4]
             .to_string_lossy()
             .starts_with("ralph://open?workspace=")
     );
