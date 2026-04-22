@@ -278,6 +278,7 @@ fn notify_queue_unblocked(
         notify_on_complete: false,
         notify_on_fail: false,
         notify_on_loop_complete: false,
+        notify_on_watch_new_tasks: false,
         suppress_when_active: resolved
             .config
             .agent

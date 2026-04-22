@@ -32,6 +32,7 @@
           "notify_on_complete": true,
           "notify_on_fail": true,
           "notify_on_loop_complete": true,
+          "notify_on_watch_new_tasks": true,
           "sound_enabled": false,
           "sound_path": null,
           "suppress_when_active": true,
@@ -330,6 +331,7 @@
             "notify_on_complete": null,
             "notify_on_fail": null,
             "notify_on_loop_complete": null,
+            "notify_on_watch_new_tasks": null,
             "sound_enabled": null,
             "sound_path": null,
             "suppress_when_active": null,
@@ -668,6 +670,14 @@
         },
         "notify_on_loop_complete": {
           "description": "Enable desktop notifications when loop mode completes (default: true).",
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "default": null
+        },
+        "notify_on_watch_new_tasks": {
+          "description": "Enable desktop notifications when watch mode adds new tasks from comments (default: true).",
           "type": [
             "boolean",
             "null"

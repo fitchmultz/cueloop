@@ -60,6 +60,10 @@ pub(super) fn show_task_notification(
             log::warn!("Loop notifications use the loop path; skipping task display");
             return Ok(());
         }
+        NotificationType::WatchNewTasks => {
+            log::warn!("Watch notifications use the watch path; skipping task display");
+            return Ok(());
+        }
     };
     show_notification(summary, &body, timeout_ms)
 }

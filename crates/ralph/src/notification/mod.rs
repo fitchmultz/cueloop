@@ -45,6 +45,8 @@ pub enum NotificationType {
         tasks_succeeded: usize,
         tasks_failed: usize,
     },
+    /// Watch mode added new tasks from comments.
+    WatchNewTasks,
 }
 
 /// Send a notification based on the notification type.
@@ -64,6 +66,10 @@ pub fn send_notification(
     ui_active: bool,
 ) {
     let request = match notification_type {
+        NotificationType::WatchNewTasks => {
+            log::debug!("Watch new-task notifications must use notify_watch_new_task");
+            return;
+        }
         NotificationType::TaskComplete => NotificationDisplayRequest::Task {
             kind: notification_type,
             task_id,
@@ -163,7 +169,7 @@ pub fn notify_loop_complete(
 /// Send watch mode notification for newly detected tasks.
 /// Silently logs errors but never fails the calling operation.
 pub fn notify_watch_new_task(count: usize, config: &NotificationConfig) {
-    if !should_deliver_notification(config, None, false) {
+    if !should_deliver_notification(config, Some(NotificationType::WatchNewTasks), false) {
         return;
     }
 
@@ -217,6 +223,7 @@ fn should_deliver_notification(
             NotificationType::TaskComplete => config.notify_on_complete,
             NotificationType::TaskFailed => config.notify_on_fail,
             NotificationType::LoopComplete { .. } => config.notify_on_loop_complete,
+            NotificationType::WatchNewTasks => config.notify_on_watch_new_tasks,
         };
         if !type_enabled {
             log::debug!(
@@ -294,6 +301,7 @@ mod tests {
         assert!(config.notify_on_complete);
         assert!(config.notify_on_fail);
         assert!(config.notify_on_loop_complete);
+        assert!(config.notify_on_watch_new_tasks);
         assert!(config.suppress_when_active);
         assert!(!config.sound_enabled);
         assert!(config.sound_path.is_none());
@@ -307,6 +315,7 @@ mod tests {
             notify_on_complete: false,
             notify_on_fail: false,
             notify_on_loop_complete: false,
+            notify_on_watch_new_tasks: false,
             suppress_when_active: true,
             sound_enabled: true,
             sound_path: None,
@@ -338,6 +347,7 @@ mod tests {
             notify_on_complete: true,
             notify_on_fail: false,
             notify_on_loop_complete: true,
+            notify_on_watch_new_tasks: true,
             suppress_when_active: false,
             sound_enabled: true,
             sound_path: Some("/path/to/sound.wav".to_string()),
@@ -347,6 +357,7 @@ mod tests {
         assert!(config.notify_on_complete);
         assert!(!config.notify_on_fail);
         assert!(config.notify_on_loop_complete);
+        assert!(config.notify_on_watch_new_tasks);
         assert!(!config.suppress_when_active);
         assert!(config.sound_enabled);
         assert_eq!(config.sound_path, Some("/path/to/sound.wav".to_string()));
@@ -387,6 +398,7 @@ mod tests {
             notify_on_complete: true,
             notify_on_fail: true,
             notify_on_loop_complete: true,
+            notify_on_watch_new_tasks: true,
             suppress_when_active: false,
             sound_enabled: false,
             sound_path: None,
@@ -403,6 +415,7 @@ mod tests {
             notify_on_complete: true,
             notify_on_fail: true,
             notify_on_loop_complete: true,
+            notify_on_watch_new_tasks: true,
             suppress_when_active: false,
             sound_enabled: false,
             sound_path: None,
@@ -419,6 +432,7 @@ mod tests {
             notify_on_complete: false,
             notify_on_fail: true,
             notify_on_loop_complete: true,
+            notify_on_watch_new_tasks: true,
             suppress_when_active: true,
             sound_enabled: false,
             sound_path: None,
@@ -433,19 +447,38 @@ mod tests {
     }
 
     #[test]
-    fn should_deliver_notification_treats_watch_notifications_like_other_delivery() {
+    fn should_deliver_notification_respects_watch_new_task_gate() {
         let config = NotificationConfig {
             enabled: true,
             notify_on_complete: false,
             notify_on_fail: false,
             notify_on_loop_complete: false,
+            notify_on_watch_new_tasks: true,
             suppress_when_active: false,
             sound_enabled: false,
             sound_path: None,
             timeout_ms: 8000,
         };
 
-        assert!(should_deliver_notification(&config, None, false));
-        assert!(!should_deliver_notification(&config, None, true));
+        assert!(should_deliver_notification(
+            &config,
+            Some(NotificationType::WatchNewTasks),
+            false
+        ));
+        assert!(!should_deliver_notification(
+            &config,
+            Some(NotificationType::WatchNewTasks),
+            true
+        ));
+
+        let config = NotificationConfig {
+            notify_on_watch_new_tasks: false,
+            ..config
+        };
+        assert!(!should_deliver_notification(
+            &config,
+            Some(NotificationType::WatchNewTasks),
+            false
+        ));
     }
 }
