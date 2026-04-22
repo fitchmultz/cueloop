@@ -102,6 +102,8 @@ pub(super) fn show_loop_notification(
 fn show_notification(summary: &str, body: &str, timeout_ms: u32) -> anyhow::Result<()> {
     use notify_rust::{Notification, Timeout};
 
+    super::prepare_platform_notification_delivery();
+
     Notification::new()
         .summary(summary)
         .body(body)

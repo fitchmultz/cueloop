@@ -94,9 +94,7 @@ struct RunControlConsoleView: View {
                 )
                 .onChange(of: workspace.runState.output) { _, _ in
                     if autoScroll {
-                        withAnimation(.easeOut(duration: 0.1)) {
-                            proxy.scrollTo("console-bottom", anchor: .bottom)
-                        }
+                        proxy.scrollTo("console-bottom", anchor: .bottom)
                     }
                 }
                 .accessibilityLabel("Console output area")

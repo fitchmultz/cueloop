@@ -192,6 +192,14 @@ pub struct MachineRunLoopArgs {
     pub force: bool,
     #[arg(long)]
     pub resume: bool,
+    #[arg(
+        long,
+        value_parser = clap::value_parser!(u8).range(2..),
+        num_args = 0..=1,
+        default_missing_value = "2",
+        value_name = "N",
+    )]
+    pub parallel: Option<u8>,
     #[command(flatten)]
     pub agent: agent::RunAgentArgs,
 }

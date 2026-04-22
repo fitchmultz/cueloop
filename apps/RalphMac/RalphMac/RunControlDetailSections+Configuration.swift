@@ -69,6 +69,33 @@ struct RunControlExecutionControlsSection: View {
         .joined(separator: "|")
     }
 
+    private var loopWorkersBinding: Binding<Int?> {
+        Binding(
+            get: { workspace.runState.runControlParallelWorkersOverride },
+            set: { workspace.runState.runControlParallelWorkersOverride = $0 }
+        )
+    }
+
+    private var loopWorkersSummary: String {
+        if let workers = workspace.runState.runControlParallelWorkersOverride {
+            return "\(workers) workers"
+        }
+        if workspace.runState.currentRunnerConfig?.safety?.parallelConfigured == true {
+            return "Auto (configured)"
+        }
+        return "Auto (sequential)"
+    }
+
+    private var loopWorkersHelp: String {
+        if let workers = workspace.runState.runControlParallelWorkersOverride {
+            return "The next loop will pass --parallel \(workers) and start a shared \(workers)-worker coordinator."
+        }
+        if workspace.runState.currentRunnerConfig?.safety?.parallelConfigured == true {
+            return "No app override is set. The next loop will use the repository or global parallel worker setting from resolved config."
+        }
+        return "No app override is set. The next loop will use the default sequential machine run loop."
+    }
+
     var body: some View {
         RunControlGlassSection("Controls") {
             VStack(spacing: 12) {
@@ -88,6 +115,34 @@ struct RunControlExecutionControlsSection: View {
 
                 let previewTask = workspace.runControlPreviewTask
                 let hasSelectedTask = workspace.selectedRunControlTask != nil
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Label("Loop workers", systemImage: "square.stack.3d.up")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Picker("Loop workers", selection: loopWorkersBinding) {
+                            Text("Auto").tag(Optional<Int>.none)
+                            ForEach(Array(2...8), id: \.self) { workers in
+                                Text("\(workers) workers").tag(Optional(workers))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 180, alignment: .leading)
+                        .help("Auto uses resolved config. Choose a worker count to pass --parallel N for the next loop.")
+
+                        Text(loopWorkersSummary)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+                    }
+
+                    Text(loopWorkersHelp)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
 
                 HStack(spacing: 12) {
                     if workspace.runState.isRunning {
@@ -120,12 +175,17 @@ struct RunControlExecutionControlsSection: View {
                         .accessibilityLabel("Run next task")
                         .accessibilityHint("Starts execution of the selected task or next task in the queue")
 
-                        Button(action: { workspace.startLoop(forceDirtyRepo: workspace.runState.runControlForceDirtyRepo) }) {
-                            Label("Start CLI Loop", systemImage: "repeat.circle")
+                        Button(action: {
+                            workspace.startLoop(
+                                forceDirtyRepo: workspace.runState.runControlForceDirtyRepo,
+                                parallelWorkers: workspace.runState.runControlParallelWorkersOverride
+                            )
+                        }) {
+                            Label("Start Loop", systemImage: "repeat.circle")
                         }
                         .buttonStyle(GlassButtonStyle())
-                        .accessibilityLabel("Start CLI loop")
-                        .accessibilityHint("Runs the CLI loop with max tasks set to zero, then streams progress until the loop completes or is stopped")
+                        .accessibilityLabel("Start loop")
+                        .accessibilityHint("Runs the machine loop with max tasks set to zero, then streams progress until the loop completes or is stopped")
                     }
 
                     Spacer()
@@ -135,7 +195,7 @@ struct RunControlExecutionControlsSection: View {
                     HStack {
                         Image(systemName: "repeat.circle.fill")
                             .foregroundStyle(.blue)
-                        Text("CLI Loop Active")
+                        Text("Loop Active")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 

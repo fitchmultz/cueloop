@@ -251,7 +251,9 @@ public final class Workspace: ObservableObject, Identifiable {
 
     func refreshParallelStatusIfNeeded(retryConfiguration: RetryConfiguration) async {
         guard !isShutDown, !Task.isCancelled else { return }
-        guard runState.currentRunnerConfig?.safety?.parallelConfigured == true || runState.hasMeaningfulParallelStatus else {
+        guard runState.currentRunnerConfig?.safety?.parallelConfigured == true
+            || runState.runControlParallelWorkersOverride != nil
+            || runState.hasMeaningfulParallelStatus else {
             runState.clearParallelStatus()
             return
         }

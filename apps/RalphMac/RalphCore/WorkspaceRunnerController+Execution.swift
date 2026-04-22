@@ -139,6 +139,7 @@ extension WorkspaceRunnerController {
                 operation: "run",
                 workspaceURL: workspace.identityState.workingDirectoryURL
             )
+            workspace.runState.flushConsoleRenderState()
             workspace.runState.errorMessage = recoveryError.message
             workspace.diagnosticsState.lastRecoveryError = recoveryError
             workspace.diagnosticsState.showErrorRecovery = true
@@ -224,6 +225,7 @@ extension WorkspaceRunnerController {
         workspace: Workspace
     ) {
         guard workspace.isCurrentRepositoryContext(repositoryContext), activeRun === run else { return }
+        workspace.runState.flushConsoleRenderState()
         workspace.runState.lastExitStatus = status
         workspace.runState.isRunning = false
 

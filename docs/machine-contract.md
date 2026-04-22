@@ -48,6 +48,8 @@ When any `ralph machine ...` command fails before it can emit its success docume
 
 Machine clients should decode that document instead of scraping English stderr text.
 
+`ralph machine run loop` accepts the same `--parallel <N>` worker override pattern as the human `ralph run loop` surface, including bare `--parallel` defaulting to `2`.
+
 
 ### `machine config resolve` (`version: 3`)
 

@@ -71,7 +71,7 @@ When writing files, Ralph always outputs standard JSON format (comments are not 
 - `version` (number): Config schema version. Default: `2`.
 - `project_type` (string or null): `code` or `docs`. Default: `code`.
 - `agent` (object): Runner defaults (CLI binaries, runner, model, phases, and prompt enforcement).
-- `parallel` (object): Parallel run-loop configuration for `ralph run loop` (CLI only).
+- `parallel` (object): Parallel run-loop configuration for `ralph run loop` and RalphMac Run Control loop launches.
 - `queue` (object): Queue file locations and task ID formatting.
 - `plugins` (object): Plugin configuration (enable/disable + per-plugin settings).
 - `profiles` (object, optional): Named configuration profiles for quick workflow switching. Ralph also ships built-in `safe` and `power-user` profiles. See [Profiles](#profiles) below.
@@ -301,7 +301,7 @@ Each phase config can specify:
 
 ## Parallel Configuration
 
-`parallel` controls the CLI-only parallel execution mode for `ralph run loop`.
+`parallel` controls parallel execution for `ralph run loop` and RalphMac Run Control loop launches.
 
 Key fields:
 - `workers`: number of concurrent workers (must be `>= 2`). Default: `null` (disabled unless CLI

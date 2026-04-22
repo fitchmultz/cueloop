@@ -24,6 +24,7 @@ use crate::agent;
 use crate::cli::machine::args::{MachineRunArgs, MachineRunCommand};
 use crate::cli::machine::common::{
     build_config_resolve_document, build_resume_preview, machine_resume_decision_from_runtime,
+    machine_safety_context,
 };
 use crate::cli::machine::io::print_json_line;
 use crate::commands::run::{RunEvent, RunEventHandler, RunOneResumeOptions, RunOutcome};
@@ -36,6 +37,7 @@ use crate::timeutil;
 
 pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
     let resolved = crate::config::resolve_from_cwd()?;
+    let (repo_trusted, dirty_repo) = machine_safety_context(&resolved)?;
     match args.command {
         MachineRunCommand::One(args) => {
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
@@ -68,7 +70,12 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                 message: None,
                 stream: None,
                 payload: Some(json!({
-                    "config": build_config_resolve_document(&resolved, false, false, resume_preview),
+                    "config": build_config_resolve_document(
+                        &resolved,
+                        repo_trusted,
+                        dirty_repo,
+                        resume_preview
+                    ),
                 })),
             })?;
             let resume_options = RunOneResumeOptions::detect(args.resume, true);
@@ -113,7 +120,12 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                 message: None,
                 stream: None,
                 payload: Some(json!({
-                    "config": build_config_resolve_document(&resolved, false, false, resume_preview),
+                    "config": build_config_resolve_document(
+                        &resolved,
+                        repo_trusted,
+                        dirty_repo,
+                        resume_preview
+                    ),
                 })),
             })?;
             let overrides = agent::resolve_run_agent_overrides(&args.agent)?;
@@ -126,7 +138,7 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                     auto_resume: args.resume,
                     starting_completed: 0,
                     non_interactive: true,
-                    parallel_workers: None,
+                    parallel_workers: args.parallel,
                     wait_when_blocked: false,
                     wait_poll_ms: 1000,
                     wait_timeout_seconds: 0,

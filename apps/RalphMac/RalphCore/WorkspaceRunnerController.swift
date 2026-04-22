@@ -5,7 +5,7 @@
  - Own the live Ralph subprocess lifecycle for one workspace.
  - Load resolved runner configuration for the workspace.
  - Consume machine run-event streams and derive UI state from structured envelopes.
- - Launch one-shot runs and CLI-owned task loops from app controls.
+ - Launch one-shot runs and task loops from app controls.
 
  Does not handle:
  - Queue watching or queue decoding.
@@ -15,7 +15,7 @@
  Invariants/assumptions callers must respect:
  - Only one active CLI run may exist per workspace.
  - All public methods are main-actor entry points.
- - CLI loop mode is owned by the subprocess until it exits or receives a stop signal.
+ - Loop mode is owned by the subprocess until it exits or receives a stop signal.
  - Behavioral implementation lives in adjacent `WorkspaceRunnerController+...` files.
  */
 
@@ -24,7 +24,7 @@ import Foundation
 @MainActor
 final class WorkspaceRunnerController {
     nonisolated static let supportedMachineConfigResolveVersion = 3
-    nonisolated static let supportedMachineParallelStatusVersion = 2
+    nonisolated static let supportedMachineParallelStatusVersion = 3
 
     weak var workspace: Workspace?
     var activeRun: RalphCLIRun?
@@ -240,7 +240,7 @@ final class WorkspaceRunnerController {
         }
     }
 
-    func startLoop(forceDirtyRepo: Bool? = nil) {
+    func startLoop(forceDirtyRepo: Bool? = nil, parallelWorkers: Int? = nil) {
         guard let workspace, !workspace.isShutDown else { return }
         guard !hasPendingRunWork(for: workspace) else { return }
         guard workspace.client != nil else {
@@ -251,10 +251,14 @@ final class WorkspaceRunnerController {
         workspace.runState.isLoopMode = true
         workspace.runState.stopAfterCurrent = false
         let shouldForceDirtyRepo = forceDirtyRepo ?? workspace.runState.runControlForceDirtyRepo
+        let requestedParallelWorkers = parallelWorkers ?? workspace.runState.runControlParallelWorkersOverride
 
         var arguments = ["--no-color", "machine", "run", "loop", "--resume", "--max-tasks", "0"]
         if shouldForceDirtyRepo {
             arguments.append("--force")
+        }
+        if let requestedParallelWorkers, requestedParallelWorkers >= 2 {
+            arguments.append(contentsOf: ["--parallel", String(requestedParallelWorkers)])
         }
         run(arguments: arguments)
     }

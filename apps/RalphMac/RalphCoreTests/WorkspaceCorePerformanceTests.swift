@@ -173,6 +173,18 @@ final class WorkspaceCorePerformanceTests: WorkspacePerformanceTestCase {
         XCTAssertEqual(workspace.attributedOutput.first?.text, "line 1\nline 2\n")
     }
 
+    func test_consumeStreamTextChunk_incrementalFlush_mergesPlainTextIntoSingleSegment() {
+        workspace.runState.ingestConsoleText("hello")
+        workspace.consumeStreamTextChunk("hello")
+        workspace.runState.ingestConsoleText(" world")
+        workspace.consumeStreamTextChunk(" world")
+        workspace.runState.flushConsoleRenderState()
+
+        XCTAssertEqual(workspace.output, "hello world")
+        XCTAssertEqual(workspace.attributedOutput.count, 1)
+        XCTAssertEqual(workspace.attributedOutput.first?.text, "hello world")
+    }
+
     func test_loadTasks_fromDetachedTask_reportsMissingClientError() async {
         let workspace = self.workspace!
         await Task.detached(priority: .userInitiated) {

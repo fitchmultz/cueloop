@@ -65,6 +65,7 @@ final class ANSIParserControlAndStreamTests: ANSIParserTestCase {
 
         workspace.consumeStreamTextChunk("\u{001B}[31mred")
         workspace.consumeStreamTextChunk(" still red\u{001B}[0m plain")
+        workspace.runState.flushConsoleRenderState()
 
         XCTAssertEqual(workspace.attributedOutput.count, 2)
         XCTAssertEqual(workspace.attributedOutput[0].text, "red still red")

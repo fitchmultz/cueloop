@@ -110,10 +110,13 @@ public extension Workspace {
 
     func parseANSICodes(from rawOutput: String, appendToExisting: Bool = false) {
         if appendToExisting {
-            runState.attributedOutput = runState.streamProcessor.append(
+            runState.streamProcessor.ingest(
                 chunk: rawOutput,
                 maxSegments: runState.maxANSISegments,
                 finalizeTrailingEscape: true
+            )
+            runState.attributedOutput = runState.streamProcessor.displaySegments(
+                maxSegments: runState.maxANSISegments
             )
         } else {
             runState.attributedOutput = runState.streamProcessor.replace(
@@ -133,15 +136,16 @@ public extension Workspace {
 
 extension Workspace {
     func consumeStreamTextChunk(_ text: String) {
-        let segments = runState.streamProcessor.append(
+        runState.streamProcessor.ingest(
             chunk: text,
             maxSegments: runState.maxANSISegments,
             finalizeTrailingEscape: false
         )
-        runState.attributedOutput = segments
+        runState.scheduleConsoleRenderRefresh()
     }
 
     func resetStreamProcessingState() {
+        runState.cancelPendingConsoleRenderRefresh()
         runState.streamProcessor.reset()
         runState.attributedOutput = []
     }
@@ -160,18 +164,19 @@ final class WorkspaceStreamProcessor {
         finalizeTrailingEscape: Bool
     ) -> [Workspace.ANSISegment] {
         reset()
-        return append(
+        ingest(
             chunk: content,
             maxSegments: maxSegments,
             finalizeTrailingEscape: finalizeTrailingEscape
         )
+        return displaySegments(maxSegments: maxSegments)
     }
 
-    func append(
+    func ingest(
         chunk: String,
         maxSegments: Int,
         finalizeTrailingEscape: Bool
-    ) -> [Workspace.ANSISegment] {
+    ) {
         ansiParser.append(
             chunk: chunk,
             maxSegments: maxSegments,
@@ -185,7 +190,30 @@ final class WorkspaceStreamProcessor {
 }
 
 private final class WorkspaceANSIStreamParser {
-    private var segments: [Workspace.ANSISegment] = []
+    private struct StoredSegment {
+        var text: String
+        let color: Workspace.ANSIColor
+        let isBold: Bool
+        let isItalic: Bool
+
+        init(_ segment: Workspace.ANSISegment) {
+            text = segment.text
+            color = segment.color
+            isBold = segment.isBold
+            isItalic = segment.isItalic
+        }
+
+        var displaySegment: Workspace.ANSISegment {
+            Workspace.ANSISegment(
+                text: text,
+                color: color,
+                isBold: isBold,
+                isItalic: isItalic
+            )
+        }
+    }
+
+    private var segments: [StoredSegment] = []
     private var style = WorkspaceANSIStyleState()
     private var currentText = ""
     private var pendingEscape: String?
@@ -203,7 +231,7 @@ private final class WorkspaceANSIStreamParser {
         chunk: String,
         maxSegments: Int,
         finalizeTrailingEscape: Bool
-    ) -> [Workspace.ANSISegment] {
+    ) {
         for character in chunk {
             process(character)
         }
@@ -215,22 +243,22 @@ private final class WorkspaceANSIStreamParser {
 
         flushCurrentText()
         enforceSegmentLimit(maxSegments: maxSegments)
-        return displaySegments(maxSegments: maxSegments)
     }
 
     func displaySegments(maxSegments: Int) -> [Workspace.ANSISegment] {
         enforceSegmentLimit(maxSegments: maxSegments)
-        guard truncated, !segments.isEmpty else { return segments }
+        let displaySegments = segments.map(\.displaySegment)
+        guard truncated, !displaySegments.isEmpty else { return displaySegments }
         let indicator = Workspace.ANSISegment(
             text: "\n... [console output truncated due to length] ...\n",
             color: .yellow,
             isBold: false,
             isItalic: true
         )
-        if segments.first?.text == indicator.text {
-            return segments
+        if displaySegments.first?.text == indicator.text {
+            return displaySegments
         }
-        return [indicator] + segments
+        return [indicator] + displaySegments
     }
 
     private func process(_ character: Character) {
@@ -340,14 +368,9 @@ private final class WorkspaceANSIStreamParser {
            last.color == segment.color,
            last.isBold == segment.isBold,
            last.isItalic == segment.isItalic {
-            segments[segments.count - 1] = Workspace.ANSISegment(
-                text: last.text + segment.text,
-                color: segment.color,
-                isBold: segment.isBold,
-                isItalic: segment.isItalic
-            )
+            segments[segments.count - 1].text.append(segment.text)
         } else {
-            segments.append(segment)
+            segments.append(StoredSegment(segment))
         }
     }
 

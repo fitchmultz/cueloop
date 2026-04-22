@@ -14,7 +14,7 @@
 //! - Removed flags/subcommands must remain rejected.
 
 use super::{Cli, Command};
-use crate::cli::{queue, run, task};
+use crate::cli::{machine, queue, run, task};
 use clap::Parser;
 use clap::error::ErrorKind;
 
@@ -120,6 +120,42 @@ fn cli_parses_run_loop_debug() {
             _ => panic!("expected run loop command"),
         },
         _ => panic!("expected run command"),
+    }
+}
+
+#[test]
+fn cli_parses_machine_run_loop_parallel_override() {
+    let cli =
+        Cli::try_parse_from(["ralph", "machine", "run", "loop", "--parallel", "3"]).expect("parse");
+    match cli.command {
+        Command::Machine(args) => match args.command {
+            machine::MachineCommand::Run(args) => match args.command {
+                machine::MachineRunCommand::Loop(args) => {
+                    assert_eq!(args.parallel, Some(3));
+                }
+                _ => panic!("expected machine run loop command"),
+            },
+            _ => panic!("expected machine run command"),
+        },
+        _ => panic!("expected machine command"),
+    }
+}
+
+#[test]
+fn cli_parses_machine_run_loop_parallel_default_missing_value() {
+    let cli =
+        Cli::try_parse_from(["ralph", "machine", "run", "loop", "--parallel"]).expect("parse");
+    match cli.command {
+        Command::Machine(args) => match args.command {
+            machine::MachineCommand::Run(args) => match args.command {
+                machine::MachineRunCommand::Loop(args) => {
+                    assert_eq!(args.parallel, Some(2));
+                }
+                _ => panic!("expected machine run loop command"),
+            },
+            _ => panic!("expected machine run command"),
+        },
+        _ => panic!("expected machine command"),
     }
 }
 

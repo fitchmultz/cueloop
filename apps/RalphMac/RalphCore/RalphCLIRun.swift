@@ -13,7 +13,7 @@
 
  Invariants/assumptions callers must respect:
  - Instances are created only by `RalphCLIClient.start(...)`.
- - Cancellation is best-effort: terminate first, then hard-kill after the grace period on Darwin.
+ - Cancellation is best-effort: interrupt first, then escalate to terminate and hard-kill after the grace period on Darwin.
  - Event streams finish only after process termination and both pipes reach EOF.
  */
 
@@ -41,6 +41,7 @@ public actor RalphCLIRun {
     private var didRequestCancel = false
     private var didFinishEvents = false
     private var didTerminateProcess = false
+    private var didEscalateTermination = false
     private var stdoutClosed = false
     private var stderrClosed = false
     private var exitStatus: RalphCLIExitStatus?
@@ -83,17 +84,30 @@ public actor RalphCLIRun {
         didRequestCancel = true
 
         guard process.isRunning else { return }
-        process.terminate()
+        process.interrupt()
 
         #if canImport(Darwin)
         let pid = process.processIdentifier
         ioQueue.asyncAfter(deadline: .now() + gracePeriod) { [weak self] in
             guard let self else { return }
             Task { [weak self] in
+                await self?.terminateIfStillRunning()
+            }
+        }
+        ioQueue.asyncAfter(deadline: .now() + (gracePeriod * 2)) { [weak self] in
+            guard let self else { return }
+            Task { [weak self] in
                 await self?.killIfStillRunning(pid: pid)
             }
         }
         #endif
+    }
+
+    private func terminateIfStillRunning() {
+        guard process.isRunning else { return }
+        guard !didEscalateTermination else { return }
+        didEscalateTermination = true
+        process.terminate()
     }
 
     #if canImport(Darwin)

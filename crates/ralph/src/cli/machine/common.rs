@@ -64,6 +64,14 @@ pub(super) fn build_config_resolve_document(
     }
 }
 
+pub(super) fn machine_safety_context(resolved: &config::Resolved) -> Result<(bool, bool)> {
+    let repo_trust = config::load_repo_trust(&resolved.repo_root)?;
+    let dirty_repo = crate::git::status_porcelain(&resolved.repo_root)
+        .map(|status| !status.trim().is_empty())
+        .unwrap_or(false);
+    Ok((repo_trust.is_trusted(), dirty_repo))
+}
+
 pub(super) fn build_queue_read_document(
     resolved: &config::Resolved,
 ) -> Result<MachineQueueReadDocument> {

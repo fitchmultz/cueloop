@@ -551,7 +551,7 @@ HTTP webhook configuration for external integrations.
 
 ## Parallel Configuration
 
-The `parallel` section controls parallel task execution for `ralph run loop`. **Note**: Parallel mode is CLI-only.
+The `parallel` section controls parallel task execution for `ralph run loop` and RalphMac Run Control loop launches.
 
 ### Core Fields
 
@@ -974,7 +974,7 @@ Here's a comprehensive example demonstrating all configuration sections:
     "scan_prompt_version": "v2"
   },
   
-  // Parallel execution (CLI-only)
+  // Parallel execution
   "parallel": {
     "workers": 3,
     "workspace_root": ".workspaces/my-repo/parallel",

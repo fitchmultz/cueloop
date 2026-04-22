@@ -28,6 +28,10 @@ use display::{
     show_task_notification, show_watch_notification,
 };
 
+#[cfg(all(feature = "notifications", target_os = "macos"))]
+const MACOS_NOTIFICATION_BUNDLE_ID: &str = "com.mitchfultz.ralph";
+pub(crate) const UI_ACTIVE_ENV_KEY: &str = "RALPH_UI_ACTIVE";
+
 /// Types of notifications that can be sent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NotificationType {
@@ -159,13 +163,7 @@ pub fn notify_loop_complete(
 /// Send watch mode notification for newly detected tasks.
 /// Silently logs errors but never fails the calling operation.
 pub fn notify_watch_new_task(count: usize, config: &NotificationConfig) {
-    if !config.enabled {
-        log::debug!("Notifications disabled; skipping");
-        return;
-    }
-
-    if config.should_suppress(false) {
-        log::debug!("Notifications suppressed (globally disabled)");
+    if !should_deliver_notification(config, None, false) {
         return;
     }
 
@@ -175,28 +173,75 @@ pub fn notify_watch_new_task(count: usize, config: &NotificationConfig) {
     play_sound_if_enabled(config);
 }
 
+#[cfg(all(feature = "notifications", target_os = "macos"))]
+pub(crate) fn prepare_platform_notification_delivery() {
+    if let Err(error) = notify_rust::set_application(MACOS_NOTIFICATION_BUNDLE_ID) {
+        log::trace!(
+            "macOS notification bundle already configured or unavailable (bundle={}, error={})",
+            MACOS_NOTIFICATION_BUNDLE_ID,
+            error
+        );
+    }
+}
+
+#[cfg(not(all(feature = "notifications", target_os = "macos")))]
+pub(crate) fn prepare_platform_notification_delivery() {}
+
+fn ui_activity_override_from_env_value(value: Option<&str>) -> bool {
+    value.is_some_and(|raw| {
+        let normalized = raw.trim();
+        normalized == "1"
+            || normalized.eq_ignore_ascii_case("true")
+            || normalized.eq_ignore_ascii_case("yes")
+            || normalized.eq_ignore_ascii_case("on")
+    })
+}
+
+fn effective_ui_active(ui_active: bool) -> bool {
+    ui_active
+        || ui_activity_override_from_env_value(std::env::var(UI_ACTIVE_ENV_KEY).ok().as_deref())
+}
+
+fn should_suppress_notification_delivery(config: &NotificationConfig, ui_active: bool) -> bool {
+    let ui_active = effective_ui_active(ui_active);
+    ui_active || config.should_suppress(false)
+}
+
+fn should_deliver_notification(
+    config: &NotificationConfig,
+    notification_type: Option<NotificationType>,
+    ui_active: bool,
+) -> bool {
+    if let Some(notification_type) = notification_type {
+        let type_enabled = match notification_type {
+            NotificationType::TaskComplete => config.notify_on_complete,
+            NotificationType::TaskFailed => config.notify_on_fail,
+            NotificationType::LoopComplete { .. } => config.notify_on_loop_complete,
+        };
+        if !type_enabled {
+            log::debug!(
+                "Notification type {:?} disabled; skipping",
+                notification_type
+            );
+            return false;
+        }
+    }
+
+    if should_suppress_notification_delivery(config, ui_active) {
+        log::debug!("Notifications suppressed (UI active or globally disabled)");
+        return false;
+    }
+
+    true
+}
+
 fn dispatch_notification(
     notification_type: NotificationType,
     request: NotificationDisplayRequest<'_>,
     config: &NotificationConfig,
     ui_active: bool,
 ) {
-    let type_enabled = match notification_type {
-        NotificationType::TaskComplete => config.notify_on_complete,
-        NotificationType::TaskFailed => config.notify_on_fail,
-        NotificationType::LoopComplete { .. } => config.notify_on_loop_complete,
-    };
-
-    if !type_enabled {
-        log::debug!(
-            "Notification type {:?} disabled; skipping",
-            notification_type
-        );
-        return;
-    }
-
-    if config.should_suppress(ui_active) {
-        log::debug!("Notifications suppressed (UI active or globally disabled)");
+    if !should_deliver_notification(config, Some(notification_type), ui_active) {
         return;
     }
 
@@ -306,5 +351,101 @@ mod tests {
         assert!(config.sound_enabled);
         assert_eq!(config.sound_path, Some("/path/to/sound.wav".to_string()));
         assert_eq!(config.timeout_ms, 5000);
+    }
+
+    #[test]
+    fn ui_activity_override_from_env_value_accepts_truthy_values() {
+        for value in ["1", "true", "TRUE", "yes", "on"] {
+            assert!(ui_activity_override_from_env_value(Some(value)));
+        }
+    }
+
+    #[test]
+    fn ui_activity_override_from_env_value_rejects_missing_or_falsey_values() {
+        for value in [
+            None,
+            Some(""),
+            Some("0"),
+            Some("false"),
+            Some("off"),
+            Some("no"),
+        ] {
+            assert!(!ui_activity_override_from_env_value(value));
+        }
+    }
+
+    #[test]
+    fn effective_ui_active_keeps_explicit_ui_activity() {
+        assert!(effective_ui_active(true));
+    }
+
+    #[test]
+    fn should_suppress_notification_delivery_when_ui_active_even_if_config_disables_activity_gate()
+    {
+        let config = NotificationConfig {
+            enabled: true,
+            notify_on_complete: true,
+            notify_on_fail: true,
+            notify_on_loop_complete: true,
+            suppress_when_active: false,
+            sound_enabled: false,
+            sound_path: None,
+            timeout_ms: 8000,
+        };
+
+        assert!(should_suppress_notification_delivery(&config, true));
+    }
+
+    #[test]
+    fn should_suppress_notification_delivery_respects_global_disable_without_ui_activity() {
+        let config = NotificationConfig {
+            enabled: false,
+            notify_on_complete: true,
+            notify_on_fail: true,
+            notify_on_loop_complete: true,
+            suppress_when_active: false,
+            sound_enabled: false,
+            sound_path: None,
+            timeout_ms: 8000,
+        };
+
+        assert!(should_suppress_notification_delivery(&config, false));
+    }
+
+    #[test]
+    fn should_deliver_notification_rejects_disabled_types() {
+        let config = NotificationConfig {
+            enabled: true,
+            notify_on_complete: false,
+            notify_on_fail: true,
+            notify_on_loop_complete: true,
+            suppress_when_active: true,
+            sound_enabled: false,
+            sound_path: None,
+            timeout_ms: 8000,
+        };
+
+        assert!(!should_deliver_notification(
+            &config,
+            Some(NotificationType::TaskComplete),
+            false
+        ));
+    }
+
+    #[test]
+    fn should_deliver_notification_treats_watch_notifications_like_other_delivery() {
+        let config = NotificationConfig {
+            enabled: true,
+            notify_on_complete: false,
+            notify_on_fail: false,
+            notify_on_loop_complete: false,
+            suppress_when_active: false,
+            sound_enabled: false,
+            sound_path: None,
+            timeout_ms: 8000,
+        };
+
+        assert!(should_deliver_notification(&config, None, false));
+        assert!(!should_deliver_notification(&config, None, true));
     }
 }

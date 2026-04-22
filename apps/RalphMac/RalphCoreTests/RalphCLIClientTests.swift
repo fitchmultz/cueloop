@@ -112,6 +112,34 @@ final class RalphCLIClientTests: RalphCoreTestCase {
         XCTAssertEqual(printedURL.path, tempDir.resolvingSymlinksInPath().path)
     }
 
+    func test_start_setsForegroundUIEnvironmentByDefault() async throws {
+        let client = try RalphCLIClient(executableURL: URL(fileURLWithPath: "/bin/sh"))
+        let run = try client.start(arguments: ["-c", "printf %s \"${RALPH_UI_ACTIVE:-missing}\""])
+
+        var stdout = ""
+        for await event in await run.events where event.stream == .stdout {
+            stdout.append(event.text)
+        }
+
+        let status = await run.waitUntilExit()
+        XCTAssertEqual(status.code, 0)
+        XCTAssertEqual(stdout, "1")
+    }
+
+    func test_launchEnvironment_forcesForegroundUIEnvironmentAfterOverrides() {
+        let environment = RalphCLIClient.launchEnvironment(
+            base: ["BASE": "1"],
+            overrides: [
+                "OVERRIDE": "2",
+                RalphCLIClient.uiActiveEnvironmentKey: "0",
+            ]
+        )
+
+        XCTAssertEqual(environment["BASE"], "1")
+        XCTAssertEqual(environment["OVERRIDE"], "2")
+        XCTAssertEqual(environment[RalphCLIClient.uiActiveEnvironmentKey], "1")
+    }
+
     func test_cancellation_terminatesProcess() async throws {
         let client = try RalphCLIClient(executableURL: URL(fileURLWithPath: "/bin/sleep"))
         let run = try client.start(arguments: ["60"])
@@ -124,6 +152,37 @@ final class RalphCLIClientTests: RalphCoreTestCase {
         let status = await run.waitUntilExit()
         XCTAssertTrue(status.reason == .uncaughtSignal || status.reason == .exit)
         XCTAssertNotEqual(status.code, 0)
+    }
+
+    func test_cancellation_interruptsBeforeTerminate() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-client-interrupt-")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+
+        let readyURL = tempDir.appendingPathComponent("cancel-ready.log", isDirectory: false)
+        let signalURL = tempDir.appendingPathComponent("cancel-signal.log", isDirectory: false)
+        let script = """
+            #!/bin/sh
+            trap 'printf "INT\n" >> "\(signalURL.path)"; exit 130' INT
+            trap 'printf "TERM\n" >> "\(signalURL.path)"; exit 143' TERM
+            printf "ready\n" >> "\(readyURL.path)"
+            sleep 30
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let run = try client.start(arguments: [])
+
+        let ready = await RalphCoreTestSupport.waitForFile(readyURL, timeout: .seconds(2))
+        XCTAssertTrue(ready)
+        await run.cancel()
+        for await _ in await run.events {
+            // Drain until process exits.
+        }
+
+        let status = await run.waitUntilExit()
+        XCTAssertTrue(status.reason == .uncaughtSignal || status.reason == .exit)
+        let signal = try String(contentsOf: signalURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertEqual(signal, "INT")
     }
 
     func test_runAndCollect_taskCancellation_terminatesProcessAndThrowsCancellation() async throws {

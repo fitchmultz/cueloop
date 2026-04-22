@@ -23,6 +23,8 @@ public import SwiftUI
 
 @MainActor
 public final class WorkspaceRunState: ObservableObject {
+    static let consoleRenderRefreshIntervalNanoseconds: UInt64 = 50_000_000
+
     @Published public var output = ""
     @Published public var isRunning = false
     @Published public var lastExitStatus: RalphCLIExitStatus?
@@ -40,6 +42,7 @@ public final class WorkspaceRunState: ObservableObject {
     @Published public var parallelStatusErrorMessage: String?
     @Published public var runControlSelectedTaskID: String?
     @Published public var runControlForceDirtyRepo = false
+    @Published public var runControlParallelWorkersOverride: Int?
     @Published public var resumeState: Workspace.ResumeState? {
         didSet { refreshOperatorState() }
     }
@@ -61,6 +64,8 @@ public final class WorkspaceRunState: ObservableObject {
     let streamProcessor = WorkspaceStreamProcessor()
     private var liveBlockingState: Workspace.BlockingState?
     private var queueBlockingState: Workspace.BlockingState?
+    private var pendingConsoleRenderRefreshTask: Task<Void, Never>?
+    private var pendingConsoleText = ""
 
     var hasMeaningfulParallelStatus: Bool {
         parallelStatus?.isMeaningful == true
@@ -69,6 +74,7 @@ public final class WorkspaceRunState: ObservableObject {
     public var shouldShowRunControlParallelStatus: Bool {
         parallelStatusLoading
             || parallelStatusErrorMessage != nil
+            || runControlParallelWorkersOverride != nil
             || currentRunnerConfig?.safety?.parallelConfigured == true
             || hasMeaningfulParallelStatus
     }
@@ -78,6 +84,8 @@ public final class WorkspaceRunState: ObservableObject {
     }
 
     func prepareForNewRun(preservingConsole: Bool = false) {
+        cancelPendingConsoleRenderRefresh()
+        pendingConsoleText.removeAll(keepingCapacity: false)
         if preservingConsole {
             if !outputBuffer.content.hasSuffix("\n"), !outputBuffer.content.isEmpty {
                 outputBuffer.append("\n")
@@ -133,6 +141,43 @@ public final class WorkspaceRunState: ObservableObject {
 
     func refreshOperatorStateForDisplay() {
         refreshOperatorState()
+    }
+
+    func scheduleConsoleRenderRefresh() {
+        guard pendingConsoleRenderRefreshTask == nil else { return }
+        pendingConsoleRenderRefreshTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(nanoseconds: Self.consoleRenderRefreshIntervalNanoseconds)
+            } catch {
+                return
+            }
+            guard let self, !Task.isCancelled else { return }
+            pendingConsoleRenderRefreshTask = nil
+            publishConsoleRenderState()
+        }
+    }
+
+    func flushConsoleRenderState() {
+        cancelPendingConsoleRenderRefresh()
+        publishConsoleRenderState()
+    }
+
+    func ingestConsoleText(_ text: String) {
+        pendingConsoleText.append(text)
+    }
+
+    func cancelPendingConsoleRenderRefresh() {
+        pendingConsoleRenderRefreshTask?.cancel()
+        pendingConsoleRenderRefreshTask = nil
+    }
+
+    private func publishConsoleRenderState() {
+        if !pendingConsoleText.isEmpty {
+            outputBuffer.append(pendingConsoleText)
+            pendingConsoleText.removeAll(keepingCapacity: true)
+        }
+        output = outputBuffer.content
+        attributedOutput = streamProcessor.displaySegments(maxSegments: maxANSISegments)
     }
 
     private func refreshOperatorState() {
@@ -629,8 +674,8 @@ public extension Workspace {
         )
     }
 
-    func startLoop(forceDirtyRepo: Bool? = nil) {
-        runnerController.startLoop(forceDirtyRepo: forceDirtyRepo)
+    func startLoop(forceDirtyRepo: Bool? = nil, parallelWorkers: Int? = nil) {
+        runnerController.startLoop(forceDirtyRepo: forceDirtyRepo, parallelWorkers: parallelWorkers)
     }
 
     func stopLoop() {

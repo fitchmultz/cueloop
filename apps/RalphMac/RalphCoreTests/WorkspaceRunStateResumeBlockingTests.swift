@@ -174,6 +174,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         }
 
         workspace.runnerController.applyMachineRunOutputItem(.event(event), workspace: workspace)
+        workspace.runState.flushConsoleRenderState()
 
         XCTAssertEqual(workspace.runState.resumeState?.status, .resumingSameSession)
         XCTAssertEqual(workspace.runState.resumeState?.taskID, "RQ-7777")
@@ -193,6 +194,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         for item in items {
             workspace.runnerController.applyMachineRunOutputItem(item, workspace: workspace)
         }
+        workspace.runState.flushConsoleRenderState()
 
         XCTAssertEqual(workspace.runState.blockingState?.status, .stalled)
         XCTAssertEqual(
@@ -224,6 +226,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         }
 
         workspace.runnerController.applyMachineRunOutputItem(.event(event), workspace: workspace)
+        workspace.runState.flushConsoleRenderState()
 
         XCTAssertEqual(workspace.runState.blockingState?.status, .blocked)
         XCTAssertEqual(

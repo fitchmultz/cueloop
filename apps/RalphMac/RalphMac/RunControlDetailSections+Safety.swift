@@ -19,6 +19,7 @@ struct RunControlSafetyStatusSection: View {
 
     var body: some View {
         let safety = workspace.runState.currentRunnerConfig?.safety
+        let requestedParallelWorkers = workspace.runState.runControlParallelWorkersOverride
 
         RunControlGlassSection("Safety Status") {
             if let safety {
@@ -62,10 +63,15 @@ struct RunControlSafetyStatusSection: View {
                         emphasis: safety.gitRevertMode == "disabled" ? .warning : .normal
                     )
                     SafetyStatusRow(
-                        icon: safety.parallelConfigured ? "sparkles.rectangle.stack" : "square.stack.3d.up",
+                        icon: requestedParallelWorkers != nil || safety.parallelConfigured
+                            ? "sparkles.rectangle.stack"
+                            : "square.stack.3d.up",
                         title: "Parallel",
-                        value: safety.parallelConfigured ? "Configured (experimental)" : "Off",
-                        emphasis: safety.parallelConfigured ? .warning : .normal
+                        value: requestedParallelWorkers.map { "\($0) workers (next loop)" }
+                            ?? (safety.parallelConfigured ? "Configured" : "Auto"),
+                        emphasis: requestedParallelWorkers != nil || safety.parallelConfigured
+                            ? .warning
+                            : .normal
                     )
                     SafetyStatusRow(
                         icon: "terminal",

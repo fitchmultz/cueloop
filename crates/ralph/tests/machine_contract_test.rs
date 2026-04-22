@@ -18,7 +18,7 @@ mod test_support;
 use anyhow::Result;
 use serde_json::Value;
 use tempfile::tempdir;
-use test_support::{git_init, ralph_init, run_in_dir};
+use test_support::{git_init, ralph_init, run_in_dir, trust_project_commands};
 
 use ralph::contracts::{TaskPriority, TaskStatus};
 
@@ -446,6 +446,45 @@ fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<
         document["continuation"]["next_steps"][0]["command"],
         "ralph queue unlock"
     );
+    Ok(())
+}
+
+#[test]
+fn machine_run_started_preserves_repo_trust_in_config_payload() -> Result<()> {
+    let dir = tempdir()?;
+    git_init(dir.path())?;
+    ralph_init(dir.path())?;
+    trust_project_commands(dir.path())?;
+
+    let lock_dir = dir.path().join(".ralph/lock");
+    std::fs::create_dir_all(&lock_dir)?;
+    std::fs::write(
+        lock_dir.join("owner"),
+        "pid: 999999\nstarted_at: 2026-03-21T12:00:00Z\ncommand: ralph run loop --parallel 2\nlabel: run loop\n",
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "one", "--resume"]);
+    assert!(
+        !status.success(),
+        "machine run one should stall on the stale lock\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let run_started: Value = serde_json::from_str(
+        stdout
+            .lines()
+            .next()
+            .expect("expected machine run event before the lock failure"),
+    )?;
+    assert_eq!(run_started["kind"], "run_started");
+    assert_eq!(
+        run_started["payload"]["config"]["safety"]["repo_trusted"],
+        Value::Bool(true)
+    );
+    assert_eq!(
+        run_started["payload"]["config"]["safety"]["dirty_repo"],
+        Value::Bool(true)
+    );
+
     Ok(())
 }
 

@@ -39,8 +39,12 @@ fn xcode_build_phase_uses_shared_cli_bundle_entrypoint() {
         "Xcode project should not embed its own Cargo invocation policy or debug hardcoded CLI paths"
     );
     assert!(
-        project.contains("target/release/ralph") && project.contains("ralph-cli-bundle.sh"),
-        "Release should prefer copying an existing target/release/ralph when present, with ralph-cli-bundle.sh as fallback"
+        project.contains("ralph-cli-bundle.sh") && !project.contains("target/release/ralph"),
+        "Release should always route through ralph-cli-bundle.sh instead of copying a possibly stale target/release/ralph"
+    );
+    assert!(
+        project.contains("alwaysOutOfDate = 1;"),
+        "The Xcode bundle phase should always rerun so RalphMac never ships a stale embedded CLI after Rust-only rebuilds"
     );
 }
 

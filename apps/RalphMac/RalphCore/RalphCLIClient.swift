@@ -75,6 +75,8 @@ public struct TimeoutConfiguration: Sendable {
 }
 
 public struct RalphCLIClient: Sendable {
+    static let uiActiveEnvironmentKey = "RALPH_UI_ACTIVE"
+
     public let executableURL: URL
 
     public init(executableURL: URL) throws {
@@ -109,9 +111,7 @@ public struct RalphCLIClient: Sendable {
             process.currentDirectoryURL = currentDirectoryURL
         }
 
-        if !environment.isEmpty {
-            process.environment = ProcessInfo.processInfo.environment.merging(environment, uniquingKeysWith: { _, new in new })
-        }
+        process.environment = Self.launchEnvironment(overrides: environment)
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -227,5 +227,17 @@ public struct RalphCLIClient: Sendable {
             group.cancelAll()
             return result
         }
+    }
+
+    static func launchEnvironment(
+        base: [String: String] = ProcessInfo.processInfo.environment,
+        overrides: [String: String] = [:]
+    ) -> [String: String] {
+        var launchEnvironment = base
+        if !overrides.isEmpty {
+            launchEnvironment.merge(overrides, uniquingKeysWith: { _, new in new })
+        }
+        launchEnvironment[uiActiveEnvironmentKey] = "1"
+        return launchEnvironment
     }
 }

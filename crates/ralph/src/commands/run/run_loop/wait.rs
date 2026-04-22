@@ -302,6 +302,7 @@ fn notify_queue_unblocked(
     #[cfg(feature = "notifications")]
     {
         use notify_rust::{Notification, Timeout};
+        crate::notification::prepare_platform_notification_delivery();
         if let Err(e) = Notification::new()
             .summary("Ralph: tasks runnable")
             .body(&note)

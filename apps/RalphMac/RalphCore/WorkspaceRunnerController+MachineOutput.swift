@@ -16,8 +16,7 @@ import Foundation
 @MainActor
 extension WorkspaceRunnerController {
     func appendConsoleText(_ text: String, workspace: Workspace) {
-        workspace.runState.outputBuffer.append(text)
-        workspace.runState.output = workspace.runState.outputBuffer.content
+        workspace.runState.ingestConsoleText(text)
         workspace.consumeStreamTextChunk(text)
     }
 

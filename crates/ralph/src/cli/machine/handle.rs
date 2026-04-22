@@ -23,7 +23,7 @@ use crate::cli::machine::args::{
     MachineWorkspaceCommand,
 };
 use crate::cli::machine::common::{
-    build_config_resolve_document, build_workspace_overview_document,
+    build_config_resolve_document, build_workspace_overview_document, machine_safety_context,
 };
 use crate::cli::machine::io::print_json;
 use crate::cli::machine::{queue, run, task};
@@ -52,16 +52,13 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
         MachineCommand::Config(args) => match args.command {
             MachineConfigCommand::Resolve => {
                 let resolved = config::resolve_from_cwd()?;
-                let repo_trust = config::load_repo_trust(&resolved.repo_root)?;
-                let dirty_repo = crate::git::status_porcelain(&resolved.repo_root)
-                    .map(|status| !status.trim().is_empty())
-                    .unwrap_or(false);
+                let (repo_trusted, dirty_repo) = machine_safety_context(&resolved)?;
                 let resume_preview = crate::cli::machine::common::build_resume_preview(
                     &resolved, None, true, true, false,
                 )?;
                 print_json(&build_config_resolve_document(
                     &resolved,
-                    repo_trust.is_trusted(),
+                    repo_trusted,
                     dirty_repo,
                     resume_preview,
                 ))
@@ -70,16 +67,13 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
         MachineCommand::Workspace(args) => match args.command {
             MachineWorkspaceCommand::Overview => {
                 let resolved = config::resolve_from_cwd()?;
-                let repo_trust = config::load_repo_trust(&resolved.repo_root)?;
-                let dirty_repo = crate::git::status_porcelain(&resolved.repo_root)
-                    .map(|status| !status.trim().is_empty())
-                    .unwrap_or(false);
+                let (repo_trusted, dirty_repo) = machine_safety_context(&resolved)?;
                 let resume_preview = crate::cli::machine::common::build_resume_preview(
                     &resolved, None, true, true, false,
                 )?;
                 print_json(&build_workspace_overview_document(
                     &resolved,
-                    repo_trust.is_trusted(),
+                    repo_trusted,
                     dirty_repo,
                     resume_preview,
                 )?)
