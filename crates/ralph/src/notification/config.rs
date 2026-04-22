@@ -35,6 +35,8 @@ pub struct NotificationConfig {
     pub notify_on_fail: bool,
     /// Enable desktop notifications when loop mode completes.
     pub notify_on_loop_complete: bool,
+    /// Enable desktop notifications when watch mode adds new tasks from comments.
+    pub notify_on_watch_new_tasks: bool,
     /// Suppress notifications when a foreground UI client is active.
     pub suppress_when_active: bool,
     /// Enable sound alerts with notifications.
@@ -54,6 +56,7 @@ impl NotificationConfig {
             notify_on_complete: true,
             notify_on_fail: true,
             notify_on_loop_complete: true,
+            notify_on_watch_new_tasks: true,
             suppress_when_active: true,
             sound_enabled: false,
             sound_path: None,
@@ -86,12 +89,17 @@ pub fn build_notification_config(
         .or(config.notify_on_fail)
         .unwrap_or(true);
     let notify_on_loop_complete = config.notify_on_loop_complete.unwrap_or(true);
+    let notify_on_watch_new_tasks = config.notify_on_watch_new_tasks.unwrap_or(true);
 
     NotificationConfig {
-        enabled: notify_on_complete || notify_on_fail || notify_on_loop_complete,
+        enabled: notify_on_complete
+            || notify_on_fail
+            || notify_on_loop_complete
+            || notify_on_watch_new_tasks,
         notify_on_complete,
         notify_on_fail,
         notify_on_loop_complete,
+        notify_on_watch_new_tasks,
         suppress_when_active: config.suppress_when_active.unwrap_or(true),
         sound_enabled: overrides
             .notify_sound
@@ -116,6 +124,7 @@ mod tests {
         assert!(result.notify_on_complete);
         assert!(result.notify_on_fail);
         assert!(result.notify_on_loop_complete);
+        assert!(result.notify_on_watch_new_tasks);
         assert!(result.suppress_when_active);
         assert!(!result.sound_enabled);
         assert!(result.sound_path.is_none());
@@ -168,6 +177,7 @@ mod tests {
             notify_on_complete: Some(false),
             notify_on_fail: Some(false),
             notify_on_loop_complete: Some(false),
+            notify_on_watch_new_tasks: Some(false),
             ..Default::default()
         };
         let overrides = NotificationOverrides::default();
@@ -182,5 +192,16 @@ mod tests {
         };
         let result = build_notification_config(&config, &overrides);
         assert!(result.enabled);
+
+        let config = crate::contracts::NotificationConfig {
+            notify_on_complete: Some(false),
+            notify_on_fail: Some(false),
+            notify_on_loop_complete: Some(false),
+            notify_on_watch_new_tasks: Some(true),
+            ..Default::default()
+        };
+        let result = build_notification_config(&config, &overrides);
+        assert!(result.enabled);
+        assert!(result.notify_on_watch_new_tasks);
     }
 }

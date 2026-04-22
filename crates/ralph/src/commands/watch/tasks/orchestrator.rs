@@ -21,7 +21,9 @@ use crate::commands::watch::identity::{
 };
 use crate::commands::watch::types::{DetectedComment, WatchOptions};
 use crate::config::Resolved;
-use crate::notification::{NotificationConfig, notify_watch_new_task};
+use crate::notification::{
+    NotificationOverrides, build_notification_config, notify_watch_new_task,
+};
 use crate::queue::{load_queue, save_queue, suggest_new_task_insert_index};
 use crate::timeutil;
 
@@ -98,7 +100,10 @@ pub fn handle_detected_comments(
     if opts.auto_queue && !created_tasks.is_empty() {
         log::info!("Added {} task(s) to queue", created_tasks.len());
         if opts.notify {
-            let config = NotificationConfig::new();
+            let config = build_notification_config(
+                &resolved.config.agent.notification,
+                &NotificationOverrides::default(),
+            );
             notify_watch_new_task(created_tasks.len(), &config);
         }
     }

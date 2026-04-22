@@ -168,6 +168,7 @@ impl Default for Config {
                     notify_on_complete: Some(true),
                     notify_on_fail: Some(true),
                     notify_on_loop_complete: Some(true),
+                    notify_on_watch_new_tasks: Some(true),
                     suppress_when_active: Some(true),
                     sound_enabled: Some(false),
                     sound_path: None,

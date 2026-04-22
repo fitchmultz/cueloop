@@ -26,6 +26,9 @@ pub struct NotificationConfig {
     /// Enable desktop notifications when loop mode completes (default: true).
     pub notify_on_loop_complete: Option<bool>,
 
+    /// Enable desktop notifications when watch mode adds new tasks from comments (default: true).
+    pub notify_on_watch_new_tasks: Option<bool>,
+
     /// Suppress notifications when a foreground UI client is active (default: true).
     pub suppress_when_active: Option<bool>,
 
@@ -54,6 +57,9 @@ impl NotificationConfig {
         }
         if other.notify_on_loop_complete.is_some() {
             self.notify_on_loop_complete = other.notify_on_loop_complete;
+        }
+        if other.notify_on_watch_new_tasks.is_some() {
+            self.notify_on_watch_new_tasks = other.notify_on_watch_new_tasks;
         }
         if other.suppress_when_active.is_some() {
             self.suppress_when_active = other.suppress_when_active;

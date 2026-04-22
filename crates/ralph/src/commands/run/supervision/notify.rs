@@ -38,6 +38,12 @@ pub(crate) fn build_notification_config(
         .notification
         .notify_on_loop_complete
         .unwrap_or(true);
+    let notify_on_watch_new_tasks = resolved
+        .config
+        .agent
+        .notification
+        .notify_on_watch_new_tasks
+        .unwrap_or(true);
     let suppress_when_active = resolved
         .config
         .agent
@@ -48,10 +54,11 @@ pub(crate) fn build_notification_config(
         .or(resolved.config.agent.notification.sound_enabled)
         .unwrap_or(false);
     notification::NotificationConfig {
-        enabled,
+        enabled: enabled || notify_on_watch_new_tasks,
         notify_on_complete,
         notify_on_fail,
         notify_on_loop_complete,
+        notify_on_watch_new_tasks,
         suppress_when_active,
         sound_enabled,
         sound_path: resolved.config.agent.notification.sound_path.clone(),
@@ -150,6 +157,7 @@ mod tests {
         assert!(config.notify_on_complete);
         assert!(config.notify_on_fail);
         assert!(config.notify_on_loop_complete);
+        assert!(config.notify_on_watch_new_tasks);
         assert!(config.suppress_when_active);
         assert!(!config.sound_enabled);
         assert_eq!(config.timeout_ms, 8000);
@@ -163,6 +171,7 @@ mod tests {
             notify_on_complete: Some(false),
             notify_on_fail: Some(false),
             notify_on_loop_complete: Some(false),
+            notify_on_watch_new_tasks: Some(false),
             suppress_when_active: Some(false),
             sound_enabled: Some(false),
             sound_path: None,
@@ -190,6 +199,7 @@ mod tests {
             notify_on_complete: Some(false),
             notify_on_fail: Some(true),
             notify_on_loop_complete: Some(false),
+            notify_on_watch_new_tasks: Some(true),
             suppress_when_active: Some(true),
             sound_enabled: Some(true),
             sound_path: Some("/custom/sound.wav".to_string()),

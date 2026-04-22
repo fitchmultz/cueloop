@@ -144,6 +144,7 @@ pub(crate) fn resolved_with_notification_config(
                 notify_on_complete,
                 notify_on_fail,
                 notify_on_loop_complete,
+                notify_on_watch_new_tasks: None,
                 suppress_when_active: Some(true),
                 sound_enabled: Some(false),
                 sound_path: None,
