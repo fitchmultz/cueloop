@@ -37,6 +37,18 @@ It provides:
 - Hidden black-box state (queue and done files are plain JSONC in `.ralph/`)
 - Replacing your existing developer tooling; Ralph integrates with it
 
+## Core Operating Model
+
+Ralph centers on an operator-started run loop over repo-local tasks:
+
+1. Tasks live in `.ralph/queue.jsonc` and completed work is archived to `.ralph/done.jsonc`.
+2. A human starts `ralph run one`, `ralph run loop`, or `ralph run loop --parallel <N>`.
+3. Ralph invokes the configured runner through supervised one-, two-, or three-phase execution.
+4. In three-phase mode, Phase 3 reviews the implementation, resolves issues, and records completion.
+5. The configured CI gate runs before task completion and before automatic publish behavior.
+6. Post-run supervision validates queue state, archives the task, and commits or pushes according to `git_publish_mode`.
+7. Parallel mode applies the same task-sized workflow in isolated worker workspaces, then integrates completed workers back to the target branch.
+
 ## Architecture at a Glance
 
 ```mermaid

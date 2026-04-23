@@ -11,6 +11,17 @@ Ralph is a local-first orchestration system for AI-assisted engineering workflow
 - State store: repo-local `.ralph/` files (`queue.jsonc`, `done.jsonc`, optional `config.jsonc`)
 - External dependencies: runner CLIs (Codex/Claude/Gemini/OpenCode/Cursor/Kimi/Pi), git, optional GitHub CLI
 
+## Operating Model
+
+Ralph's primary product loop is an operator-started run over explicit repo-local tasks:
+
+1. Tasks are selected from `.ralph/queue.jsonc`.
+2. The run engine executes one, two, or three supervised phases through the configured runner.
+3. Phase 3, when enabled, performs the review/completion pass before the task is accepted.
+4. The CI gate runs before completion and before any configured automatic publish behavior.
+5. Post-run supervision validates queue/done state, archives terminal tasks, and finalizes git according to `git_publish_mode`.
+6. Parallel mode runs task-sized workers in isolated workspaces and uses an integration loop to rebase, validate, and push completed work back to the target branch.
+
 ## Core Components
 
 ### 1) Queue + Task Lifecycle
@@ -65,10 +76,11 @@ Typical `run one` flow:
 2. Config is resolved (CLI flags → project config → global config → defaults)
 3. Sanity checks run (unless explicitly disabled)
 4. Supervision engine selects task/phase and invokes runner subprocess(es)
-5. Queue transitions and output artifacts are persisted
-6. Optional CI gate and final checks run before completion
+5. Phase outputs, queue transitions, and completion artifacts are persisted
+6. Phase 3 reviews and completes the task when three-phase supervision is enabled
+7. CI and post-run supervision validate the result before queue archival and git finalization
 
-Parallel mode adds per-worker workspaces and coordinator-controlled merge/retry behavior.
+Parallel mode adds per-worker workspaces, worker-local queue/done bookkeeping, and an integration loop that fetches, rebases, validates, and pushes completed workers.
 
 ## Sequence: Parallel Worker Lifecycle
 
