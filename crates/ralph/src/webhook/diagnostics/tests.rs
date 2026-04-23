@@ -46,6 +46,14 @@ pub(crate) fn persist_failed_delivery_for_tests(
     failure_store::persist_failed_delivery_at_path(&path, msg, err, attempts)
 }
 
+pub(crate) fn update_replay_counts_for_tests(
+    repo_root: &Path,
+    replayed_ids: &[String],
+) -> Result<()> {
+    let path = failure_store::failure_store_path(repo_root);
+    failure_store::update_replay_counts(&path, replayed_ids)
+}
+
 pub(crate) fn reset_webhook_metrics_for_tests() {
     metrics::reset_metrics_for_tests();
 }

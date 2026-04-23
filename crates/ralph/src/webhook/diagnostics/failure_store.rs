@@ -14,7 +14,8 @@
 //! Invariants/Assumptions:
 //! - Failure records never include raw secrets or token-bearing destination URLs.
 //! - Stored history is bounded to the newest 200 failure records.
-//! - Store writes are best-effort for runtime delivery failures and serialized by a process-local lock.
+//! - Store writes are best-effort for runtime delivery failures and serialized by
+//!   cross-process locking around each read-modify-write mutation.
 
 use super::super::{WebhookMessage, WebhookPayload};
 use crate::{fsutil, redaction};
@@ -25,10 +26,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 const WEBHOOK_FAILURE_STORE_RELATIVE_PATH: &str = ".ralph/cache/webhooks/failures.json";
 const MAX_WEBHOOK_FAILURE_RECORDS: usize = 200;
 const MAX_FAILURE_ERROR_CHARS: usize = 400;
+const FAILURE_STORE_LOCK_LABEL: &str = "webhook failure store";
+const FAILURE_STORE_LOCK_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
+const FAILURE_STORE_LOCK_WAIT_SLICE: Duration = Duration::from_millis(25);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebhookFailureRecord {
@@ -54,6 +59,10 @@ fn failure_store_lock() -> &'static Mutex<()> {
 
 pub fn failure_store_path(repo_root: &Path) -> PathBuf {
     repo_root.join(WEBHOOK_FAILURE_STORE_RELATIVE_PATH)
+}
+
+fn failure_store_lock_dir(path: &Path) -> PathBuf {
+    path.with_extension("lock")
 }
 
 pub(super) fn persist_failed_delivery(
@@ -82,8 +91,10 @@ pub(super) fn persist_failed_delivery_at_path(
     let _guard = failure_store_lock()
         .lock()
         .map_err(|_| anyhow!("failed to acquire webhook failure store lock"))?;
+    let _file_lock = acquire_failure_store_lock(path)?;
 
     let mut records = load_failure_records_unlocked(path)?;
+    maybe_pause_failure_store_mutation_for_tests();
     records.push(WebhookFailureRecord {
         id: next_failure_id(),
         failed_at: crate::timeutil::now_utc_rfc3339_or_fallback(),
@@ -120,6 +131,7 @@ pub(super) fn write_failure_records(path: &Path, records: &[WebhookFailureRecord
     let _guard = failure_store_lock()
         .lock()
         .map_err(|_| anyhow!("failed to acquire webhook failure store lock"))?;
+    let _file_lock = acquire_failure_store_lock(path)?;
     write_failure_records_unlocked(path, records)
 }
 
@@ -132,7 +144,9 @@ pub(super) fn update_replay_counts(path: &Path, replayed_ids: &[String]) -> Resu
     let _guard = failure_store_lock()
         .lock()
         .map_err(|_| anyhow!("failed to acquire webhook failure store lock"))?;
+    let _file_lock = acquire_failure_store_lock(path)?;
     let mut records = load_failure_records_unlocked(path)?;
+    maybe_pause_failure_store_mutation_for_tests();
     for record in &mut records {
         if replayed_set.contains(record.id.as_str()) {
             record.replay_count = record.replay_count.saturating_add(1);
@@ -169,6 +183,34 @@ fn write_failure_records_unlocked(path: &Path, records: &[WebhookFailureRecord])
     let rendered = serde_json::to_string_pretty(records).context("serialize webhook failures")?;
     fsutil::write_atomic(path, rendered.as_bytes())
         .with_context(|| format!("write webhook failure store {}", path.display()))
+}
+
+fn acquire_failure_store_lock(path: &Path) -> Result<crate::lock::DirLock> {
+    let lock_dir = failure_store_lock_dir(path);
+    let deadline = Instant::now() + FAILURE_STORE_LOCK_WAIT_TIMEOUT;
+
+    loop {
+        match crate::lock::acquire_dir_lock(&lock_dir, FAILURE_STORE_LOCK_LABEL, true) {
+            Ok(lock) => return Ok(lock),
+            Err(error) if Instant::now() < deadline => {
+                log::debug!(
+                    "waiting for webhook failure store lock {}: {}",
+                    lock_dir.display(),
+                    error
+                );
+                std::thread::sleep(FAILURE_STORE_LOCK_WAIT_SLICE);
+            }
+            Err(error) => {
+                return Err(error).with_context(|| {
+                    format!(
+                        "acquire webhook failure store lock {} within {}ms",
+                        lock_dir.display(),
+                        FAILURE_STORE_LOCK_WAIT_TIMEOUT.as_millis()
+                    )
+                });
+            }
+        }
+    }
 }
 
 fn resolve_repo_root_from_runtime(msg: &WebhookMessage) -> Option<PathBuf> {
@@ -214,3 +256,18 @@ fn sanitize_error(err: &anyhow::Error, destination_url: Option<&str>) -> String 
         .collect::<String>();
     format!("{truncated}…")
 }
+
+#[cfg(test)]
+fn maybe_pause_failure_store_mutation_for_tests() {
+    let delay_ms = std::env::var("RALPH_TEST_WEBHOOK_FAILURE_STORE_DELAY_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|delay_ms| *delay_ms > 0);
+
+    if let Some(delay_ms) = delay_ms {
+        std::thread::sleep(Duration::from_millis(delay_ms));
+    }
+}
+
+#[cfg(not(test))]
+fn maybe_pause_failure_store_mutation_for_tests() {}

@@ -78,7 +78,7 @@
       "id": "RQ-0003",
       "status": "done",
       "title": "Fix flaky HOME mutation in plugins discovery test",
-      "description": "The audit flags `plugins/discovery.rs::project_overrides_global` for mutating `HOME` without `#[serial]`, which can flake under parallel tests and makes the SAFETY comment inaccurate. Add `#[serial]` (or remove the env mutation) so the test matches its isolation claims. Outcome: stable parallel test runs and accurate safety documentation for that test.\n\nValidation: In `crates/ralph/src/plugins/discovery.rs`, `project_overrides_global` (around lines 146–187) uses `unsafe { std::env::set_var(\"HOME\", ...) }` and documents single-threaded assumptions, but the test module is not `#[serial]`. The test body currently ends after restoring `HOME` and performs no assertions on `discover_plugins`, so fixing isolation may pair naturally with completing the intended override assertion.",
+      "description": "The audit flags `plugins/discovery.rs::project_overrides_global` for mutating `HOME` without `#[serial]`, which can flake under parallel tests and makes the SAFETY comment inaccurate. Add `#[serial]` (or remove the env mutation) so the test matches its isolation claims. Outcome: stable parallel test runs and accurate safety documentation for that test.\n\nValidation: In `crates/ralph/src/plugins/discovery.rs`, `project_overrides_global` (around lines 146\u2013187) uses `unsafe { std::env::set_var(\"HOME\", ...) }` and documents single-threaded assumptions, but the test module is not `#[serial]`. The test body currently ends after restoring `HOME` and performs no assertions on `discover_plugins`, so fixing isolation may pair naturally with completing the intended override assertion.",
       "priority": "medium",
       "tags": [
         "audit",
@@ -91,7 +91,7 @@
       ],
       "evidence": [
         "User requested queue tasks from `/tmp/ralph-codebase-audit.md` (Finding #7, Quick win #1, `plugins/discovery.rs` excerpt).",
-        "Repo: `crates/ralph/src/plugins/discovery.rs` — `project_overrides_global` mutates `HOME` via `set_var`/`remove_var` without `#[serial]`; `cargo run --manifest-path crates/ralph/Cargo.toml -- queue validate` succeeded (2026-04-16)."
+        "Repo: `crates/ralph/src/plugins/discovery.rs` \u2014 `project_overrides_global` mutates `HOME` via `set_var`/`remove_var` without `#[serial]`; `cargo run --manifest-path crates/ralph/Cargo.toml -- queue validate` succeeded (2026-04-16)."
       ],
       "plan": [
         "Inspect `project_overrides_global` in `crates/ralph/src/plugins/discovery.rs` and decide between `#[serial]` vs removing `HOME` mutation.",
@@ -104,7 +104,7 @@
         "Fixed global plugin layout to HOME/.config/ralph/plugins; assert project scope and manifest name.",
         "Introduced write_manifest_named for distinct global vs project manifests."
       ],
-      "request": "Confirm `project_overrides_global` in `crates/ralph/src/plugins/discovery.rs` still flakes or mis-documents isolation. Fix by adding `#[serial]` (per project conventions) or removing `HOME` mutation; add the missing assertion that project-scoped plugin discovery actually overrides global. Run `cargo test -p ralph` for `plugins::discovery`. Scope: this task only—no new queue items.",
+      "request": "Confirm `project_overrides_global` in `crates/ralph/src/plugins/discovery.rs` still flakes or mis-documents isolation. Fix by adding `#[serial]` (per project conventions) or removing `HOME` mutation; add the missing assertion that project-scoped plugin discovery actually overrides global. Run `cargo test -p ralph` for `plugins::discovery`. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-16T23:30:07.802262000Z",
       "completed_at": "2026-04-16T23:30:07.802262000Z",
@@ -123,7 +123,7 @@
       "id": "RQ-0013",
       "status": "done",
       "title": "Clean up `best_day` update logic in productivity calculations",
-      "description": "Audit flags `productivity/calculations.rs` around line ~312 for `best_day.as_ref().unwrap().1` after an `is_none()` check — sound but brittle style. Prefer `match`, `if let`, or `map_or` for clarity and future lint-friendliness. Outcome: equivalent behavior with clearer control flow.\n\nValidation: `crates/ralph/src/productivity/calculations.rs` uses `if best_day.is_none() || day_stats.completed_count > best_day.as_ref().unwrap().1` before assigning `best_day = Some((date, ...))` (pattern around lines 304–313), matching the audit’s style concern.",
+      "description": "Audit flags `productivity/calculations.rs` around line ~312 for `best_day.as_ref().unwrap().1` after an `is_none()` check \u2014 sound but brittle style. Prefer `match`, `if let`, or `map_or` for clarity and future lint-friendliness. Outcome: equivalent behavior with clearer control flow.\n\nValidation: `crates/ralph/src/productivity/calculations.rs` uses `if best_day.is_none() || day_stats.completed_count > best_day.as_ref().unwrap().1` before assigning `best_day = Some((date, ...))` (pattern around lines 304\u2013313), matching the audit\u2019s style concern.",
       "priority": "low",
       "tags": [
         "audit",
@@ -136,7 +136,7 @@
       ],
       "evidence": [
         "User requested tasks from `/tmp/ralph-codebase-audit.md` (Executive Top-10 Finding #10, Code Quality excerpt for `best_day`).",
-        "Repo: `crates/ralph/src/productivity/calculations.rs` `best_day` update branch (~304–313); `queue validate` passed (2026-04-16)."
+        "Repo: `crates/ralph/src/productivity/calculations.rs` `best_day` update branch (~304\u2013313); `queue validate` passed (2026-04-16)."
       ],
       "plan": [
         "Open `crates/ralph/src/productivity/calculations.rs` and locate the `best_day` aggregation loop.",
@@ -148,7 +148,7 @@
         "Clippy: prefer is_none_or over map_or(true, ...) per unnecessary_map_or.",
         "Validated: cargo test -p ralph-agent-loop productivity; make agent-ci passed."
       ],
-      "request": "Refactor `best_day` updates in `crates/ralph/src/productivity/calculations.rs` to remove `best_day.as_ref().unwrap()` after `is_none()` guards—use `match`, `if let`, or `map_or` for equivalent behavior and clearer control flow. Run productivity/calculation tests. Scope: this task only—no new queue items.",
+      "request": "Refactor `best_day` updates in `crates/ralph/src/productivity/calculations.rs` to remove `best_day.as_ref().unwrap()` after `is_none()` guards\u2014use `match`, `if let`, or `map_or` for equivalent behavior and clearer control flow. Run productivity/calculation tests. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T01:18:07.091682000Z",
       "completed_at": "2026-04-17T01:18:07.091682000Z",
@@ -197,7 +197,7 @@
         "validate at config load, enqueue, and delivery",
         "tests: contract URL rules, config validation, fixtures updated"
       ],
-      "request": "Validate `WebhookConfig.url` usage end-to-end (`contracts/config/webhook.rs` through `webhook/worker/delivery.rs`). Add URL safety: default HTTPS-only, optional opt-in for http, and reject or clearly warn on loopback, link-local, and metadata-style hosts unless explicitly allowed. Update schema/tests as needed. Run `cargo test -p ralph`. Scope: this task only—no new queue items.",
+      "request": "Validate `WebhookConfig.url` usage end-to-end (`contracts/config/webhook.rs` through `webhook/worker/delivery.rs`). Add URL safety: default HTTPS-only, optional opt-in for http, and reject or clearly warn on loopback, link-local, and metadata-style hosts unless explicitly allowed. Update schema/tests as needed. Run `cargo test -p ralph`. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T01:49:22.358216000Z",
       "completed_at": "2026-04-17T01:49:22.358216000Z",
@@ -216,7 +216,7 @@
       "id": "RQ-0006",
       "status": "done",
       "title": "Implement exponential webhook retry backoff with jitter and cap",
-      "description": "Audit notes `webhook/worker/delivery.rs::retry_delay` uses linear backoff (`base × retry_number`), which can hammer endpoints during outages. Switch to exponential backoff with jitter and a maximum cap, preserving existing timeout/redaction behavior. Outcome: retry storm risk is reduced under prolonged failures.\n\nValidation: `retry_delay` is `Duration::from_millis(base.as_millis().saturating_mul(retry_number as u128).min(...))` — strictly linear in `retry_number` with no jitter or exponential term.",
+      "description": "Audit notes `webhook/worker/delivery.rs::retry_delay` uses linear backoff (`base \u00d7 retry_number`), which can hammer endpoints during outages. Switch to exponential backoff with jitter and a maximum cap, preserving existing timeout/redaction behavior. Outcome: retry storm risk is reduced under prolonged failures.\n\nValidation: `retry_delay` is `Duration::from_millis(base.as_millis().saturating_mul(retry_number as u128).min(...))` \u2014 strictly linear in `retry_number` with no jitter or exponential term.",
       "priority": "high",
       "tags": [
         "audit",
@@ -230,7 +230,7 @@
       ],
       "evidence": [
         "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #5, Performance section on `retry_delay`, Quick win #4).",
-        "Repo: `crates/ralph/src/webhook/worker/delivery.rs` `fn retry_delay(base: Duration, retry_number: u32)` (~lines 112–117); `queue validate` passed (2026-04-16)."
+        "Repo: `crates/ralph/src/webhook/worker/delivery.rs` `fn retry_delay(base: Duration, retry_number: u32)` (~lines 112\u2013117); `queue validate` passed (2026-04-16)."
       ],
       "plan": [
         "Inspect current `retry_delay` and call graph in `delivery.rs` (scheduled retry path uses `retry_delay(task.msg.config.retry_backoff, retry_number)`).",
@@ -243,7 +243,7 @@
         "Added deterministic retry-delay tests for exponential growth, jitter bounds, cap, and overflow.",
         "Updated webhook retry docs and verified targeted webhook tests plus make agent-ci."
       ],
-      "request": "Replace linear `retry_delay` in `crates/ralph/src/webhook/worker/delivery.rs` with exponential backoff, jitter, and a maximum cap; keep existing timeout and redaction behavior. Add tests for bounded delay sequences. Run webhook delivery tests. Scope: this task only—no new queue items.",
+      "request": "Replace linear `retry_delay` in `crates/ralph/src/webhook/worker/delivery.rs` with exponential backoff, jitter, and a maximum cap; keep existing timeout and redaction behavior. Add tests for bounded delay sequences. Run webhook delivery tests. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T04:32:35.993905000Z",
       "completed_at": "2026-04-17T04:32:35.993905000Z",
@@ -276,7 +276,7 @@
       ],
       "evidence": [
         "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #4, Error Handling section with `runtime.rs` cite, Quick win #3).",
-        "Repo: `crates/ralph/src/webhook/worker/runtime.rs` lines ~164–188 (`expect` on worker/scheduler spawn and startup handshake), ~236 (`expect(\"dispatcher initialized\")`); `queue validate` passed (2026-04-16)."
+        "Repo: `crates/ralph/src/webhook/worker/runtime.rs` lines ~164\u2013188 (`expect` on worker/scheduler spawn and startup handshake), ~236 (`expect(\"dispatcher initialized\")`); `queue validate` passed (2026-04-16)."
       ],
       "plan": [
         "Inventory all `.expect(` sites in `webhook/worker/runtime.rs` (worker spawn, scheduler spawn, startup barrier, dispatcher cache).",
@@ -291,7 +291,7 @@
         "Added runtime regression tests for thread-spawn failure and startup-handshake timeout.",
         "Verified with targeted webhook tests and make ci."
       ],
-      "request": "In `crates/ralph/src/webhook/worker/runtime.rs`, replace `.expect()` on worker/scheduler spawn, startup handshake, and dispatcher init with `Result` propagation and a defined fallback: degrade to sync delivery or disable webhooks for the run with a clear operator-visible warning—no process abort on thread spawn failure. Add regression coverage where practical. Run webhook/runtime tests. Scope: this task only—no new queue items.",
+      "request": "In `crates/ralph/src/webhook/worker/runtime.rs`, replace `.expect()` on worker/scheduler spawn, startup handshake, and dispatcher init with `Result` propagation and a defined fallback: degrade to sync delivery or disable webhooks for the run with a clear operator-visible warning\u2014no process abort on thread spawn failure. Add regression coverage where practical. Run webhook/runtime tests. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T15:58:56.658145000Z",
       "completed_at": "2026-04-17T15:58:56.658145000Z",
@@ -336,7 +336,7 @@
         "Added split-codepoint regressions for spawn_reader and spawn_json_reader.",
         "Verified reader tests and full make ci gate."
       ],
-      "request": "Fix UTF-8 safety in `crates/ralph/src/runner/execution/stream_reader.rs`: avoid `from_utf8_lossy` on raw 8KB chunks splitting multibyte sequences; buffer partial UTF-8 across reads or decode in a line-safe way so runner NDJSON/text does not show U+FFFD at chunk boundaries. Add tests with split codepoints. Run `cargo test -p ralph` for stream reader paths. Scope: this task only—no new queue items.",
+      "request": "Fix UTF-8 safety in `crates/ralph/src/runner/execution/stream_reader.rs`: avoid `from_utf8_lossy` on raw 8KB chunks splitting multibyte sequences; buffer partial UTF-8 across reads or decode in a line-safe way so runner NDJSON/text does not show U+FFFD at chunk boundaries. Add tests with split codepoints. Run `cargo test -p ralph` for stream reader paths. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T17:34:01.807889000Z",
       "completed_at": "2026-04-17T17:34:01.807889000Z",
@@ -372,7 +372,7 @@
       ],
       "evidence": [
         "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #1, Complexity section with `run_runner_attempt` excerpt, Short-term #7).",
-        "Repo: `crates/ralph/src/runutil/execution/orchestration/core.rs` `run_runner_attempt` (~348–364); `RunnerBackend::run_prompt` allow in `backend.rs`; `queue validate` passed (2026-04-16)."
+        "Repo: `crates/ralph/src/runutil/execution/orchestration/core.rs` `run_runner_attempt` (~348\u2013364); `RunnerBackend::run_prompt` allow in `backend.rs`; `queue validate` passed (2026-04-16)."
       ],
       "plan": [
         "Inventory orchestration `too_many_arguments` sites (`core.rs`, `backend.rs` trait methods).",
@@ -385,7 +385,7 @@
         "Removed runutil/execution too_many_arguments suppressions without behavior changes.",
         "Verified with cargo clippy/test using package ralph-agent-loop and make ci."
       ],
-      "request": "Reduce `#[allow(clippy::too_many_arguments)]` debt starting at `run_runner_attempt` in `crates/ralph/src/runutil/execution/orchestration/core.rs`: introduce a parameter object (e.g. `RunRunnerAttemptCtx`), migrate call sites and related orchestration/backend surfaces with no behavior change, then narrow or remove allows where resolved. Run `cargo clippy -p ralph` and `cargo test -p ralph`. Scope: this task only—no new queue items.",
+      "request": "Reduce `#[allow(clippy::too_many_arguments)]` debt starting at `run_runner_attempt` in `crates/ralph/src/runutil/execution/orchestration/core.rs`: introduce a parameter object (e.g. `RunRunnerAttemptCtx`), migrate call sites and related orchestration/backend surfaces with no behavior change, then narrow or remove allows where resolved. Run `cargo clippy -p ralph` and `cargo test -p ralph`. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T18:40:50.301204000Z",
       "completed_at": "2026-04-17T18:40:50.301204000Z",
@@ -404,7 +404,7 @@
       "id": "RQ-0011",
       "status": "done",
       "title": "Formalize runner invocation context types (settings vs execution)",
-      "description": "Audit suggests splitting large `RunnerInvocation` into cohesive types (e.g. `RunnerSettings` + `RunnerExecutionContext`, `RunnerRetryState`) to narrow destructuring-heavy call paths. This is architectural follow-through after param-object work. Outcome: clearer boundaries between configuration and per-attempt execution state without functional regressions.\n\nValidation: `RunnerInvocation<'a>` in `crates/ralph/src/runutil/execution/backend.rs` bundles repo path, runner kind/binaries, model, CLI options, prompt, timeouts, git/revert knobs, output hooks, phase/session IDs, and `RunnerRetryPolicy` in one struct (~fields at lines 26–44), which matches the audit’s “wide invocation context” coupling concern.",
+      "description": "Audit suggests splitting large `RunnerInvocation` into cohesive types (e.g. `RunnerSettings` + `RunnerExecutionContext`, `RunnerRetryState`) to narrow destructuring-heavy call paths. This is architectural follow-through after param-object work. Outcome: clearer boundaries between configuration and per-attempt execution state without functional regressions.\n\nValidation: `RunnerInvocation<'a>` in `crates/ralph/src/runutil/execution/backend.rs` bundles repo path, runner kind/binaries, model, CLI options, prompt, timeouts, git/revert knobs, output hooks, phase/session IDs, and `RunnerRetryPolicy` in one struct (~fields at lines 26\u201344), which matches the audit\u2019s \u201cwide invocation context\u201d coupling concern.",
       "priority": "low",
       "tags": [
         "audit",
@@ -432,7 +432,7 @@
         "Preserved timeout capture, revert, retry, and session fallback behavior through existing runner handling coverage.",
         "Verified cargo test -p ralph-agent-loop and full make ci; cargo test -p ralph is stale because the package is named ralph-agent-loop."
       ],
-      "request": "Split the wide `RunnerInvocation` in `crates/ralph/src/runutil/execution/backend.rs` into cohesive types (e.g. settings vs per-attempt execution context, retry state) per the audit; migrate orchestration and runner call sites incrementally with no functional regressions. Run broad `cargo test -p ralph`. Scope: this task only—no new queue items.",
+      "request": "Split the wide `RunnerInvocation` in `crates/ralph/src/runutil/execution/backend.rs` into cohesive types (e.g. settings vs per-attempt execution context, retry state) per the audit; migrate orchestration and runner call sites incrementally with no functional regressions. Run broad `cargo test -p ralph`. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T19:23:47.592111000Z",
       "completed_at": "2026-04-17T19:23:47.592111000Z",
@@ -451,7 +451,7 @@
       "id": "RQ-0007",
       "status": "done",
       "title": "Tune `redact_hex_tokens` to preserve legitimate hex identifiers in logs",
-      "description": "`redaction/patterns.rs::redact_hex_tokens` redacts any long hex run, obscuring git SHAs and hashes. Tighten policy (prefix-based sensitivity, higher threshold, or both) while keeping secret safety. Outcome: logs remain safe but more debuggable for common hex-shaped identifiers.\n\nValidation (post-change): `redact_hex_tokens` redacts contiguous ASCII hex runs at alphanumeric word boundaries when length ≥ 96, or when length ≥ 32 and a sensitive context word appears in the ~80 characters before the run (`crates/ralph/src/redaction/patterns.rs`). Common 40-char git SHA1 and 64-char SHA256 hex identifiers are preserved unless labeled by sensitive context.",
+      "description": "`redaction/patterns.rs::redact_hex_tokens` redacts any long hex run, obscuring git SHAs and hashes. Tighten policy (prefix-based sensitivity, higher threshold, or both) while keeping secret safety. Outcome: logs remain safe but more debuggable for common hex-shaped identifiers.\n\nValidation (post-change): `redact_hex_tokens` redacts contiguous ASCII hex runs at alphanumeric word boundaries when length \u2265 96, or when length \u2265 32 and a sensitive context word appears in the ~80 characters before the run (`crates/ralph/src/redaction/patterns.rs`). Common 40-char git SHA1 and 64-char SHA256 hex identifiers are preserved unless labeled by sensitive context.",
       "priority": "medium",
       "tags": [
         "audit",
@@ -465,7 +465,7 @@
       ],
       "evidence": [
         "User requested tasks from `/tmp/ralph-codebase-audit.md` (Finding #6, Security section on `redact_hex_tokens`, Quick win #5).",
-        "Repo: `crates/ralph/src/redaction/patterns.rs` `redact_hex_tokens` (~lines 121–147); `queue validate` passed (2026-04-16)."
+        "Repo: `crates/ralph/src/redaction/patterns.rs` `redact_hex_tokens` (~lines 121\u2013147); `queue validate` passed (2026-04-16)."
       ],
       "plan": [
         "Review audit Quick win #5 and current `redact_hex_tokens` behavior in `patterns.rs`.",
@@ -477,7 +477,7 @@
         "Tightened AWS secret-access-key fallback so pure 40-character hex SHAs are not masked.",
         "Added unit and integration coverage for git SHA/SHA256 identifiers, webhook signatures, long hex blobs, and AWS secrets."
       ],
-      "request": "Tighten `redact_hex_tokens` in `crates/ralph/src/redaction/patterns.rs` so legitimate hex identifiers (e.g. git SHAs) remain readable while high-risk secret-shaped runs stay redacted—use threshold, prefix/context rules, or both. Extend `redaction/tests.rs` with SHA-like vs secret cases. Run `cargo test -p ralph` for redaction. Scope: this task only—no new queue items.",
+      "request": "Tighten `redact_hex_tokens` in `crates/ralph/src/redaction/patterns.rs` so legitimate hex identifiers (e.g. git SHAs) remain readable while high-risk secret-shaped runs stay redacted\u2014use threshold, prefix/context rules, or both. Extend `redaction/tests.rs` with SHA-like vs secret cases. Run `cargo test -p ralph` for redaction. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T20:25:41.741463000Z",
       "completed_at": "2026-04-17T20:25:41.741463000Z",
@@ -496,7 +496,7 @@
       "id": "RQ-0012",
       "status": "done",
       "title": "Improve debug-mode observability for which redaction rules fired",
-      "description": "Long-term audit item: in debug mode, log which class of redaction applied (structural vs env-value vs hex) to aid tuning without leaking secret material. Outcome: operators can diagnose over-redaction or missed patterns more quickly during local debugging.\n\nValidation: Redaction is layered in `crates/ralph/src/redaction/patterns.rs` (`redact_sensitive_strings` composes SSH, hex, and key/value passes); there is no first-class “which stage modified the output” telemetry today—debug operators must infer from output shape alone.",
+      "description": "Long-term audit item: in debug mode, log which class of redaction applied (structural vs env-value vs hex) to aid tuning without leaking secret material. Outcome: operators can diagnose over-redaction or missed patterns more quickly during local debugging.\n\nValidation: Redaction is layered in `crates/ralph/src/redaction/patterns.rs` (`redact_sensitive_strings` composes SSH, hex, and key/value passes); there is no first-class \u201cwhich stage modified the output\u201d telemetry today\u2014debug operators must infer from output shape alone.",
       "priority": "low",
       "tags": [
         "audit",
@@ -523,7 +523,7 @@
         "Added regression coverage proving metadata excludes the test secrets while preserving existing raw debug-log behavior.",
         "Verified with redaction tests, full package tests, clippy, formatting, and make ci."
       ],
-      "request": "In debug mode, emit safe category-level signals for which redaction stage modified output (structural vs env-value vs hex) in `crates/ralph/src/redaction/`—no raw secrets. Follow existing debug/verbosity patterns; add tests proving secrets never appear in debug metadata. Run `cargo test -p ralph`. Scope: this task only—no new queue items.",
+      "request": "In debug mode, emit safe category-level signals for which redaction stage modified output (structural vs env-value vs hex) in `crates/ralph/src/redaction/`\u2014no raw secrets. Follow existing debug/verbosity patterns; add tests proving secrets never appear in debug metadata. Run `cargo test -p ralph`. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T21:22:11.632321000Z",
       "completed_at": "2026-04-17T21:22:11.632321000Z",
@@ -570,7 +570,7 @@
         "Added PID-reuse/timestamp review advisory text for aged, invalid, or future started_at values.",
         "Covered policy with lock unit tests and queue-lock operator-state regression coverage."
       ],
-      "request": "Document and implement an explicit PID-lock staleness policy for PID-reuse edge cases in `crates/ralph/src/lock/stale.rs` (and related `pid.rs` / `owner.rs` as needed): tie `started_at`, liveness checks, and operator-visible messages to a clear, test-backed guarantee. Run lock tests. Scope: this task only—no new queue items.",
+      "request": "Document and implement an explicit PID-lock staleness policy for PID-reuse edge cases in `crates/ralph/src/lock/stale.rs` (and related `pid.rs` / `owner.rs` as needed): tie `started_at`, liveness checks, and operator-visible messages to a clear, test-backed guarantee. Run lock tests. Scope: this task only\u2014no new queue items.",
       "created_at": "2026-04-16T18:52:52Z",
       "updated_at": "2026-04-17T21:59:42.652746000Z",
       "completed_at": "2026-04-17T21:59:42.652746000Z",
@@ -1239,7 +1239,7 @@
         "make agent-ci"
       ],
       "evidence": [
-        "user-request: Cross-surface coherence (Ralph CLI vs RalphMac): Versioned machine documents and continuation next_steps still embed human-oriented commands such as `ralph run resume`, `ralph run loop --parallel`, and `ralph run parallel status --json`, while the macOS app only spawns `ralph machine run …` / `machine run parallel-status`.",
+        "user-request: Cross-surface coherence (Ralph CLI vs RalphMac): Versioned machine documents and continuation next_steps still embed human-oriented commands such as `ralph run resume`, `ralph run loop --parallel`, and `ralph run parallel status --json`, while the macOS app only spawns `ralph machine run \u2026` / `machine run parallel-status`.",
         "path: crates/ralph/src/cli/machine/queue_docs.rs:230 :: machine queue repair continuation emits `ralph run resume`.",
         "path: crates/ralph/src/cli/machine/queue_docs.rs:345 :: machine queue undo continuation emits `ralph run resume`.",
         "path: crates/ralph/src/commands/run/parallel/status.rs:113 :: machine parallel-status guidance emits `ralph run loop --parallel <N>`.",
@@ -1262,7 +1262,7 @@
         "Updated queue/task continuation docs, parallel-status guidance, and RalphMac fixtures/assertions to match `machine run` and `machine run parallel-status` surfaces.",
         "Verified with focused Rust tests, focused RalphMac xcodebuild coverage, and make agent-ci; updated stale machine-contract and repair integration assertions surfaced during the gate."
       ],
-      "request": "Cross-surface coherence (Ralph CLI vs RalphMac): Versioned machine documents and continuation next_steps still embed human-oriented commands such as ralph run resume, ralph run loop --parallel, and ralph run parallel status --json (see crates/ralph/src/cli/machine/queue_docs.rs and crates/ralph/src/commands/run/parallel/status.rs), while the macOS app only spawns ralph machine run … / machine run parallel-status (see apps/RalphMac). This misaligns operator guidance shown in WorkspaceDiagnosticsService formatted strings and parallel-status fixtures with what the app actually executes. Acceptance: machine-facing continuation next_steps (and tests/docs) use ralph machine … equivalents or a dual-field contract so Mac users and automation see copy-pasteable commands that match the machine surface; update RalphMac tests/fixtures accordingly. crates/ralph/src/cli/machine crates/ralph/src/commands/run/parallel",
+      "request": "Cross-surface coherence (Ralph CLI vs RalphMac): Versioned machine documents and continuation next_steps still embed human-oriented commands such as ralph run resume, ralph run loop --parallel, and ralph run parallel status --json (see crates/ralph/src/cli/machine/queue_docs.rs and crates/ralph/src/commands/run/parallel/status.rs), while the macOS app only spawns ralph machine run \u2026 / machine run parallel-status (see apps/RalphMac). This misaligns operator guidance shown in WorkspaceDiagnosticsService formatted strings and parallel-status fixtures with what the app actually executes. Acceptance: machine-facing continuation next_steps (and tests/docs) use ralph machine \u2026 equivalents or a dual-field contract so Mac users and automation see copy-pasteable commands that match the machine surface; update RalphMac tests/fixtures accordingly. crates/ralph/src/cli/machine crates/ralph/src/commands/run/parallel",
       "created_at": "2026-04-22T15:37:27Z",
       "updated_at": "2026-04-23T01:54:07Z",
       "completed_at": "2026-04-23T01:54:07Z",
@@ -1526,6 +1526,53 @@
       "custom_fields": {
         "scan_agent": "scan-general"
       }
+    },
+    {
+      "id": "RQ-0021",
+      "status": "done",
+      "title": "Protect webhook failure store from cross-process lost updates",
+      "description": "Principles violated: E) Make bugs hard to write, H) Operational hygiene, J) Consistency/Integrity. The webhook failure store uses an in-process mutex plus whole-file read-modify-write. Atomic replacement avoids torn files but not lost updates between independent Ralph processes. Parallel workers or overlapping daemon/replay operations can drop failure records or replay-count increments. Minimal fix: add cross-process locking around failure-store read-modify-write or move to append-only records with locked compaction.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "webhook",
+        "concurrency",
+        "diagnostics"
+      ],
+      "scope": [
+        "crates/ralph/src/webhook/diagnostics/failure_store.rs",
+        "crates/ralph/src/webhook/tests"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:17 :: module docs state writes are serialized by a process-local lock.",
+        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:48 :: FAILURE_STORE_LOCK is OnceLock<Mutex<()>>, which only protects threads in the current process.",
+        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:86 :: persist path loads the full failures file before appending.",
+        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:108 :: persist path writes the full failures file back.",
+        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:135 :: replay-count update loads the full failures file.",
+        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:141 :: replay-count update writes the full failures file back.",
+        "workflow: rg -n \"FAILURE_STORE_LOCK|process-local|load_failure_records_unlocked|write_failure_records_unlocked|persist_failed_delivery_at_path|update_replay_counts\" crates/ralph/src/webhook/diagnostics/failure_store.rs :: showed whole-file read-modify-write guarded only by a process-local mutex."
+      ],
+      "plan": [
+        "Choose a cross-process persistence strategy: existing directory lock around failures.json or append-only JSONL/per-record files with locked compaction.",
+        "Hold the cross-process lock across load, mutate, retention trim, and atomic write.",
+        "Cover both failure persistence and replay-count updates with multi-process tests.",
+        "Verify by running a test that concurrently persists two failures and confirms both records remain while destinations stay redacted."
+      ],
+      "notes": [
+        "Added cross-process failure-store locking with a sibling failures.lock directory while preserving in-process mutex serialization.",
+        "Added subprocess regressions covering concurrent failure persistence and replay-count updates.",
+        "Verified with cargo test webhook::tests::diagnostics -- --nocapture and make agent-ci."
+      ],
+      "request": "scan: Simplify code while preserving nuanced runner behavior",
+      "created_at": "2026-04-17T23:11:06Z",
+      "updated_at": "2026-04-23T04:36:39.643886Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      },
+      "completed_at": "2026-04-23T04:36:39.643886Z"
     }
   ]
 }
