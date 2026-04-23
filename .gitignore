@@ -43,3 +43,5 @@ apps/RalphMac/build/
 .ralph/trust.jsonc
 .scratchpad.md
 .FIX_TRACKING.md
+!.ralph/queue.jsonc
+!.ralph/done.jsonc
