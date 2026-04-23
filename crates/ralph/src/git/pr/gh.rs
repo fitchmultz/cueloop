@@ -17,7 +17,7 @@ use anyhow::{Context, Result, bail};
 use std::path::Path;
 use std::process::Output;
 
-use crate::git::github_cli::{gh_command, run_gh_command};
+use crate::git::github_cli::{gh_command, run_checked_gh_command, run_gh_command};
 use crate::runutil::TimeoutClass;
 
 use super::parse::{
@@ -32,10 +32,8 @@ pub(super) fn gh_repo_name_with_owner(repo_root: &Path) -> Result<String> {
         .arg("view")
         .arg("--json")
         .arg("nameWithOwner");
-    let output = run_gh_command(command, "gh repo view", TimeoutClass::GitHubCli, "gh")
+    let output = run_checked_gh_command(command, "gh repo view", TimeoutClass::GitHubCli, "gh")
         .with_context(|| format!("run gh repo view in {}", repo_root.display()))?;
-
-    ensure_success("gh repo view", &output)?;
     parse_name_with_owner_from_repo_view_json(&output.stdout)
 }
 
@@ -69,22 +67,16 @@ where
 }
 
 pub(super) fn run_gh_pr_create(command: std::process::Command, repo_root: &Path) -> Result<Output> {
-    let output = run_gh_command(command, "gh pr create", TimeoutClass::GitHubCli, "gh")
-        .with_context(|| format!("run gh pr create in {}", repo_root.display()))?;
-    ensure_success("gh pr create", &output)?;
-    Ok(output)
+    run_checked_gh_command(command, "gh pr create", TimeoutClass::GitHubCli, "gh")
+        .with_context(|| format!("run gh pr create in {}", repo_root.display()))
 }
 
 pub(super) fn run_gh_pr_merge(
     command: std::process::Command,
     repo_name_with_owner: &str,
 ) -> Result<Output> {
-    let output = run_gh_command(command, "gh pr merge", TimeoutClass::GitHubCli, "gh")
-        .with_context(|| {
-            format!("run gh pr merge --repo {repo_name_with_owner} in isolated cwd")
-        })?;
-    ensure_success("gh pr merge", &output)?;
-    Ok(output)
+    run_checked_gh_command(command, "gh pr merge", TimeoutClass::GitHubCli, "gh")
+        .with_context(|| format!("run gh pr merge --repo {repo_name_with_owner} in isolated cwd"))
 }
 
 pub(crate) fn check_gh_available() -> Result<()> {
@@ -137,10 +129,8 @@ fn run_gh_pr_view(repo_root: &Path, selector: &str, fields: &str) -> Result<PrVi
         .arg(selector)
         .arg("--json")
         .arg(fields);
-    let output = run_gh_command(command, "gh pr view", TimeoutClass::GitHubCli, "gh")
+    let output = run_checked_gh_command(command, "gh pr view", TimeoutClass::GitHubCli, "gh")
         .with_context(|| format!("run gh pr view in {}", repo_root.display()))?;
-
-    ensure_success("gh pr view", &output)?;
     parse_pr_view_json(&output.stdout)
 }
 
@@ -154,13 +144,4 @@ fn run_gh_with_no_update(args: &[&str]) -> Result<Output> {
         "gh",
     )
     .with_context(|| format!("run gh {}", args.join(" ")))
-}
-
-fn ensure_success(command_name: &str, output: &Output) -> Result<()> {
-    if output.status.success() {
-        return Ok(());
-    }
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    bail!("{command_name} failed: {}", stderr.trim());
 }

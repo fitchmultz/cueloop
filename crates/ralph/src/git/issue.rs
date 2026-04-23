@@ -17,7 +17,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 
-use crate::git::github_cli::{extract_first_url, gh_command, run_gh_command};
+use crate::git::github_cli::{extract_first_url, gh_command, run_checked_gh_command};
 use crate::runutil::TimeoutClass;
 
 pub(crate) const GITHUB_ISSUE_SYNC_HASH_KEY: &str = "github_issue_sync_hash";
@@ -113,11 +113,6 @@ pub(crate) fn create_issue(
     let output = run_gh_issue_command(cmd, "gh issue create")
         .with_context(|| format!("run gh issue create in {}", repo_root.display()))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("gh issue create failed: {}", stderr.trim());
-    }
-
     let stdout = String::from_utf8_lossy(&output.stdout);
     let url = extract_first_url(&stdout).ok_or_else(|| {
         anyhow::anyhow!(
@@ -166,13 +161,8 @@ pub(crate) fn edit_issue(
         cmd.arg("--add-assignee").arg(assignee);
     }
 
-    let output = run_gh_issue_command(cmd, "gh issue edit")
+    run_gh_issue_command(cmd, "gh issue edit")
         .with_context(|| format!("run gh issue edit in {}", repo_root.display()))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("gh issue edit failed: {}", stderr.trim());
-    }
 
     Ok(())
 }
@@ -181,7 +171,7 @@ fn run_gh_issue_command(
     command: std::process::Command,
     description: impl Into<String>,
 ) -> Result<std::process::Output> {
-    run_gh_command(command, description, TimeoutClass::GitHubCli, "gh issue")
+    run_checked_gh_command(command, description, TimeoutClass::GitHubCli, "gh issue")
 }
 
 #[cfg(test)]

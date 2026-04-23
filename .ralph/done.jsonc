@@ -1472,6 +1472,60 @@
       "custom_fields": {
         "scan_agent": "scan-general"
       }
+    },
+    {
+      "id": "RQ-0036",
+      "status": "done",
+      "title": "Collapse GitHub CLI success handling",
+      "description": "Evidence: `git/github_cli.rs` centralizes `gh_command_in` and `run_gh_command`, but PR and issue paths still perform their own success/error plumbing. `git/pr/gh.rs` calls `run_gh_command` repeatedly at lines 35, 72, 82, 140, and 150, then uses a local `ensure_success` at line 159. `git/issue.rs` imports and calls `run_gh_command` around line 184. Why it matters: PR and issue workflows should share the same managed subprocess and stderr-trimming policy; separate success wrappers can drift as new `gh` surfaces are added. Minimal proposed fix: extend the shared GitHub CLI helper with a checked execution entrypoint that runs the command and applies consistent status/error handling, then update PR and issue call sites. Acceptance criteria: existing PR/issue tests pass and failure messages remain at least as actionable as today.",
+      "priority": "low",
+      "tags": [
+        "scan",
+        "refactor",
+        "github",
+        "subprocess"
+      ],
+      "scope": [
+        "crates/ralph/src/git/github_cli.rs",
+        "crates/ralph/src/git/pr/gh.rs",
+        "crates/ralph/src/git/issue.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/git/github_cli.rs:26 :: gh_command_in centralizes gh command construction.",
+        "path: crates/ralph/src/git/github_cli.rs:40 :: run_gh_command centralizes managed gh execution.",
+        "path: crates/ralph/src/git/pr/gh.rs:35 :: PR repo view calls run_gh_command then separate success handling.",
+        "path: crates/ralph/src/git/pr/gh.rs:72 :: PR create calls run_gh_command then separate success handling.",
+        "path: crates/ralph/src/git/pr/gh.rs:159 :: local ensure_success duplicates checked execution policy.",
+        "path: crates/ralph/src/git/issue.rs:184 :: issue workflow calls run_gh_command directly.",
+        "command: rg -n \"gh_command_in|run_gh_command|ensure_success\" crates/ralph/src/git crates/ralph/src/commands :: confirmed split helper/success handling.",
+        "command: cargo test -p ralph-agent-loop git::pr::tests",
+        "command: cargo test -p ralph-agent-loop git::issue::tests",
+        "command: cargo test -p ralph-agent-loop queue_issue_publish",
+        "command: make agent-ci"
+      ],
+      "plan": [
+        "Add a checked GitHub CLI execution helper that wraps `run_gh_command` and shared success/error handling.",
+        "Update PR helper functions to use the checked helper instead of local `ensure_success`.",
+        "Update issue workflow call sites where the shared checked helper fits.",
+        "Keep command descriptions and timeout classes explicit at call sites.",
+        "Verify by running existing git PR/issue tests and `make agent-ci`."
+      ],
+      "notes": [
+        "Added shared run_checked_gh_command so gh subprocess success handling stays centralized with truncation logging.",
+        "Updated PR repo view/create/merge/view helpers to use the shared checked helper and removed the local ensure_success wrapper.",
+        "Updated issue create/edit flows to use the shared checked helper while preserving actionable failure detail.",
+        "Verified with focused PR and issue tests plus a full make agent-ci pass."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-19T23:44:38Z",
+      "updated_at": "2026-04-23T04:17:56Z",
+      "completed_at": "2026-04-23T04:17:56Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     }
   ]
 }

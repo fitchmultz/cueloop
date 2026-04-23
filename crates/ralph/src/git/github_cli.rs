@@ -3,6 +3,7 @@
 //! Responsibilities:
 //! - Provide consistent `gh` command construction with updater prompts disabled.
 //! - Run managed `gh` subprocesses with centralized truncation logging.
+//! - Provide optional checked execution so GitHub workflows share one success policy.
 //! - Share small output-parsing helpers used by PR/issue modules.
 //!
 //! Not handled here:
@@ -17,7 +18,9 @@ use anyhow::Result;
 use std::path::Path;
 use std::process::{Command, Output};
 
-use crate::runutil::{ManagedCommand, TimeoutClass, execute_managed_command};
+use crate::runutil::{
+    ManagedCommand, TimeoutClass, execute_checked_command, execute_managed_command,
+};
 
 pub(crate) fn gh_command(repo_root: &Path) -> Command {
     gh_command_in(repo_root)
@@ -45,12 +48,38 @@ pub(crate) fn run_gh_command(
 ) -> Result<Output> {
     execute_managed_command(ManagedCommand::new(command, description, timeout_class))
         .map(|output| {
-            if output.stdout_truncated || output.stderr_truncated {
-                log::debug!("managed {truncation_log_label} capture truncated command output");
-            }
+            log_gh_truncation(
+                truncation_log_label,
+                output.stdout_truncated,
+                output.stderr_truncated,
+            );
             output.into_output()
         })
         .map_err(Into::into)
+}
+
+pub(crate) fn run_checked_gh_command(
+    command: Command,
+    description: impl Into<String>,
+    timeout_class: TimeoutClass,
+    truncation_log_label: &str,
+) -> Result<Output> {
+    execute_checked_command(ManagedCommand::new(command, description, timeout_class)).map(
+        |output| {
+            log_gh_truncation(
+                truncation_log_label,
+                output.stdout_truncated,
+                output.stderr_truncated,
+            );
+            output.into_output()
+        },
+    )
+}
+
+fn log_gh_truncation(truncation_log_label: &str, stdout_truncated: bool, stderr_truncated: bool) {
+    if stdout_truncated || stderr_truncated {
+        log::debug!("managed {truncation_log_label} capture truncated command output");
+    }
 }
 
 #[cfg(test)]
