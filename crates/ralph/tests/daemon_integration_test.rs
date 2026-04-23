@@ -3,9 +3,9 @@
 //! Responsibilities:
 //! - Test that daemon commands exist and have proper help output
 //! - Test stale state detection and cleanup
+//! - Exercise daemon lifecycle coordination in a real temp repository
 //!
 //! Not handled here:
-//! - Full daemon lifecycle tests (requires subprocess spawning which is flaky in test env)
 //! - Continuous mode logic (see run_loop_continuous_test.rs)
 //! - Windows service management (daemon is Unix-only)
 
@@ -16,11 +16,45 @@ mod unix_tests {
     use super::test_support;
     use serde_json::Value;
     use std::io::{BufRead, BufReader, Write};
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::process::{Command, Stdio};
     use std::sync::{Arc, Mutex};
     use std::thread;
     use std::time::Duration;
+
+    struct DaemonStopGuard {
+        ralph: PathBuf,
+        repo_root: PathBuf,
+        armed: bool,
+    }
+
+    impl DaemonStopGuard {
+        fn new(ralph: PathBuf, repo_root: PathBuf) -> Self {
+            Self {
+                ralph,
+                repo_root,
+                armed: true,
+            }
+        }
+
+        fn disarm(&mut self) {
+            self.armed = false;
+        }
+    }
+
+    impl Drop for DaemonStopGuard {
+        fn drop(&mut self) {
+            if !self.armed {
+                return;
+            }
+
+            let _ = Command::new(&self.ralph)
+                .arg("daemon")
+                .arg("stop")
+                .current_dir(&self.repo_root)
+                .output();
+        }
+    }
 
     fn write_log_file(dir: &Path, lines: &[&str]) {
         let log_dir = dir.join(".ralph/logs");
@@ -286,6 +320,102 @@ mod unix_tests {
             stdout.contains("empty-poll-ms"),
             "Help should mention empty-poll-ms flag"
         );
+    }
+
+    #[test]
+    fn daemon_start_and_stop_round_trip() {
+        let dir = test_support::temp_dir_outside_repo();
+        let dir_path = dir.path();
+        let ralph = test_support::ralph_bin();
+
+        test_support::git_init(dir_path).expect("git init");
+
+        let init = Command::new(&ralph)
+            .arg("init")
+            .arg("--force")
+            .arg("--non-interactive")
+            .current_dir(dir_path)
+            .output()
+            .expect("run ralph init");
+        assert!(init.status.success(), "init failed: {:?}", init);
+
+        let mut stop_guard = DaemonStopGuard::new(ralph.clone(), dir_path.to_path_buf());
+
+        let (start_status, start_stdout, start_stderr) =
+            command_output(&["daemon", "start"], dir_path);
+        assert!(
+            start_status.success(),
+            "daemon start failed. stdout: {} stderr: {}",
+            start_stdout,
+            start_stderr
+        );
+        assert!(
+            start_stdout.contains("Daemon started successfully"),
+            "daemon start should confirm readiness: {}",
+            start_stdout
+        );
+
+        let cache_dir = dir_path.join(".ralph/cache");
+        assert!(
+            cache_dir.join("daemon.json").exists(),
+            "daemon state file should exist after start"
+        );
+        assert!(
+            cache_dir.join("daemon.ready").exists(),
+            "daemon ready marker should exist after start"
+        );
+
+        let (status_running, status_stdout, status_stderr) =
+            command_output(&["daemon", "status"], dir_path);
+        assert!(
+            status_running.success(),
+            "daemon status while running failed. stdout: {} stderr: {}",
+            status_stdout,
+            status_stderr
+        );
+        assert!(
+            status_stdout.contains("Daemon is running"),
+            "daemon status should report running: {}",
+            status_stdout
+        );
+
+        let (stop_status, stop_stdout, stop_stderr) = command_output(&["daemon", "stop"], dir_path);
+        assert!(
+            stop_status.success(),
+            "daemon stop failed. stdout: {} stderr: {}",
+            stop_stdout,
+            stop_stderr
+        );
+        assert!(
+            stop_stdout.contains("Daemon stopped successfully"),
+            "daemon stop should confirm shutdown: {}",
+            stop_stdout
+        );
+
+        assert!(
+            test_support::wait_until(Duration::from_secs(5), Duration::from_millis(25), || {
+                !cache_dir.join("daemon.json").exists()
+                    && !cache_dir.join("daemon.ready").exists()
+                    && !cache_dir.join("daemon.lock").exists()
+            }),
+            "daemon runtime artifacts should be cleaned after stop"
+        );
+
+        let (status_stopped, final_stdout, final_stderr) =
+            command_output(&["daemon", "status"], dir_path);
+        assert!(
+            status_stopped.success(),
+            "final daemon status failed. stdout: {} stderr: {}",
+            final_stdout,
+            final_stderr
+        );
+        assert!(
+            final_stdout.contains("Daemon is not running"),
+            "final daemon status should report stopped: {}",
+            final_stdout
+        );
+
+        stop_guard.disarm();
     }
 
     /// Test that status handles stale state files correctly.

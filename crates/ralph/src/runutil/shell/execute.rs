@@ -30,9 +30,6 @@ use super::types::{
     ManagedCommand, ManagedOutput, ManagedProcessError, SafeCommand, TerminationReason,
     TimeoutClass,
 };
-#[cfg(not(unix))]
-use super::wait::wait_for_child;
-#[cfg(unix)]
 use super::wait::wait_for_child_owned;
 
 pub(crate) fn execute_safe_command(
@@ -108,20 +105,8 @@ pub(crate) fn execute_managed_command(
     let stdout_handle = spawn_capture_thread(stdout, Arc::clone(&stdout_capture));
     let stderr_handle = spawn_capture_thread(stderr, Arc::clone(&stderr_capture));
 
-    #[cfg(unix)]
     let outcome = wait_for_child_owned(
         child,
-        timeout,
-        managed.cancellation.as_ref().map(Arc::clone),
-    )
-    .map_err(|source| ManagedProcessError::Wait {
-        description: description.clone(),
-        source,
-    })?;
-
-    #[cfg(not(unix))]
-    let outcome = wait_for_child(
-        &mut child,
         timeout,
         managed.cancellation.as_ref().map(Arc::clone),
     )

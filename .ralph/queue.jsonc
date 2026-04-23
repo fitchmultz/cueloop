@@ -2,52 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0002",
-      "status": "todo",
-      "title": "Unify managed wait paths and remove polling-based readiness drift",
-      "description": "Bring subprocess waiting and daemon readiness behavior back in line with the repo's managed-execution standards. The current runtime still carries duplicated `try_wait` plus `sleep` loops, a raw retry-backoff sleep that bypasses cancellation-aware helpers, and daemon readiness polling that repeatedly re-reads `daemon.json`. The desired outcome is one shared wait strategy for managed subprocesses and runner children, cancellation-aware retry sleeps everywhere, and explicit or event-driven daemon readiness instead of fixed-interval polling.",
-      "priority": "medium",
-      "tags": [
-        "runtime",
-        "subprocess",
-        "daemon",
-        "quality"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "crates/ralph/src/runutil/shell/wait.rs",
-        "crates/ralph/src/runner/execution/process/wait.rs",
-        "crates/ralph/src/runutil/execution/orchestration/core.rs",
-        "crates/ralph/src/commands/daemon/mod.rs",
-        "crates/ralph/src/commands/daemon/start.rs",
-        "crates/ralph/src/commands/daemon/stop.rs",
-        "crates/ralph/src/commands/daemon/logs.rs",
-        "crates/ralph/src/runutil/",
-        "crates/ralph/tests/",
-        "cargo test"
-      ],
-      "evidence": [
-        "Repo guidance in AGENTS.md says managed subprocess and runner wait paths should prefer centralized, event-driven waiters over fixed `try_wait` polling loops.",
-        "`crates/ralph/src/runutil/shell/wait.rs` and `crates/ralph/src/runner/execution/process/wait.rs` both still implement child waiting with `try_wait()` plus `std::thread::sleep(...)`, duplicating timeout and interrupt behavior in two places.",
-        "`crates/ralph/src/runutil/execution/orchestration/core.rs` falls back to raw `std::thread::sleep(delay)` when `ctrlc_state()` is unavailable, bypassing the shared cancellation-aware sleep helper used elsewhere.",
-        "`crates/ralph/src/commands/daemon/mod.rs` waits for daemon readiness by polling `.ralph/cache/daemon.json`, and related daemon paths still rely on fixed sleeps for lifecycle coordination."
-      ],
-      "plan": [
-        "Design one shared wait abstraction for managed subprocesses and runner child processes so timeout, SIGINT-before-SIGKILL, and cross-platform behavior are implemented once instead of duplicated polling loops.",
-        "Replace the remaining raw retry-backoff sleep in execution orchestration with the shared cancellation-aware sleep path, including a safe fallback when ctrl-c state is unavailable.",
-        "Replace daemon state-file polling with an explicit readiness signal or watcher-driven wakeup, and tighten related daemon stop/log coordination so lifecycle checks do not depend on fixed sleep intervals.",
-        "Add regression coverage for interruptibility, timeout handling, and daemon readiness to prove the new wait paths are deterministic and less flaky than the current polling behavior."
-      ],
-      "notes": [],
-      "request": "Look for cross-surface synchronicity issues. Areas where there is drift between whats expected and what actually exists. Impartial propagation, etc. Overt poor practices that violate decent standards of coding. See the current queue, the previous task building agent cmpletely missed the mark. overwrite that task with actual findings to be remediated. i dont want a fucking report. i want YOU to find the issues and create tasks to have the issues fixed. NO DAMN REPORTING",
-      "created_at": "2026-04-23T04:55:12Z",
-      "updated_at": "2026-04-23T04:55:12Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {}
-    },
-    {
       "id": "RQ-0001",
       "status": "todo",
       "title": "Restore RalphMac machine contract parity and fail-fast versioning",

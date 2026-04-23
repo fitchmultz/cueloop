@@ -28,8 +28,9 @@ use std::time::Duration;
 use std::os::unix::process::CommandExt;
 
 use super::{
-    DAEMON_LOCK_DIR, DAEMON_LOG_FILE_NAME, DAEMON_STATE_FILE, daemon_pid_liveness,
-    get_daemon_state, manual_daemon_cleanup_instructions, wait_for_daemon_state_pid,
+    DAEMON_LOG_FILE_NAME, DAEMON_START_LOCK_DIR, clear_daemon_runtime_artifacts,
+    daemon_pid_liveness, get_daemon_state, manual_daemon_cleanup_instructions,
+    wait_for_daemon_ready,
 };
 
 /// Start the daemon as a background process.
@@ -37,7 +38,7 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
     #[cfg(unix)]
     {
         let cache_dir = resolved.repo_root.join(".ralph/cache");
-        let daemon_lock_dir = cache_dir.join(DAEMON_LOCK_DIR);
+        let daemon_start_lock_dir = cache_dir.join(DAEMON_START_LOCK_DIR);
 
         // Check if daemon is already running
         if let Some(state) = get_daemon_state(&cache_dir)? {
@@ -58,25 +59,18 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
                     );
                 }
                 PidLiveness::NotRunning => {
-                    log::warn!("Removing stale daemon state file");
-                    let state_path = cache_dir.join(DAEMON_STATE_FILE);
-                    if let Err(e) = fs::remove_file(&state_path) {
-                        log::debug!(
-                            "Failed to remove stale daemon state file {}: {}",
-                            state_path.display(),
-                            e
-                        );
-                    }
+                    log::warn!("Removing stale daemon runtime artifacts");
+                    clear_daemon_runtime_artifacts(&cache_dir, false);
                 }
             }
         }
 
-        // Try to acquire the daemon lock to ensure no other daemon is starting
-        let _lock = match acquire_dir_lock(&daemon_lock_dir, "daemon-start", false) {
+        // Acquire a dedicated startup lock so the child can own the runtime daemon lock.
+        let _lock = match acquire_dir_lock(&daemon_start_lock_dir, "daemon-start", false) {
             Ok(lock) => lock,
             Err(e) => {
                 bail!(
-                    "Failed to acquire daemon lock: {}. Another daemon may be starting.",
+                    "Failed to acquire daemon start lock: {}. Another daemon may be starting.",
                     e
                 );
             }
@@ -127,15 +121,10 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
         }
 
         // Spawn the daemon process
-        let child = command.spawn().context("Failed to spawn daemon process")?;
+        let mut child = command.spawn().context("Failed to spawn daemon process")?;
         let pid = child.id();
 
-        if wait_for_daemon_state_pid(
-            &cache_dir,
-            pid,
-            Duration::from_secs(2),
-            Duration::from_millis(100),
-        )? {
+        if wait_for_daemon_ready(&cache_dir, pid, Duration::from_secs(2), &mut child)? {
             println!("Daemon started successfully (PID: {})", pid);
             Ok(())
         } else {

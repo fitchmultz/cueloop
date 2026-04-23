@@ -15,6 +15,7 @@ mod abort;
 mod ci_gate;
 mod execution;
 mod process_groups;
+mod process_wait;
 mod retry;
 mod revert;
 mod shell;
@@ -37,6 +38,9 @@ pub(crate) use abort::{
 };
 pub(crate) use ci_gate::execute_ci_gate;
 pub(crate) use process_groups::isolate_child_process_group;
+pub(crate) use process_wait::{
+    ChildTerminationReason, ChildWaitOptions, wait_for_child_with_callbacks,
+};
 
 pub(crate) use execution::{
     RunnerErrorMessages, RunnerExecutionContext, RunnerFailureHandling, RunnerInvocation,

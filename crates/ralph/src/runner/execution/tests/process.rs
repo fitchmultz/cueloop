@@ -137,7 +137,7 @@ fn test_process_exits_cleanly_after_timeout_interrupt() {
     let timeout = Some(Duration::from_millis(200));
 
     // Wait for the process - it should exit cleanly despite the timeout
-    let result = wait_for_child(&mut child, &ctrlc, timeout);
+    let result = wait_for_child(child, &ctrlc, timeout);
 
     // The process should succeed because it exits with code 0 after interrupt
     assert!(
@@ -184,7 +184,7 @@ fn test_process_times_out_and_is_killed() {
     let timeout = Some(Duration::from_millis(50));
 
     let start = std::time::Instant::now();
-    let result = wait_for_child(&mut child, &ctrlc, timeout);
+    let result = wait_for_child(child, &ctrlc, timeout);
     let elapsed = start.elapsed();
 
     // Process should have been killed after grace period
@@ -238,7 +238,7 @@ fn test_process_exits_nonzero_after_timeout() {
     }
 
     let timeout = Some(Duration::from_millis(50));
-    let result = wait_for_child(&mut child, &ctrlc, timeout);
+    let result = wait_for_child(child, &ctrlc, timeout);
 
     // Should return Timeout error so callers can handle safeguard dumps
     assert!(
@@ -295,7 +295,7 @@ fn test_ctrl_c_interrupt_handling() {
 
     // No timeout - rely on Ctrl-C
     ready_tx.send(()).expect("notify interrupt thread");
-    let result = wait_for_child(&mut child, &ctrlc, None);
+    let result = wait_for_child(child, &ctrlc, None);
 
     // Process should exit cleanly
     assert!(
@@ -322,7 +322,7 @@ fn test_no_timeout_no_interrupt_process_completes_normally() {
         });
     }
 
-    let mut child = cmd.spawn().expect("Failed to spawn test process");
+    let child = cmd.spawn().expect("Failed to spawn test process");
 
     let ctrlc = test_ctrlc_state();
     #[cfg(unix)]
@@ -331,7 +331,7 @@ fn test_no_timeout_no_interrupt_process_completes_normally() {
         *guard = Some(child.id() as i32);
     }
 
-    let result = wait_for_child(&mut child, &ctrlc, None);
+    let result = wait_for_child(child, &ctrlc, None);
 
     assert!(result.is_ok());
     assert!(result.unwrap().success());
@@ -368,7 +368,7 @@ fn test_wait_for_child_leaves_active_pgid_for_caller_cleanup() {
     let timeout = Some(Duration::from_millis(50));
 
     // Wait for child - should return Timeout error
-    let _ = wait_for_child(&mut child, &ctrlc, timeout);
+    let _ = wait_for_child(child, &ctrlc, timeout);
 
     // `wait_for_child` should leave `active_pgid` alone.
     // Higher-level cleanup clears it after process supervision finishes.
@@ -461,7 +461,7 @@ fn test_ctrl_c_during_timeout_grace_period() {
     // Short timeout to trigger interrupt quickly
     let timeout = Some(Duration::from_millis(50));
 
-    let result = wait_for_child(&mut child, &ctrlc, timeout);
+    let result = wait_for_child(child, &ctrlc, timeout);
 
     // Process should succeed because it exits with code 0 after interrupt
     // (both timeout interrupt and Ctrl-C send SIGINT, so the handler runs)

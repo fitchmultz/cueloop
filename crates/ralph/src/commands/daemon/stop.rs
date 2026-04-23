@@ -17,12 +17,11 @@
 use crate::config::Resolved;
 use crate::lock::PidLiveness;
 use anyhow::{Context, Result, bail};
-use std::fs;
 use std::time::Duration;
 
 use super::{
-    DAEMON_LOCK_DIR, DAEMON_STATE_FILE, daemon_pid_liveness, get_daemon_state,
-    manual_daemon_cleanup_instructions,
+    clear_daemon_runtime_artifacts, daemon_pid_liveness, get_daemon_state,
+    manual_daemon_cleanup_instructions, wait_for_daemon_shutdown,
 };
 
 /// Stop the daemon gracefully.
@@ -40,23 +39,8 @@ pub fn stop(resolved: &Resolved) -> Result<()> {
 
     match daemon_pid_liveness(state.pid) {
         PidLiveness::NotRunning => {
-            println!("Daemon is not running (removing stale state file)");
-            let state_path = cache_dir.join(DAEMON_STATE_FILE);
-            if let Err(e) = fs::remove_file(&state_path) {
-                log::debug!(
-                    "Failed to remove stale daemon state file {}: {}",
-                    state_path.display(),
-                    e
-                );
-            }
-            let lock_path = cache_dir.join(DAEMON_LOCK_DIR);
-            if let Err(e) = fs::remove_dir_all(&lock_path) {
-                log::debug!(
-                    "Failed to remove stale daemon lock dir {}: {}",
-                    lock_path.display(),
-                    e
-                );
-            }
+            println!("Daemon is not running (removing stale daemon artifacts)");
+            clear_daemon_runtime_artifacts(&cache_dir, true);
             return Ok(());
         }
         PidLiveness::Indeterminate => {
@@ -76,20 +60,10 @@ pub fn stop(resolved: &Resolved) -> Result<()> {
 
     // Wait up to 10 seconds for the daemon to exit
     println!("Waiting for daemon to stop...");
-    for _ in 0..100 {
-        std::thread::sleep(Duration::from_millis(100));
-        if matches!(daemon_pid_liveness(state.pid), PidLiveness::NotRunning) {
-            println!("Daemon stopped successfully");
-            let state_path = cache_dir.join(DAEMON_STATE_FILE);
-            if let Err(e) = fs::remove_file(&state_path) {
-                log::debug!(
-                    "Failed to remove daemon state file after stop {}: {}",
-                    state_path.display(),
-                    e
-                );
-            }
-            return Ok(());
-        }
+    if wait_for_daemon_shutdown(&cache_dir, state.pid, Duration::from_secs(10))? {
+        println!("Daemon stopped successfully");
+        clear_daemon_runtime_artifacts(&cache_dir, true);
+        return Ok(());
     }
 
     // Daemon didn't stop in time

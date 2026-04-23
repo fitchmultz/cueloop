@@ -22,7 +22,7 @@ use std::collections::VecDeque;
 use std::fs::OpenOptions;
 use std::io::{self, BufRead, BufReader, Seek, SeekFrom, Write};
 use std::path::Path;
-use std::time::Duration;
+use std::sync::mpsc;
 use time::OffsetDateTime;
 
 pub const DAEMON_LOG_FILE_NAME: &str = "daemon.log";
@@ -43,6 +43,44 @@ pub(super) struct LogLineOutput {
 pub(super) struct LogTailRecord {
     line_number: u64,
     line: String,
+}
+
+struct LogFileWatcher {
+    _watcher: notify::RecommendedWatcher,
+    rx: mpsc::Receiver<notify::Result<notify::Event>>,
+}
+
+impl LogFileWatcher {
+    fn new(log_file: &Path) -> Result<Self> {
+        use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
+
+        let parent = log_file
+            .parent()
+            .ok_or_else(|| io::Error::other("daemon log file has no parent directory"))?;
+        let (tx, rx) = mpsc::channel();
+        let mut watcher = RecommendedWatcher::new(
+            move |res| {
+                let _ = tx.send(res);
+            },
+            Config::default(),
+        )
+        .context("Create daemon log watcher")?;
+        watcher
+            .watch(parent, RecursiveMode::NonRecursive)
+            .with_context(|| format!("Watch daemon log directory {}", parent.display()))?;
+        Ok(Self {
+            _watcher: watcher,
+            rx,
+        })
+    }
+
+    fn wait_for_change(&self) -> Result<()> {
+        match self.rx.recv() {
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(error)) => Err(anyhow::Error::from(error)).context("Watch daemon log file"),
+            Err(_) => Ok(()),
+        }
+    }
 }
 
 /// Inspect daemon logs with filtering and follow support.
@@ -129,13 +167,12 @@ pub(super) fn follow_log_file(
         .context("Open daemon log file")?;
     let mut reader = BufReader::new(file);
     let mut cursor = reader.seek(SeekFrom::End(0))?;
+    let watcher = LogFileWatcher::new(log_file).ok();
 
     loop {
         let mut line = String::new();
         match reader.read_line(&mut line) {
             Ok(0) => {
-                std::thread::sleep(Duration::from_millis(150));
-
                 let metadata = match std::fs::metadata(log_file) {
                     Ok(meta) => meta,
                     Err(err) => {
@@ -153,6 +190,11 @@ pub(super) fn follow_log_file(
                     line_number = 0;
                 }
 
+                if let Some(ref watcher) = watcher {
+                    watcher.wait_for_change()?;
+                } else {
+                    std::thread::park_timeout(std::time::Duration::from_millis(150));
+                }
                 reader.seek(SeekFrom::Start(cursor))?;
             }
             Ok(_) => {

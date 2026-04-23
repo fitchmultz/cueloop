@@ -224,7 +224,7 @@ fn run_with_streaming_json_inner(
     );
 
     let mut guard = ProcessCleanupGuard::new(ctrlc, stdout_handle, stderr_handle);
-    let status_result = wait::wait_for_child(&mut child, ctrlc, timeout);
+    let status_result = wait::wait_for_child(child, ctrlc, timeout);
     guard.cleanup();
 
     let stdout = {

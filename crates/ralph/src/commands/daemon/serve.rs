@@ -23,9 +23,11 @@
 use crate::cli::daemon::DaemonServeArgs;
 use crate::config::Resolved;
 use anyhow::{Context, Result};
-use std::fs;
 
-use super::{DAEMON_LOCK_DIR, DAEMON_STATE_FILE, DaemonState, write_daemon_state};
+use super::{
+    DAEMON_LOCK_DIR, DaemonState, clear_daemon_runtime_artifacts, write_daemon_ready,
+    write_daemon_state,
+};
 
 #[cfg(unix)]
 use crate::signal;
@@ -49,6 +51,7 @@ pub fn serve(resolved: &Resolved, args: DaemonServeArgs) -> Result<()> {
         command: std::env::args().collect::<Vec<_>>().join(" "),
     };
     write_daemon_state(&cache_dir, &state)?;
+    write_daemon_ready(&cache_dir, state.pid)?;
 
     log::info!(
         "Daemon started (PID: {}, empty_poll={}ms, wait_poll={}ms)",
@@ -106,14 +109,7 @@ pub fn serve(resolved: &Resolved, args: DaemonServeArgs) -> Result<()> {
 
     // Clean up state on exit
     log::info!("Daemon shutting down");
-    let state_path = cache_dir.join(DAEMON_STATE_FILE);
-    if let Err(e) = fs::remove_file(&state_path) {
-        log::debug!(
-            "Failed to remove daemon state file on shutdown {}: {}",
-            state_path.display(),
-            e
-        );
-    }
+    clear_daemon_runtime_artifacts(&cache_dir, false);
 
     result
 }

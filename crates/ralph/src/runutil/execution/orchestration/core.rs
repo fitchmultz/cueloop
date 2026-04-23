@@ -149,20 +149,14 @@ where
                         ),
                     );
 
-                    if let Ok(ctrlc) = runner::ctrlc_state() {
-                        if super::super::super::shell::sleep_with_cancellation(
-                            delay,
-                            Some(&ctrlc.interrupted),
-                        )
+                    let cancellation = runner::ctrlc_state().ok().map(|ctrlc| &ctrlc.interrupted);
+                    if super::super::super::shell::sleep_with_cancellation(delay, cancellation)
                         .is_err()
-                        {
-                            return Err(anyhow::Error::new(RunAbort::new(
-                                RunAbortReason::Interrupted,
-                                interrupted_msg.to_string(),
-                            )));
-                        }
-                    } else {
-                        std::thread::sleep(delay);
+                    {
+                        return Err(anyhow::Error::new(RunAbort::new(
+                            RunAbortReason::Interrupted,
+                            interrupted_msg.to_string(),
+                        )));
                     }
 
                     attempt += 1;
