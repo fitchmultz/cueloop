@@ -21,6 +21,7 @@ mod batch;
 mod build;
 mod decompose;
 mod edit;
+mod followups;
 mod lifecycle;
 mod mutate;
 mod relations;
@@ -34,6 +35,9 @@ pub use batch::{
 pub use build::{TaskBuildArgs, TaskBuildRefactorArgs};
 pub use decompose::TaskDecomposeArgs;
 pub use edit::{TaskEditArgs, TaskFieldArgs, TaskUpdateArgs};
+pub use followups::{
+    TaskFollowupsApplyArgs, TaskFollowupsArgs, TaskFollowupsCommand, TaskFollowupsFormatArg,
+};
 pub use lifecycle::{
     TaskDoneArgs, TaskReadyArgs, TaskRejectArgs, TaskScheduleArgs, TaskShowArgs, TaskStartArgs,
     TaskStatusArgs,
@@ -55,7 +59,7 @@ pub use types::{
 #[command(
     about = "Create and build tasks from freeform requests",
     subcommand_required = false,
-    after_long_help = "Common journeys:\n - Create a task:\n   ralph task \"Refactor queue parsing\"\n   ralph task build-refactor\n - Start work on a task:\n   ralph task ready RQ-0001\n   ralph task start RQ-0001\n - Complete a task:\n   ralph task status done RQ-0001\n   ralph task done --note \"Build checks pass\" RQ-0001\n - Split a task:\n   ralph task split RQ-0001\n   ralph task split --number 3 RQ-0001\n\nCommand intent sections:\nCreate and build: task, build, refactor, build-refactor\nLifecycle: show, ready, status, done, reject, start, schedule\nEdit: field, edit, update\nRelationships: clone, split, relate, blocks, mark-duplicate, children, parent\nBatch and templates: batch, template"
+    after_long_help = "Common journeys:\n - Create a task:\n   ralph task \"Refactor queue parsing\"\n   ralph task build-refactor\n - Start work on a task:\n   ralph task ready RQ-0001\n   ralph task start RQ-0001\n - Complete a task:\n   ralph task status done RQ-0001\n   ralph task done --note \"Build checks pass\" RQ-0001\n - Apply discovered follow-ups:\n   ralph task followups apply --task RQ-0135\n - Split a task:\n   ralph task split RQ-0001\n   ralph task split --number 3 RQ-0001\n\nCommand intent sections:\nCreate and build: task, build, refactor, build-refactor, followups\nLifecycle: show, ready, status, done, reject, start, schedule\nEdit: field, edit, update\nRelationships: clone, split, relate, blocks, mark-duplicate, children, parent\nBatch and templates: batch, template"
 )]
 pub struct TaskArgs {
     #[command(subcommand)]
@@ -161,6 +165,13 @@ pub enum TaskCommand {
         after_long_help = "Continuation workflow:\n - Use --dry-run to validate the transaction without writing queue changes.\n - Ralph applies all requested edits atomically or not at all.\n - Successful writes create an undo checkpoint, so operators do not need manual queue surgery.\n - If the queue moved underneath you, Ralph reports the conflict instead of partially applying edits.\n - Use --format json to emit the same versioned continuation document used by `ralph machine task mutate`.\n\nExamples:\n echo '{\"version\":1,\"atomic\":true,\"tasks\":[{\"task_id\":\"RQ-0001\",\"edits\":[{\"field\":\"title\",\"value\":\"Clarified title\"},{\"field\":\"priority\",\"value\":\"high\"}]}]}' | ralph task mutate\n ralph task mutate --input /tmp/task-mutation.json\n ralph task mutate --dry-run --input /tmp/task-mutation.json\n ralph task mutate --format json --input /tmp/task-mutation.json\n ralph undo --dry-run"
     )]
     Mutate(TaskMutateArgs),
+
+    /// Apply agent-proposed follow-up tasks into the queue.
+    #[command(
+        next_help_heading = "Create and build",
+        after_long_help = "Continuation workflow:\n - Agents write followups@v1 proposals under `.ralph/cache/followups/<TASK_ID>.json`.\n - Apply validates the proposal, allocates real task IDs, maps local dependencies, creates undo, and updates the queue atomically.\n - Use --dry-run to inspect would-create tasks without changing queue state.\n\nExamples:\n ralph task followups apply --task RQ-0135\n ralph task followups apply --task RQ-0135 --dry-run\n ralph task followups apply --task RQ-0135 --input /tmp/followups.json --format json"
+    )]
+    Followups(TaskFollowupsArgs),
 
     /// Update existing task fields based on current repository state.
     #[command(

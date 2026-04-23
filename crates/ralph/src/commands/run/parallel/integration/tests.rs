@@ -419,3 +419,202 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     assert_eq!(task_ids(&remote_done), vec!["RQ-0002", "RQ-0001"]);
     Ok(())
 }
+
+#[test]
+fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let remote = temp.path().join("remote.git");
+    std::fs::create_dir_all(&remote)?;
+    git_test::init_bare_repo(&remote)?;
+
+    let seed = temp.path().join("seed");
+    std::fs::create_dir_all(&seed)?;
+    git_test::init_repo(&seed)?;
+    git_test::add_remote(&seed, "origin", &remote)?;
+
+    let mut source = make_task("RQ-0001", TaskStatus::Todo);
+    source.request = Some("Audit docs and create follow-up work".to_string());
+    let target_queue = QueueFile {
+        version: 1,
+        tasks: vec![source],
+    };
+    crate::queue::save_queue(&seed.join(".ralph/queue.jsonc"), &target_queue)?;
+    crate::queue::save_queue(&seed.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    std::fs::write(seed.join("README.md"), "base\n")?;
+    git_test::commit_all(&seed, "seed queue")?;
+    let branch = git_test::git_output(&seed, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+    git_test::push_branch(&seed, &branch)?;
+    git_test::git_run(
+        &remote,
+        &["symbolic-ref", "HEAD", &format!("refs/heads/{branch}")],
+    )?;
+
+    let worker = temp.path().join("worker");
+    git_test::clone_repo(&remote, &worker)?;
+    git_test::configure_user(&worker)?;
+    std::fs::write(worker.join("work.txt"), "worker implementation\n")?;
+    git_test::commit_all(&worker, "worker implementation")?;
+    write_parallel_followups(&worker, "RQ-0001", valid_parallel_followups())?;
+
+    let resolved = crate::config::Resolved {
+        config: crate::contracts::Config::default(),
+        repo_root: worker.clone(),
+        queue_path: worker.join(".ralph/queue.jsonc"),
+        done_path: worker.join(".ralph/done.jsonc"),
+        id_prefix: "RQ".to_string(),
+        id_width: 4,
+        global_config_path: None,
+        project_config_path: None,
+    };
+    let config = IntegrationConfig {
+        max_attempts: 3,
+        backoff_schedule: FixedBackoffSchedule::from_millis(&[1]),
+        target_branch: branch.clone(),
+        ci_enabled: false,
+        ci_label: "disabled".to_string(),
+    };
+
+    let result = finalize_bookkeeping_and_push(&resolved, "RQ-0001", "Task RQ-0001", &config)?;
+    assert!(result.pushed);
+
+    git_test::git_run(&worker, &["fetch", "origin", &branch])?;
+    let remote_queue_json = git_test::git_output(
+        &worker,
+        &["show", &format!("origin/{branch}:.ralph/queue.jsonc")],
+    )?;
+    let remote_done_json = git_test::git_output(
+        &worker,
+        &["show", &format!("origin/{branch}:.ralph/done.jsonc")],
+    )?;
+    let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
+    let remote_done: QueueFile = serde_json::from_str(&remote_done_json)?;
+
+    assert_eq!(task_ids(&remote_queue), vec!["RQ-0002", "RQ-0003"]);
+    assert_eq!(task_ids(&remote_done), vec!["RQ-0001"]);
+    assert_eq!(
+        remote_queue.tasks[0].request.as_deref(),
+        Some("Audit docs and create follow-up work")
+    );
+    assert_eq!(remote_queue.tasks[0].relates_to, vec!["RQ-0001"]);
+    assert_eq!(remote_queue.tasks[1].depends_on, vec!["RQ-0002"]);
+    assert!(!crate::queue::default_followups_path(&worker, "RQ-0001").exists());
+    Ok(())
+}
+
+#[test]
+fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Result<()> {
+    let temp = TempDir::new()?;
+    let remote = temp.path().join("remote.git");
+    std::fs::create_dir_all(&remote)?;
+    git_test::init_bare_repo(&remote)?;
+
+    let seed = temp.path().join("seed");
+    std::fs::create_dir_all(&seed)?;
+    git_test::init_repo(&seed)?;
+    git_test::add_remote(&seed, "origin", &remote)?;
+
+    let target_queue = QueueFile {
+        version: 1,
+        tasks: vec![make_task("RQ-0001", TaskStatus::Todo)],
+    };
+    crate::queue::save_queue(&seed.join(".ralph/queue.jsonc"), &target_queue)?;
+    crate::queue::save_queue(&seed.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    std::fs::write(seed.join("README.md"), "base\n")?;
+    git_test::commit_all(&seed, "seed queue")?;
+    let branch = git_test::git_output(&seed, &["rev-parse", "--abbrev-ref", "HEAD"])?;
+    git_test::push_branch(&seed, &branch)?;
+    git_test::git_run(
+        &remote,
+        &["symbolic-ref", "HEAD", &format!("refs/heads/{branch}")],
+    )?;
+
+    let worker = temp.path().join("worker");
+    git_test::clone_repo(&remote, &worker)?;
+    git_test::configure_user(&worker)?;
+    std::fs::write(worker.join("work.txt"), "worker implementation\n")?;
+    git_test::commit_all(&worker, "worker implementation")?;
+
+    let mut proposal = valid_parallel_followups();
+    proposal["tasks"][0]["depends_on_keys"] = serde_json::json!(["missing-key"]);
+    let proposal_path = write_parallel_followups(&worker, "RQ-0001", proposal)?;
+
+    let resolved = crate::config::Resolved {
+        config: crate::contracts::Config::default(),
+        repo_root: worker.clone(),
+        queue_path: worker.join(".ralph/queue.jsonc"),
+        done_path: worker.join(".ralph/done.jsonc"),
+        id_prefix: "RQ".to_string(),
+        id_width: 4,
+        global_config_path: None,
+        project_config_path: None,
+    };
+    let config = IntegrationConfig {
+        max_attempts: 3,
+        backoff_schedule: FixedBackoffSchedule::from_millis(&[1]),
+        target_branch: branch.clone(),
+        ci_enabled: false,
+        ci_label: "disabled".to_string(),
+    };
+
+    let result = finalize_bookkeeping_and_push(&resolved, "RQ-0001", "Task RQ-0001", &config)?;
+    assert!(!result.pushed);
+    assert!(
+        result
+            .push_error
+            .as_deref()
+            .is_some_and(|error| error.contains("apply parallel worker follow-up proposal"))
+    );
+    assert!(proposal_path.exists());
+
+    git_test::git_run(&worker, &["fetch", "origin", &branch])?;
+    let remote_queue_json = git_test::git_output(
+        &worker,
+        &["show", &format!("origin/{branch}:.ralph/queue.jsonc")],
+    )?;
+    let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
+    assert_eq!(task_ids(&remote_queue), vec!["RQ-0001"]);
+    Ok(())
+}
+
+fn valid_parallel_followups() -> serde_json::Value {
+    serde_json::json!({
+        "version": 1,
+        "source_task_id": "RQ-0001",
+        "tasks": [
+            {
+                "key": "docs-hierarchy",
+                "title": "Rework docs hierarchy",
+                "description": "Split oversized docs into a navigable hierarchy.",
+                "priority": "high",
+                "tags": ["docs"],
+                "scope": ["docs/"],
+                "evidence": ["Audit found oversized docs."],
+                "plan": ["Design hierarchy.", "Move content."],
+                "depends_on_keys": [],
+                "independence_rationale": "Separate remediation discovered by the active task."
+            },
+            {
+                "key": "cli-flags",
+                "title": "Document CLI flags",
+                "description": "Add deeper CLI flag coverage.",
+                "priority": "medium",
+                "tags": ["docs", "cli"],
+                "scope": ["docs/cli.md"],
+                "evidence": ["Audit found shallow CLI coverage."],
+                "plan": ["Inventory flags.", "Expand docs."],
+                "depends_on_keys": ["docs-hierarchy"],
+                "independence_rationale": "Depends on the docs hierarchy but is separate work."
+            }
+        ]
+    })
+}
+
+fn write_parallel_followups(
+    repo_root: &std::path::Path,
+    task_id: &str,
+    proposal: serde_json::Value,
+) -> anyhow::Result<std::path::PathBuf> {
+    let path = crate::queue::default_followups_path(repo_root, task_id);
+    crate::fsutil::write_atomic(&path, serde_json::to_string_pretty(&proposal)?.as_bytes())?;
+    Ok(path)
+}

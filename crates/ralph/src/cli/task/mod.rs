@@ -20,6 +20,7 @@ mod children;
 mod clone;
 mod decompose;
 mod edit;
+mod followups;
 mod from_template;
 mod handle;
 mod mutate;
@@ -38,6 +39,7 @@ pub use args::{
     TaskBatchArgs, TaskBlocksArgs, TaskBuildArgs, TaskBuildRefactorArgs, TaskChildrenArgs,
     TaskCloneArgs, TaskCommand, TaskDecomposeArgs, TaskDecomposeChildPolicyArg,
     TaskDecomposeFormatArg, TaskDoneArgs, TaskEditArgs, TaskEditFieldArg, TaskFieldArgs,
+    TaskFollowupsApplyArgs, TaskFollowupsArgs, TaskFollowupsCommand, TaskFollowupsFormatArg,
     TaskFromArgs, TaskFromCommand, TaskFromTemplateArgs, TaskMarkDuplicateArgs, TaskMutateArgs,
     TaskParentArgs, TaskReadyArgs, TaskRejectArgs, TaskRelateArgs, TaskRelationFormat,
     TaskScheduleArgs, TaskShowArgs, TaskSplitArgs, TaskStartArgs, TaskStatusArg, TaskStatusArgs,

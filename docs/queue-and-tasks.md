@@ -106,6 +106,50 @@ Notes:
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
 
+## Discovery Follow-Ups
+
+Exploratory, audit, scan, and investigation tasks should grow the queue when they find independent work. Ralph uses `followups@v1` proposal files so agents can describe follow-up tasks without hand-editing queue JSON.
+
+Default proposal path:
+
+```text
+.ralph/cache/followups/<TASK_ID>.json
+```
+
+Proposal shape:
+
+```json
+{
+  "version": 1,
+  "source_task_id": "RQ-0135",
+  "tasks": [
+    {
+      "key": "docs-hierarchy",
+      "title": "Rework oversized docs into a feature hierarchy",
+      "description": "Split oversized documentation into navigable feature pages with clear ownership.",
+      "priority": "high",
+      "tags": ["docs"],
+      "scope": ["docs/"],
+      "evidence": ["Audit found oversized docs with mixed feature coverage."],
+      "plan": ["Identify target hierarchy.", "Move content.", "Update links."],
+      "depends_on_keys": [],
+      "independence_rationale": "This is separate remediation work discovered by the audit."
+    }
+  ]
+}
+```
+
+Apply a proposal:
+
+```bash
+ralph task followups apply --task RQ-0135
+ralph task followups apply --task RQ-0135 --dry-run --format json
+```
+
+Apply allocates real task IDs, maps `depends_on_keys`, inherits `request` from the source task, adds `relates_to: ["<source_task_id>"]`, timestamps the tasks, validates the queue, creates undo for CLI applies, and removes the proposal after a successful non-dry-run apply.
+
+Follow-ups are for independent work or queue-shaping tasks. They must not replace completing the active task's current scope. Reports remain opt-in: create a report only when the user explicitly asked for one or when the report is the deliverable.
+
 ## Dependency Validation
 
 Ralph validates task dependencies on queue operations to ensure correctness and prevent issues:

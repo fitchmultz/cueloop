@@ -45,6 +45,20 @@ fn load_completion_checklist_falls_back_to_embedded_default_when_missing() -> Re
 }
 
 #[test]
+fn default_completion_checklist_includes_followup_proposal_flow() -> Result<()> {
+    let dir = TempDir::new()?;
+    let checklist = load_completion_checklist(dir.path())?;
+    assert!(checklist.contains("follow-ups cannot substitute"));
+    assert!(checklist.contains(".ralph/cache/followups/{{TASK_ID}}.json"));
+    assert!(checklist.contains("ralph task followups apply --task {{TASK_ID}}"));
+    assert!(checklist.contains("do not apply the proposal"));
+    assert!(checklist.contains("RUN_MODE=parallel-worker"));
+    assert!(checklist.contains("if the CI gate is disabled"));
+    assert!(checklist.contains("CI-clean only when the CI gate is enabled"));
+    Ok(())
+}
+
+#[test]
 fn load_iteration_checklist_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;
     let checklist = load_iteration_checklist(dir.path())?;
@@ -58,6 +72,8 @@ fn load_phase2_handoff_checklist_falls_back_to_embedded_default_when_missing() -
     let checklist = load_phase2_handoff_checklist(dir.path())?;
     assert!(checklist.contains("PHASE 2 HANDOFF CHECKLIST"));
     assert!(!checklist.contains("follow-ups Phase 3 must close"));
+    assert!(!checklist.contains("stop after CI passes"));
+    assert!(checklist.contains("configured Phase 2 validation"));
     assert!(checklist.contains("If you are truly blocked"));
     Ok(())
 }

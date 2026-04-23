@@ -24,6 +24,17 @@ fn load_worker_prompt_falls_back_to_embedded_default_when_missing() -> Result<()
 }
 
 #[test]
+fn default_worker_prompt_includes_followup_ownership_guard() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_worker_prompt(dir.path())?;
+    assert!(prompt.contains("QUEUE FOLLOW-UP DISCIPLINE"));
+    assert!(prompt.contains("not create follow-ups as a substitute"));
+    assert!(prompt.contains(".ralph/cache/followups/{{TASK_ID}}.json"));
+    assert!(prompt.contains("not a report handoff"));
+    Ok(())
+}
+
+#[test]
 fn load_worker_phase1_prompt_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;
     let prompt = load_worker_phase1_prompt(dir.path())?;

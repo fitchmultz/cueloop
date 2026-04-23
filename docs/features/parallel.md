@@ -185,13 +185,16 @@ For each attempt (up to `max_push_attempts`):
    - Spawn agent remediation session
    - Require zero unresolved conflicts
    - Continue rebase
-5. **CI gate**: Run CI check (if enabled)
-6. **CI remediation**: On failure:
+5. **Bookkeeping reconciliation**: Restore queue/done from the latest target branch, archive the current task, and apply any worker-written `.ralph/cache/followups/<TASK_ID>.json` proposal.
+6. **CI gate**: Run CI check (if enabled)
+7. **CI remediation**: On failure:
    - Generate CI-failure handoff
    - Run remediation agent session
    - Repeat CI until pass or policy stop
-7. **Push**: `git push origin HEAD:<target_branch>`
-8. **Retry**: On non-fast-forward, retry with backoff
+8. **Push**: `git push origin HEAD:<target_branch>`
+9. **Retry**: On non-fast-forward, retry with backoff
+
+Parallel workers do not mutate shared queue/done files for newly discovered follow-up work. They write proposal artifacts under `.ralph/cache/followups/`; the integration loop applies valid proposals in the same deterministic bookkeeping path that archives the completed task. Invalid proposals block integration and retain the worker workspace for retry.
 
 ### Terminal Outcomes
 
@@ -349,7 +352,7 @@ This:
 
 3. **Conflict Resolution Time**: Complex conflicts may require multiple agent remediation sessions, extending total runtime.
 
-4. **CI Gate Authority**: CI gates run in the worker workspace and must pass before push. Post-push CI is not monitored.
+4. **CI Gate Authority**: When the CI gate is enabled, it runs in the worker workspace and must pass before push. Post-push CI is not monitored.
 
 5. **Queue/Done Conflicts**: When multiple workers modify queue/done, conflicts are resolved via agent sessions with semantic validation.
 

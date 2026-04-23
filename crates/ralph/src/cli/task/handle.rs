@@ -17,8 +17,8 @@ use crate::config;
 
 use super::{
     TaskArgs, TaskCommand, TaskFromCommand, batch, build, children, clone, decompose, edit,
-    from_template, mutate, parent, refactor, relations, schedule, show, split, start, status,
-    template,
+    followups, from_template, mutate, parent, refactor, relations, schedule, show, split, start,
+    status, template,
 };
 
 pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
@@ -32,6 +32,7 @@ pub fn handle_task(args: TaskArgs, force: bool) -> Result<()> {
         Some(TaskCommand::Field(args)) => edit::handle_field(&args, force, &resolved),
         Some(TaskCommand::Edit(args)) => edit::handle_edit(&args, force, &resolved),
         Some(TaskCommand::Mutate(args)) => mutate::handle(&args, force, &resolved),
+        Some(TaskCommand::Followups(args)) => followups::handle(&args, force, &resolved),
         Some(TaskCommand::Update(args)) => edit::handle_update(&args, &resolved, force),
         Some(TaskCommand::Build(args)) => build::handle(&args, force, &resolved),
         Some(TaskCommand::Decompose(args)) => decompose::handle(&args, force, &resolved),

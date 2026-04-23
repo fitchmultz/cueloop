@@ -29,6 +29,13 @@ Optional hint scope (may be empty):
 - REQUIRED: modify `{{config.queue.file}}` and insert task(s) using the JSON queue contract below.
 - REQUIRED: do not modify any other files.
 
+## DISCOVERY / QUEUE-SHAPING REQUESTS
+- Broad requests such as "scan", "audit", "investigate", "find gaps", "review coverage", "build a roadmap", or "first inspect then create tasks" are queue-shaping by default.
+- For queue-shaping requests, create task(s) whose deliverable is to inspect the repo and materialize actionable follow-up tasks through Ralph's follow-up proposal flow.
+- Do not create "write a report" tasks unless the user explicitly asks for a report, document, analysis artifact, or the report itself is the deliverable.
+- Prefer fewer, chunkier, dependency-aware remediation tasks over one task per observation.
+- If the request requires discovery before the right remediation tasks are knowable, create an exploratory queue-shaping task that will update the queue after inspection rather than handing a report back to the human.
+
 ## JSON QUEUE CONTRACT (REQUIRED)
 - Root: `{"version": 1, "tasks": [...]}`
 - Task required keys:

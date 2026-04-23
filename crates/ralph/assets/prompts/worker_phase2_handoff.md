@@ -19,6 +19,7 @@ Task status is already set to `doing` by Ralph. Leave it unchanged.
 
 Note: Your final response will be passed into Phase 3 as context only. End with a concise handoff summary that Phase 3 can use.
 PREFERRED: resolve follow-ups, inconsistencies, missing tests, or suspicious leads in Phase 2 instead of deferring them.
+If you discovered independent follow-up work, mention whether `.ralph/cache/followups/{{TASK_ID}}.json` exists for Phase 3 to apply.
 If you are truly blocked, clearly describe the blocker and the concrete remediation steps for the next run.
 
 Proceed with the implementation of the plan above. Stop after Phase 2 handoff.

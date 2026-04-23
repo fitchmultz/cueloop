@@ -133,7 +133,7 @@ Phase 2 is the **doing phase**. The AI agent implements the plan from Phase 1 (o
    - Phase 2 handoff checklist (3-phase only)
 3. Execute the runner
 4. Cache the final response for Phase 3 reference
-5. Run CI gate
+5. Run the configured CI gate when enabled
 6. Stop BEFORE task completion (supervision point)
 
 **Phase 2 follow-up handling**:
@@ -143,7 +143,7 @@ Phase 2 is the **doing phase**. The AI agent implements the plan from Phase 1 (o
 
 ### CI Gate Integration
 
-Phase 2 includes mandatory CI validation (unless disabled):
+Phase 2 runs configured CI validation when the CI gate is enabled:
 
 ```bash
 # This repository's configured CI command
@@ -159,7 +159,7 @@ make ci
 ```
 
 **CI Auto-Retry Behavior**:
-- Ralph automatically retries up to **2 times** on CI failure
+- When the CI gate is enabled, Ralph automatically retries up to **2 times** on CI failure
 - Each retry sends a "strict compliance" message to the runner
 - After 2 failures, behavior depends on `git_revert_mode`:
   - `ask`: Prompt user to revert, continue with message, or proceed
@@ -216,7 +216,7 @@ Phase 3 is the **validation phase**. The AI agent reviews the implemented change
    - Phase 3 completion guidance
 4. Execute the runner
 5. Check for completion signal
-6. Run CI gate
+6. Run the configured CI gate when enabled
 7. Finalize task (commit/push if enabled)
 
 ### Completion Requirements

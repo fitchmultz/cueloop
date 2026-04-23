@@ -161,6 +161,42 @@ fn task_decompose_help_mentions_write_and_attach_examples() {
 }
 
 #[test]
+fn task_followups_apply_parses_source_input_dry_run_and_format() {
+    let cli = Cli::try_parse_from([
+        "ralph",
+        "task",
+        "followups",
+        "apply",
+        "--task",
+        "RQ-0135",
+        "--input",
+        "/tmp/followups.json",
+        "--dry-run",
+        "--format",
+        "json",
+    ])
+    .expect("parse");
+
+    match cli.command {
+        crate::cli::Command::Task(args) => match args.command {
+            Some(crate::cli::task::TaskCommand::Followups(args)) => match args.command {
+                crate::cli::task::TaskFollowupsCommand::Apply(args) => {
+                    assert_eq!(args.task, "RQ-0135");
+                    assert_eq!(
+                        args.input.as_deref(),
+                        Some(std::path::Path::new("/tmp/followups.json"))
+                    );
+                    assert!(args.dry_run);
+                    assert_eq!(args.format, crate::cli::task::TaskFollowupsFormatArg::Json);
+                }
+            },
+            _ => panic!("expected task followups apply command"),
+        },
+        _ => panic!("expected task command"),
+    }
+}
+
+#[test]
 fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
     let cli = Cli::try_parse_from([
         "ralph",

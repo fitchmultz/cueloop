@@ -184,6 +184,8 @@ ralph task mutate --dry-run --input request.json
 ralph task mutate --format json --input request.json
 ralph task decompose --format json "Improve webhook reliability"
 ralph task decompose --write "Improve webhook reliability"
+ralph task followups apply --task RQ-0135
+ralph task followups apply --task RQ-0135 --dry-run --format json
 ralph undo --list
 ralph undo --dry-run
 ```
@@ -191,6 +193,7 @@ ralph undo --dry-run
 These commands are now first-class continuation tools. They explain whether Ralph is ready, waiting, blocked, or stalled, preserve partial value where safe, and point to the next recovery step instead of treating queue repair or undo as emergency-only workflows.
 
 `ralph task mutate --format json` and `ralph task decompose --format json` now emit the same shared versioned continuation documents used by `ralph machine ...`.
+`ralph task followups apply` consumes `.ralph/cache/followups/<TASK_ID>.json`, validates the proposal, creates undo, inserts generated tasks into the queue, and removes the proposal after a successful apply.
 
 ### Machine API
 
@@ -270,7 +273,7 @@ ralph undo
 
 ### `ralph task`
 
-- Build/create: `task` (freeform), `build`, `refactor`, `build-refactor`, `from`, `template`
+- Build/create: `task` (freeform), `build`, `refactor`, `build-refactor`, `from`, `template`, `followups`
 - Lifecycle: `show`, `ready`, `status`, `done`, `reject`, `start`, `schedule`
 - Editing: `field`, `edit`, `update`
 - Structure/relations: `clone`, `split`, `relate`, `blocks`, `mark-duplicate`, `children`, `parent`

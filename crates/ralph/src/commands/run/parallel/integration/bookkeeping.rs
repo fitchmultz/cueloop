@@ -157,6 +157,15 @@ fn rebuild_bookkeeping_from_target(
     restore_bookkeeping_path_from_ref(repo_root, &remote_ref, &resolved.done_path, "done")?;
 
     archive_current_task(resolved, task_id)?;
+    if let Some(report) = queue::apply_default_followups_if_present(resolved, task_id)
+        .context("apply parallel worker follow-up proposal")?
+    {
+        log::info!(
+            "applied {} follow-up task(s) proposed by {} during machine integration",
+            report.created_tasks.len(),
+            task_id
+        );
+    }
     Ok(())
 }
 

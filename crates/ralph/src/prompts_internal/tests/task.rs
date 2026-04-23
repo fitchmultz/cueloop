@@ -63,6 +63,17 @@ fn default_task_builder_prompt_mentions_next_id_command() -> Result<()> {
 }
 
 #[test]
+fn default_task_builder_prompt_treats_discovery_as_queue_shaping() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_task_builder_prompt(dir.path())?;
+    assert!(prompt.contains("DISCOVERY / QUEUE-SHAPING REQUESTS"));
+    assert!(prompt.contains("queue-shaping by default"));
+    assert!(prompt.contains("Do not create \"write a report\" tasks"));
+    assert!(prompt.contains("actionable follow-up tasks"));
+    Ok(())
+}
+
+#[test]
 fn render_task_builder_prompt_expands_queue_file_variable() -> Result<()> {
     let template = "Queue: {{config.queue.file}}\nRequest:\n{{USER_REQUEST}}\nTags:\n{{HINT_TAGS}}\nScope:\n{{HINT_SCOPE}}\n";
     let mut config = default_config();

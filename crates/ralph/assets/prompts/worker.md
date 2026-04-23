@@ -23,6 +23,12 @@ Only open `{{config.queue.file}}` or `{{config.queue.done_file}}` when you need 
 - Scope is a starting point, not a restriction. Expand beyond it when needed to complete the task correctly.
 - PREFERRED: do not claim completion early; only finish when the task and required checks are actually complete.
 
+## QUEUE FOLLOW-UP DISCIPLINE
+- The active task remains yours end to end. Do not create follow-ups as a substitute for finishing current scope.
+- Create follow-up proposals only for genuinely independent work, newly discovered out-of-scope work, or tasks whose explicit purpose is discovery/queue shaping.
+- For exploratory, audit, scan, or investigation tasks, the expected output is actionable queue growth when additional work is found, not a report handoff unless the task explicitly asks for a report.
+- Use `.ralph/cache/followups/{{TASK_ID}}.json` for proposed follow-up tasks; do not manually edit queue/done JSON for that purpose.
+
 ## PRE-FLIGHT SAFETY (DIRTY REPO)
 - PREFERRED: start from a clean working tree.
 - If the repo is already dirty, reconcile that state before stacking unrelated work on top.

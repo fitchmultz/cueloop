@@ -213,7 +213,7 @@ Wraps the base worker for the planning phase:
 Wraps the base worker for implementation (2-phase workflow):
 - Receives the plan from Phase 1
 - Executes implementation
-- Runs CI gate and completes task
+- Runs the configured CI gate when enabled and completes task
 
 **Key Placeholders:**
 - `{{PLAN_TEXT}}` - Content of the Phase 1 plan
@@ -224,7 +224,7 @@ Wraps the base worker for implementation (2-phase workflow):
 
 3-phase workflow variant that stops after implementation:
 - Same implementation focus as worker_phase2
-- Stops after CI passes (no completion)
+- Stops after configured Phase 2 validation is satisfied; if the CI gate is disabled, no CI pass is required
 - Leaves dirty working tree for Phase 3 review
 
 ### Phase 3: Review (`worker_phase3.md`)
