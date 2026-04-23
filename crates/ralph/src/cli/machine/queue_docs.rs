@@ -25,7 +25,11 @@ mod support;
 use anyhow::Result;
 
 use crate::cli::machine::args::{MachineQueueRepairArgs, MachineQueueUndoArgs};
-use crate::cli::machine::common::{done_queue_ref, queue_max_dependency_depth};
+use crate::cli::machine::common::{
+    done_queue_ref, machine_queue_repair_command, machine_queue_undo_dry_run_command,
+    machine_queue_undo_restore_command, machine_queue_validate_command,
+    machine_run_one_resume_command, machine_task_mutate_command, queue_max_dependency_depth,
+};
 use crate::contracts::{
     MACHINE_QUEUE_REPAIR_VERSION, MACHINE_QUEUE_UNDO_VERSION, MACHINE_QUEUE_VALIDATE_VERSION,
     MachineContinuationSummary, MachineQueueRepairDocument, MachineQueueUndoDocument,
@@ -57,17 +61,17 @@ pub(crate) fn build_validate_document(
                     next_steps: vec![
                         step(
                             "Preview safe normalization",
-                            "ralph queue repair --dry-run",
+                            machine_queue_repair_command(true),
                             "Inspect recoverable fixes without writing queue files.",
                         ),
                         step(
                             "Apply normalization",
-                            "ralph queue repair",
+                            machine_queue_repair_command(false),
                             "Write recoverable fixes and create an undo checkpoint first.",
                         ),
                         step(
                             "Preview a restore",
-                            "ralph undo --dry-run",
+                            machine_queue_undo_dry_run_command(),
                             "Inspect the latest continuation checkpoint before writing more changes.",
                         ),
                     ],
@@ -92,17 +96,17 @@ pub(crate) fn build_validate_document(
                     next_steps: vec![
                         step(
                             "Preview safe normalization",
-                            "ralph queue repair --dry-run",
+                            machine_queue_repair_command(true),
                             "Inspect whether Ralph can normalize the queue and done archive safely.",
                         ),
                         step(
                             "Apply normalization",
-                            "ralph queue repair",
+                            machine_queue_repair_command(false),
                             "Write recoverable fixes and create an undo checkpoint first.",
                         ),
                         step(
                             "Preview a restore",
-                            "ralph undo --dry-run",
+                            machine_queue_undo_dry_run_command(),
                             "Inspect the latest continuation checkpoint before writing more changes.",
                         ),
                     ],
@@ -164,17 +168,17 @@ pub(crate) fn build_validate_document(
                     next_steps: vec![
                         step(
                             "Preview safe normalization",
-                            "ralph queue repair --dry-run",
+                            machine_queue_repair_command(true),
                             "See which recoverable issues Ralph can normalize.",
                         ),
                         step(
                             "Apply safe normalization",
-                            "ralph queue repair",
+                            machine_queue_repair_command(false),
                             "Repair recoverable issues and create an undo checkpoint.",
                         ),
                         step(
                             "Inspect the latest checkpoint",
-                            "ralph undo --dry-run",
+                            machine_queue_undo_dry_run_command(),
                             "Confirm whether restoring is safer than repairing.",
                         ),
                     ],
@@ -227,7 +231,7 @@ pub(crate) fn build_repair_document(
             blocking: None,
             next_steps: vec![step(
                 "Continue work",
-                "ralph run resume",
+                machine_run_one_resume_command(),
                 "No recovery write is required before continuing.",
             )],
         };
@@ -250,12 +254,12 @@ pub(crate) fn build_repair_document(
         next_steps: vec![
             step(
                 "Validate the normalized queue",
-                "ralph queue validate",
+                machine_queue_validate_command(),
                 "Confirm the post-repair continuation state.",
             ),
             step(
                 "Preview a rollback",
-                "ralph undo --dry-run",
+                machine_queue_undo_dry_run_command(),
                 "Inspect the restore path for this repair if you want to undo it.",
             ),
         ],
@@ -280,19 +284,19 @@ pub(crate) fn build_undo_document(
         let next_steps = if list.snapshots.is_empty() {
             vec![step(
                 "Create a future checkpoint",
-                "ralph task mutate --dry-run",
+                machine_task_mutate_command(true),
                 "Most queue-changing workflows create an undo checkpoint automatically before writing.",
             )]
         } else {
             vec![
                 step(
                     "Preview a restore",
-                    "ralph undo --dry-run",
+                    machine_queue_undo_dry_run_command(),
                     "Inspect the most recent checkpoint before restoring.",
                 ),
                 step(
                     "Restore a specific checkpoint",
-                    "ralph undo --id <SNAPSHOT_ID>",
+                    machine_queue_undo_restore_command(),
                     "Return to a selected queue state.",
                 ),
             ]
@@ -337,12 +341,12 @@ pub(crate) fn build_undo_document(
         next_steps: vec![
             step(
                 "Validate restored state",
-                "ralph queue validate",
+                machine_queue_validate_command(),
                 "Confirm the restored queue is ready.",
             ),
             step(
                 "Resume normal work",
-                "ralph run resume",
+                machine_run_one_resume_command(),
                 "Continue from the restored queue state.",
             ),
         ],

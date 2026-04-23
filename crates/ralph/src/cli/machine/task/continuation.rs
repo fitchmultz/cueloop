@@ -12,6 +12,11 @@
 //! - Continuation text stays deterministic for machine consumers.
 //! - Blocking summaries use the shared machine/blocking contract types.
 
+use crate::cli::machine::common::{
+    machine_queue_graph_command, machine_queue_undo_dry_run_command,
+    machine_queue_validate_command, machine_run_one_resume_command, machine_task_decompose_command,
+    machine_task_mutate_command,
+};
 use crate::commands::task as task_cmd;
 use crate::contracts::{
     BlockingState, BlockingStatus, MachineContinuationAction, MachineContinuationSummary,
@@ -39,12 +44,12 @@ pub(super) fn mutation_continuation(
             next_steps: vec![
                 step(
                     "Apply the mutation",
-                    "ralph task mutate --input <PATH>",
+                    machine_task_mutate_command(false),
                     "Repeat without --dry-run to write the validated transaction.",
                 ),
                 step(
                     "Refresh if the queue moved",
-                    "ralph queue validate",
+                    machine_queue_validate_command(),
                     "Validate and retry from the latest queue state if another write landed first.",
                 ),
             ],
@@ -60,12 +65,12 @@ pub(super) fn mutation_continuation(
         next_steps: vec![
             step(
                 "Continue work",
-                "ralph run resume",
+                machine_run_one_resume_command(),
                 "Proceed from the updated task state.",
             ),
             step(
                 "Restore if needed",
-                "ralph undo --dry-run",
+                machine_queue_undo_dry_run_command(),
                 "Preview the rollback path for this mutation.",
             ),
         ],
@@ -85,12 +90,12 @@ pub(super) fn decompose_continuation(
             next_steps: vec![
                 step(
                     "Inspect the tree",
-                    "ralph queue tree",
+                    machine_queue_graph_command(),
                     "Review the written parent/child structure.",
                 ),
                 step(
                     "Restore if needed",
-                    "ralph undo --dry-run",
+                    machine_queue_undo_dry_run_command(),
                     "Preview the rollback path for this decomposition.",
                 ),
             ],
@@ -104,7 +109,7 @@ pub(super) fn decompose_continuation(
             blocking: None,
             next_steps: vec![step(
                 "Write the preview",
-                "ralph task decompose --write ...",
+                &machine_task_decompose_command(true, "..."),
                 "Persist the planned tree into the queue.",
             )],
         };
@@ -124,24 +129,24 @@ pub(super) fn decompose_continuation(
                     .map(|target| target.task.id.clone()),
                 "Ralph is blocked from continuing this decomposition write.",
                 preview.write_blockers.join(" "),
-                Some("ralph task decompose --child-policy append --write ...".to_string()),
+                Some(machine_task_decompose_command(true, "--child-policy append ...")),
             )
             .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback()),
         ),
         next_steps: vec![
             step(
                 "Append under the existing parent",
-                "ralph task decompose --child-policy append --write ...",
+                &machine_task_decompose_command(true, "--child-policy append ..."),
                 "Keep existing children and add the new subtree.",
             ),
             step(
                 "Replace the existing subtree",
-                "ralph task decompose --child-policy replace --write ...",
+                &machine_task_decompose_command(true, "--child-policy replace ..."),
                 "Use only when the existing subtree can be safely replaced.",
             ),
             step(
                 "Keep the preview only",
-                "ralph task decompose ...",
+                &machine_task_decompose_command(false, "..."),
                 "Retain the proposed tree while deciding how to proceed.",
             ),
         ],

@@ -307,7 +307,7 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
         "next_steps": [
           {
             "title": "Write the preview",
-            "command": "ralph task decompose --write ...",
+            "command": "ralph machine task decompose --write ...",
             "detail": "Persist the planned tree into the queue."
           }
         ]
@@ -361,12 +361,12 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
         "next_steps": [
           {
             "title": "Inspect the tree",
-            "command": "ralph queue tree",
+            "command": "ralph machine queue graph",
             "detail": "Review the written parent/child structure."
           },
           {
             "title": "Restore if needed",
-            "command": "ralph undo --dry-run",
+            "command": "ralph machine queue undo --dry-run",
             "detail": "Preview the rollback path for this decomposition."
           }
         ]

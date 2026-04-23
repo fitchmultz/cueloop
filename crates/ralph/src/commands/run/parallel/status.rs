@@ -7,6 +7,9 @@
 
 use super::status_render::print_status_table;
 use super::status_support::{inspect_parallel_summaries, lifecycle_counts, step};
+use crate::cli::machine::{
+    machine_doctor_report_command, machine_run_loop_command, machine_run_parallel_status_command,
+};
 use crate::commands::run::parallel::state::{ParallelStateFile, load_state, state_file_path};
 use crate::commands::run::queue_lock::{
     QueueLockCondition, QueueLockInspection, inspect_queue_lock,
@@ -110,12 +113,12 @@ fn build_parallel_status_guidance(
                 next_steps: vec![
                     step(
                         "Start parallel execution",
-                        "ralph run loop --parallel <N>",
+                        machine_run_loop_command(true, false),
                         "Start the coordinator with the desired worker count.",
                     ),
                     step(
                         "Inspect status again",
-                        "ralph run parallel status",
+                        machine_run_parallel_status_command(),
                         "Re-check worker state after the coordinator starts.",
                     ),
                 ],
@@ -142,7 +145,7 @@ fn build_parallel_status_guidance(
                         blocking: None,
                         next_steps: vec![step(
                             "Inspect the structured worker snapshot",
-                            "ralph run parallel status --json",
+                            machine_run_parallel_status_command(),
                             "Review lifecycle counts, integration outcomes, and retained worker details without scraping logs.",
                         )],
                     },
@@ -171,7 +174,7 @@ fn build_parallel_status_guidance(
                         next_steps: vec![
                             step(
                                 "Inspect blocked integration outcomes",
-                                "ralph run parallel status --json",
+                                machine_run_parallel_status_command(),
                                 "Check the retained worker reasons, workspace paths, and attempt counts.",
                             ),
                             step(
@@ -181,7 +184,7 @@ fn build_parallel_status_guidance(
                             ),
                             step(
                                 "Resume the coordinator",
-                                "ralph run loop --parallel <N>",
+                                machine_run_loop_command(true, false),
                                 "Continue parallel execution after marking workers for retry.",
                             ),
                         ],
@@ -211,7 +214,7 @@ fn build_parallel_status_guidance(
                         next_steps: vec![
                             step(
                                 "Inspect retryable failures",
-                                "ralph run parallel status --json",
+                                machine_run_parallel_status_command(),
                                 "Review the stored failure reasons and any unexpected retained artifacts before retrying.",
                             ),
                             step(
@@ -234,12 +237,12 @@ fn build_parallel_status_guidance(
                         next_steps: vec![
                             step(
                                 "Inspect retained artifact paths",
-                                "ralph run parallel status --json",
+                                machine_run_parallel_status_command(),
                                 "Review which worker workspaces or bookkeeping files were left behind.",
                             ),
                             step(
                                 "Resume the coordinator after cleanup",
-                                "ralph run loop --parallel <N>",
+                                machine_run_loop_command(true, false),
                                 "Restart parallel execution once the retained artifacts match the reported worker state.",
                             ),
                         ],
@@ -257,7 +260,7 @@ fn build_parallel_status_guidance(
                         blocking: None,
                         next_steps: vec![step(
                             "Resume the coordinator",
-                            "ralph run loop --parallel <N>",
+                            machine_run_loop_command(true, false),
                             "Start another coordinator pass if the queue still contains runnable work.",
                         )],
                     },
@@ -290,12 +293,12 @@ fn build_parallel_queue_lock_guidance(
             vec![
                 step(
                     "Inspect the current lock owner",
-                    "ralph doctor report",
+                    machine_doctor_report_command(),
                     "Confirm which Ralph process owns the queue lock and whether it is still healthy.",
                 ),
                 step(
                     "Resume the coordinator after the lock clears",
-                    "ralph run loop --parallel <N>",
+                    machine_run_loop_command(true, false),
                     "Retry the coordinator once the other Ralph process has finished.",
                 ),
             ],
@@ -311,12 +314,12 @@ fn build_parallel_queue_lock_guidance(
                 ),
                 step(
                     "Resume and auto-clear stale ownership",
-                    "ralph run loop --parallel <N> --force",
+                    machine_run_loop_command(true, true),
                     "Let the coordinator clear a dead-PID lock and continue in one step.",
                 ),
                 step(
                     "Confirm the lock state is gone",
-                    "ralph run parallel status --json",
+                    machine_run_parallel_status_command(),
                     "Re-check the blocking state before continuing other recovery work.",
                 ),
             ],
@@ -327,7 +330,7 @@ fn build_parallel_queue_lock_guidance(
             vec![
                 step(
                     "Inspect lock health",
-                    "ralph doctor report",
+                    machine_doctor_report_command(),
                     "Check whether doctor also sees the queue lock as active or orphaned.",
                 ),
                 step(
@@ -337,7 +340,7 @@ fn build_parallel_queue_lock_guidance(
                 ),
                 step(
                     "Resume the coordinator",
-                    "ralph run loop --parallel <N>",
+                    machine_run_loop_command(true, false),
                     "Restart parallel execution after the lock record is cleaned up.",
                 ),
             ],

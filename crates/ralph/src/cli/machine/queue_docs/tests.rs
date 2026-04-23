@@ -90,7 +90,7 @@ fn build_validate_document_marks_missing_queue_as_stalled() {
             assert_eq!(reason, "validation_failed");
             assert_eq!(
                 suggested_command.as_deref(),
-                Some("ralph queue repair --dry-run")
+                Some("ralph machine queue repair --dry-run")
             );
         }
         other => panic!("unexpected blocking reason: {other:?}"),
@@ -101,7 +101,7 @@ fn build_validate_document_marks_missing_queue_as_stalled() {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph queue repair --dry-run"
+        "ralph machine queue repair --dry-run"
     );
 }
 
@@ -129,11 +129,11 @@ fn build_validate_document_ready_queue_offers_resume_and_mutation_preview() {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph run resume"
+        "ralph machine run one --resume"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph task mutate --dry-run"
+        "ralph machine task mutate --dry-run --input <PATH>"
     );
 }
 
@@ -160,7 +160,7 @@ fn build_repair_document_dry_run_reports_recoverable_repairs() -> anyhow::Result
     assert_eq!(document.continuation.headline, "Repair preview is ready.");
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph queue repair"
+        "ralph machine queue repair"
     );
     Ok(())
 }
@@ -189,7 +189,7 @@ fn build_undo_document_list_without_snapshots_offers_mutation_checkpoint_guidanc
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph task mutate --dry-run"
+        "ralph machine task mutate --dry-run --input <PATH>"
     );
     Ok(())
 }
@@ -226,11 +226,11 @@ fn build_undo_document_list_with_snapshots_offers_preview_and_restore() -> anyho
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph undo --dry-run"
+        "ralph machine queue undo --dry-run"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph undo --id <SNAPSHOT_ID>"
+        "ralph machine queue undo --id <SNAPSHOT_ID>"
     );
     let result = document.result.expect("snapshot list result");
     assert_eq!(result.as_array().map(Vec::len), Some(1));

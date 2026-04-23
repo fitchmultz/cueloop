@@ -12,6 +12,10 @@
 //! - Returned actions remain deterministic and version-safe for machine consumers.
 //! - Helpers stay focused on shared document text, not business logic branching elsewhere.
 
+use crate::cli::machine::common::{
+    machine_queue_repair_command, machine_queue_undo_dry_run_command,
+    machine_queue_validate_command, machine_run_one_resume_command, machine_task_mutate_command,
+};
 use crate::contracts::{
     BlockingState, BlockingStatus, MachineContinuationAction, MachineContinuationSummary,
     MachineValidationWarning,
@@ -25,7 +29,7 @@ pub(super) fn queue_validation_failed_state(detail: String) -> BlockingState {
         None,
         "Ralph is stalled on queue consistency.",
         detail,
-        Some("ralph queue repair --dry-run".to_string()),
+        Some(machine_queue_repair_command(true).to_string()),
     )
     .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback())
 }
@@ -43,19 +47,19 @@ pub(super) fn repair_preview_continuation(changed: bool) -> MachineContinuationS
                     None,
                     "Ralph found recoverable queue issues.",
                     "Preview completed successfully; apply the repair to continue from a normalized queue state.",
-                    Some("ralph queue repair".to_string()),
+                    Some(machine_queue_repair_command(false).to_string()),
                 )
                 .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback()),
             ),
             next_steps: vec![
                 step(
                     "Apply repair",
-                    "ralph queue repair",
+                    machine_queue_repair_command(false),
                     "Write recoverable fixes and create an undo checkpoint first.",
                 ),
                 step(
                     "Preview a rollback",
-                    "ralph undo --dry-run",
+                    machine_queue_undo_dry_run_command(),
                     "Inspect the restore path before applying more queue changes.",
                 ),
             ],
@@ -68,7 +72,7 @@ pub(super) fn repair_preview_continuation(changed: bool) -> MachineContinuationS
         blocking: None,
         next_steps: vec![step(
             "Continue work",
-            "ralph run resume",
+            machine_run_one_resume_command(),
             "No recovery write is required before continuing.",
         )],
     }
@@ -99,7 +103,7 @@ pub(super) fn continuation_for_valid_queue(
                 ),
                 step(
                     "Continue when ready",
-                    "ralph run resume",
+                    machine_run_one_resume_command(),
                     "Resume normal task flow once the queue becomes runnable.",
                 ),
             ],
@@ -115,12 +119,12 @@ pub(super) fn continuation_for_valid_queue(
             next_steps: vec![
                 step(
                     "Continue work",
-                    "ralph run resume",
+                    machine_run_one_resume_command(),
                     "Resume or continue normal task flow.",
                 ),
                 step(
                     "Preview additional task changes",
-                    "ralph task mutate --dry-run",
+                    machine_task_mutate_command(true),
                     "Preview structured queue changes before writing.",
                 ),
             ],
@@ -132,14 +136,14 @@ pub(super) fn continuation_for_valid_queue(
         detail: "Warnings did not invalidate the queue, but they should be reviewed before larger follow-up changes.".to_string(),
         blocking: None,
         next_steps: vec![
-            step(
-                "Review warnings",
-                "ralph queue validate",
-                "Inspect the warning list in the human CLI.",
-            ),
+                step(
+                    "Review warnings",
+                    machine_queue_validate_command(),
+                    "Inspect the warning list from the machine validation surface.",
+                ),
             step(
                 "Continue carefully",
-                "ralph run resume",
+                machine_run_one_resume_command(),
                 "Proceed once the warnings are understood.",
             ),
         ],

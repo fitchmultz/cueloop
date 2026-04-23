@@ -24,7 +24,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
 
         let parallelStatusURL = fixture.rootURL.appendingPathComponent("parallel-status.json", isDirectory: false)
         try """
-            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Parallel workers are active on target branch main.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"ralph run parallel status --json","detail":"Review lifecycle counts and retained worker details."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-7001","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-7001", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
+            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Parallel workers are active on target branch main.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"ralph machine run parallel-status","detail":"Review lifecycle counts and retained worker details."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-7001","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-7001", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
             """.write(to: parallelStatusURL, atomically: true, encoding: .utf8)
 
         let script = """
@@ -52,7 +52,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
         XCTAssertEqual(workspace.runState.parallelStatus?.headline, "Parallel execution is in progress.")
         XCTAssertEqual(workspace.runState.parallelStatus?.snapshot.targetBranch, "main")
         XCTAssertEqual(workspace.runState.parallelStatus?.snapshot.lifecycleCounts.running, 1)
-        XCTAssertEqual(workspace.runState.parallelStatus?.nextSteps.first?.command, "ralph run parallel status --json")
+        XCTAssertEqual(workspace.runState.parallelStatus?.nextSteps.first?.command, "ralph machine run parallel-status")
     }
 
     func test_loadParallelStatus_rejectsUnsupportedVersion_andClearsRetainedState() async throws {
@@ -413,7 +413,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
         )
         let parallelStatusURL = fixture.rootURL.appendingPathComponent("parallel-status.json", isDirectory: false)
         try """
-            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Retained worker state still exists for this repository.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"ralph run parallel status --json","detail":"Review retained worker lifecycles."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-8111","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-8111", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
+            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Retained worker state still exists for this repository.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"ralph machine run parallel-status","detail":"Review retained worker lifecycles."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-8111","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-8111", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
             """.write(to: parallelStatusURL, atomically: true, encoding: .utf8)
 
         let script = """
@@ -475,7 +475,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
         )
         let parallelStatusURL = fixture.rootURL.appendingPathComponent("parallel-status.json", isDirectory: false)
         try """
-            {"version":3,"lifecycle_counts":{"running":0,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":0},"blocking":null,"continuation":{"headline":"Parallel execution has not started.","detail":"No persisted parallel state was found for this repository. Start a coordinator run to create worker state and begin parallel execution.","blocking":null,"next_steps":[{"title":"Start parallel execution","command":"ralph run loop --parallel <N>","detail":"Start the coordinator with the desired worker count."}]},"status":{"schema_version":3,"workers":[],"message":"No parallel state found"}}
+            {"version":3,"lifecycle_counts":{"running":0,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":0},"blocking":null,"continuation":{"headline":"Parallel execution has not started.","detail":"No persisted parallel state was found for this repository. Start a coordinator run to create worker state and begin parallel execution.","blocking":null,"next_steps":[{"title":"Start parallel execution","command":"ralph machine run loop --resume --max-tasks 0 --parallel <N>","detail":"Start the coordinator with the desired worker count."}]},"status":{"schema_version":3,"workers":[],"message":"No parallel state found"}}
             """.write(to: parallelStatusURL, atomically: true, encoding: .utf8)
 
         let script = """

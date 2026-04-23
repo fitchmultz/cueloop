@@ -269,7 +269,7 @@ fn task_mutate_json_uses_shared_continuation_document() -> Result<()> {
     );
     assert_eq!(
         document["continuation"]["next_steps"][0]["command"],
-        "ralph task mutate --input <PATH>"
+        "ralph machine task mutate --input <PATH>"
     );
 
     Ok(())

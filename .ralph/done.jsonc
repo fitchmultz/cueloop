@@ -1219,6 +1219,60 @@
         "hint_tags": "macos,machine-contract,ux",
         "project_type": "code"
       }
+    },
+    {
+      "id": "RQ-0038",
+      "status": "done",
+      "title": "Align machine continuation commands with RalphMac surfaces",
+      "description": "Versioned machine continuation documents currently embed human-oriented `ralph run ...` commands even when the macOS app consumes those documents and executes only `ralph machine run ...` surfaces. `crates/ralph/src/cli/machine/queue_docs.rs` still emits `ralph run resume` in machine queue repair/undo continuations, and `crates/ralph/src/commands/run/parallel/status.rs` still emits `ralph run loop --parallel <N>` plus `ralph run parallel status --json` in machine-facing continuation next steps. RalphMac formats these machine `next_steps` directly for users in `WorkspaceDiagnosticsService`, while its controller and tests invoke `machine run ...` and `machine run parallel-status`, so the surfaced guidance is not copy-pasteable for Mac operators or automation. Acceptance criteria: machine-facing continuation next steps use `ralph machine ...` equivalents or a dual-field contract that preserves human/machine clarity, the affected CLI tests/docs are updated, and RalphMac fixtures/assertions match the machine surface it actually executes.",
+      "priority": "high",
+      "tags": [
+        "cli",
+        "machine-contract",
+        "macos",
+        "parallel"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/machine",
+        "crates/ralph/src/commands/run/parallel",
+        "apps/RalphMac",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "user-request: Cross-surface coherence (Ralph CLI vs RalphMac): Versioned machine documents and continuation next_steps still embed human-oriented commands such as `ralph run resume`, `ralph run loop --parallel`, and `ralph run parallel status --json`, while the macOS app only spawns `ralph machine run …` / `machine run parallel-status`.",
+        "path: crates/ralph/src/cli/machine/queue_docs.rs:230 :: machine queue repair continuation emits `ralph run resume`.",
+        "path: crates/ralph/src/cli/machine/queue_docs.rs:345 :: machine queue undo continuation emits `ralph run resume`.",
+        "path: crates/ralph/src/commands/run/parallel/status.rs:113 :: machine parallel-status guidance emits `ralph run loop --parallel <N>`.",
+        "path: crates/ralph/src/commands/run/parallel/status.rs:145 :: machine parallel-status guidance emits `ralph run parallel status --json`.",
+        "path: apps/RalphMac/RalphCore/WorkspaceDiagnosticsService.swift:203 :: diagnostics formatting renders `next_steps` commands directly into user-visible recovery text.",
+        "path: apps/RalphMac/RalphCore/WorkspaceRunnerController.swift:94 :: RalphMac requests `machine run parallel-status`.",
+        "path: apps/RalphMac/RalphCoreTests/WorkspaceRunNextInvocationTests.swift:65 :: RalphMac tests expect `--no-color machine run one --resume ...`.",
+        "path: apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift:212 :: RalphMac tests expect `--no-color machine run loop --resume --max-tasks 0 --parallel 2`.",
+        "path: apps/RalphMac/RalphCoreTests/WorkspaceParallelRunControlTests.swift:55 :: existing fixture asserts the machine continuation command is still `ralph run parallel status --json`."
+      ],
+      "plan": [
+        "Audit the machine continuation builders under `crates/ralph/src/cli/machine` and `crates/ralph/src/commands/run/parallel` to identify every `next_steps` command emitted for machine-facing documents.",
+        "Choose the narrowest contract fix that keeps machine documents copy-pasteable for RalphMac and automation: either replace machine `next_steps.command` values with `ralph machine ...` equivalents or add a dual-field contract that carries both human CLI and machine CLI commands.",
+        "Update the affected Rust document builders, shared types, and regression tests so queue recovery and parallel-status machine documents stay versioned, deterministic, and semantically aligned.",
+        "Update RalphMac models, fixtures, and diagnostics/run-control tests so displayed continuation guidance and expected command strings match the machine surface the app actually executes.",
+        "Verify with focused Rust and RalphMac tests for queue continuation and parallel-status behavior, then run `make agent-ci`."
+      ],
+      "notes": [
+        "Added shared machine-command helpers so machine continuation documents emit copy-pasteable `ralph machine ...` commands.",
+        "Updated queue/task continuation docs, parallel-status guidance, and RalphMac fixtures/assertions to match `machine run` and `machine run parallel-status` surfaces.",
+        "Verified with focused Rust tests, focused RalphMac xcodebuild coverage, and make agent-ci; updated stale machine-contract and repair integration assertions surfaced during the gate."
+      ],
+      "request": "Cross-surface coherence (Ralph CLI vs RalphMac): Versioned machine documents and continuation next_steps still embed human-oriented commands such as ralph run resume, ralph run loop --parallel, and ralph run parallel status --json (see crates/ralph/src/cli/machine/queue_docs.rs and crates/ralph/src/commands/run/parallel/status.rs), while the macOS app only spawns ralph machine run … / machine run parallel-status (see apps/RalphMac). This misaligns operator guidance shown in WorkspaceDiagnosticsService formatted strings and parallel-status fixtures with what the app actually executes. Acceptance: machine-facing continuation next_steps (and tests/docs) use ralph machine … equivalents or a dual-field contract so Mac users and automation see copy-pasteable commands that match the machine surface; update RalphMac tests/fixtures accordingly. crates/ralph/src/cli/machine crates/ralph/src/commands/run/parallel",
+      "created_at": "2026-04-22T15:37:27Z",
+      "updated_at": "2026-04-23T01:54:07Z",
+      "completed_at": "2026-04-23T01:54:07Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "hint_scope": "apps/RalphMac",
+        "project_type": "code"
+      }
     }
   ]
 }

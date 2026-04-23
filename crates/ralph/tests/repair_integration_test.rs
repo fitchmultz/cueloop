@@ -128,7 +128,7 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     assert!(stdout.contains("\"fixed_tasks\": 3"));
     assert!(stdout.contains("\"fixed_timestamps\": 2"));
     assert!(stdout.contains("\"remapped_ids\""));
-    assert!(stdout.contains("ralph queue validate"));
+    assert!(stdout.contains("ralph machine queue validate"));
     assert_repair_undo_snapshot_created(dir.path())?;
 
     // Verify file content

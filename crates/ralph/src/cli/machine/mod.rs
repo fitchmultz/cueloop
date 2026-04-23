@@ -39,6 +39,9 @@ pub use args::{
     MachineTaskArgs, MachineTaskCommand, MachineTaskCreateArgs, MachineTaskDecomposeArgs,
     MachineTaskMutateArgs,
 };
+pub(crate) use common::{
+    machine_doctor_report_command, machine_run_loop_command, machine_run_parallel_status_command,
+};
 pub use error::print_machine_error;
 pub use handle::handle_machine;
 pub(crate) use queue_docs::{

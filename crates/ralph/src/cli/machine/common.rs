@@ -213,3 +213,64 @@ pub(super) fn queue_paths(resolved: &config::Resolved) -> MachineQueuePaths {
 pub(super) fn queue_max_dependency_depth(resolved: &config::Resolved) -> u8 {
     resolved.config.queue.max_dependency_depth.unwrap_or(10)
 }
+
+pub(crate) fn machine_queue_validate_command() -> &'static str {
+    "ralph machine queue validate"
+}
+
+pub(crate) fn machine_queue_graph_command() -> &'static str {
+    "ralph machine queue graph"
+}
+
+pub(crate) fn machine_queue_repair_command(dry_run: bool) -> &'static str {
+    if dry_run {
+        "ralph machine queue repair --dry-run"
+    } else {
+        "ralph machine queue repair"
+    }
+}
+
+pub(crate) fn machine_queue_undo_dry_run_command() -> &'static str {
+    "ralph machine queue undo --dry-run"
+}
+
+pub(crate) fn machine_queue_undo_restore_command() -> &'static str {
+    "ralph machine queue undo --id <SNAPSHOT_ID>"
+}
+
+pub(crate) fn machine_task_mutate_command(dry_run: bool) -> &'static str {
+    if dry_run {
+        "ralph machine task mutate --dry-run --input <PATH>"
+    } else {
+        "ralph machine task mutate --input <PATH>"
+    }
+}
+
+pub(crate) fn machine_task_decompose_command(write: bool, suffix: &'static str) -> String {
+    if write {
+        format!("ralph machine task decompose --write {suffix}")
+    } else {
+        format!("ralph machine task decompose {suffix}")
+    }
+}
+
+pub(crate) fn machine_run_one_resume_command() -> &'static str {
+    "ralph machine run one --resume"
+}
+
+pub(crate) fn machine_run_parallel_status_command() -> &'static str {
+    "ralph machine run parallel-status"
+}
+
+pub(crate) fn machine_run_loop_command(parallel: bool, force: bool) -> &'static str {
+    match (parallel, force) {
+        (true, false) => "ralph machine run loop --resume --max-tasks 0 --parallel <N>",
+        (true, true) => "ralph machine run loop --resume --max-tasks 0 --force --parallel <N>",
+        (false, false) => "ralph machine run loop --resume --max-tasks 0",
+        (false, true) => "ralph machine run loop --resume --max-tasks 0 --force",
+    }
+}
+
+pub(crate) fn machine_doctor_report_command() -> &'static str {
+    "ralph machine doctor report"
+}
