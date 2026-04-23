@@ -1337,7 +1337,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 301;
+				CURRENT_PROJECT_VERSION = 400;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = RalphMac/Info.plist;
@@ -1346,7 +1346,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.3.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph;
 				PRODUCT_NAME = RalphMac;
 				SDKROOT = macosx;
@@ -1365,7 +1365,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 301;
+				CURRENT_PROJECT_VERSION = 400;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = RalphMac/Info.plist;
@@ -1374,7 +1374,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.3.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph;
 				PRODUCT_NAME = RalphMac;
 				SDKROOT = macosx;
@@ -1449,10 +1449,10 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 301;
+				CURRENT_PROJECT_VERSION = 400;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.3.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.uitests;
 				PRODUCT_NAME = RalphMacUITests;
 				SDKROOT = macosx;
@@ -1467,10 +1467,10 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				CURRENT_PROJECT_VERSION = 301;
+				CURRENT_PROJECT_VERSION = 400;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.3.1;
+				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.uitests;
 				PRODUCT_NAME = RalphMacUITests;
 				SDKROOT = macosx;
