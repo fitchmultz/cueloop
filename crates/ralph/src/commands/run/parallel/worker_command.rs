@@ -23,7 +23,7 @@ pub(crate) fn build_worker_command(
     target_branch: &str,
     overrides: &AgentOverrides,
     force: bool,
-) -> Result<(Command, Vec<String>)> {
+) -> Result<Command> {
     let exe = std::env::current_exe().context("resolve current executable")?;
     let mut cmd = Command::new(exe);
     isolate_child_process_group(&mut cmd);
@@ -66,6 +66,13 @@ pub(crate) fn build_worker_command(
     args.push(target_branch.to_string());
 
     args.extend(build_override_args(overrides));
+    cmd.args(&args);
 
-    Ok((cmd, args))
+    Ok(cmd)
+}
+
+pub(crate) fn debug_command_args(cmd: &Command) -> Vec<String> {
+    cmd.get_args()
+        .map(|arg| arg.to_string_lossy().into_owned())
+        .collect()
 }

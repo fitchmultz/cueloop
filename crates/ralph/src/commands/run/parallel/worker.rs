@@ -16,7 +16,7 @@ mod process;
 mod selection;
 
 #[cfg(test)]
-pub(crate) use command::build_worker_command;
+pub(crate) use command::{build_worker_command, debug_command_args};
 pub(crate) use process::{
     FinishedWorker, WorkerState, spawn_worker, start_worker_monitor, terminate_workers,
 };

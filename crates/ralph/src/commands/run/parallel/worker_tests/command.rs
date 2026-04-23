@@ -22,7 +22,7 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     };
 
     let overrides = AgentOverrides::default();
-    let (cmd, args) = build_worker_command(
+    let cmd = build_worker_command(
         &resolved,
         &workspace_path,
         "RQ-1234",
@@ -30,6 +30,7 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
         &overrides,
         true,
     )?;
+    let args = debug_command_args(&cmd);
 
     assert_eq!(cmd.get_current_dir(), Some(workspace_path.as_path()));
 
@@ -137,7 +138,7 @@ fn build_worker_command_maps_custom_queue_done_paths_into_workspace() -> Result<
     };
 
     let overrides = AgentOverrides::default();
-    let (_cmd, args) = build_worker_command(
+    let cmd = build_worker_command(
         &resolved,
         &workspace_path,
         "RQ-1234",
@@ -145,6 +146,7 @@ fn build_worker_command_maps_custom_queue_done_paths_into_workspace() -> Result<
         &overrides,
         false,
     )?;
+    let args = debug_command_args(&cmd);
 
     let queue_path_pos = args
         .iter()
@@ -199,7 +201,7 @@ fn build_worker_command_emits_git_publish_mode_commit_and_push_when_overridden()
         git_publish_mode: Some(crate::contracts::GitPublishMode::CommitAndPush),
         ..Default::default()
     };
-    let (_cmd, args) = build_worker_command(
+    let cmd = build_worker_command(
         &resolved,
         &workspace_path,
         "RQ-1234",
@@ -207,6 +209,7 @@ fn build_worker_command_emits_git_publish_mode_commit_and_push_when_overridden()
         &overrides,
         false,
     )?;
+    let args = debug_command_args(&cmd);
 
     assert!(args.contains(&"--git-publish-mode".to_string()));
     assert!(args.contains(&"commit_and_push".to_string()));
@@ -237,7 +240,7 @@ fn build_worker_command_emits_git_publish_mode_off_when_overridden() -> Result<(
         git_publish_mode: Some(crate::contracts::GitPublishMode::Off),
         ..Default::default()
     };
-    let (_cmd, args) = build_worker_command(
+    let cmd = build_worker_command(
         &resolved,
         &workspace_path,
         "RQ-1234",
@@ -245,6 +248,7 @@ fn build_worker_command_emits_git_publish_mode_off_when_overridden() -> Result<(
         &overrides,
         false,
     )?;
+    let args = debug_command_args(&cmd);
 
     assert!(args.contains(&"--git-publish-mode".to_string()));
     assert!(args.contains(&"off".to_string()));

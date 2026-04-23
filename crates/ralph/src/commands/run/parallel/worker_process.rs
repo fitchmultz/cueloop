@@ -28,7 +28,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
 
-use super::command::build_worker_command;
+use super::command::{build_worker_command, debug_command_args};
 
 const WORKER_INTERRUPT_GRACE: Duration = Duration::from_millis(1_500);
 const WORKER_EXIT_WAIT_SLICE: Duration = Duration::from_millis(100);
@@ -159,7 +159,7 @@ pub(crate) fn spawn_worker(
     overrides: &AgentOverrides,
     force: bool,
 ) -> Result<Child> {
-    let (mut cmd, args) = build_worker_command(
+    let mut cmd = build_worker_command(
         resolved,
         workspace_path,
         task_id,
@@ -171,9 +171,8 @@ pub(crate) fn spawn_worker(
         "Spawning parallel worker {} in {} with args: {:?}",
         task_id,
         workspace_path.display(),
-        args
+        debug_command_args(&cmd)
     );
-    cmd.args(args);
     cmd.spawn().context("spawn parallel worker")
 }
 

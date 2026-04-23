@@ -1425,6 +1425,53 @@
       "custom_fields": {
         "scan_agent": "scan-general"
       }
+    },
+    {
+      "id": "RQ-0037",
+      "status": "done",
+      "title": "Return ready-to-spawn parallel worker commands",
+      "description": "Evidence: `commands/run/parallel/worker_command.rs:21` defines `build_worker_command`, but the builder returns a split `(Command, Vec<String>)` shape. `commands/run/parallel/worker_process.rs:162-176` calls the builder, logs the separate args, then must remember to call `cmd.args(args)` immediately before `cmd.spawn()`. Why it matters: a worker command builder should own the complete invocation; splitting command configuration from argv creates a small but real footgun for future call sites and tests. Minimal proposed fix: have the builder attach args internally and return a ready-to-spawn `Command`, plus a debug representation if logging still needs one. Acceptance criteria: worker command tests still assert the same final argv and worker spawning behavior remains unchanged.",
+      "priority": "low",
+      "tags": [
+        "scan",
+        "refactor",
+        "parallel",
+        "subprocess"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/worker_command.rs",
+        "crates/ralph/src/commands/run/parallel/worker_process.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/commands/run/parallel/worker_command.rs:21 :: build_worker_command constructs a command but returns separate args.",
+        "path: crates/ralph/src/commands/run/parallel/worker_process.rs:162 :: spawn_worker receives `(mut cmd, args)` from the builder.",
+        "path: crates/ralph/src/commands/run/parallel/worker_process.rs:176 :: caller has to attach args with `cmd.args(args)` before spawning.",
+        "command: rg -n \"build_worker_command\\\\(|cmd\\\\.args\\\\(args\\\\)\" crates/ralph/src/commands/run/parallel :: confirmed split command/argv ownership.",
+        "command: make agent-ci :: no local changes; nothing to validate"
+      ],
+      "plan": [
+        "Change the worker command builder to attach argv internally and return a fully configured `Command`.",
+        "Return a separate debug argv/logging value only if the existing debug message needs it.",
+        "Update worker spawn code so it only logs and spawns the ready command.",
+        "Adjust tests to assert the complete command construction through the builder boundary.",
+        "Verify by running parallel worker command/spawn tests and `make agent-ci`."
+      ],
+      "notes": [
+        "Worker command builder now attaches argv internally and returns a ready-to-spawn Command.",
+        "spawn_worker logs attached argv via debug_command_args and no longer reattaches args before spawn.",
+        "Verified with cargo test build_worker_command --package ralph-agent-loop and make agent-ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-19T23:44:38Z",
+      "updated_at": "2026-04-23T02:50:12Z",
+      "completed_at": "2026-04-23T02:50:12Z",
+      "started_at": "2026-04-23T02:32:08Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
     }
   ]
 }
