@@ -94,6 +94,48 @@ final class RalphCLIClientTests: RalphCoreTestCase {
         XCTAssertTrue(stderr.contains("err2"))
     }
 
+    func test_streamingOutputBufferIsBoundedWhenConsumerIsDelayed() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-client-bounded-stream-")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+
+        let script = """
+            #!/bin/sh
+            /usr/bin/perl -e 'print "x" x (40 * 1024 * 1024)'
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        let run = try client.start(arguments: [])
+
+        let status = await run.waitUntilExit()
+        XCTAssertEqual(status.code, 0)
+
+        var collectedBytes = 0
+        for await event in await run.events where event.stream == .stdout {
+            collectedBytes += event.data.count
+        }
+
+        XCTAssertGreaterThan(collectedBytes, 0)
+        XCTAssertLessThanOrEqual(collectedBytes, 33 * 1024 * 1024)
+    }
+
+    func test_runAndCollect_appliesDefaultOutputLimit() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-client-collected-limit-")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+
+        let script = """
+            #!/bin/sh
+            /usr/bin/perl -e 'print "x" x (20 * 1024 * 1024)'
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
+        let client = try RalphCLIClient(executableURL: scriptURL)
+
+        let collected = try await client.runAndCollect(arguments: [])
+
+        XCTAssertEqual(collected.status.code, 0)
+        XCTAssertLessThanOrEqual(collected.stdout.count, RalphCLIClient.defaultCollectedOutputLimit + (64 * 1024))
+        XCTAssertTrue(collected.stderr.contains("output exceeded maximum size"))
+    }
+
     func test_currentDirectoryURL_used() async throws {
         let tempDir = try Self.makeTempDir(prefix: "ralph-agent-loop-client-cwd-")
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }

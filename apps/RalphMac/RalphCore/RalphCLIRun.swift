@@ -29,8 +29,68 @@ import Foundation
 import Darwin
 #endif
 
+final class RalphCLIProcessSignalState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var processGroupID: pid_t?
+
+    func prepareProcessGroup(for process: Process) {
+        #if canImport(Darwin)
+        let pid = process.processIdentifier
+        guard pid > 0 else { return }
+
+        let setGroupSucceeded = setpgid(pid, pid) == 0
+        let isGroupLeader = getpgid(pid) == pid
+        guard setGroupSucceeded || isGroupLeader else { return }
+
+        lock.lock()
+        processGroupID = pid
+        lock.unlock()
+        #endif
+    }
+
+    func interrupt(_ process: Process) {
+        #if canImport(Darwin)
+        if signalProcessGroup(process, signal: SIGINT) {
+            return
+        }
+        #endif
+        process.interrupt()
+    }
+
+    func terminate(_ process: Process) {
+        #if canImport(Darwin)
+        if signalProcessGroup(process, signal: SIGTERM) {
+            return
+        }
+        #endif
+        process.terminate()
+    }
+
+    #if canImport(Darwin)
+    func kill(_ process: Process, fallbackPID: pid_t) {
+        if signalProcessGroup(process, signal: SIGKILL) {
+            return
+        }
+        _ = Darwin.kill(fallbackPID, SIGKILL)
+    }
+
+    private func signalProcessGroup(_ process: Process, signal: Int32) -> Bool {
+        guard process.isRunning else { return true }
+
+        lock.lock()
+        let processGroupID = processGroupID
+        lock.unlock()
+
+        guard let processGroupID else { return false }
+        return Darwin.kill(-processGroupID, signal) == 0
+    }
+    #endif
+}
+
 public actor RalphCLIRun {
     public let events: AsyncStream<RalphCLIEvent>
+    private static let maxBufferedEvents = 512
+    private static let maxEventReadBytes = 64 * 1024
 
     nonisolated func requestCancel(gracePeriod: TimeInterval = 2) {
         Task { [weak self] in
@@ -40,6 +100,7 @@ public actor RalphCLIRun {
 
     private let ioQueue: DispatchQueue
     private let process: Process
+    private let processSignalState: RalphCLIProcessSignalState
     private let stdoutHandle: FileHandle
     private let stderrHandle: FileHandle
 
@@ -52,20 +113,25 @@ public actor RalphCLIRun {
     private var stderrClosed = false
     private var exitStatus: RalphCLIExitStatus?
     private var exitWaiters: [CheckedContinuation<RalphCLIExitStatus, Never>] = []
+    private var droppedOutputByteCount = 0
 
     internal init(
         ioQueue: DispatchQueue,
         process: Process,
+        processSignalState: RalphCLIProcessSignalState,
         stdoutHandle: FileHandle,
         stderrHandle: FileHandle
     ) {
         self.ioQueue = ioQueue
         self.process = process
+        self.processSignalState = processSignalState
         self.stdoutHandle = stdoutHandle
         self.stderrHandle = stderrHandle
 
         var continuation: AsyncStream<RalphCLIEvent>.Continuation?
-        let stream = AsyncStream<RalphCLIEvent> { cont in
+        let stream = AsyncStream<RalphCLIEvent>(
+            bufferingPolicy: .bufferingNewest(Self.maxBufferedEvents)
+        ) { cont in
             continuation = cont
         }
         events = stream
@@ -74,6 +140,8 @@ public actor RalphCLIRun {
             self?.requestCancel()
         }
 
+        configureNonBlockingRead(stdoutHandle)
+        configureNonBlockingRead(stderrHandle)
         setupIOHandlers()
     }
 
@@ -90,7 +158,7 @@ public actor RalphCLIRun {
         didRequestCancel = true
 
         guard process.isRunning else { return }
-        process.interrupt()
+        processSignalState.interrupt(process)
 
         #if canImport(Darwin)
         let pid = process.processIdentifier
@@ -113,13 +181,13 @@ public actor RalphCLIRun {
         guard process.isRunning else { return }
         guard !didEscalateTermination else { return }
         didEscalateTermination = true
-        process.terminate()
+        processSignalState.terminate(process)
     }
 
     #if canImport(Darwin)
     private func killIfStillRunning(pid: pid_t) {
         guard process.isRunning else { return }
-        _ = kill(pid, SIGKILL)
+        processSignalState.kill(process, fallbackPID: pid)
     }
     #endif
 
@@ -135,6 +203,10 @@ public actor RalphCLIRun {
             }
             exitWaiters.append(cont)
         }
+    }
+
+    public func droppedOutputBytes() -> Int {
+        droppedOutputByteCount
     }
 
     private nonisolated func setupIOHandlers() {
@@ -161,8 +233,12 @@ public actor RalphCLIRun {
     }
 
     private func handleReadable(stream: RalphCLIEvent.Stream, handle: FileHandle) {
-        let data = handle.availableData
-        if data.isEmpty {
+        switch readBoundedChunk(from: handle) {
+        case .data(let data):
+            yieldBoundedEvent(stream: stream, data: data)
+        case .wouldBlock:
+            return
+        case .eof:
             handle.readabilityHandler = nil
 
             switch stream {
@@ -175,8 +251,66 @@ public actor RalphCLIRun {
             finishIfComplete()
             return
         }
+    }
 
-        eventsContinuation?.yield(RalphCLIEvent(stream: stream, data: data))
+    private enum PipeReadResult {
+        case data(Data)
+        case eof
+        case wouldBlock
+    }
+
+    private nonisolated func configureNonBlockingRead(_ handle: FileHandle) {
+        #if canImport(Darwin)
+        let descriptor = handle.fileDescriptor
+        let currentFlags = fcntl(descriptor, F_GETFL)
+        if currentFlags >= 0 {
+            _ = fcntl(descriptor, F_SETFL, currentFlags | O_NONBLOCK)
+        }
+        #endif
+    }
+
+    private func readBoundedChunk(from handle: FileHandle) -> PipeReadResult {
+        #if canImport(Darwin)
+        var buffer = [UInt8](repeating: 0, count: Self.maxEventReadBytes)
+        let bytesRead = buffer.withUnsafeMutableBytes { rawBuffer in
+            Darwin.read(handle.fileDescriptor, rawBuffer.baseAddress, rawBuffer.count)
+        }
+
+        if bytesRead > 0 {
+            return .data(Data(buffer.prefix(bytesRead)))
+        }
+        if bytesRead == 0 {
+            return .eof
+        }
+        if errno == EAGAIN || errno == EWOULDBLOCK {
+            return .wouldBlock
+        }
+        return .eof
+        #else
+        let data = (try? handle.read(upToCount: Self.maxEventReadBytes)) ?? Data()
+        return data.isEmpty ? .eof : .data(data)
+        #endif
+    }
+
+    private func yieldBoundedEvent(stream: RalphCLIEvent.Stream, data: Data) {
+        guard data.count > Self.maxEventReadBytes else {
+            yieldEvent(stream: stream, data: data)
+            return
+        }
+
+        var offset = 0
+        while offset < data.count {
+            let nextOffset = min(offset + Self.maxEventReadBytes, data.count)
+            yieldEvent(stream: stream, data: data.subdata(in: offset..<nextOffset))
+            offset = nextOffset
+        }
+    }
+
+    private func yieldEvent(stream: RalphCLIEvent.Stream, data: Data) {
+        let result = eventsContinuation?.yield(RalphCLIEvent(stream: stream, data: data))
+        if case .dropped(let droppedEvent) = result {
+            droppedOutputByteCount += droppedEvent.data.count
+        }
     }
 
     private func handleTermination(process: Process) {
@@ -197,15 +331,8 @@ public actor RalphCLIRun {
         stdoutHandle.readabilityHandler = nil
         stderrHandle.readabilityHandler = nil
 
-        let remainingStdout = stdoutHandle.readDataToEndOfFile()
-        if !remainingStdout.isEmpty {
-            eventsContinuation?.yield(RalphCLIEvent(stream: .stdout, data: remainingStdout))
-        }
-
-        let remainingStderr = stderrHandle.readDataToEndOfFile()
-        if !remainingStderr.isEmpty {
-            eventsContinuation?.yield(RalphCLIEvent(stream: .stderr, data: remainingStderr))
-        }
+        drainRemainingOutput(stream: .stdout, handle: stdoutHandle)
+        drainRemainingOutput(stream: .stderr, handle: stderrHandle)
 
         stdoutClosed = true
         stderrClosed = true
@@ -220,6 +347,17 @@ public actor RalphCLIRun {
         }
 
         finishIfComplete()
+    }
+
+    private func drainRemainingOutput(stream: RalphCLIEvent.Stream, handle: FileHandle) {
+        while true {
+            switch readBoundedChunk(from: handle) {
+            case .data(let data):
+                yieldBoundedEvent(stream: stream, data: data)
+            case .eof, .wouldBlock:
+                return
+            }
+        }
     }
 
     private func finishIfComplete() {

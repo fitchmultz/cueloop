@@ -82,6 +82,7 @@ public struct TimeoutConfiguration: Sendable {
 
 public struct RalphCLIClient: Sendable {
     static let uiActiveEnvironmentKey = "RALPH_UI_ACTIVE"
+    public static let defaultCollectedOutputLimit = 16 * 1024 * 1024
 
     public let executableURL: URL
 
@@ -125,14 +126,17 @@ public struct RalphCLIClient: Sendable {
         process.standardError = stderrPipe
 
         let ioQueue = DispatchQueue(label: "com.mitchfultz.ralph.cli-io.\(UUID().uuidString)")
+        let processSignalState = RalphCLIProcessSignalState()
         let run = RalphCLIRun(
             ioQueue: ioQueue,
             process: process,
+            processSignalState: processSignalState,
             stdoutHandle: stdoutPipe.fileHandleForReading,
             stderrHandle: stderrPipe.fileHandleForReading
         )
 
         try process.run()
+        processSignalState.prepareProcessGroup(for: process)
         let commandString = arguments.joined(separator: " ")
         RalphLogger.shared.debug("Started CLI process: \(commandString)", category: .cli)
         return run
@@ -154,7 +158,7 @@ public struct RalphCLIClient: Sendable {
         arguments: [String],
         currentDirectoryURL: URL? = nil,
         environment: [String: String] = [:],
-        maxOutputSize: Int? = nil,
+        maxOutputSize: Int? = Self.defaultCollectedOutputLimit,
         timeoutConfiguration: TimeoutConfiguration = .default
     ) async throws -> CollectedOutput {
         let run = try start(
@@ -174,23 +178,27 @@ public struct RalphCLIClient: Sendable {
                     var isTruncated = false
 
                     for await event in run.events {
-                        if let maxSize = maxOutputSize, !isTruncated {
-                            let currentSize = stdout.count + stderr.count
-                            if currentSize >= maxSize {
-                                isTruncated = true
-                                continue
-                            }
-                        }
+                        let text = boundedCollectableText(
+                            event.text,
+                            stdoutCount: stdout.count,
+                            stderrCount: stderr.count,
+                            maxOutputSize: maxOutputSize,
+                            isTruncated: &isTruncated
+                        )
+                        guard !text.isEmpty else { continue }
 
                         switch event.stream {
                         case .stdout:
-                            stdout.append(event.text)
+                            stdout.append(text)
                         case .stderr:
-                            stderr.append(event.text)
+                            stderr.append(text)
                         }
                     }
 
                     let status = await run.waitUntilExit()
+                    if await run.droppedOutputBytes() > 0 {
+                        isTruncated = true
+                    }
 
                     if isTruncated {
                         stderr = "\n[warning: output exceeded maximum size and was truncated]\n" + stderr
@@ -233,6 +241,27 @@ public struct RalphCLIClient: Sendable {
             group.cancelAll()
             return result
         }
+    }
+
+    private func boundedCollectableText(
+        _ text: String,
+        stdoutCount: Int,
+        stderrCount: Int,
+        maxOutputSize: Int?,
+        isTruncated: inout Bool
+    ) -> String {
+        guard let maxOutputSize else { return text }
+        guard !isTruncated else { return "" }
+
+        let remaining = maxOutputSize - stdoutCount - stderrCount
+        guard remaining > 0 else {
+            isTruncated = true
+            return ""
+        }
+        guard text.count > remaining else { return text }
+
+        isTruncated = true
+        return String(text.prefix(remaining))
     }
 
     static func launchEnvironment(

@@ -238,10 +238,10 @@ struct AdvancedRunnerDetailColumn: View {
                             workspace.run(arguments: argv)
                         }
                     }
-                    .disabled(workspace.runState.isRunning)
+                    .disabled(workspace.runState.isExecutionActive)
                     .buttonStyle(GlassButtonStyle())
 
-                    if workspace.runState.isRunning {
+                    if workspace.runState.isExecutionActive {
                         Button(action: { workspace.cancel() }) {
                             Label("Stop", systemImage: "stop.circle.fill")
                                 .foregroundStyle(.red)

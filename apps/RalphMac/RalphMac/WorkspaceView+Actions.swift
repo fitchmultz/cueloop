@@ -50,7 +50,7 @@ extension WorkspaceView {
         case "loadCLISpec":
             Task { @MainActor in await workspace.loadCLISpec() }
         case "run", "runVersion", "runInit":
-            if workspace.runState.isRunning { workspace.cancel() }
+            if workspace.runState.isExecutionActive { workspace.cancel() }
             if navigation.selectedSection == .quickActions {
                 workspace.runVersion()
             }

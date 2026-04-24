@@ -154,7 +154,7 @@ struct RunControlExecutionControlsSection: View {
                 }
 
                 HStack(spacing: 12) {
-                    if workspace.runState.isRunning {
+                    if workspace.runState.isExecutionActive {
                         Button(action: { workspace.cancel() }) {
                             Label("Stop", systemImage: "stop.circle.fill")
                                 .foregroundStyle(.red)
@@ -200,6 +200,17 @@ struct RunControlExecutionControlsSection: View {
                     Spacer()
                 }
 
+                if workspace.runState.isPreparingRun {
+                    HStack {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Preparing run")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                }
+
                 if workspace.runState.isLoopMode {
                     HStack {
                         Image(systemName: "repeat.circle.fill")
@@ -218,7 +229,7 @@ struct RunControlExecutionControlsSection: View {
                     }
                 }
 
-                if let status = workspace.runState.lastExitStatus, !workspace.runState.isRunning {
+                if let status = workspace.runState.lastExitStatus, !workspace.runState.isExecutionActive {
                     HStack {
                         Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundStyle(status.code == 0 ? .green : .red)

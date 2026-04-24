@@ -119,15 +119,18 @@ public extension Workspace {
             runState.streamProcessor.ingest(
                 chunk: rawOutput,
                 maxSegments: runState.maxANSISegments,
+                maxCharacters: runState.outputBuffer.maxCharacters,
                 finalizeTrailingEscape: true
             )
             runState.attributedOutput = runState.streamProcessor.displaySegments(
-                maxSegments: runState.maxANSISegments
+                maxSegments: runState.maxANSISegments,
+                maxCharacters: runState.outputBuffer.maxCharacters
             )
         } else {
             runState.attributedOutput = runState.streamProcessor.replace(
                 content: rawOutput,
                 maxSegments: runState.maxANSISegments,
+                maxCharacters: runState.outputBuffer.maxCharacters,
                 finalizeTrailingEscape: true
             )
         }
@@ -135,7 +138,8 @@ public extension Workspace {
 
     func enforceANSISegmentLimit() {
         runState.attributedOutput = runState.streamProcessor.displaySegments(
-            maxSegments: runState.maxANSISegments
+            maxSegments: runState.maxANSISegments,
+            maxCharacters: runState.outputBuffer.maxCharacters
         )
     }
 }
@@ -145,6 +149,7 @@ extension Workspace {
         runState.streamProcessor.ingest(
             chunk: text,
             maxSegments: runState.maxANSISegments,
+            maxCharacters: runState.outputBuffer.maxCharacters,
             finalizeTrailingEscape: false
         )
         runState.scheduleConsoleRenderRefresh()
@@ -167,31 +172,35 @@ final class WorkspaceStreamProcessor {
     func replace(
         content: String,
         maxSegments: Int,
+        maxCharacters: Int,
         finalizeTrailingEscape: Bool
     ) -> [Workspace.ANSISegment] {
         reset()
         ingest(
             chunk: content,
             maxSegments: maxSegments,
+            maxCharacters: maxCharacters,
             finalizeTrailingEscape: finalizeTrailingEscape
         )
-        return displaySegments(maxSegments: maxSegments)
+        return displaySegments(maxSegments: maxSegments, maxCharacters: maxCharacters)
     }
 
     func ingest(
         chunk: String,
         maxSegments: Int,
+        maxCharacters: Int,
         finalizeTrailingEscape: Bool
     ) {
         ansiParser.append(
             chunk: chunk,
             maxSegments: maxSegments,
+            maxCharacters: maxCharacters,
             finalizeTrailingEscape: finalizeTrailingEscape
         )
     }
 
-    func displaySegments(maxSegments: Int) -> [Workspace.ANSISegment] {
-        ansiParser.displaySegments(maxSegments: maxSegments)
+    func displaySegments(maxSegments: Int, maxCharacters: Int) -> [Workspace.ANSISegment] {
+        ansiParser.displaySegments(maxSegments: maxSegments, maxCharacters: maxCharacters)
     }
 }
 
@@ -236,6 +245,7 @@ private final class WorkspaceANSIStreamParser {
     func append(
         chunk: String,
         maxSegments: Int,
+        maxCharacters: Int,
         finalizeTrailingEscape: Bool
     ) {
         for character in chunk {
@@ -248,11 +258,11 @@ private final class WorkspaceANSIStreamParser {
         }
 
         flushCurrentText()
-        enforceSegmentLimit(maxSegments: maxSegments)
+        enforceLimits(maxSegments: maxSegments, maxCharacters: maxCharacters)
     }
 
-    func displaySegments(maxSegments: Int) -> [Workspace.ANSISegment] {
-        enforceSegmentLimit(maxSegments: maxSegments)
+    func displaySegments(maxSegments: Int, maxCharacters: Int) -> [Workspace.ANSISegment] {
+        enforceLimits(maxSegments: maxSegments, maxCharacters: maxCharacters)
         let displaySegments = segments.map(\.displaySegment)
         guard truncated, !displaySegments.isEmpty else { return displaySegments }
         let indicator = Workspace.ANSISegment(
@@ -384,6 +394,33 @@ private final class WorkspaceANSIStreamParser {
         guard segments.count > maxSegments else { return }
         truncated = true
         segments = Array(segments.suffix(maxSegments))
+    }
+
+    private func enforceCharacterLimit(maxCharacters: Int) {
+        let maxCharacters = max(1, maxCharacters)
+        var totalCharacters = segments.reduce(0) { $0 + $1.text.count }
+        guard totalCharacters > maxCharacters else { return }
+        truncated = true
+
+        while totalCharacters > maxCharacters, !segments.isEmpty {
+            let overflow = totalCharacters - maxCharacters
+            let firstCount = segments[0].text.count
+            if firstCount <= overflow {
+                totalCharacters -= firstCount
+                segments.removeFirst()
+                continue
+            }
+
+            let dropCount = overflow
+            let retainedText = String(segments[0].text.dropFirst(dropCount))
+            totalCharacters -= dropCount
+            segments[0].text = retainedText
+        }
+    }
+
+    private func enforceLimits(maxSegments: Int, maxCharacters: Int) {
+        enforceSegmentLimit(maxSegments: maxSegments)
+        enforceCharacterLimit(maxCharacters: maxCharacters)
     }
 }
 

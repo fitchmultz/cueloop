@@ -117,7 +117,7 @@ struct QuickActionsDetailColumn: View {
 
                 Spacer()
 
-                if workspace.runState.isRunning {
+                if workspace.runState.isExecutionActive {
                     Button(action: { workspace.cancel() }) {
                         Label("Stop", systemImage: "stop.circle.fill")
                             .foregroundStyle(.red)
@@ -285,6 +285,7 @@ struct QuickActionsDetailColumn: View {
             Label(title, systemImage: icon)
         }
         .buttonStyle(GlassButtonStyle())
+        .disabled(workspace.runState.isExecutionActive)
         .accessibilityLabel("\(title)")
     }
 }

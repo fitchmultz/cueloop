@@ -348,6 +348,8 @@ extension WorkspaceRunnerController {
     }
 
     struct MachineRunOutputDecoder {
+        private static let maxBufferedLineCharacters = 1_000_000
+
         enum Item {
             case event(MachineRunEventEnvelope)
             case summary(MachineRunSummaryDocument)
@@ -358,7 +360,12 @@ extension WorkspaceRunnerController {
 
         mutating func append(_ chunk: String) -> [Item] {
             buffered.append(chunk)
-            return drainCompleteLines()
+            var items = drainCompleteLines()
+            if buffered.count > Self.maxBufferedLineCharacters {
+                buffered.removeAll(keepingCapacity: false)
+                items.append(.rawText("[warning] machine output line exceeded app buffer limit and was dropped]\n"))
+            }
+            return items
         }
 
         mutating func finish() -> [Item] {
@@ -382,15 +389,33 @@ extension WorkspaceRunnerController {
             guard !trimmed.isEmpty else { return [] }
             let data = Data(trimmed.utf8)
 
-            if let event = try? RalphMachineContract.decode(MachineRunEventEnvelope.self, from: data, operation: "run event") {
+            do {
+                let event = try RalphMachineContract.decode(
+                    MachineRunEventEnvelope.self,
+                    from: data,
+                    operation: "run event"
+                )
                 if isStructurallyDecodable(event) {
                     return [.event(event)]
                 }
+            } catch let error as RecoveryError {
+                return [.rawText("[error] \(error.message)\n")]
+            } catch {
+                // Not a run event; try the summary contract below before falling back to raw text.
             }
-            if let summary = try? RalphMachineContract.decode(MachineRunSummaryDocument.self, from: data, operation: "run summary") {
+
+            do {
+                let summary = try RalphMachineContract.decode(
+                    MachineRunSummaryDocument.self,
+                    from: data,
+                    operation: "run summary"
+                )
                 return [.summary(summary)]
+            } catch let error as RecoveryError {
+                return [.rawText("[error] \(error.message)\n")]
+            } catch {
+                return [.rawText(line + "\n")]
             }
-            return [.rawText(line + "\n")]
         }
 
         private func isStructurallyDecodable(_ event: MachineRunEventEnvelope) -> Bool {

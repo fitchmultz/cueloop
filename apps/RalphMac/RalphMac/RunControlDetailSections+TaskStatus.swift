@@ -27,7 +27,7 @@ struct RunControlCurrentTaskSection: View {
     @ObservedObject var workspace: Workspace
 
     var body: some View {
-        if workspace.runState.isRunning,
+        if workspace.runState.isExecutionActive,
            let taskID = workspace.runState.currentTaskID,
            let task = workspace.taskState.tasks.first(where: { $0.id == taskID }) {
             RunControlGlassSection("Current Task") {

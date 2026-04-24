@@ -74,6 +74,21 @@ final class MachineContractTests: XCTestCase {
         )
     }
 
+    func testRunOutputDecoderSurfacesUnsupportedRunEventVersion() {
+        var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
+
+        let items = decoder.append("""
+        {"version":999,"kind":"run_started","task_id":"RQ-1","phase":null,"message":null,"payload":null}
+
+        """)
+
+        XCTAssertEqual(items.count, 1)
+        guard case .rawText(let text) = items[0] else {
+            return XCTFail("expected version mismatch to surface as console text")
+        }
+        XCTAssertTrue(text.contains("Unsupported machine run event version 999"))
+    }
+
     func testRunOutputDecoderRejectsUnknownBlockingKind() {
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
 
@@ -89,6 +104,19 @@ final class MachineContractTests: XCTestCase {
             return XCTFail("expected undecodable payload to remain raw text")
         }
         XCTAssertTrue(text.contains("totally_new_kind"))
+    }
+
+    func testRunOutputDecoderDropsOversizedPartialLine() {
+        var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
+
+        let items = decoder.append(String(repeating: "x", count: 1_100_000))
+
+        XCTAssertEqual(items.count, 1)
+        guard case .rawText(let warning) = items[0] else {
+            return XCTFail("expected oversized partial line warning")
+        }
+        XCTAssertTrue(warning.contains("machine output line exceeded app buffer limit"))
+        XCTAssertTrue(decoder.finish().isEmpty)
     }
 
     @MainActor
@@ -113,5 +141,45 @@ final class MachineContractTests: XCTestCase {
         XCTAssertNil(workspace.resolvedQueueFileURL)
         XCTAssertEqual(workspace.diagnosticsState.lastRecoveryError?.category, .versionMismatch)
         XCTAssertTrue(workspace.output.contains("Unsupported machine config resolve version 999"))
+    }
+
+    @MainActor
+    func testWorkspaceOverviewRejectsNestedContractVersionMismatchBeforeApplying() throws {
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "overview-nested-version")
+        let workspace = Workspace(
+            workingDirectoryURL: workspaceURL,
+            bootstrapRepositoryStateOnInit: false
+        )
+        let goodQueue = RalphMockCLITestSupport.queueReadDocument(
+            workspaceURL: workspaceURL,
+            activeTasks: [
+                RalphMockCLITestSupport.task(
+                    id: "RQ-9999",
+                    status: .todo,
+                    title: "Should not apply",
+                    priority: .medium
+                )
+            ],
+            nextRunnableTaskID: "RQ-9999"
+        )
+        let badQueue = MachineQueueReadDocument(
+            version: 999,
+            paths: goodQueue.paths,
+            active: goodQueue.active,
+            done: goodQueue.done,
+            nextRunnableTaskID: goodQueue.nextRunnableTaskID,
+            runnability: goodQueue.runnability
+        )
+        let document = MachineWorkspaceOverviewDocument(
+            version: MachineWorkspaceOverviewDocument.expectedVersion,
+            queue: badQueue,
+            config: RalphMockCLITestSupport.configResolveDocument(workspaceURL: workspaceURL)
+        )
+
+        XCTAssertThrowsError(try workspace.validateWorkspaceOverviewDocument(document)) { error in
+            XCTAssertEqual((error as? RecoveryError)?.category, .versionMismatch)
+        }
+        XCTAssertTrue(workspace.taskState.tasks.isEmpty)
+        XCTAssertNil(workspace.identityState.resolvedPaths)
     }
 }

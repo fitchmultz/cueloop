@@ -125,6 +125,7 @@ public extension Workspace {
             guard !isShutDown, !Task.isCancelled, isCurrentRepositoryContext(repositoryContext) else {
                 return .failed
             }
+            try validateWorkspaceOverviewDocument(document)
 
             applyQueueReadDocument(document.queue)
             runnerController.applyConfigResolveDocument(document.config, workspace: self)
@@ -253,7 +254,7 @@ extension Workspace {
         updateResolvedPaths(snapshot.paths)
         taskState.tasks = snapshot.active.tasks
         taskState.nextRunnableTaskID = snapshot.nextRunnableTaskID
-        if !runState.isRunning {
+        if !runState.isExecutionActive {
             runState.clearLiveBlockingState()
         }
         runState.setQueueBlockingState(
@@ -264,6 +265,21 @@ extension Workspace {
         )
         sanitizeRunControlSelection()
         taskState.tasksErrorMessage = nil
+    }
+
+    func validateWorkspaceOverviewDocument(_ document: MachineWorkspaceOverviewDocument) throws {
+        try RalphMachineContract.requireVersion(
+            document.queue.version,
+            expected: MachineQueueReadDocument.expectedVersion,
+            document: MachineQueueReadDocument.documentName,
+            operation: "machine workspace overview"
+        )
+        try RalphMachineContract.requireVersion(
+            document.config.version,
+            expected: MachineConfigResolveDocument.expectedVersion,
+            document: MachineConfigResolveDocument.documentName,
+            operation: "machine workspace overview"
+        )
     }
 
     func startFileWatching() {

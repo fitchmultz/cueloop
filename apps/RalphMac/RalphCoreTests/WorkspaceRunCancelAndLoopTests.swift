@@ -22,6 +22,69 @@ import XCTest
 
 @MainActor
 final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
+    func test_runNextTask_exposesPreparingStateDuringMachinePreflight() async throws {
+        var workspace: Workspace!
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-run-preparing",
+            scriptName: "mock-ralph-run-preparing",
+            seedQueueTasks: []
+        )
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let task = RalphMockCLITestSupport.task(
+            id: "RQ-PREP-1",
+            status: .todo,
+            title: "Preflight task",
+            priority: .medium
+        )
+        let queueReadURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: [task],
+                nextRunnableTaskID: task.id
+            ),
+            in: fixture.rootURL,
+            name: "queue-read.json"
+        )
+
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "queue" ] && [ "$4" = "read" ]; then
+              sleep 1
+              cat "\(queueReadURL.path)"
+              exit 0
+            fi
+            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "run" ] && [ "$4" = "one" ]; then
+              echo '{"version":2,"task_id":"RQ-PREP-1","exit_code":0,"outcome":"completed","blocking":null}'
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+
+        workspace.runNextTask()
+
+        XCTAssertTrue(workspace.runState.isPreparingRun)
+        XCTAssertTrue(workspace.runState.isExecutionActive)
+        XCTAssertFalse(workspace.runState.isRunning)
+
+        let finished = await WorkspacePerformanceTestSupport.waitFor(timeout: 4.0) {
+            !workspace.runState.isExecutionActive
+        }
+        XCTAssertTrue(finished)
+        XCTAssertEqual(workspace.runState.lastExitStatus?.code, 0)
+    }
+
     func test_cancel_stopsActiveRun_andRecordsCancellation() async throws {
         var workspace: Workspace!
         let fixture = try RalphMockCLITestSupport.makeFixture(
@@ -110,11 +173,11 @@ final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
               exit 0
               ;;
               *"--no-color machine run loop --resume --max-tasks 0"*)
-              echo '{"version":1,"kind":"run_started","task_id":"RQ-LOOP-1","phase":null,"message":null,"payload":null}'
-              echo '{"version":1,"kind":"runner_output","task_id":"RQ-LOOP-1","phase":null,"message":null,"payload":{"text":"running first\\n"}}'
-              echo '{"version":1,"kind":"task_selected","task_id":"RQ-LOOP-2","phase":null,"message":"Second loop task","payload":null}'
-              echo '{"version":1,"kind":"runner_output","task_id":"RQ-LOOP-2","phase":null,"message":null,"payload":{"text":"running second\\n"}}'
-              echo '{"version":1,"task_id":null,"exit_code":0,"outcome":"completed"}'
+              echo '{"version":3,"kind":"run_started","task_id":"RQ-LOOP-1","phase":null,"message":null,"payload":null}'
+              echo '{"version":3,"kind":"runner_output","task_id":"RQ-LOOP-1","phase":null,"message":null,"payload":{"text":"running first\\n"}}'
+              echo '{"version":3,"kind":"task_selected","task_id":"RQ-LOOP-2","phase":null,"message":"Second loop task","payload":null}'
+              echo '{"version":3,"kind":"runner_output","task_id":"RQ-LOOP-2","phase":null,"message":null,"payload":{"text":"running second\\n"}}'
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed"}'
               exit 0
               ;;
             esac
@@ -216,8 +279,8 @@ final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
               exit 0
               ;;
               *"--no-color machine run loop --resume --max-tasks 0 --parallel 2"*)
-              echo '{"version":1,"kind":"run_started","task_id":"RQ-LOOP-PARALLEL","phase":null,"message":null,"payload":null}'
-              echo '{"version":1,"task_id":null,"exit_code":0,"outcome":"completed"}'
+              echo '{"version":3,"kind":"run_started","task_id":"RQ-LOOP-PARALLEL","phase":null,"message":null,"payload":null}'
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed"}'
               exit 0
               ;;
             esac
@@ -280,13 +343,13 @@ final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
               exit 0
               ;;
               *"--no-color machine run loop --resume --max-tasks 0"*)
-              echo '{"version":1,"kind":"run_started","task_id":"RQ-LOOP-STOP","phase":null,"message":null,"payload":null}'
-              echo '{"version":1,"kind":"runner_output","task_id":"RQ-LOOP-STOP","phase":null,"message":null,"payload":{"text":"loop running\\n"}}'
+              echo '{"version":3,"kind":"run_started","task_id":"RQ-LOOP-STOP","phase":null,"message":null,"payload":null}'
+              echo '{"version":3,"kind":"runner_output","task_id":"RQ-LOOP-STOP","phase":null,"message":null,"payload":{"text":"loop running\\n"}}'
               while [ ! -f "\(stopSignalURL.path)" ]; do
                 sleep 0.05
               done
-              echo '{"version":1,"kind":"runner_output","task_id":"RQ-LOOP-STOP","phase":null,"message":null,"payload":{"text":"loop stopping\\n"}}'
-              echo '{"version":1,"task_id":null,"exit_code":0,"outcome":"completed"}'
+              echo '{"version":3,"kind":"runner_output","task_id":"RQ-LOOP-STOP","phase":null,"message":null,"payload":{"text":"loop stopping\\n"}}'
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed"}'
               exit 0
               ;;
               *"queue stop"*)

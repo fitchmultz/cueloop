@@ -124,7 +124,7 @@ struct WindowView: View {
         // Check if workspace has running operations.
         if let workspace = manager.workspaces.first(where: { $0.id == workspaceID }) {
             fallbackDirectory = workspace.identityState.workingDirectoryURL
-            if workspace.runState.isRunning {
+            if workspace.runState.isExecutionActive {
                 workspace.cancel()
             }
             manager.closeWorkspace(workspace)

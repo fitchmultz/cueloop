@@ -50,7 +50,7 @@ struct RunControlDetailColumn: View {
             VStack(alignment: .leading, spacing: 20) {
                 RunControlCurrentTaskSection(workspace: workspace)
 
-                if workspace.runState.isRunning {
+                if workspace.runState.isExecutionActive {
                     RunControlPhaseProgressSection(workspace: workspace)
                 }
 

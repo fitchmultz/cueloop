@@ -191,6 +191,37 @@ final class WorkspaceCorePerformanceTests: WorkspacePerformanceTestCase {
         XCTAssertEqual(workspace.attributedOutput.first?.text, "hello world")
     }
 
+    func test_consumeStreamTextChunk_enforcesCharacterLimitInsideSinglePlainSegment() {
+        workspace.runState.outputBuffer.maxCharacters = 100
+
+        for _ in 0..<20 {
+            workspace.runState.ingestConsoleText(String(repeating: "x", count: 25))
+            workspace.consumeStreamTextChunk(String(repeating: "x", count: 25))
+        }
+        workspace.runState.flushConsoleRenderState()
+
+        XCTAssertTrue(workspace.runState.outputBuffer.isTruncated)
+        XCTAssertLessThanOrEqual(workspace.output.count, 150)
+
+        let attributedCharacterCount = workspace.attributedOutput.reduce(0) { $0 + $1.text.count }
+        XCTAssertLessThanOrEqual(attributedCharacterCount, 160)
+        XCTAssertEqual(workspace.attributedOutput.first?.text, "\n... [console output truncated due to length] ...\n")
+    }
+
+    func test_ingestConsoleText_spillsLongBurstIntoBoundedBufferBeforeRenderRefresh() {
+        workspace.runState.outputBuffer.maxCharacters = 100
+
+        workspace.runState.ingestConsoleText(String(repeating: "a", count: 250))
+
+        XCTAssertEqual(workspace.runState.outputBuffer.originalLength, 250)
+        XCTAssertTrue(workspace.runState.outputBuffer.isTruncated)
+        XCTAssertTrue(workspace.output.isEmpty)
+
+        workspace.runState.flushConsoleRenderState()
+        XCTAssertLessThanOrEqual(workspace.output.count, 150)
+        XCTAssertTrue(workspace.output.contains("a"))
+    }
+
     func test_loadTasks_fromDetachedTask_reportsMissingClientError() async {
         let workspace = self.workspace!
         await Task.detached(priority: .userInitiated) {

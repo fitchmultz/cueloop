@@ -43,7 +43,7 @@ struct MenuBarIconView: View {
         let iconName: String
         let color: Color
         
-        if workspace.runState.isRunning {
+        if workspace.runState.isExecutionActive {
             // Running state - animated checklist or RTL version
             iconName = "checklist.rtl"
             color = .orange

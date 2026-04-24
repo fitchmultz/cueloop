@@ -62,7 +62,7 @@ struct RunControlConsoleView: View {
                 .accessibilityHint("Copies all console text to clipboard")
 
                 // Clear button (only when not running)
-                if !workspace.runState.isRunning && !workspace.runState.output.isEmpty {
+                if !workspace.runState.isExecutionActive && !workspace.runState.output.isEmpty {
                     Button(action: clearOutput) {
                         Image(systemName: "xmark.circle")
                     }
@@ -110,17 +110,17 @@ struct RunControlConsoleView: View {
 
             // Status bar
             HStack {
-                if workspace.runState.isRunning {
+                if workspace.runState.isExecutionActive {
                     HStack(spacing: 6) {
                         ProgressView()
                             .scaleEffect(0.6)
                             .controlSize(.small)
-                        Text("Running...")
+                        Text(workspace.runState.isPreparingRun ? "Preparing..." : "Running...")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Command is running")
+                    .accessibilityLabel(workspace.runState.isPreparingRun ? "Command is preparing" : "Command is running")
                 } else if let status = workspace.runState.lastExitStatus {
                     HStack(spacing: 6) {
                         Image(systemName: status.code == 0 ? "checkmark.circle.fill" : "xmark.circle.fill")

@@ -32,6 +32,7 @@ public final class WorkspaceRunState: ObservableObject {
     static let consoleRenderRefreshIntervalNanoseconds: UInt64 = 50_000_000
 
     @Published public var output = ""
+    @Published public var isPreparingRun = false
     @Published public var isRunning = false
     @Published public var lastExitStatus: RalphCLIExitStatus?
     @Published public var errorMessage: String?
@@ -62,7 +63,10 @@ public final class WorkspaceRunState: ObservableObject {
     @Published public var maxANSISegments = 1_000 {
         didSet {
             if maxANSISegments != oldValue {
-                attributedOutput = streamProcessor.displaySegments(maxSegments: maxANSISegments)
+                attributedOutput = streamProcessor.displaySegments(
+                    maxSegments: maxANSISegments,
+                    maxCharacters: outputBuffer.maxCharacters
+                )
             }
         }
     }
@@ -75,6 +79,10 @@ public final class WorkspaceRunState: ObservableObject {
 
     var hasMeaningfulParallelStatus: Bool {
         parallelStatus?.isMeaningful == true
+    }
+
+    public var isExecutionActive: Bool {
+        isPreparingRun || isRunning
     }
 
     public var shouldShowRunControlParallelStatus: Bool {
@@ -105,6 +113,7 @@ public final class WorkspaceRunState: ObservableObject {
         }
         lastExitStatus = nil
         errorMessage = nil
+        isPreparingRun = false
         isRunning = true
         executionStartTime = Date()
         currentPhase = nil
@@ -170,6 +179,10 @@ public final class WorkspaceRunState: ObservableObject {
 
     func ingestConsoleText(_ text: String) {
         pendingConsoleText.append(text)
+        if pendingConsoleText.count > outputBuffer.maxCharacters {
+            outputBuffer.append(pendingConsoleText)
+            pendingConsoleText.removeAll(keepingCapacity: true)
+        }
     }
 
     func cancelPendingConsoleRenderRefresh() {
@@ -183,7 +196,10 @@ public final class WorkspaceRunState: ObservableObject {
             pendingConsoleText.removeAll(keepingCapacity: true)
         }
         output = outputBuffer.content
-        attributedOutput = streamProcessor.displaySegments(maxSegments: maxANSISegments)
+        attributedOutput = streamProcessor.displaySegments(
+            maxSegments: maxANSISegments,
+            maxCharacters: outputBuffer.maxCharacters
+        )
     }
 
     private func refreshOperatorState() {

@@ -517,6 +517,7 @@ extension Workspace {
         clearErrorRecovery()
         stopLoop()
         resetExecutionState()
+        runState.isPreparingRun = false
         runState.isRunning = false
         runState.stopAfterCurrent = false
         runState.currentTaskID = nil

@@ -26,7 +26,7 @@ import Foundation
 @MainActor
 extension WorkspaceRunnerController {
     func hasPendingRunWork(for workspace: Workspace) -> Bool {
-        runTask != nil || activeRun != nil || workspace.runState.isRunning
+        runTask != nil || activeRun != nil || workspace.runState.isExecutionActive
     }
 
     func scheduleRunTask(
@@ -38,6 +38,7 @@ extension WorkspaceRunnerController {
         runTaskRevision &+= 1
         let revision = runTaskRevision
         let repositoryContext = workspace.currentRepositoryContext()
+        workspace.runState.isPreparingRun = true
         runTask = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.finishRunTask(revision) }
@@ -67,6 +68,7 @@ extension WorkspaceRunnerController {
         }
 
         guard let arguments = await operation(workspace, repositoryContext) else {
+            workspace.runState.isPreparingRun = false
             return
         }
 
@@ -81,6 +83,7 @@ extension WorkspaceRunnerController {
 
         guard let client = workspace.client else {
             workspace.runState.errorMessage = "CLI client not available."
+            workspace.runState.isPreparingRun = false
             return
         }
 
@@ -98,6 +101,7 @@ extension WorkspaceRunnerController {
                 workspace.isCurrentRepositoryContext(repositoryContext)
             else {
                 activeRun = nil
+                workspace.runState.isPreparingRun = false
                 await run.cancel()
                 return
             }
@@ -152,6 +156,7 @@ extension WorkspaceRunnerController {
             workspace.runState.errorMessage = recoveryError.message
             workspace.diagnosticsState.lastRecoveryError = recoveryError
             workspace.diagnosticsState.showErrorRecovery = true
+            workspace.runState.isPreparingRun = false
             workspace.runState.isRunning = false
             workspace.runState.isLoopMode = false
             workspace.runState.stopAfterCurrent = false
@@ -167,6 +172,9 @@ extension WorkspaceRunnerController {
     func finishRunTask(_ revision: UInt64) {
         guard runTaskRevision == revision else { return }
         runTask = nil
+        if let workspace, !workspace.runState.isRunning {
+            workspace.runState.isPreparingRun = false
+        }
     }
 
     func cancelPendingRunTask() {
@@ -174,6 +182,7 @@ extension WorkspaceRunnerController {
         runTask = nil
         runTaskRevision &+= 1
         if let workspace, activeRun == nil {
+            workspace.runState.isPreparingRun = false
             workspace.runState.isRunning = false
             workspace.resetExecutionState()
         }
@@ -236,6 +245,7 @@ extension WorkspaceRunnerController {
         guard workspace.isCurrentRepositoryContext(repositoryContext), activeRun === run else { return }
         workspace.runState.flushConsoleRenderState()
         workspace.runState.lastExitStatus = status
+        workspace.runState.isPreparingRun = false
         workspace.runState.isRunning = false
 
         if let startTime = workspace.runState.executionStartTime {

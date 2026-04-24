@@ -140,7 +140,7 @@ struct MenuBarContentView: View {
                     workspace.runNextTask()
                 }
             }
-            .disabled(workspace.nextTask() == nil || workspace.runState.isRunning)
+            .disabled(workspace.nextTask() == nil || workspace.runState.isExecutionActive)
             
             Button("Quick Add Task...") {
                 withMenuDismissed {

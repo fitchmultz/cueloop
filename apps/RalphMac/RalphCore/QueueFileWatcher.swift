@@ -162,6 +162,8 @@ public final class QueueFileWatcher: Sendable {
 
     public let events: AsyncStream<Event>
 
+    private static let maxBufferedEvents = 128
+
     private let continuation: AsyncStream<Event>.Continuation
     private let runtime: QueueFileWatcherRuntime
 
@@ -204,7 +206,10 @@ public final class QueueFileWatcher: Sendable {
         configuration: Configuration,
         system: StreamSystem
     ) {
-        let stream = AsyncStream.makeStream(of: Event.self)
+        let stream = AsyncStream.makeStream(
+            of: Event.self,
+            bufferingPolicy: .bufferingNewest(Self.maxBufferedEvents)
+        )
         self.events = stream.stream
         self.continuation = stream.continuation
         self.runtime = QueueFileWatcherRuntime(

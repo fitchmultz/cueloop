@@ -157,7 +157,7 @@ public final class Workspace: ObservableObject, Identifiable {
     }
 
     public var isURLRoutingPlaceholderWorkspace: Bool {
-        launchDisposition == .startupPlaceholder && !runState.isRunning
+        launchDisposition == .startupPlaceholder && !runState.isExecutionActive
     }
 
     public func markStartupPlaceholderConsumed() {
