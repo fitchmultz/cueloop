@@ -57,6 +57,7 @@ pub use backup::backup_queue;
 pub use id::next_id_across;
 pub use id::{format_id, normalize_prefix};
 pub use json_repair::attempt_json_repair;
+pub(crate) use loader::load_and_validate_queues_without_warning_logs;
 pub use loader::{
     load_and_validate_queues, load_queue, load_queue_or_default, load_queue_with_repair,
     load_queue_with_repair_and_validate,

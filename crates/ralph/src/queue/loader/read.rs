@@ -20,7 +20,7 @@
 //! - Read-only flows never write queue or done files.
 //! - Semantic repair application is handled by undo-backed queue repair APIs.
 
-use super::validation::validate_loaded_queues;
+use super::validation::{validate_loaded_queues, validate_loaded_queues_without_warning_logs};
 use crate::config::Resolved;
 use crate::contracts::QueueFile;
 use crate::queue::json_repair::attempt_json_repair;
@@ -135,9 +135,32 @@ pub fn load_and_validate_queues(
     resolved: &Resolved,
     include_done: bool,
 ) -> Result<(QueueFile, Option<QueueFile>)> {
+    load_and_validate_queues_inner(resolved, include_done, true)
+}
+
+/// Load the active queue and optionally the done queue, validating both without logging warnings.
+///
+/// This is intended for high-frequency polling paths that need validation errors
+/// but should not repeatedly re-emit the same non-blocking warning.
+pub(crate) fn load_and_validate_queues_without_warning_logs(
+    resolved: &Resolved,
+    include_done: bool,
+) -> Result<(QueueFile, Option<QueueFile>)> {
+    load_and_validate_queues_inner(resolved, include_done, false)
+}
+
+fn load_and_validate_queues_inner(
+    resolved: &Resolved,
+    include_done: bool,
+    log_warnings: bool,
+) -> Result<(QueueFile, Option<QueueFile>)> {
     let (queue_file, done_for_validation, _done_path_exists) =
         load_queue_set_with_repair(resolved, include_done)?;
-    validate_loaded_queues(resolved, &queue_file, &done_for_validation)?;
+    if log_warnings {
+        validate_loaded_queues(resolved, &queue_file, &done_for_validation)?;
+    } else {
+        validate_loaded_queues_without_warning_logs(resolved, &queue_file, &done_for_validation)?;
+    }
 
     let done_file = if include_done {
         Some(done_for_validation)

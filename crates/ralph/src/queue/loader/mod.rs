@@ -24,6 +24,7 @@
 mod read;
 mod validation;
 
+pub(crate) use read::load_and_validate_queues_without_warning_logs;
 pub use read::{
     load_and_validate_queues, load_queue, load_queue_or_default, load_queue_with_repair,
     load_queue_with_repair_and_validate,

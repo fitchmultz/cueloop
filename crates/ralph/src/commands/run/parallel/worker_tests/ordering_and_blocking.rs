@@ -17,6 +17,133 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
+use log::{LevelFilter, Log, Metadata, Record};
+use serial_test::serial;
+use std::sync::{Mutex, OnceLock};
+
+struct SelectionTestLogger;
+
+static LOGGER: SelectionTestLogger = SelectionTestLogger;
+static LOGGER_STATE: OnceLock<LoggerState> = OnceLock::new();
+static LOGS: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LoggerState {
+    TestLogger,
+    OtherLogger,
+}
+
+impl Log for SelectionTestLogger {
+    fn enabled(&self, _metadata: &Metadata<'_>) -> bool {
+        true
+    }
+
+    fn log(&self, record: &Record<'_>) {
+        let logs = LOGS.get_or_init(|| Mutex::new(Vec::new()));
+        let mut guard = logs.lock().expect("log mutex");
+        guard.push(record.args().to_string());
+    }
+
+    fn flush(&self) {}
+}
+
+fn take_logs() -> (LoggerState, Vec<String>) {
+    let state = *LOGGER_STATE.get_or_init(|| {
+        if log::set_logger(&LOGGER).is_ok() {
+            log::set_max_level(LevelFilter::Warn);
+            LoggerState::TestLogger
+        } else {
+            LoggerState::OtherLogger
+        }
+    });
+    let logs = LOGS.get_or_init(|| Mutex::new(Vec::new()));
+    let mut guard = logs.lock().expect("log mutex");
+    (state, guard.drain(..).collect())
+}
+
+fn selection_test_task(id: &str, title: &str) -> crate::contracts::Task {
+    crate::contracts::Task {
+        id: id.to_string(),
+        title: title.to_string(),
+        description: None,
+        status: crate::contracts::TaskStatus::Todo,
+        priority: crate::contracts::TaskPriority::Medium,
+        tags: vec![],
+        scope: vec![],
+        evidence: vec![],
+        plan: vec![],
+        notes: vec![],
+        request: None,
+        agent: None,
+        created_at: Some("2026-01-01T00:00:00Z".to_string()),
+        updated_at: Some("2026-01-01T00:00:00Z".to_string()),
+        completed_at: None,
+        started_at: None,
+        scheduled_start: None,
+        depends_on: vec![],
+        blocks: vec![],
+        relates_to: vec![],
+        duplicates: None,
+        custom_fields: std::collections::HashMap::new(),
+        estimated_minutes: None,
+        actual_minutes: None,
+        parent_id: None,
+    }
+}
+
+#[test]
+#[serial]
+fn select_next_task_locked_suppresses_non_blocking_validation_warnings() -> Result<()> {
+    let (state, _) = take_logs();
+    let _ = take_logs();
+
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().to_path_buf();
+    let ralph_dir = repo_root.join(".ralph");
+    std::fs::create_dir_all(&ralph_dir)?;
+
+    let queue_path = ralph_dir.join("queue.json");
+    let dependency = selection_test_task("RQ-0001", "Incomplete dependency");
+    let mut dependent = selection_test_task("RQ-0002", "Blocked dependent");
+    dependent.depends_on = vec![dependency.id.clone()];
+    queue::save_queue(
+        &queue_path,
+        &crate::contracts::QueueFile {
+            version: 1,
+            tasks: vec![dependency, dependent],
+        },
+    )?;
+
+    let resolved = config::Resolved {
+        config: crate::contracts::Config::default(),
+        repo_root: repo_root.clone(),
+        queue_path,
+        done_path: ralph_dir.join("done.json"),
+        id_prefix: "RQ".to_string(),
+        id_width: 4,
+        global_config_path: None,
+        project_config_path: None,
+    };
+
+    let queue_lock = queue::acquire_queue_lock(&repo_root, "test", false)?;
+    let excluded = HashSet::from(["RQ-0001".to_string()]);
+    let selected = select_next_task_locked(&resolved, false, &excluded, &queue_lock)?;
+
+    assert_eq!(selected, None);
+    let (_, logs) = take_logs();
+    if state == LoggerState::TestLogger {
+        let blocked_warning_count = logs
+            .iter()
+            .filter(|line| line.contains("all dependency paths lead to incomplete"))
+            .count();
+        assert_eq!(
+            blocked_warning_count, 0,
+            "selection should not emit repeated non-blocking validation warnings: {logs:?}"
+        );
+    }
+
+    Ok(())
+}
 
 #[test]
 fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Result<()> {
