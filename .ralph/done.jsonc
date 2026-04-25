@@ -194,9 +194,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "task_kind": "queue_shaping",
         "model_used": "gpt-5.4",
-        "skill": "comprehensive-codebase-audit"
+        "skill": "comprehensive-codebase-audit",
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -286,6 +286,59 @@
       "created_at": "2026-04-25T16:45:55Z",
       "updated_at": "2026-04-25T17:43:22.994664000Z",
       "completed_at": "2026-04-25T17:43:22.994664000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0006",
+      "status": "done",
+      "title": "Expand execution and operator contract coverage",
+      "description": "The audit found several high-value orchestration and operator-facing branches that are carrying important behavior with thinner direct coverage than the surrounding happy paths. The highest-signal gaps are the event-driven parallel worker completion path, run-session resume decisions that must preserve preview-vs-execute semantics, doctor's trust/instruction-file blocking surface, CI gate argv-only enforcement parity, and webhook delivery failure-path diagnostics. This task should add regression coverage around those contracts so future runtime changes fail locally before they leak into parallel runs, app integrations, or operator workflows.",
+      "priority": "high",
+      "tags": [
+        "audit",
+        "tests",
+        "coverage",
+        "parallel",
+        "session",
+        "doctor",
+        "ci"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/orchestration/events.rs",
+        "crates/ralph/src/session/decision.rs",
+        "crates/ralph/src/commands/doctor/runner.rs",
+        "crates/ralph/src/config/validation/ci_gate.rs",
+        "crates/ralph/src/runutil/ci_gate.rs",
+        "crates/ralph/src/webhook/worker/delivery.rs",
+        "crates/ralph/src/session/tests.rs",
+        "crates/ralph/tests/doctor_contract_test/",
+        "cargo test -p ralph-agent-loop parallel",
+        "cargo test -p ralph-agent-loop session",
+        "cargo test -p ralph-agent-loop doctor"
+      ],
+      "evidence": [
+        "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
+        "crates/ralph/src/commands/run/parallel/orchestration/events.rs:89-174 owns worker completion, blocked-push retention, workspace cleanup, state persistence, and best-effort branch refresh, but the testing audit found only narrower nearby coverage.",
+        "crates/ralph/src/session/decision.rs:152-164, 244-259, 324-341, and 349-353 contain resume/fresh-session branches whose cache-mutation semantics differ between preview and execute modes.",
+        "The testing audit flagged thinner contract coverage around doctor trust and instruction-file reporting, CI gate shell-launcher parity, and webhook delivery failure paths.",
+        "These are operator-visible contracts whose regressions would affect parallel execution, resume safety, blocking diagnostics, or CI gate enforcement."
+      ],
+      "plan": [
+        "Catalog the highest-risk execution and operator-facing branches that currently rely on indirect or partial coverage.",
+        "Add focused tests for `handle_finished_workers` covering success, blocked-marker retention, plain failure cleanup, state-save failure, and branch-refresh failure.",
+        "Expand session decision coverage for missing-session announcements, timeout confirmation/decline, and preview-vs-execute cache clearing behavior.",
+        "Add doctor and CI gate regression tests that pin down repo-trust enforcement, instruction-file status reporting, and shell-launcher rejection parity across config and runtime surfaces.",
+        "Add webhook delivery failure-path tests for dropped retry scheduling, unsafe/private target rejection, and redacted diagnostics.",
+        "Run the focused Rust test groups plus the canonical local validation entrypoint needed to prove the new regression coverage passes."
+      ],
+      "notes": [],
+      "request": "use the comprehensive codebase audit skill and build tasks stemming from your findings",
+      "created_at": "2026-04-25T16:45:55Z",
+      "updated_at": "2026-04-25T18:11:28.825839000Z",
+      "completed_at": "2026-04-25T18:11:28.825839000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
