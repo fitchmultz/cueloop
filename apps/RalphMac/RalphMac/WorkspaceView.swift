@@ -42,6 +42,7 @@ struct WorkspaceView: View {
     @State var showingOperationalHealth = false
     @State var taskDecomposeContext = TaskDecomposeView.PresentationContext()
     @State var commandActions = WorkspaceUIActions()
+    @State private var navigationIssueSinkTask: Task<Void, Never>?
     @FocusedValue(\.workspaceWindowActions) var workspaceWindowActions
     let manager = WorkspaceManager.shared
 
@@ -56,10 +57,7 @@ struct WorkspaceView: View {
         self._workspace = ObservedObject(wrappedValue: workspace)
         self._navigation = StateObject(
             wrappedValue: NavigationViewModel(
-                workspaceID: workspace.id,
-                issueSink: { issue in
-                    workspace.updateNavigationPersistenceIssue(issue)
-                }
+                workspaceID: workspace.id
             )
         )
     }
@@ -86,6 +84,7 @@ struct WorkspaceView: View {
             }
             .sheet(isPresented: $showingOperationalHealth) { operationalHealthSheet() }
             .onAppear {
+                bindNavigationPersistenceIssueSink()
                 workspace.scheduleInitialRepositoryBootstrapIfNeeded()
                 configureCommandActions()
                 registerWorkspaceRouteActions()
@@ -123,6 +122,8 @@ struct WorkspaceView: View {
                 refreshContractDiagnostics()
             }
             .onDisappear {
+                navigationIssueSinkTask?.cancel()
+                navigationIssueSinkTask = nil
                 manager.unregisterWorkspaceRouteActions(for: workspace.id)
                 if RalphAppDefaults.isWorkspaceRoutingContract {
                     WorkspaceContractPresentationCoordinator.shared.unregister(workspaceID: workspace.id)
@@ -147,6 +148,17 @@ struct WorkspaceView: View {
     private var workspaceStateProbeOverlay: some View {
         if Self.isUITestingLaunch {
             WorkspaceStateAccessibilityProbe(workspace: workspace)
+        }
+    }
+
+    private func bindNavigationPersistenceIssueSink() {
+        navigationIssueSinkTask?.cancel()
+        navigationIssueSinkTask = Task { @MainActor [navigation, weak workspace] in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            navigation.setPersistenceIssueSink { [weak workspace] issue in
+                workspace?.updateNavigationPersistenceIssue(issue)
+            }
         }
     }
 }

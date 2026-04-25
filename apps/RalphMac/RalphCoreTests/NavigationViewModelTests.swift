@@ -232,6 +232,27 @@ final class NavigationViewModelTests: RalphCoreTestCase {
         XCTAssertEqual(forwardedIssue?.operation, .load)
         XCTAssertEqual(removedKeys, [stateKey])
     }
+
+    @MainActor
+    func test_navigationViewModel_delayedIssueSink_replaysLoadIssue() {
+        struct ExpectedFailure: Error {}
+
+        let workspaceID = UUID()
+        var forwardedIssue: PersistenceIssue?
+        let store = NavigationStateStore(
+            loadData: { _ in throw ExpectedFailure() },
+            saveData: { _, _ in },
+            removeData: { _ in }
+        )
+
+        let viewModel = NavigationViewModel(workspaceID: workspaceID, store: store)
+        viewModel.setPersistenceIssueSink { forwardedIssue = $0 }
+
+        XCTAssertEqual(viewModel.persistenceIssue?.domain, .navigationState)
+        XCTAssertEqual(viewModel.persistenceIssue?.operation, .load)
+        XCTAssertEqual(forwardedIssue?.domain, .navigationState)
+        XCTAssertEqual(forwardedIssue?.operation, .load)
+    }
 }
 
 #endif

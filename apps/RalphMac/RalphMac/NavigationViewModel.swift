@@ -119,7 +119,7 @@ public final class NavigationViewModel: ObservableObject {
 
     private let workspaceID: UUID?
     private let store: NavigationStateStore
-    private let issueSink: (PersistenceIssue?) -> Void
+    private var issueSink: (PersistenceIssue?) -> Void
 
     public init(
         workspaceID: UUID? = nil,
@@ -172,6 +172,16 @@ public final class NavigationViewModel: ObservableObject {
 
     public func setTaskViewMode(_ mode: TaskViewMode) {
         taskViewMode = mode
+    }
+
+    public func setPersistenceIssueSink(
+        replayCurrentIssue: Bool = true,
+        _ issueSink: @escaping (PersistenceIssue?) -> Void
+    ) {
+        self.issueSink = issueSink
+        if replayCurrentIssue {
+            issueSink(persistenceIssue)
+        }
     }
 
     private var stateKey: String {
