@@ -19,6 +19,26 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+const PRE_PUBLIC_CHECK_FIXTURE_FILES: &[&str] = &[
+    "scripts/pre-public-check.sh",
+    "scripts/lib/ralph-shell.sh",
+    "scripts/lib/release_policy.sh",
+    "scripts/lib/public_readiness_scan.sh",
+    "scripts/lib/public_readiness_scan.py",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
+    "docs/guides/public-readiness.md",
+    "docs/guides/release-runbook.md",
+    "docs/releasing.md",
+    ".github/ISSUE_TEMPLATE/bug_report.md",
+    ".github/ISSUE_TEMPLATE/feature_request.md",
+    ".github/PULL_REQUEST_TEMPLATE.md",
+];
+
 pub(crate) fn repo_root() -> PathBuf {
     let exe = std::env::current_exe().expect("resolve current test executable path");
     let exe_dir = exe
@@ -51,6 +71,24 @@ pub(crate) fn public_readiness_scan_shell_helper_path() -> PathBuf {
 
 pub(crate) fn public_readiness_scan_python_path() -> PathBuf {
     repo_root().join("scripts/lib/public_readiness_scan.py")
+}
+
+pub(crate) fn copy_public_readiness_scan_fixture(destination_root: &Path) {
+    copy_repo_files(
+        destination_root,
+        &[
+            "scripts/lib/public_readiness_scan.sh",
+            "scripts/lib/public_readiness_scan.py",
+            "scripts/lib/release_policy.sh",
+            "scripts/lib/ralph-shell.sh",
+        ],
+    );
+}
+
+pub(crate) fn copy_repo_files(destination_root: &Path, relative_paths: &[&str]) {
+    for relative_path in relative_paths {
+        copy_repo_file(relative_path, destination_root);
+    }
 }
 
 pub(crate) fn copy_repo_file(relative_path: &str, destination_root: &Path) {
@@ -108,28 +146,40 @@ pub(crate) fn init_git_repo(repo_root: &Path) {
         .expect("configure git user.email");
 }
 
+pub(crate) fn disable_global_excludes(repo_root: &Path) {
+    Command::new("git")
+        .args(["config", "core.excludesFile", "/dev/null"])
+        .current_dir(repo_root)
+        .output()
+        .expect("disable global excludes for fixture repo");
+}
+
+pub(crate) fn stage_all(repo_root: &Path) {
+    Command::new("git")
+        .args(["add", "-A"])
+        .current_dir(repo_root)
+        .output()
+        .expect("stage repo");
+}
+
+pub(crate) fn force_stage_all(repo_root: &Path) {
+    Command::new("git")
+        .args(["add", "-f", "-A"])
+        .current_dir(repo_root)
+        .output()
+        .expect("stage repo");
+}
+
+pub(crate) fn commit_fixture(repo_root: &Path) {
+    Command::new("git")
+        .args(["commit", "-m", "fixture"])
+        .current_dir(repo_root)
+        .output()
+        .expect("commit fixture repo");
+}
+
 pub(crate) fn copy_pre_public_check_fixture(repo_root: &Path) {
-    for relative_path in [
-        "scripts/pre-public-check.sh",
-        "scripts/lib/ralph-shell.sh",
-        "scripts/lib/release_policy.sh",
-        "scripts/lib/public_readiness_scan.sh",
-        "scripts/lib/public_readiness_scan.py",
-        "README.md",
-        "LICENSE",
-        "CHANGELOG.md",
-        "CONTRIBUTING.md",
-        "SECURITY.md",
-        "CODE_OF_CONDUCT.md",
-        "docs/guides/public-readiness.md",
-        "docs/guides/release-runbook.md",
-        "docs/releasing.md",
-        ".github/ISSUE_TEMPLATE/bug_report.md",
-        ".github/ISSUE_TEMPLATE/feature_request.md",
-        ".github/PULL_REQUEST_TEMPLATE.md",
-    ] {
-        copy_repo_file(relative_path, repo_root);
-    }
+    copy_repo_files(repo_root, PRE_PUBLIC_CHECK_FIXTURE_FILES);
 }
 
 pub(crate) fn break_git_index(repo_root: &Path) {
