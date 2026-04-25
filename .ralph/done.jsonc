@@ -193,11 +193,58 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4",
+        "skill": "comprehensive-codebase-audit"
       }
+    },
+    {
+      "id": "RQ-0005",
+      "status": "done",
+      "title": "Harden webhook runtime lifecycle and config validation",
+      "description": "The audit found a reliability gap in Ralph's webhook runtime: one dispatcher startup failure disables delivery for the rest of the run, dispatcher teardown does not coordinate worker/scheduler shutdown, and webhook numeric settings are documented with bounds that are not enforced consistently at config-validation time. This task should make webhook startup failures recoverable, shutdown deterministic, and config validation explicit so operators get fast, actionable failures instead of silent runtime drift or permanent disablement.",
+      "priority": "high",
+      "tags": [
+        "audit",
+        "webhook",
+        "reliability",
+        "config",
+        "runtime"
+      ],
+      "scope": [
+        "crates/ralph/src/webhook/worker/runtime/state.rs",
+        "crates/ralph/src/webhook/worker/runtime/dispatcher.rs",
+        "crates/ralph/src/webhook/worker/runtime/",
+        "crates/ralph/src/contracts/config/webhook.rs",
+        "crates/ralph/src/config/validation/",
+        "crates/ralph/src/webhook/tests/",
+        "cargo test -p ralph-agent-loop webhook"
+      ],
+      "evidence": [
+        "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
+        "crates/ralph/src/webhook/worker/runtime/state.rs:72-105 permanently short-circuits dispatcher creation once `disabled_reason` is set after a startup failure.",
+        "crates/ralph/src/webhook/worker/runtime/dispatcher.rs:48-121 spawns worker and scheduler threads during startup, while lines 124-131 only log during `Drop` and do not coordinate teardown.",
+        "crates/ralph/src/contracts/config/webhook.rs:119-140 documents numeric bounds for timeout, retries, backoff, queue capacity, and parallel multiplier, but lines 218-237 only validate enablement and URL safety.",
+        "The operability audit also flagged inconsistent runtime handling of webhook settings and late shutdown/noise risk in the retry scheduler path."
+      ],
+      "plan": [
+        "Trace the webhook runtime lifecycle from config resolution through dispatcher build, rebuild, delivery, retry scheduling, and shutdown.",
+        "Replace the current permanent-disable-once behavior with a bounded retry or circuit-breaker approach that preserves diagnostics without killing delivery for the full process lifetime.",
+        "Add explicit shutdown signaling and thread join coordination for dispatcher worker and retry-scheduler threads so rebuilds and exits are deterministic.",
+        "Centralize webhook numeric validation at config-load or run-entry time and remove inconsistent mixtures of documented bounds, silent clamps, and unchecked runtime adoption.",
+        "Add focused runtime and config-validation tests that cover startup failure recovery, teardown behavior, unsafe/out-of-range webhook settings, and redacted operator-facing errors.",
+        "Run the webhook-focused Rust tests and any broader local gate needed to prove the hardened runtime behaves correctly."
+      ],
+      "notes": [],
+      "request": "use the comprehensive codebase audit skill and build tasks stemming from your findings",
+      "created_at": "2026-04-25T16:45:55Z",
+      "updated_at": "2026-04-25T17:42:27.374520000Z",
+      "completed_at": "2026-04-25T17:42:27.374520000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
     }
   ]
 }
