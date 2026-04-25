@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "task_kind": "queue_shaping",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -339,6 +339,51 @@
       "created_at": "2026-04-25T16:45:55Z",
       "updated_at": "2026-04-25T18:11:28.825839000Z",
       "completed_at": "2026-04-25T18:11:28.825839000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {}
+    },
+    {
+      "id": "RQ-0007",
+      "status": "done",
+      "title": "Split oversized machine and release contract suites",
+      "description": "The audit found contract-heavy test files that are carrying too many unrelated scenarios in a single place, which makes failures less local and pushes Ralph away from its own small-file guidance. `machine_contract_test.rs` is already a multi-surface end-to-end suite, and `pre_public_check_contracts_early.rs` has grown to nearly 1,000 lines. This task should reorganize those suites into directory-backed, behavior-grouped modules with shared helpers so contract coverage remains strong while maintenance and review costs come down.",
+      "priority": "medium",
+      "tags": [
+        "audit",
+        "tests",
+        "contracts",
+        "maintainability",
+        "release",
+        "machine"
+      ],
+      "scope": [
+        "crates/ralph/tests/machine_contract_test.rs",
+        "crates/ralph/tests/release_integration_contract_test.rs",
+        "crates/ralph/tests/release_integration_contract_test/",
+        "crates/ralph/tests/test_support/",
+        "cargo test -p ralph-agent-loop machine_contract_test",
+        "cargo test -p ralph-agent-loop release_integration_contract_test"
+      ],
+      "evidence": [
+        "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
+        "crates/ralph/tests/machine_contract_test.rs is 608 lines and already mixes queue, task mutation, recovery, parallel-status, and run-start contract coverage.",
+        "crates/ralph/tests/release_integration_contract_test/pre_public_check_contracts_early.rs is 993 lines, well beyond the repo's preferred small-file target.",
+        "The architecture audit called out `machine_contract_test.rs` as a monolithic contract suite that repeats repo bootstrap, JSON request assembly, command execution, and response assertions."
+      ],
+      "plan": [
+        "Map the current machine-contract and release-contract scenarios into coherent behavior groups with clear ownership boundaries.",
+        "Split `machine_contract_test.rs` into a directory-backed suite organized by command family such as queue, task, recovery, workspace, and parallel/run contracts.",
+        "Split the oversized pre-public-check contract coverage into smaller companion modules with shared fixture/setup helpers instead of one large file.",
+        "Preserve existing assertions and helper reuse while improving failure locality and keeping the root test hubs thin.",
+        "Run the affected contract test suites and the canonical local gate needed to ensure the reorganization did not drop coverage."
+      ],
+      "notes": [],
+      "request": "use the comprehensive codebase audit skill and build tasks stemming from your findings",
+      "created_at": "2026-04-25T16:45:55Z",
+      "updated_at": "2026-04-25T18:11:49.933429000Z",
+      "completed_at": "2026-04-25T18:11:49.933429000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
