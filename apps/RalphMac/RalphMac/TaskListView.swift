@@ -7,9 +7,9 @@
  Responsibilities:
  - Display a rich, sortable, filterable list of tasks from the Ralph queue.
  - Show task metadata with visual indicators (status badges, priority dots, tag chips).
- - Provide search, filtering, and sorting controls.
- - Display "What's Next" section highlighting the next todo task.
- - Support two-way binding for task selection to integrate with NavigationSplitView.
+- Provide search, filtering, and sorting controls.
+- Display "What's Next" section highlighting the next todo task.
+- Support two-way binding for task selection to integrate with NavigationSplitView.
 
  Does not handle:
  - Task editing (see TaskDetailView - now shown in detail column).
@@ -20,9 +20,9 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - Workspace is injected via @ObservedObject.
- - selectedTaskID is bound to external navigation state.
- - Tasks are loaded via workspace.loadTasks() before display.
+- Workspace is injected via @ObservedObject.
+- selectedTaskID is bound to external navigation state.
+- Queue data is owned by WorkspaceView bootstrap, explicit refresh, and watcher updates.
  */
 
 import SwiftUI
@@ -64,7 +64,7 @@ struct TaskListView: View {
 
             TaskListContent(
                 workspace: workspace,
-                selectedTaskIDs: $selectedTaskIDs,
+                selectedTaskIDs: deferredSelectedTaskIDs,
                 selectedTaskID: selectedTaskID,
                 focusedTaskID: $focusedTaskID,
                 highlightedTaskIDs: transientState.highlightedTaskIDs,
@@ -81,10 +81,6 @@ struct TaskListView: View {
                 .padding(.bottom, 16)
         }
         .background(.clear)
-        .task { @MainActor in
-            await Task.yield()
-            await workspace.loadTasks()
-        }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button(action: showTaskCreation) {
@@ -124,10 +120,15 @@ struct TaskListView: View {
             )
         }
         .task(id: workspace.taskState.lastQueueRefreshEvent?.id) {
+            await Task.yield()
             transientState.handleQueueRefreshEvent(workspace.taskState.lastQueueRefreshEvent)
         }
         .onChange(of: selectedTaskIDs) { _, newSelection in
-            syncPrimarySelection(with: newSelection)
+            Task { @MainActor in
+                await Task.yield()
+                guard selectedTaskIDs == newSelection else { return }
+                syncPrimarySelection(with: newSelection)
+            }
         }
         .onChange(of: workspace.identityState.retargetRevision) { _, _ in
             focusedTaskID = nil
@@ -154,6 +155,20 @@ struct TaskListView: View {
             selectedTaskID = taskID
             selectedTaskIDs = [taskID]
         }
+    }
+
+    private var deferredSelectedTaskIDs: Binding<Set<String>> {
+        Binding(
+            get: { selectedTaskIDs },
+            set: { newSelection in
+                guard selectedTaskIDs != newSelection else { return }
+                Task { @MainActor in
+                    await Task.yield()
+                    guard selectedTaskIDs != newSelection else { return }
+                    selectedTaskIDs = newSelection
+                }
+            }
+        )
     }
 
     private func openFocusedTaskIfPossible() {

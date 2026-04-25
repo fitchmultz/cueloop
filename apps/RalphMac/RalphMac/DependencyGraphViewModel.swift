@@ -80,6 +80,7 @@ final class DependencyGraphViewModel: ObservableObject {
         canvasSize: CGSize,
         scale: CGFloat,
         offset: CGSize,
+        graphCenter: CGPoint,
         nodeSize: CGSize
     ) -> String? {
         let center = CGPoint(
@@ -89,8 +90,8 @@ final class DependencyGraphViewModel: ObservableObject {
 
         let tappedNode = nodes.first { node in
             let nodeRect = CGRect(
-                x: center.x + node.position.x * scale - nodeSize.width * scale / 2,
-                y: center.y + node.position.y * scale - nodeSize.height * scale / 2,
+                x: center.x + (node.position.x - graphCenter.x) * scale - nodeSize.width * scale / 2,
+                y: center.y + (node.position.y - graphCenter.y) * scale - nodeSize.height * scale / 2,
                 width: nodeSize.width * scale,
                 height: nodeSize.height * scale
             )

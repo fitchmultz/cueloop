@@ -76,9 +76,12 @@ struct AdvancedRunnerContentColumn: View {
                 Spacer()
 
                 if workspace.commandState.cliSpecIsLoading {
-                    ProgressView()
-                        .scaleEffect(0.75)
-                        .controlSize(.small)
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .symbolEffect(.rotate, isActive: true)
+                        .frame(width: 14, height: 14)
+                        .accessibilityLabel("Loading command specification")
                 }
 
                 Button(action: {

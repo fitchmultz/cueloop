@@ -19,9 +19,10 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - Workspace is injected and provides task data.
- - selectedTaskID binding is used for navigation.
- - Status changes are persisted via CLI calls.
+- Workspace is injected and provides task data.
+- selectedTaskID binding is used for navigation.
+- Status changes are persisted via CLI calls.
+- Queue data is owned by WorkspaceView bootstrap, explicit refresh, and watcher updates.
  */
 
 import SwiftUI
@@ -114,10 +115,13 @@ struct KanbanBoardView: View {
         .background(.clear)
         .overlay {
             if isUpdating {
-                ProgressView()
-                    .scaleEffect(1.2)
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                    .symbolEffect(.rotate, isActive: true)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(.ultraThinMaterial)
+                    .accessibilityLabel("Updating task status")
             }
         }
         .scrollIndicators(.automatic)
@@ -126,10 +130,8 @@ struct KanbanBoardView: View {
         } message: {
             Text(updateError ?? "")
         }
-        .task { @MainActor in
-            await workspace.loadTasks()
-        }
         .task(id: workspace.taskState.lastQueueRefreshEvent?.id) {
+            await Task.yield()
             transientState.handleQueueRefreshEvent(workspace.taskState.lastQueueRefreshEvent)
         }
     }

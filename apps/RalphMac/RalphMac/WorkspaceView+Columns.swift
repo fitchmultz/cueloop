@@ -140,7 +140,7 @@ extension WorkspaceView {
         HStack {
             Spacer()
 
-            Picker("View Mode", selection: $navigation.taskViewMode) {
+            Picker("View Mode", selection: taskViewModeBinding) {
                 ForEach(TaskViewMode.allCases, id: \.self) { mode in
                     Label(mode.rawValue, systemImage: mode.icon)
                         .tag(mode)
@@ -153,6 +153,19 @@ extension WorkspaceView {
             .accessibilityLabel("Task view mode")
             .accessibilityIdentifier("task-view-mode-picker")
         }
+    }
+
+    private var taskViewModeBinding: Binding<TaskViewMode> {
+        Binding(
+            get: { navigation.taskViewMode },
+            set: { mode in
+                guard navigation.taskViewMode != mode else { return }
+                Task { @MainActor in
+                    await Task.yield()
+                    navigation.setTaskViewMode(mode)
+                }
+            }
+        )
     }
 
     @ViewBuilder

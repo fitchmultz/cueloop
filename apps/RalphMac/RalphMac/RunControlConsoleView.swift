@@ -112,9 +112,11 @@ struct RunControlConsoleView: View {
             HStack {
                 if workspace.runState.isExecutionActive {
                     HStack(spacing: 6) {
-                        ProgressView()
-                            .scaleEffect(0.6)
-                            .controlSize(.small)
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .symbolEffect(.rotate, isActive: true)
+                            .frame(width: 14, height: 14)
                         Text(workspace.runState.isPreparingRun ? "Preparing..." : "Running...")
                             .font(.caption)
                             .foregroundStyle(.secondary)
