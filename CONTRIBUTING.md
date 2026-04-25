@@ -101,7 +101,7 @@ check-env-safety → check-backup-artifacts
 Fast gate (`ci-fast`) pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format-check → type-check → lint → test
+check-env-safety → check-backup-artifacts → deps → format-check → lint → test
 ```
 
 Full Rust release gate (`ci`) adds:
@@ -113,7 +113,7 @@ build → generate → install-verify
 Canonical full `make ci` pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format-check → type-check → lint → test → build → generate → install-verify
+check-env-safety → check-backup-artifacts → deps → format-check → lint → test → build → generate → install-verify
 ```
 
 Run required gate with:

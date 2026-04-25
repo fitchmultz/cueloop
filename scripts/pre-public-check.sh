@@ -247,23 +247,25 @@ check_worktree_clean() {
     return 1
 }
 
-check_secret_patterns() {
+check_public_readiness_content() {
+    if [ "$SKIP_SECRETS" -eq 1 ] && [ "$SKIP_LINKS" -eq 1 ]; then
+        ralph_log_warn "Skipping public-readiness content scans"
+        return 0
+    fi
+
     if [ "$SKIP_SECRETS" -eq 1 ]; then
         ralph_log_warn "Skipping secret-pattern scan"
-        return 0
+        bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" docs
+        return
     fi
 
-    bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" secrets
-}
-
-check_markdown_links() {
     if [ "$SKIP_LINKS" -eq 1 ]; then
         ralph_log_warn "Skipping markdown link checks"
-        return 0
+        bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" secrets
+        return
     fi
 
-    bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" links
-    bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" session-paths
+    bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" all
 }
 
 run_ci_gate() {
@@ -338,8 +340,7 @@ main() {
     else
         check_source_snapshot_artifacts
     fi
-    check_secret_patterns
-    check_markdown_links
+    check_public_readiness_content
     run_ci_gate
     if [ "$has_git" -eq 1 ]; then
         check_worktree_clean

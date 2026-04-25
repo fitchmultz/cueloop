@@ -48,6 +48,106 @@ fn public_readiness_scan_rejects_missing_repo_root() {
 }
 
 #[test]
+fn public_readiness_scan_all_mode_combines_content_checks() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path().join("repo");
+    let secret_token = ["gh", "p_12345678901234567890"].concat();
+    std::fs::create_dir(&repo_root).expect("create temp repo root");
+    std::fs::write(repo_root.join("README.md"), "[broken](missing.md)\n")
+        .expect("write markdown fixture");
+    std::fs::write(
+        repo_root.join("AGENTS.md"),
+        "session cache: .ralph/cache/session.json\n",
+    )
+    .expect("write session-path fixture");
+    std::fs::write(repo_root.join("notes.txt"), format!("{secret_token}\n"))
+        .expect("write secret fixture");
+
+    let output = Command::new("python3")
+        .arg(public_readiness_scan_python_path())
+        .arg("all")
+        .arg(&repo_root)
+        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .output()
+        .expect("run public-readiness combined scan helper");
+
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "combined public-readiness scan should report all enabled content checks"
+    );
+    assert_output_redacts_secret(&output, &secret_token);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("README.md: missing target -> missing.md")
+            && stdout.contains("AGENTS.md:1: use .ralph/cache/session.jsonc")
+            && stdout.contains("notes.txt:1: github_classic_token: [REDACTED length=24]"),
+        "combined scan should report markdown, session-path, and secret findings\nstdout:\n{}",
+        stdout
+    );
+}
+
+#[test]
+fn public_readiness_scan_docs_mode_skips_secret_scan() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path().join("repo");
+    let secret_token = ["gh", "p_12345678901234567890"].concat();
+    std::fs::create_dir(&repo_root).expect("create temp repo root");
+    std::fs::write(repo_root.join("README.md"), format!("{secret_token}\n"))
+        .expect("write markdown fixture");
+
+    let output = Command::new("python3")
+        .arg(public_readiness_scan_python_path())
+        .arg("docs")
+        .arg(&repo_root)
+        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .output()
+        .expect("run public-readiness docs scan helper");
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "docs mode should combine documentation checks without running the secret scan"
+    );
+    assert_output_redacts_secret(&output, &secret_token);
+}
+
+#[test]
+fn public_readiness_scan_excludes_macos_target_build_artifacts() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path();
+    let secret_token = ["gh", "p_12345678901234567890"].concat();
+
+    for relative_path in [
+        "scripts/lib/public_readiness_scan.sh",
+        "scripts/lib/public_readiness_scan.py",
+        "scripts/lib/release_policy.sh",
+        "scripts/lib/ralph-shell.sh",
+    ] {
+        copy_repo_file(relative_path, repo_root);
+    }
+    write_file(&repo_root.join("README.md"), "ok\n");
+    write_file(
+        &repo_root.join("apps/RalphMac/target/tmp/generated.txt"),
+        &format!("{secret_token}\n"),
+    );
+
+    let output = Command::new("bash")
+        .arg(repo_root.join("scripts/lib/public_readiness_scan.sh"))
+        .arg("secrets")
+        .current_dir(repo_root)
+        .output()
+        .expect("run public-readiness secret scan with macOS target artifact");
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "secret scan should exclude generated macOS target build artifacts"
+    );
+    assert_output_redacts_secret(&output, &secret_token);
+}
+
+#[test]
 fn public_readiness_scan_rejects_markdown_targets_outside_repo() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path().join("repo");

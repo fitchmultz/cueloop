@@ -30,7 +30,10 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
             defer { RalphCoreTestSupport.assertRemoved(workspaceURL) }
             let ralphURL = try WorkspaceTaskCreationTestSupport.prepareWatcherFixture(at: workspaceURL)
 
-            let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
+            let watcher = QueueFileWatcher(
+                workingDirectoryURL: workspaceURL,
+                configuration: Self.fastWatcherConfiguration
+            )
             let notification = expectation(description: "watcher-notification-\(index)")
             notification.assertForOverFulfill = false
             let eventTask = Task {
@@ -51,7 +54,7 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
             ]
             """.write(to: queueURL, atomically: true, encoding: .utf8)
 
-            await fulfillment(of: [notification], timeout: 5.0)
+            await fulfillment(of: [notification], timeout: 1.0)
             eventTask.cancel()
             await watcher.stop()
         }
@@ -63,7 +66,10 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
 
         let ralphURL = try WorkspaceTaskCreationTestSupport.prepareWatcherFixture(at: workspaceURL)
 
-        let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
+        let watcher = QueueFileWatcher(
+            workingDirectoryURL: workspaceURL,
+            configuration: Self.fastWatcherConfiguration
+        )
         let invertedNotification = expectation(description: "watcher-stopped-before-debounce")
         invertedNotification.isInverted = true
         let eventTask = Task {
@@ -88,7 +94,7 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
         await watcher.stop()
         eventTask.cancel()
 
-        await fulfillment(of: [invertedNotification], timeout: 1.0)
+        await fulfillment(of: [invertedNotification], timeout: 0.2)
     }
 
     func test_queueFileWatcher_replaceItemAtQueueFileEmitsNotification() async throws {
@@ -104,7 +110,10 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
             ]
         )
 
-        let watcher = QueueFileWatcher(workingDirectoryURL: workspaceURL)
+        let watcher = QueueFileWatcher(
+            workingDirectoryURL: workspaceURL,
+            configuration: Self.fastWatcherConfiguration
+        )
         let notification = expectation(description: "watcher-replacement-notification")
         let eventTask = Task {
             for await event in watcher.events {
@@ -129,7 +138,7 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
 
         _ = try FileManager.default.replaceItemAt(queueURL, withItemAt: replacementURL)
 
-        await fulfillment(of: [notification], timeout: 5.0)
+        await fulfillment(of: [notification], timeout: 1.0)
         eventTask.cancel()
         await watcher.stop()
     }
@@ -173,4 +182,11 @@ final class QueueFileWatcherTests: RalphCoreTestCase {
         eventTask.cancel()
         await watcher.stop()
     }
+
+    private static let fastWatcherConfiguration = QueueFileWatcher.Configuration(
+        debounceInterval: .milliseconds(10),
+        retryBaseDelay: .milliseconds(10),
+        maxStartAttempts: 2,
+        streamLatency: 0.01
+    )
 }

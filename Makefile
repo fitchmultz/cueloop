@@ -8,6 +8,9 @@ XCODE_DERIVED_DATA_ROOT ?= target/tmp/xcode-deriveddata
 # Pin destination arch to avoid xcodebuild's "first of multiple matching destinations" warning.
 # Override if you intentionally want a different destination.
 XCODE_DESTINATION ?= platform=macOS,arch=$(shell uname -m)
+# Local CI validates the host architecture that XCTest can execute. Release artifact
+# packaging remains responsible for any multi-architecture distribution builds.
+XCODE_ARCHS ?= $(shell uname -m)
 # UI tests: Set to 1 to include UI tests (headed, mouse-interactive), 0 to skip (default for CI)
 RALPH_UI_TESTS ?= 0
 # UI screenshots: opt-in evidence capture for headed macOS UI tests.
@@ -53,6 +56,7 @@ CARGO_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS)
 NEXTEST_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
 CARGO_TEST_THREADS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--test-threads $(RALPH_CI_JOBS),)
 XCODE_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_XCODE_JOBS)),-jobs $(RALPH_XCODE_JOBS),)
+XCODE_ACTIVE_ARCH_FLAGS := ARCHS=$(XCODE_ARCHS) ONLY_ACTIVE_ARCH=YES
 RALPH_CLI_BUILD_JOBS_ARG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
 XCODE_MACOS_BUILD_DERIVED_DATA_PATH := $(if $(filter 1,$(RALPH_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/build)
 XCODE_MACOS_TEST_DERIVED_DATA_PATH := $(if $(filter 1,$(RALPH_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/test)
@@ -114,6 +118,7 @@ help:
 	@echo "Resource knobs (optional):"
 	@echo "  RALPH_CI_JOBS=4     # Example cap for shared workstations (0 = tool default, fastest local iteration)"
 	@echo "  RALPH_XCODE_JOBS=4  # Example cap for shared workstations (0 = xcodebuild default)"
+	@echo "  XCODE_ARCHS=$$(uname -m) # Host-arch Xcode CI/test builds (override only for cross-arch validation)"
 	@echo "  rust-toolchain.toml is respected automatically when rustup is available"
 	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
 	@echo "  RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
@@ -354,14 +359,14 @@ pre-commit: check-env-safety check-backup-artifacts format-check
 # Docs/community-only safety gate when no executable surface changed.
 ci-docs: check-env-safety check-backup-artifacts
 	@echo "→ Docs-only CI gate (no executable surface changed)..."
-	@bash ./scripts/lib/public_readiness_scan.sh links
-	@bash ./scripts/lib/public_readiness_scan.sh session-paths
+	@bash ./scripts/lib/public_readiness_scan.sh docs
 	@echo ""
 	@echo "  ✓ Docs-only CI completed"
 
 # Fast deterministic Rust/CLI gate for routine development and PR-equivalent checks.
-ci-fast: check-env-safety check-backup-artifacts deps format-check type-check lint test
-	@echo "→ Fast CI gate (format-check/type/lint/test)..."
+# Clippy is run with --all-targets/--all-features and type-checks the same Rust surface.
+ci-fast: check-env-safety check-backup-artifacts deps format-check lint test
+	@echo "→ Fast CI gate (format-check/lint/test)..."
 	@echo ""
 	@echo "  ✓ Fast CI completed"
 
@@ -458,6 +463,7 @@ macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
+		$(XCODE_ACTIVE_ARCH_FLAGS) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build
@@ -507,6 +513,7 @@ macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 			-destination '$(XCODE_DESTINATION)' \
 			-derivedDataPath "$$derived_data_path" \
 			$(XCODE_JOBS_FLAG) \
+			$(XCODE_ACTIVE_ARCH_FLAGS) \
 			CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 			SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 			$$skipped_tests \
@@ -534,6 +541,7 @@ macos-ui-build-for-testing: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
+		$(XCODE_ACTIVE_ARCH_FLAGS) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build-for-testing; \
@@ -591,6 +599,7 @@ macos-ui-retest:
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
+		$(XCODE_ACTIVE_ARCH_FLAGS) \
 		"$${result_bundle_args[@]}" \
 		"$${test_scope_args[@]}" \
 		test-without-building; \
@@ -682,6 +691,7 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
+		$(XCODE_ACTIVE_ARCH_FLAGS) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
@@ -699,6 +709,7 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
+		$(XCODE_ACTIVE_ARCH_FLAGS) \
 		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
 		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
 		test-without-building; \
@@ -711,15 +722,60 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 macos-ci: macos-preflight
 	@shared_derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ship"; \
 	keep_derived_data="$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}"; \
+	run_dir="$$(mktemp -d "$${TMPDIR:-/tmp}/ralph-macos-ci.XXXXXX")"; \
+	rust_log="$$run_dir/rust-ci.log"; \
+	macos_log="$$run_dir/macos-validation.log"; \
+	rust_pid=""; \
+	macos_pid=""; \
 	cleanup() { \
+		status="$$?"; \
+		trap - EXIT INT TERM; \
+		if [ "$$status" -ne 0 ]; then \
+			for child_pid in $$rust_pid $$macos_pid; do \
+				if [ -n "$$child_pid" ] && kill -0 "$$child_pid" 2>/dev/null; then \
+					kill "$$child_pid" 2>/dev/null || true; \
+				fi; \
+			done; \
+			for child_pid in $$rust_pid $$macos_pid; do \
+				if [ -n "$$child_pid" ]; then wait "$$child_pid" 2>/dev/null || true; fi; \
+			done; \
+		fi; \
 		if [ "$$keep_derived_data" != "1" ]; then rm -rf "$$shared_derived_data_path" 2>/dev/null || true; fi; \
+		rm -rf "$$run_dir" 2>/dev/null || true; \
+		exit "$$status"; \
 	}; \
 	trap cleanup EXIT INT TERM; \
 	if [ "$$keep_derived_data" != "1" ]; then rm -rf "$$shared_derived_data_path" 2>/dev/null || true; fi; \
-	$(MAKE) --no-print-directory ci; \
-	$(MAKE) --no-print-directory macos-build macos-test macos-test-contracts \
+	echo "→ macOS ship gate (prebuilding shared release CLI stamp)..."; \
+	$(MAKE) --no-print-directory build; \
+	echo "→ macOS ship gate (running Rust CI and macOS validation lanes concurrently)..."; \
+	( $(MAKE) --no-print-directory ci ) >"$$rust_log" 2>&1 & \
+	rust_pid="$$!"; \
+	( $(MAKE) --no-print-directory macos-build macos-test macos-test-contracts \
 		RALPH_XCODE_REUSE_SHIP_DERIVED_DATA=1 \
-		RALPH_XCODE_KEEP_DERIVED_DATA=1; \
+		RALPH_XCODE_KEEP_DERIVED_DATA=1 ) >"$$macos_log" 2>&1 & \
+	macos_pid="$$!"; \
+	set +e; \
+	wait "$$rust_pid"; \
+	rust_status="$$?"; \
+	wait "$$macos_pid"; \
+	macos_status="$$?"; \
+	set -e; \
+	echo ""; \
+	echo "== Rust CI lane output =="; \
+	cat "$$rust_log"; \
+	echo "== End Rust CI lane output =="; \
+	echo ""; \
+	echo "== macOS validation lane output =="; \
+	cat "$$macos_log"; \
+	echo "== End macOS validation lane output =="; \
+	if [ "$$rust_status" -ne 0 ] || [ "$$macos_status" -ne 0 ]; then \
+		echo ""; \
+		echo "macos-ci: lane failure summary:" >&2; \
+		if [ "$$rust_status" -ne 0 ]; then echo "  ✗ Rust CI lane failed with exit $$rust_status" >&2; fi; \
+		if [ "$$macos_status" -ne 0 ]; then echo "  ✗ macOS validation lane failed with exit $$macos_status" >&2; fi; \
+		exit 1; \
+	fi; \
 	echo "→ macOS ship gate (Rust CI + macOS app build+test + deterministic contract smoke)..."; \
 	echo "  ℹ Interactive XCTest UI automation remains excluded from macos-ci (use make macos-test-ui or make macos-test-window-shortcuts when idle)."; \
 	echo "  ✓ macOS CI completed"

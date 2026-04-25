@@ -12,6 +12,8 @@
 # - scripts/lib/public_readiness_scan.sh links
 # - scripts/lib/public_readiness_scan.sh session-paths
 # - scripts/lib/public_readiness_scan.sh secrets
+# - scripts/lib/public_readiness_scan.sh docs
+# - scripts/lib/public_readiness_scan.sh all
 # - scripts/lib/public_readiness_scan.sh --help
 # Invariants/assumptions:
 # - Run from any location; the script resolves the repo root automatically.
@@ -30,7 +32,7 @@ usage() {
 Run a focused public-readiness scan for Ralph.
 
 Usage:
-  scripts/lib/public_readiness_scan.sh <links|secrets|session-paths>
+  scripts/lib/public_readiness_scan.sh <links|secrets|session-paths|docs|all>
   scripts/lib/public_readiness_scan.sh -h
   scripts/lib/public_readiness_scan.sh --help
 
@@ -38,6 +40,8 @@ Examples:
   scripts/lib/public_readiness_scan.sh links
   scripts/lib/public_readiness_scan.sh session-paths
   scripts/lib/public_readiness_scan.sh secrets
+  scripts/lib/public_readiness_scan.sh docs
+  scripts/lib/public_readiness_scan.sh all
 
 Exit codes:
   0  Scan passed
@@ -74,6 +78,16 @@ run_scan() {
             python3 "$scan_py_path" secrets "$repo_root"
             ralph_log_success "No high-confidence secret patterns found"
             ;;
+        docs)
+            ralph_log_info "Checking repo-wide working-tree markdown links and documented session-cache paths"
+            python3 "$scan_py_path" docs "$repo_root"
+            ralph_log_success "Markdown links and session-cache path references look valid"
+            ;;
+        all)
+            ralph_log_info "Running combined repo-wide public-readiness content scan"
+            python3 "$scan_py_path" all "$repo_root"
+            ralph_log_success "Public-readiness content scan passed"
+            ;;
         *)
             usage >&2
             exit 2
@@ -82,7 +96,7 @@ run_scan() {
 }
 
 case "${1:-}" in
-    links|secrets|session-paths)
+    links|secrets|session-paths|docs|all)
         if [ "$#" -ne 1 ]; then
             usage >&2
             exit 2

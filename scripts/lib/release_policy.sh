@@ -65,6 +65,7 @@ PUBLIC_SCAN_EXCLUDES=(
     ".ralph/webhooks/"
     ".ralph/workspaces/"
     "apps/RalphMac/build/"
+    "apps/RalphMac/target/"
     ".venv/"
     ".ruff_cache/"
     ".pytest_cache/"
@@ -86,6 +87,7 @@ PUBLIC_LOCAL_ONLY_BASENAME_PREFIXES=(
 PUBLIC_SOURCE_SNAPSHOT_DISALLOWED_PATHS=(
     "target"
     "apps/RalphMac/build"
+    "apps/RalphMac/target"
     ".venv"
     ".ruff_cache"
     ".pytest_cache"
@@ -95,6 +97,7 @@ PUBLIC_SOURCE_SNAPSHOT_DISALLOWED_PATHS=(
 PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
     "target/"
     "apps/RalphMac/build/"
+    "apps/RalphMac/target/"
     ".venv/"
     ".ruff_cache/"
     ".pytest_cache/"
@@ -153,7 +156,16 @@ release_format_path_for_logs() {
 }
 
 release_path_has_control_characters() {
-    python3 -c 'import sys; data = sys.argv[1].encode("utf-8", "surrogateescape"); sys.exit(0 if any(byte < 32 or byte == 127 for byte in data) else 1)' "$1"
+    local path="$1"
+    local LC_ALL=C
+    case "$path" in
+        *[$'\001'-$'\037'$'\177']*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
 }
 
 release_require_safe_publication_path() {

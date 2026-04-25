@@ -70,8 +70,7 @@ Fast Rust/CLI gate is `make ci-fast`:
 - `check-backup-artifacts`
 - `deps`
 - `format-check`
-- `type-check`
-- `lint`
+- `lint` (`cargo clippy --all-targets --all-features`, which also type-checks the Rust surface)
 - `test`
 
 ## Lower-Level Gates

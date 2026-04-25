@@ -425,7 +425,7 @@ The `make ci` target typically includes:
 
 ```makefile
 # Makefile
-ci: check-env-safety check-backup-artifacts deps format-check type-check lint test build generate install-verify
+ci: check-env-safety check-backup-artifacts deps format-check lint test build generate install-verify
 ```
 
 This ensures:

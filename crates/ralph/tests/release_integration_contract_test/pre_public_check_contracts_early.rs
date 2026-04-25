@@ -25,13 +25,17 @@ fn pre_public_check_uses_repo_wide_markdown_discovery() {
     let script = read_repo_file("scripts/pre-public-check.sh");
     let focused_scan_helper = read_repo_file("scripts/lib/public_readiness_scan.sh");
     assert!(
-        script.contains("bash \"$SCRIPT_DIR/lib/public_readiness_scan.sh\" links"),
-        "pre-public check should delegate markdown discovery to the focused repo-wide scan helper"
+        script.contains("bash \"$SCRIPT_DIR/lib/public_readiness_scan.sh\" all"),
+        "pre-public check should delegate default content scanning to the combined repo-wide scan helper"
     );
     assert!(
         focused_scan_helper.contains("public_readiness_scan.py")
             && focused_scan_helper.contains("python3 \"$scan_py_path\" links \"$repo_root\""),
         "focused public-readiness scan helper should drive repo-wide markdown discovery from the working tree"
+    );
+    assert!(
+        focused_scan_helper.contains("python3 \"$scan_py_path\" all \"$repo_root\""),
+        "focused public-readiness scan helper should expose the combined all-content scan mode"
     );
     assert!(
         script.contains("--release-context"),

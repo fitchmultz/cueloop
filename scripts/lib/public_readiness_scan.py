@@ -13,6 +13,8 @@ Usage:
 - python3 scripts/lib/public_readiness_scan.py links /path/to/repo
 - python3 scripts/lib/public_readiness_scan.py session-paths /path/to/repo
 - python3 scripts/lib/public_readiness_scan.py secrets /path/to/repo
+- python3 scripts/lib/public_readiness_scan.py docs /path/to/repo
+- python3 scripts/lib/public_readiness_scan.py all /path/to/repo
 Invariants/assumptions:
 - The caller provides the repository root as the final argument.
 - Markdown link targets must resolve within the repository root.
@@ -76,7 +78,7 @@ HIGH_CONFIDENCE_SECRET_PATTERNS = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(add_help=True)
-    parser.add_argument("mode", choices=("links", "secrets", "session-paths"))
+    parser.add_argument("mode", choices=("links", "secrets", "session-paths", "docs", "all"))
     parser.add_argument("repo_root")
     return parser.parse_args()
 
@@ -201,80 +203,136 @@ def scans_session_path_contract(rel_path: str, path: Path) -> bool:
     return path.suffix == ".md" or rel_path == "AGENTS.md" or rel_path.endswith("/AGENTS.md")
 
 
-def scan_links(repo_root: Path, excludes: tuple[str, ...]) -> int:
-    missing: list[str] = []
-    for path in iter_repo_files(repo_root, excludes):
-        if path.suffix != ".md":
+def collect_link_problems(path: Path, repo_root: Path, text: str) -> list[str]:
+    problems: list[str] = []
+    source_path = path.resolve() if path.is_symlink() else path
+    rel_markdown_path = path.relative_to(repo_root).as_posix()
+    for raw_target in MARKDOWN_LINK_RE.findall(text):
+        target = raw_target.strip().split()[0].strip("<>")
+        if target.startswith(("http://", "https://", "mailto:", "#")):
             continue
+        if "{{" in target or "}}" in target:
+            continue
+        target = target.split("#", 1)[0].split("?", 1)[0]
+        if not target:
+            continue
+        resolved = (source_path.parent / target).resolve()
+        try:
+            resolved.relative_to(repo_root)
+        except ValueError:
+            problems.append(f"{rel_markdown_path}: target escapes repo root -> {raw_target}")
+            continue
+        if not resolved.exists():
+            problems.append(f"{rel_markdown_path}: missing target -> {raw_target}")
+    return problems
+
+
+def collect_session_path_problems(rel_path: str, text: str) -> list[str]:
+    problems: list[str] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if STALE_SESSION_CACHE_PATH_RE.search(line):
+            problems.append(f"{rel_path}:{line_number}: use .ralph/cache/session.jsonc")
+    return problems
+
+
+def collect_secret_problems(rel_path: str, text: str) -> list[str]:
+    problems: list[str] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        for name, pattern in HIGH_CONFIDENCE_SECRET_PATTERNS.items():
+            match = pattern.search(line)
+            if not match:
+                continue
+            if allowlisted_secret(rel_path, line):
+                continue
+            finding = render_secret_finding(name, match.group(0))
+            problems.append(f"{rel_path}:{line_number}: {finding}")
+    return problems
+
+
+def scan_repo(
+    repo_root: Path,
+    excludes: tuple[str, ...],
+    *,
+    include_links: bool,
+    include_session_paths: bool,
+    include_secrets: bool,
+) -> int:
+    problems: list[str] = []
+    for path in iter_repo_files(repo_root, excludes):
+        rel_path = path.relative_to(repo_root).as_posix()
+        should_scan_links = include_links and path.suffix == ".md"
+        should_scan_session_paths = include_session_paths and scans_session_path_contract(
+            rel_path, path
+        )
+        should_scan_secrets = include_secrets
+        if not (should_scan_links or should_scan_session_paths or should_scan_secrets):
+            continue
+
         text = read_text(path, repo_root, excludes)
         if text is None:
             continue
-        source_path = path.resolve() if path.is_symlink() else path
-        for raw_target in MARKDOWN_LINK_RE.findall(text):
-            target = raw_target.strip().split()[0].strip("<>")
-            if target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            if "{{" in target or "}}" in target:
-                continue
-            target = target.split("#", 1)[0].split("?", 1)[0]
-            if not target:
-                continue
-            resolved = (source_path.parent / target).resolve()
-            rel_markdown_path = path.relative_to(repo_root).as_posix()
-            try:
-                resolved.relative_to(repo_root)
-            except ValueError:
-                missing.append(f"{rel_markdown_path}: target escapes repo root -> {raw_target}")
-                continue
-            if not resolved.exists():
-                missing.append(f"{rel_markdown_path}: missing target -> {raw_target}")
 
-    if missing:
-        print("\n".join(missing))
+        if should_scan_links:
+            problems.extend(collect_link_problems(path, repo_root, text))
+        if should_scan_session_paths:
+            problems.extend(collect_session_path_problems(rel_path, text))
+        if should_scan_secrets:
+            problems.extend(collect_secret_problems(rel_path, text))
+
+    if problems:
+        print("\n".join(problems))
         return 1
     return 0
+
+
+def scan_links(repo_root: Path, excludes: tuple[str, ...]) -> int:
+    return scan_repo(
+        repo_root,
+        excludes,
+        include_links=True,
+        include_session_paths=False,
+        include_secrets=False,
+    )
 
 
 def scan_session_paths(repo_root: Path, excludes: tuple[str, ...]) -> int:
-    problems: list[str] = []
-    for path in iter_repo_files(repo_root, excludes):
-        rel_path = path.relative_to(repo_root).as_posix()
-        if not scans_session_path_contract(rel_path, path):
-            continue
-        text = read_text(path, repo_root, excludes)
-        if text is None:
-            continue
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            if STALE_SESSION_CACHE_PATH_RE.search(line):
-                problems.append(f"{rel_path}:{line_number}: use .ralph/cache/session.jsonc")
-
-    if problems:
-        print("\n".join(problems))
-        return 1
-    return 0
+    return scan_repo(
+        repo_root,
+        excludes,
+        include_links=False,
+        include_session_paths=True,
+        include_secrets=False,
+    )
 
 
 def scan_secrets(repo_root: Path, excludes: tuple[str, ...]) -> int:
-    problems: list[str] = []
-    for path in iter_repo_files(repo_root, excludes):
-        text = read_text(path, repo_root, excludes)
-        if text is None:
-            continue
-        rel_path = path.relative_to(repo_root).as_posix()
-        for line_number, line in enumerate(text.splitlines(), start=1):
-            for name, pattern in HIGH_CONFIDENCE_SECRET_PATTERNS.items():
-                match = pattern.search(line)
-                if not match:
-                    continue
-                if allowlisted_secret(rel_path, line):
-                    continue
-                finding = render_secret_finding(name, match.group(0))
-                problems.append(f"{rel_path}:{line_number}: {finding}")
+    return scan_repo(
+        repo_root,
+        excludes,
+        include_links=False,
+        include_session_paths=False,
+        include_secrets=True,
+    )
 
-    if problems:
-        print("\n".join(problems))
-        return 1
-    return 0
+
+def scan_docs(repo_root: Path, excludes: tuple[str, ...]) -> int:
+    return scan_repo(
+        repo_root,
+        excludes,
+        include_links=True,
+        include_session_paths=True,
+        include_secrets=False,
+    )
+
+
+def scan_all(repo_root: Path, excludes: tuple[str, ...]) -> int:
+    return scan_repo(
+        repo_root,
+        excludes,
+        include_links=True,
+        include_session_paths=True,
+        include_secrets=True,
+    )
 
 
 def main() -> int:
@@ -299,6 +357,10 @@ def main() -> int:
         return scan_session_paths(repo_root, excludes)
     if args.mode == "secrets":
         return scan_secrets(repo_root, excludes)
+    if args.mode == "docs":
+        return scan_docs(repo_root, excludes)
+    if args.mode == "all":
+        return scan_all(repo_root, excludes)
     return 2
 
 
