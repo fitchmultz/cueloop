@@ -36,7 +36,6 @@
 		3DC376DB93E9E2696CDF5493 /* DependencyGraphAccessibilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA48F75E84AD1531DC4D4BB9 /* DependencyGraphAccessibilityView.swift */; };
 		42E952AA6330EAF1A5FCB51B /* RalphMacApp+Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B2A6FA188F5AC6CE2F53870 /* RalphMacApp+Support.swift */; };
 		4531CFF0D6FF4741BB54C467 /* RalphModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34FD8AC4252040E88FB002F9 /* RalphModelsTests.swift */; };
-		E1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift */; };
 		48E9CABEFF6345C7A6ABA4F9 /* RalphMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BA912C259042DDA03E653F /* RalphMacApp.swift */; };
 		49E9CACFFF6345C7A6ABA4FA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5CB923D360143EED14F7540 /* AppDelegate.swift */; };
 		4A8D2E1F8B3C4D56A7E8F901 /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B651F8A746C4387B1F9D42A /* Workspace.swift */; };
@@ -99,6 +98,9 @@
 		9A3B7C4E5D6E7F8A901B2C3D /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718G9H0I1J2 /* TaskListView.swift */; };
 		9B4C5D6E7F8A901B2C3D4E5F /* BulkActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718G9H0I1J2K3 /* BulkActionsView.swift */; };
 		A1234567890ABCDEF1234567 /* QueueFileWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1234567890ABCDEF1234567 /* QueueFileWatcher.swift */; };
+		A1B2C3D4E5F60718293A4B5D /* MachineContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* MachineContract.swift */; };
+		A1B2C3D4E5F60718293A4B5F /* MachineContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5E /* MachineContractTests.swift */; };
+		A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */; };
 		A1B2C3D4E5F6789012345678 /* ANSIParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F678901234567890 /* ANSIParserTests.swift */; };
 		A216D62658610CB568691F35 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDE5AEE63017EB9E3B311E0 /* SettingsService.swift */; };
 		A216D62658610CB568691F36 /* PreviewWorkspaceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDE5AEE63017EB9E3B311E1 /* PreviewWorkspaceSupport.swift */; };
@@ -135,6 +137,11 @@
 		AD262F5CE6FC50AECE385373 /* RunControlConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC5B1F258352B5B5DC9FFF77 /* RunControlConsoleView.swift */; };
 		ASETTINGSINFRA0012345678900 /* ASettingsInfra.swift in Sources */ = {isa = PBXBuildFile; fileRef = ASETTINGSINFRAREF0012345678900 /* ASettingsInfra.swift */; };
 		B21C5D6A955D6896460637B7 /* RetryHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF00ECB3884C6A991E9ED664 /* RetryHelper.swift */; };
+		B3F1A2C4D5E6789012345672 /* WorkspaceRunNextInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */; };
+		B3F1A2C4D5E6789012345674 /* WorkspaceRunStateResumeBlockingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */; };
+		B3F1A2C4D5E6789012345676 /* WorkspaceRunCancelAndLoopTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */; };
+		B3F1A2C4D5E6789012345678 /* WorkspaceParallelRunControlTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */; };
+		B3F1A2C4D5E678901234567A /* WorkspaceRunControlWatcherHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */; };
 		B46FBE1A725EA09170363A82 /* TaskExecutionOverridesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C8497F9C98D1E54DE2DBF0 /* TaskExecutionOverridesSection.swift */; };
 		B706290CB59B2E73527D6401 /* WorkspaceView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D8A8D051707C004689A7D9 /* WorkspaceView+Actions.swift */; };
 		B9B5C4321751543C95899B9C /* RalphMacUILaunchAndTaskFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A3280F3774A438F9AF9EA5 /* RalphMacUILaunchAndTaskFlowTests.swift */; };
@@ -200,6 +207,7 @@
 		DD44EE55FF6677889900AA11BB22CC33 /* StringArrayEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC33DD44EE55FF6677889900AA11BB22 /* StringArrayEditor.swift */; };
 		DDEEFF001122334455AABBCC /* DependencyGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDDEEFF001122334455AABB /* DependencyGraphView.swift */; };
 		E0A06224A60DB52B85109E99 /* WorkingDirectoryHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3298F69D10A0636C5327AF65 /* WorkingDirectoryHeader.swift */; };
+		E1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift */; };
 		E1FE4FE54CB8402D84A8607625CC6BB5 /* TaskCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D09515AC14F94350B766E15468824B53 /* TaskCreationView.swift */; };
 		E1FE4FE54CB8402D84A8607625CC6BB6 /* TaskDecomposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D09515AC14F94350B766E15468824B54 /* TaskDecomposeView.swift */; };
 		E244CD8201DECCF668192D1C /* TaskDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE3542090D89C223E29D5DD5 /* TaskDetailSections.swift */; };
@@ -218,11 +226,6 @@
 		F0991C52FCDBA422BDD86604 /* VersionValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29D9B54003005176B3196572 /* VersionValidator.swift */; };
 		F6A75F8963921FE53D465FF3 /* RalphLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86FB79CF874558CF63AAAB3 /* RalphLoggerTests.swift */; };
 		F840487D12000534308C7AE2 /* QuickActionsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB332D2325D439859B8655F /* QuickActionsSection.swift */; };
-		B3F1A2C4D5E6789012345672 /* WorkspaceRunNextInvocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */; };
-		B3F1A2C4D5E6789012345674 /* WorkspaceRunStateResumeBlockingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */; };
-		B3F1A2C4D5E6789012345676 /* WorkspaceRunCancelAndLoopTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */; };
-		B3F1A2C4D5E6789012345678 /* WorkspaceParallelRunControlTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */; };
-		B3F1A2C4D5E678901234567A /* WorkspaceRunControlWatcherHealthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */; };
 		FF6677889900AA11BB22CC33DD44EE55 /* TagEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */; };
 		QD7890123456ABCDEF012345 /* QueueDirectParseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = QF7890123456ABCDEF012345 /* QueueDirectParseTests.swift */; };
 		SETTINGSVIEW0012345678901 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = SETTINGSVIEWREF0012345678901 /* AppSettings.swift */; };
@@ -235,12 +238,9 @@
 		UITESTSBB4455667788990004 /* RalphMacUITestCase+Screenshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990004 /* RalphMacUITestCase+Screenshots.swift */; };
 		UITESTSBB4455667788990005 /* RalphMacUIAppStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = UITESTSFF4455667788990005 /* RalphMacUIAppStateTests.swift */; };
 		WCROUTEBLD1234567890ABCD /* WindowCommandRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = WCROUTEFREF1234567890ABC /* WindowCommandRouting.swift */; };
+		WERBUILD001234567890123 /* WorkspaceErrorRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = WERFILEREF0012345678901 /* WorkspaceErrorRecoveryTests.swift */; };
 		WTCTBUILD001234567890123 /* WorkspaceTaskCreationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = WTCTFILEREF0012345678901 /* WorkspaceTaskCreationTests.swift */; };
 		WTDTBUILD001234567890123 /* WorkspaceTaskDecomposeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = WTDTFILEREF0012345678901 /* WorkspaceTaskDecomposeTests.swift */; };
-		WERBUILD001234567890123 /* WorkspaceErrorRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = WERFILEREF0012345678901 /* WorkspaceErrorRecoveryTests.swift */; };
-A1B2C3D4E5F60718293A4B5D /* MachineContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* MachineContract.swift */; };
-A1B2C3D4E5F60718293A4B5F /* MachineContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5E /* MachineContractTests.swift */; };
-A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -308,7 +308,7 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		0F851B805411C3E305B67FEB /* SettingsSceneRoot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsSceneRoot.swift; sourceTree = "<group>"; };
 		11223344556677889900AABBCCDDEEFF /* TaskRelationshipPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskRelationshipPicker.swift; path = RalphMac/TaskRelationshipPicker.swift; sourceTree = "<group>"; };
 		1122AABBCCDDEEFF99887766 /* ConsoleOutputBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConsoleOutputBuffer.swift; path = RalphCore/ConsoleOutputBuffer.swift; sourceTree = "<group>"; };
-		1144436E84A467CACB42516A /* NavigationViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationViewModel.swift; path = NavigationViewModel.swift; sourceTree = "<group>"; };
+		1144436E84A467CACB42516A /* NavigationViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NavigationViewModel.swift; sourceTree = "<group>"; };
 		123A9B4844CFDE99F3671FCD /* RalphCLIArgumentBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIArgumentBuilder.swift; sourceTree = "<group>"; };
 		13E5C2ED7D03FC4696F7E341 /* WorkspaceRunnerConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunnerConfigurationTests.swift; sourceTree = "<group>"; };
 		16591EC6C1744AC5AF4189A4 /* RalphCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = RalphCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -320,11 +320,6 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		2210239A7D74679BF50C4EC0 /* WorkspaceRunnerController+MachineOutput.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceRunnerController+MachineOutput.swift"; sourceTree = "<group>"; };
 		29D9B54003005176B3196572 /* VersionValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VersionValidator.swift; sourceTree = "<group>"; };
 		2D1F92AF6B0E855CEA96B886 /* WorkspaceView+Lifecycle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceView+Lifecycle.swift"; sourceTree = "<group>"; };
-		B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunNextInvocationTests.swift; sourceTree = "<group>"; };
-		B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunStateResumeBlockingTests.swift; sourceTree = "<group>"; };
-		B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunCancelAndLoopTests.swift; sourceTree = "<group>"; };
-		B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceParallelRunControlTests.swift; sourceTree = "<group>"; };
-		B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunControlWatcherHealthTests.swift; sourceTree = "<group>"; };
 		30412AD055A0A3EA93DF756C /* WorkspaceTaskMutationAgentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTaskMutationAgentTests.swift; sourceTree = "<group>"; };
 		31B301E8A7CC431E930E7539 /* RalphCLIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIClient.swift; sourceTree = "<group>"; };
 		31B301E8A7CC431E930E753A /* RalphCLIClient+Recovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphCLIClient+Recovery.swift"; sourceTree = "<group>"; };
@@ -333,7 +328,6 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		31B301E8A7CC431E930E753D /* RalphCLIHealthChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIHealthChecker.swift; sourceTree = "<group>"; };
 		3298F69D10A0636C5327AF65 /* WorkingDirectoryHeader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkingDirectoryHeader.swift; sourceTree = "<group>"; };
 		34FD8AC4252040E88FB002F9 /* RalphModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphModelsTests.swift; sourceTree = "<group>"; };
-		F1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigModelsTests.swift; sourceTree = "<group>"; };
 		38AF699276C60CB8F9BE71F3 /* RalphMacUIConflictTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUIConflictTests.swift; sourceTree = "<group>"; };
 		3ABCA66572BF4FE381DD0476 /* RalphCoreTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RalphCoreTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B2049E5EB874641A1DFB5CA /* QueueFileWatcherRuntime.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QueueFileWatcherRuntime.swift; sourceTree = "<group>"; };
@@ -370,7 +364,7 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		85F21ECB14C15455214EB21E /* ConnectionStatusViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectionStatusViews.swift; sourceTree = "<group>"; };
 		87DB6C6CD191F58338B4C774 /* ErrorRecoveryCategoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorRecoveryCategoryTests.swift; sourceTree = "<group>"; };
 		88A3280F3774A438F9AF9EA5 /* RalphMacUILaunchAndTaskFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUILaunchAndTaskFlowTests.swift; sourceTree = "<group>"; };
-		8B900514A511EC3E3539F2AA /* ElapsedTimeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ElapsedTimeView.swift; path = ElapsedTimeView.swift; sourceTree = "<group>"; };
+		8B900514A511EC3E3539F2AA /* ElapsedTimeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ElapsedTimeView.swift; sourceTree = "<group>"; };
 		8D78AE2B0A8821C361BC7247 /* DependencyGraphCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyGraphCanvasView.swift; sourceTree = "<group>"; };
 		8FDE5AEE63017EB9E3B311E0 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		8FDE5AEE63017EB9E3B311E1 /* PreviewWorkspaceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewWorkspaceSupport.swift; sourceTree = "<group>"; };
@@ -381,6 +375,9 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		9DB332D2325D439859B8655F /* QuickActionsSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickActionsSection.swift; sourceTree = "<group>"; };
 		9F41DB5F428B9C899D2DC3B6 /* WorkspaceManager+Routing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WorkspaceManager+Routing.swift"; sourceTree = "<group>"; };
 		A0C8497F9C98D1E54DE2DBF0 /* TaskExecutionOverridesSection.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TaskExecutionOverridesSection.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* MachineContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineContract.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5E /* MachineContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineContractTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDiagnosticsServiceTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718G9H0I1J2 /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskListView.swift; path = RalphMac/TaskListView.swift; sourceTree = "<group>"; };
 		A24E80C16889B4FDE88205DC /* CrashReporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
 		A3100001B2C3D4E5F6071811 /* SettingsSmokeContractRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSmokeContractRunner.swift; sourceTree = "<group>"; };
@@ -399,7 +396,7 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		AA11BB22CC33DD44EE55FF6677889900 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskDetailView.swift; path = RalphMac/TaskDetailView.swift; sourceTree = "<group>"; };
 		AA48F75E84AD1531DC4D4BB9 /* DependencyGraphAccessibilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyGraphAccessibilityView.swift; sourceTree = "<group>"; };
 		AABBCCDDEEFF001122334455 /* GraphModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphModels.swift; sourceTree = "<group>"; };
-		AC5B1F258352B5B5DC9FFF77 /* RunControlConsoleView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RunControlConsoleView.swift; path = RunControlConsoleView.swift; sourceTree = "<group>"; };
+		AC5B1F258352B5B5DC9FFF77 /* RunControlConsoleView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RunControlConsoleView.swift; sourceTree = "<group>"; };
 		AD3850ED3FCAE584917AB31A /* GraphLayoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphLayoutEngine.swift; sourceTree = "<group>"; };
 		AEB82D9D6CEC927548F7EFF0 /* WorkspaceView+Sheets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceView+Sheets.swift"; sourceTree = "<group>"; };
 		AF00ECB3884C6A991E9ED664 /* RetryHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RetryHelper.swift; sourceTree = "<group>"; };
@@ -410,6 +407,11 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		B2C3D4E5F60718G9H0I1J2K3 /* BulkActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BulkActionsView.swift; path = RalphMac/BulkActionsView.swift; sourceTree = "<group>"; };
 		B2C3D4E5F678901234567890 /* ANSIParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ANSIParserTests.swift; sourceTree = "<group>"; };
 		B371E519DA1D4EB09E67EF01 /* RalphMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RalphMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3F1A2C4D5E6789012345671 /* WorkspaceRunNextInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunNextInvocationTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345673 /* WorkspaceRunStateResumeBlockingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunStateResumeBlockingTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345675 /* WorkspaceRunCancelAndLoopTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunCancelAndLoopTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345677 /* WorkspaceParallelRunControlTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceParallelRunControlTests.swift; sourceTree = "<group>"; };
+		B3F1A2C4D5E6789012345679 /* WorkspaceRunControlWatcherHealthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRunControlWatcherHealthTests.swift; sourceTree = "<group>"; };
 		B457CE53E5E32E8183834647 /* RalphMacUINavigationAndKeyboardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUINavigationAndKeyboardTests.swift; sourceTree = "<group>"; };
 		B4AE32B854B634C360A2F819 /* AppSettings+Appearance.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "AppSettings+Appearance.swift"; sourceTree = "<group>"; };
 		B6D1EEC569C94444A00C7A84 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -497,6 +499,7 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		EE11DD22CC33BB44AA55FF6677889900 /* TaskDetailViewSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskDetailViewSupport.swift; path = RalphMac/TaskDetailViewSupport.swift; sourceTree = "<group>"; };
 		EE5275C6EE52E9D9F39D7F5B /* WorkspaceRunnerController+Execution.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceRunnerController+Execution.swift"; sourceTree = "<group>"; };
 		EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TagEditorView.swift; path = RalphMac/TagEditorView.swift; sourceTree = "<group>"; };
+		F1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigModelsTests.swift; sourceTree = "<group>"; };
 		F3014AC133794F7F8AF0E753 /* RalphModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphModels.swift; sourceTree = "<group>"; };
 		F7044ECE073A4355A364CD631452E561 /* KanbanBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KanbanBoardView.swift; path = RalphMac/KanbanBoardView.swift; sourceTree = "<group>"; };
 		FA8581B13C2B647D8FB89E15 /* WorkspaceView+Columns.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WorkspaceView+Columns.swift"; sourceTree = "<group>"; };
@@ -512,12 +515,9 @@ A1B2C3D4E5F60718293A4B60 /* WorkspaceDiagnosticsServiceTests.swift in Sources */
 		UITESTSFF4455667788990004 /* RalphMacUITestCase+Screenshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RalphMacUITestCase+Screenshots.swift"; sourceTree = "<group>"; };
 		UITESTSFF4455667788990005 /* RalphMacUIAppStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphMacUIAppStateTests.swift; sourceTree = "<group>"; };
 		WCROUTEFREF1234567890ABC /* WindowCommandRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCommandRouting.swift; sourceTree = "<group>"; };
+		WERFILEREF0012345678901 /* WorkspaceErrorRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceErrorRecoveryTests.swift; sourceTree = "<group>"; };
 		WTCTFILEREF0012345678901 /* WorkspaceTaskCreationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTaskCreationTests.swift; sourceTree = "<group>"; };
 		WTDTFILEREF0012345678901 /* WorkspaceTaskDecomposeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceTaskDecomposeTests.swift; sourceTree = "<group>"; };
-		WERFILEREF0012345678901 /* WorkspaceErrorRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceErrorRecoveryTests.swift; sourceTree = "<group>"; };
-A1B2C3D4E5F60718293A4B5C /* MachineContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineContract.swift; sourceTree = "<group>"; };
-A1B2C3D4E5F60718293A4B5E /* MachineContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineContractTests.swift; sourceTree = "<group>"; };
-A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceDiagnosticsServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -631,6 +631,27 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 			path = RalphCore;
 			sourceTree = "<group>";
 		};
+		573823A32F9C5DA700FB0B6F /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				AA11BB22CC33DD44EE55FF6677889900 /* TaskDetailView.swift */,
+				EE11DD22CC33BB44AA55FF6677889900 /* TaskDetailViewSupport.swift */,
+				DD112233445566778899AABB /* TaskConflictResolverView.swift */,
+				CC33DD44EE55FF6677889900AA11BB22 /* StringArrayEditor.swift */,
+				EE55FF6677889900AA11BB22CC33DD44 /* TagEditorView.swift */,
+				11223344556677889900AABBCCDDEEFF /* TaskRelationshipPicker.swift */,
+				A1B2C3D4E5F60718G9H0I1J2 /* TaskListView.swift */,
+				B2C3D4E5F60718G9H0I1J2K3 /* BulkActionsView.swift */,
+				D09515AC14F94350B766E15468824B53 /* TaskCreationView.swift */,
+				F7044ECE073A4355A364CD631452E561 /* KanbanBoardView.swift */,
+				DC080C0014F94BAE85020345FFAAFAF2 /* KanbanCardView.swift */,
+				3CE6C4AFCBD2413B8BF2F723BD308B4D /* KanbanColumnView.swift */,
+				CCDDEEFF001122334455AABB /* DependencyGraphView.swift */,
+				1122AABBCCDDEEFF99887766 /* ConsoleOutputBuffer.swift */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
 		7A3A0175AD6F45B3B27E6283 /* RalphCoreTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -721,6 +742,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				UITESTSGR4456789012345678 /* RalphMacUITests */,
 				2E41E8A437924074BBD351E1 /* Frameworks */,
 				B332EF4AA9D545C698B8C719 /* Products */,
+				573823A32F9C5DA700FB0B6F /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1279,12 +1301,12 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY = YES;
 				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
-				SWIFT_VERSION = 6.3;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -1292,10 +1314,9 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				BUNDLE_LOADER = "";
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.coretests;
 				PRODUCT_NAME = RalphCoreTests;
 				SDKROOT = macosx;
@@ -1320,7 +1341,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.core;
 				PRODUCT_NAME = RalphCore;
 				SDKROOT = macosx;
@@ -1341,11 +1362,12 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = RalphMac/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph;
 				PRODUCT_NAME = RalphMac;
@@ -1369,11 +1391,12 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = RalphMac/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph;
 				PRODUCT_NAME = RalphMac;
@@ -1389,10 +1412,9 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				BUNDLE_LOADER = "";
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGNING_REQUIRED = NO;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.coretests;
 				PRODUCT_NAME = RalphCoreTests;
 				SDKROOT = macosx;
@@ -1411,12 +1433,12 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				CODE_SIGNING_REQUIRED = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_TESTABILITY = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				SDKROOT = macosx;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_EXISTENTIAL_ANY = YES;
 				SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES;
-				SWIFT_VERSION = 6.3;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -1434,7 +1456,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 					"@executable_path/../Frameworks",
 					"@loader_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.core;
 				PRODUCT_NAME = RalphCore;
 				SDKROOT = macosx;
@@ -1451,7 +1473,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 400;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.uitests;
 				PRODUCT_NAME = RalphMacUITests;
@@ -1469,7 +1491,7 @@ A1B2C3D4E5F60718293A4B61 /* WorkspaceDiagnosticsServiceTests.swift */ = {isa = P
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 400;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mitchfultz.ralph.uitests;
 				PRODUCT_NAME = RalphMacUITests;
