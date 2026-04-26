@@ -20,13 +20,9 @@
 //! - `git_output` is the canonical subprocess surface for these operations.
 //! - A missing `origin` remote is a hard error for parallel workspace setup.
 
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, Result, bail};
-use serde_json::{Value, json};
 
 use crate::git::error::git_output;
 
@@ -55,18 +51,6 @@ Fix options:\n\
 
 pub(super) fn ensure_workspace_repo(repo_root: &Path, workspace_path: &Path) -> Result<()> {
     if workspace_path.exists() {
-        // #region agent log
-        emit_debug_log(
-            "H2",
-            "git_ops.rs:ensure_workspace_repo",
-            "workspace path already exists before setup",
-            json!({
-                "workspacePath": workspace_path.display().to_string(),
-                "hasDotGit": workspace_path.join(".git").exists(),
-            }),
-        );
-        // #endregion
-
         if !workspace_path.join(".git").exists() {
             std::fs::remove_dir_all(workspace_path).with_context(|| {
                 format!(
@@ -74,18 +58,6 @@ pub(super) fn ensure_workspace_repo(repo_root: &Path, workspace_path: &Path) -> 
                     workspace_path.display()
                 )
             })?;
-
-            // #region agent log
-            emit_debug_log(
-                "H2",
-                "git_ops.rs:ensure_workspace_repo",
-                "removed workspace without .git and recreating",
-                json!({
-                    "workspacePath": workspace_path.display().to_string(),
-                }),
-            );
-            // #endregion
-
             clone_repo_from_local(repo_root, workspace_path)?;
         }
     } else {
@@ -94,19 +66,6 @@ pub(super) fn ensure_workspace_repo(repo_root: &Path, workspace_path: &Path) -> 
                 format!("create workspace parent directory {}", parent.display())
             })?;
         }
-
-        // #region agent log
-        emit_debug_log(
-            "H4",
-            "git_ops.rs:ensure_workspace_repo",
-            "creating new workspace clone path",
-            json!({
-                "workspacePath": workspace_path.display().to_string(),
-                "repoRoot": repo_root.display().to_string(),
-            }),
-        );
-        // #endregion
-
         clone_repo_from_local(repo_root, workspace_path)?;
     }
 
@@ -122,56 +81,7 @@ pub(super) fn reset_workspace_to_branch(
     retarget_origin(workspace_path, fetch_url, push_url)?;
     log_best_effort_fetch(workspace_path);
 
-    // #region agent log
-    emit_debug_log(
-        "H4",
-        "git_ops.rs:reset_workspace_to_branch",
-        "starting workspace reset to branch",
-        json!({
-            "workspacePath": workspace_path.display().to_string(),
-            "branch": branch,
-        }),
-    );
-    // #endregion
-
-    let pre_sanitize_status = workspace_status_lines(workspace_path);
-    let has_untracked_ralph_config_before = pre_sanitize_status
-        .iter()
-        .any(|line| line.starts_with("?? ") && line.ends_with(".ralph/config.jsonc"));
-
-    // #region agent log
-    emit_debug_log(
-        "H1",
-        "git_ops.rs:reset_workspace_to_branch",
-        "workspace status before pre-checkout sanitize",
-        json!({
-            "workspacePath": workspace_path.display().to_string(),
-            "statusCount": pre_sanitize_status.len(),
-            "statusSample": pre_sanitize_status.iter().take(12).cloned().collect::<Vec<String>>(),
-            "hasUntrackedRalphConfig": has_untracked_ralph_config_before,
-        }),
-    );
-    // #endregion
-
     hard_reset_and_clean_current(workspace_path)?;
-    let pre_checkout_status = workspace_status_lines(workspace_path);
-    let has_untracked_ralph_config_after = pre_checkout_status
-        .iter()
-        .any(|line| line.starts_with("?? ") && line.ends_with(".ralph/config.jsonc"));
-
-    // #region agent log
-    emit_debug_log(
-        "H5",
-        "git_ops.rs:reset_workspace_to_branch",
-        "workspace status after pre-checkout sanitize",
-        json!({
-            "workspacePath": workspace_path.display().to_string(),
-            "statusCount": pre_checkout_status.len(),
-            "statusSample": pre_checkout_status.iter().take(12).cloned().collect::<Vec<String>>(),
-            "hasUntrackedRalphConfig": has_untracked_ralph_config_after,
-        }),
-    );
-    // #endregion
 
     let base_ref = resolve_base_ref(workspace_path, branch)?;
     checkout_branch_from_base(workspace_path, branch, &base_ref)?;
@@ -290,25 +200,6 @@ fn git_ref_exists(repo_root: &Path, full_ref: &str) -> Result<bool> {
 fn checkout_branch_from_base(workspace_path: &Path, branch: &str, base_ref: &str) -> Result<()> {
     let output = git_output(workspace_path, &["checkout", "-B", branch, base_ref])
         .with_context(|| format!("run git checkout -B in {}", workspace_path.display()))?;
-
-    if !output.status.success() {
-        let pre_failure_status = workspace_status_lines(workspace_path);
-        // #region agent log
-        emit_debug_log(
-            "H3",
-            "git_ops.rs:checkout_branch_from_base",
-            "git checkout -B returned non-zero",
-            json!({
-                "workspacePath": workspace_path.display().to_string(),
-                "branch": branch,
-                "baseRef": base_ref,
-                "statusSample": pre_failure_status.iter().take(12).cloned().collect::<Vec<String>>(),
-                "stderr": String::from_utf8_lossy(&output.stderr).trim().to_string(),
-            }),
-        );
-        // #endregion
-    }
-
     ensure_git_success(
         output.status.success(),
         "git checkout -B failed",
@@ -357,50 +248,5 @@ fn ensure_git_success(success: bool, message: &str, stderr: &[u8]) -> Result<()>
         Ok(())
     } else {
         bail!("{message}: {}", String::from_utf8_lossy(stderr).trim())
-    }
-}
-
-fn workspace_status_lines(workspace_path: &Path) -> Vec<String> {
-    let Ok(output) = git_output(
-        workspace_path,
-        &["status", "--porcelain", "--untracked-files=all"],
-    ) else {
-        return Vec::new();
-    };
-
-    if !output.status.success() {
-        return Vec::new();
-    }
-
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| line.to_string())
-        .collect()
-}
-
-fn emit_debug_log(hypothesis_id: &str, location: &str, message: &str, data: Value) {
-    const DEBUG_LOG_PATH: &str = "/Users/mitchfultz/Projects/AI/ralph/.cursor/debug-40ca9f.log";
-    let timestamp = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(duration) => duration.as_millis(),
-        Err(_) => 0,
-    };
-
-    let payload = json!({
-        "sessionId": "40ca9f",
-        "runId": "pre-fix",
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": timestamp,
-    });
-
-    if let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(DEBUG_LOG_PATH)
-    {
-        let _ = writeln!(file, "{payload}");
     }
 }
