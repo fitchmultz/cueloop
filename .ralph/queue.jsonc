@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0025",
-      "status": "todo",
-      "title": "Split `WorkspaceRunCancelAndLoopTests.swift` into focused suites under 800 LOC",
-      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The suite exceeds the soft file-size ceiling, making cancel/loop behavior tests harder to navigate and maintain. Why it matters: broad, monolithic test files reduce failure locality and increase maintenance overhead when evolving run-loop semantics. Minimal fix: split test groups into targeted files (cancel flow, loop completion states, retry/resume interactions) under the existing test hub pattern. Acceptance criteria: suite is decomposed into focused files and all tests continue to pass.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "tests",
-        "ralphmac",
-        "file-size"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift",
-        "apps/RalphMac/RalphCoreTests/"
-      ],
-      "evidence": [
-        "path: AGENTS.md:258-259 :: File Size Limits :: soft limit ~800 LOC",
-        "workflow: python3 line-count scan :: apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift has 862 LOC",
-        "path: apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift :: combines multiple run-loop/cancel scenarios in one oversized suite"
-      ],
-      "plan": [
-        "Partition scenarios into focused test files aligned to one behavior family per file.",
-        "Keep common fixtures in shared test-support helpers to avoid duplication.",
-        "Preserve test naming and assertions while improving failure locality.",
-        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and confirming parity."
-      ],
-      "notes": [],
-      "request": "scan: maintenance",
-      "created_at": "2026-04-26T16:17:04Z",
-      "updated_at": "2026-04-26T16:17:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0026",
       "status": "todo",
       "title": "Split `RunControlDetailSections+Configuration.swift` under soft size ceiling",

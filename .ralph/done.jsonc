@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
+        "task_kind": "queue_shaping",
         "runner_used": "codex",
-        "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "model_used": "gpt-5.4",
+        "skill": "comprehensive-codebase-audit"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
+        "runner_used": "codex"
       }
     },
     {
@@ -761,8 +761,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
         "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
         "runner_used": "codex"
       }
     },
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     },
     {
@@ -1294,6 +1294,46 @@
       "created_at": "2026-04-26T16:17:04Z",
       "updated_at": "2026-04-26T22:50:06.213056000Z",
       "completed_at": "2026-04-26T22:50:06.213056000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0025",
+      "status": "done",
+      "title": "Split `WorkspaceRunCancelAndLoopTests.swift` into focused suites under 800 LOC",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The suite exceeds the soft file-size ceiling, making cancel/loop behavior tests harder to navigate and maintain. Why it matters: broad, monolithic test files reduce failure locality and increase maintenance overhead when evolving run-loop semantics. Minimal fix: split test groups into targeted files (cancel flow, loop completion states, retry/resume interactions) under the existing test hub pattern. Acceptance criteria: suite is decomposed into focused files and all tests continue to pass.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "tests",
+        "ralphmac",
+        "file-size"
+      ],
+      "scope": [
+        "AGENTS.md",
+        "apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift",
+        "apps/RalphMac/RalphCoreTests/"
+      ],
+      "evidence": [
+        "path: AGENTS.md:258-259 :: File Size Limits :: soft limit ~800 LOC",
+        "workflow: python3 line-count scan :: apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift has 862 LOC",
+        "path: apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift :: combines multiple run-loop/cancel scenarios in one oversized suite"
+      ],
+      "plan": [
+        "Partition scenarios into focused test files aligned to one behavior family per file.",
+        "Keep common fixtures in shared test-support helpers to avoid duplication.",
+        "Preserve test naming and assertions while improving failure locality.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and confirming parity."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T22:58:24.813199000Z",
+      "completed_at": "2026-04-26T22:58:24.813199000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
