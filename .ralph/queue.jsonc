@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0026",
-      "status": "todo",
-      "title": "Split `RunControlDetailSections+Configuration.swift` under soft size ceiling",
-      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). This run-control configuration view file is above the soft size target and blends multiple UI decision paths. Why it matters: configuration UX changes require touching a large mixed-responsibility file, increasing regression risk in run controls. Minimal fix: split into section-specific view components plus shared model/view-state helpers. Acceptance criteria: each new file remains below soft limits and run-control behavior snapshots stay stable.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "ralphmac",
-        "ui",
-        "file-size"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift",
-        "apps/RalphMac/RalphMac/"
-      ],
-      "evidence": [
-        "path: AGENTS.md:258-259 :: File Size Limits :: soft limit ~800 LOC",
-        "workflow: python3 line-count scan :: apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift has 811 LOC",
-        "path: apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift :: large mixed configuration rendering and behavior logic"
-      ],
-      "plan": [
-        "Identify cohesive subviews/state adapters in run-control configuration UI.",
-        "Extract section-specific components and retain a thin composition surface.",
-        "Add/update UI logic tests or snapshot checks around moved sections.",
-        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and confirming unchanged behavior."
-      ],
-      "notes": [],
-      "request": "scan: maintenance",
-      "created_at": "2026-04-26T16:17:04Z",
-      "updated_at": "2026-04-26T16:17:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0027",
       "status": "todo",
       "title": "Add CI guardrail for repository file-size limits",

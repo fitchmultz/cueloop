@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "task_kind": "queue_shaping",
+        "skill": "comprehensive-codebase-audit",
         "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "skill": "comprehensive-codebase-audit"
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -610,8 +610,8 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "runner_used": "codex"
       }
     },
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "runner_used": "codex"
       }
     },
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -956,9 +956,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -1334,6 +1334,46 @@
       "created_at": "2026-04-26T16:17:04Z",
       "updated_at": "2026-04-26T22:58:24.813199000Z",
       "completed_at": "2026-04-26T22:58:24.813199000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0026",
+      "status": "done",
+      "title": "Split `RunControlDetailSections+Configuration.swift` under soft size ceiling",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). This run-control configuration view file is above the soft size target and blends multiple UI decision paths. Why it matters: configuration UX changes require touching a large mixed-responsibility file, increasing regression risk in run controls. Minimal fix: split into section-specific view components plus shared model/view-state helpers. Acceptance criteria: each new file remains below soft limits and run-control behavior snapshots stay stable.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "ralphmac",
+        "ui",
+        "file-size"
+      ],
+      "scope": [
+        "AGENTS.md",
+        "apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift",
+        "apps/RalphMac/RalphMac/"
+      ],
+      "evidence": [
+        "path: AGENTS.md:258-259 :: File Size Limits :: soft limit ~800 LOC",
+        "workflow: python3 line-count scan :: apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift has 811 LOC",
+        "path: apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift :: large mixed configuration rendering and behavior logic"
+      ],
+      "plan": [
+        "Identify cohesive subviews/state adapters in run-control configuration UI.",
+        "Extract section-specific components and retain a thin composition surface.",
+        "Add/update UI logic tests or snapshot checks around moved sections.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and confirming unchanged behavior."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T23:17:52.346648000Z",
+      "completed_at": "2026-04-26T23:17:52.346648000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
