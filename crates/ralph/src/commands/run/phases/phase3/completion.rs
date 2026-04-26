@@ -17,6 +17,8 @@
 //! - Git cleanliness rules differ for done vs rejected tasks exactly as before.
 
 use anyhow::Result;
+use std::io::Write;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::commands::run::supervision;
 use crate::config;
@@ -77,6 +79,52 @@ pub(super) fn finalize_phase3_if_done(
     if !should_finalize {
         return Ok(false);
     }
+
+    let followups_path = queue::default_followups_path(&resolved.repo_root, task_id);
+    let queue_followup_inspection = match queue::load_queue(&resolved.queue_path) {
+        Ok(queue_file) => {
+            let depends_on_count = queue_file
+                .tasks
+                .iter()
+                .filter(|task| task.status == TaskStatus::Todo)
+                .filter(|task| {
+                    task.depends_on
+                        .iter()
+                        .any(|dependency| dependency.trim() == task_id)
+                })
+                .count();
+            let relates_to_count = queue_file
+                .tasks
+                .iter()
+                .filter(|task| task.status == TaskStatus::Todo)
+                .filter(|task| {
+                    task.relates_to
+                        .iter()
+                        .any(|related| related.trim() == task_id)
+                })
+                .count();
+            serde_json::json!({
+                "dependsOnCount": depends_on_count,
+                "relatesToCount": relates_to_count,
+            })
+        }
+        Err(err) => serde_json::json!({
+            "inspectionError": format!("{err:#}"),
+        }),
+    };
+    // #region agent log
+    append_debug_log(
+        "H4",
+        "crates/ralph/src/commands/run/phases/phase3/completion.rs:finalize_phase3_if_done",
+        "phase3 finalization followups inspection",
+        serde_json::json!({
+            "taskId": task_id,
+            "followupsProposalPath": followups_path.display().to_string(),
+            "followupsProposalExists": followups_path.exists(),
+            "queueFollowupInspection": queue_followup_inspection,
+        }),
+    );
+    // #endregion
 
     crate::commands::run::post_run_supervise(
         resolved,
@@ -154,4 +202,28 @@ pub fn ensure_phase3_completion(
         );
     }
     Ok(())
+}
+
+fn append_debug_log(hypothesis_id: &str, location: &str, message: &str, data: serde_json::Value) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(0);
+    let payload = serde_json::json!({
+        "sessionId": "f05fb4",
+        "runId": "pre-fix",
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data,
+        "timestamp": timestamp,
+    });
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/Users/mitchfultz/Projects/AI/ralph/.cursor/debug-f05fb4.log")
+        && let Ok(line) = serde_json::to_string(&payload)
+    {
+        let _ = writeln!(file, "{line}");
+    }
 }
