@@ -50,6 +50,31 @@ pub(super) fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, Stri
     test_support::run_in_dir(dir, args)
 }
 
+pub(super) fn create_fake_runner(dir: &Path, runner: &str, script: &str) -> Result<PathBuf> {
+    test_support::create_fake_runner(dir, runner, script)
+}
+
+pub(super) fn configure_runner(
+    dir: &Path,
+    runner: &str,
+    model: &str,
+    runner_path: Option<&Path>,
+) -> Result<()> {
+    test_support::configure_runner(dir, runner, model, runner_path)
+}
+
+pub(super) fn configure_ci_gate(
+    dir: &Path,
+    command: Option<&str>,
+    enabled: Option<bool>,
+) -> Result<()> {
+    test_support::configure_ci_gate(dir, command, enabled)
+}
+
+pub(super) fn git_add_all_commit(dir: &Path, message: &str) -> Result<()> {
+    test_support::git_add_all_commit(dir, message)
+}
+
 pub(super) fn write_json_file<T: Serialize>(
     dir: &Path,
     name: &str,

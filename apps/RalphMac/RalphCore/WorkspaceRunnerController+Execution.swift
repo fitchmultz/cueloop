@@ -6,7 +6,6 @@
 
  Responsibilities:
  - Schedule workspace run tasks and own subprocess finalization.
- - Resolve next-task selection for app-launched one-shot runs.
  - Request CLI loop stop signals without cancelling the active run immediately.
  - Keep cancellation and repository-retarget cleanup centralized outside the facade file.
 
@@ -273,38 +272,6 @@ extension WorkspaceRunnerController {
         }
         cancelRequested = false
         workspace.resetExecutionState()
-    }
-
-    func resolveNextRunnableTaskID(repositoryContext: Workspace.RepositoryContext) async -> String? {
-        guard let workspace else { return nil }
-        guard let client = workspace.client else { return workspace.nextTask()?.id }
-
-        do {
-            let snapshot = try await workspace.decodeMachineRepositoryJSON(
-                MachineQueueReadDocument.self,
-                client: client,
-                machineArguments: ["queue", "read"],
-                currentDirectoryURL: repositoryContext.workingDirectoryURL,
-                retryConfiguration: .minimal
-            )
-            guard !Task.isCancelled, workspace.isCurrentRepositoryContext(repositoryContext) else {
-                return nil
-            }
-            workspace.updateResolvedPaths(snapshot.paths)
-            return snapshot.nextRunnableTaskID
-        } catch is CancellationError {
-            return nil
-        } catch {
-            RalphLogger.shared.debug(
-                "Failed to resolve runnable task ID: \(error)",
-                category: .workspace
-            )
-        }
-
-        guard workspace.isCurrentRepositoryContext(repositoryContext) else {
-            return nil
-        }
-        return workspace.nextTask()?.id
     }
 
     nonisolated static func isMachineRunCommand(_ arguments: [String]) -> Bool {

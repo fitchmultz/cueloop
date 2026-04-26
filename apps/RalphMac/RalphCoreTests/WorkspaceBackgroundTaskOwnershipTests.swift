@@ -282,20 +282,6 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
 
         let logURL = rootDir.appendingPathComponent("run-retarget.log", isDirectory: false)
         let pidFileURL = rootDir.appendingPathComponent("run-retarget.pid", isDirectory: false)
-        let queueAURL = try WorkspaceRunnerConfigurationTestSupport.writeQueueReadDocument(
-            in: rootDir,
-            name: "queue-a.json",
-            workspaceURL: workspaceAURL,
-            activeTasks: [],
-            nextRunnableTaskID: "RQ-A"
-        )
-        let queueBURL = try WorkspaceRunnerConfigurationTestSupport.writeQueueReadDocument(
-            in: rootDir,
-            name: "queue-b.json",
-            workspaceURL: workspaceBURL,
-            activeTasks: [],
-            nextRunnableTaskID: nil
-        )
         let configAURL = try WorkspaceRunnerConfigurationTestSupport.writeConfigResolveDocument(
             in: rootDir,
             name: "config-a.json",
@@ -318,23 +304,6 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
               cat "\(systemInfoURL.path)"
               exit 0
               ;;
-              *"--no-color machine queue read"*)
-              case "$PWD" in
-                */workspace-a)
-                echo $$ > "\(pidFileURL.path)"
-                trap 'printf "queue-read-canceled\\n" >> "\(logURL.path)"; exit 130' INT TERM
-                printf 'queue-read-started\n' >> "\(logURL.path)"
-                sleep 5
-                printf 'queue-read-finished\n' >> "\(logURL.path)"
-                cat "\(queueAURL.path)"
-                exit 0
-                ;;
-                *)
-                cat "\(queueBURL.path)"
-                exit 0
-                ;;
-              esac
-              ;;
               *"--no-color machine config resolve"*)
               case "$PWD" in
                 */workspace-a)
@@ -348,8 +317,22 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
               esac
               ;;
               *"--no-color machine run one"*)
-              printf 'run-started\n' >> "\(logURL.path)"
-              exit 0
+              case "$PWD" in
+                */workspace-a)
+                echo $$ > "\(pidFileURL.path)"
+                trap 'printf "run-canceled\\n" >> "\(logURL.path)"; exit 130' INT TERM
+                printf 'run-command-started\n' >> "\(logURL.path)"
+                sleep 5
+                printf 'run-command-finished\n' >> "\(logURL.path)"
+                echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed","blocking":null}'
+                exit 0
+                ;;
+                *)
+                printf 'run-started\n' >> "\(logURL.path)"
+                echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed","blocking":null}'
+                exit 0
+                ;;
+              esac
               ;;
             esac
             exit 64
@@ -365,10 +348,10 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
 
         workspace.runNextTask()
 
-        let queueReadStarted = await RalphCoreTestSupport.waitUntil(timeout: .seconds(2)) {
-            (try? String(contentsOf: logURL, encoding: .utf8).contains("queue-read-started")) == true
+        let runCommandStarted = await RalphCoreTestSupport.waitUntil(timeout: .seconds(2)) {
+            (try? String(contentsOf: logURL, encoding: .utf8).contains("run-command-started")) == true
         }
-        XCTAssertTrue(queueReadStarted)
+        XCTAssertTrue(runCommandStarted)
 
         workspace.setWorkingDirectory(workspaceBURL)
 
@@ -391,8 +374,8 @@ final class WorkspaceBackgroundTaskOwnershipTests: RalphCoreTestCase {
         XCTAssertTrue(cancelled)
 
         let log = try String(contentsOf: logURL, encoding: .utf8)
-        XCTAssertTrue(log.contains("queue-read-canceled"))
-        XCTAssertFalse(log.contains("queue-read-finished"))
+        XCTAssertTrue(log.contains("run-canceled"))
+        XCTAssertFalse(log.contains("run-command-finished"))
         XCTAssertFalse(log.contains("run-started"))
         XCTAssertEqual(workspace.identityState.workingDirectoryURL, workspaceBURL)
         XCTAssertTrue(workspace.runState.executionHistory.isEmpty)

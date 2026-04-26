@@ -74,7 +74,6 @@ final class WorkspaceTaskMutationAgentTests: WorkspacePerformanceTestCase {
     XCTAssertTrue(log.contains("\\\"phases\\\":2"))
     XCTAssertTrue(log.contains("\\\"iterations\\\":1"))
     XCTAssertTrue(log.contains("\\\"phase_overrides\\\":{\\\"phase2\\\""))
-    XCTAssertTrue(lines.contains { $0.contains("<--no-color><machine><queue><read>") })
   }
 
   func test_updateTask_multipleFieldChanges_emitSharedEncodedEdits() async throws {

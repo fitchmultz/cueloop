@@ -25,6 +25,8 @@ mod machine_contract_test_parallel;
 mod machine_contract_test_queue;
 #[path = "machine_contract_test/machine_contract_test_recovery.rs"]
 mod machine_contract_test_recovery;
+#[path = "machine_contract_test/machine_contract_test_run.rs"]
+mod machine_contract_test_run;
 #[path = "machine_contract_test/machine_contract_test_support.rs"]
 mod machine_contract_test_support;
 #[path = "machine_contract_test/machine_contract_test_system.rs"]

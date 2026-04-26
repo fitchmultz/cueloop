@@ -22,7 +22,7 @@ import XCTest
 
 @MainActor
 final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
-    func test_runNextTask_exposesPreparingStateDuringMachinePreflight() async throws {
+    func test_runNextTask_entersPreparationWithoutQueueReadOrImplicitTaskID() async throws {
         var workspace: Workspace!
         let fixture = try RalphMockCLITestSupport.makeFixture(
             prefix: "ralph-workspace-run-preparing",
@@ -30,32 +30,21 @@ final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
             seedQueueTasks: []
         )
         defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
-
-        let task = RalphMockCLITestSupport.task(
-            id: "RQ-PREP-1",
-            status: .todo,
-            title: "Preflight task",
-            priority: .medium
-        )
-        let queueReadURL = try RalphMockCLITestSupport.writeJSONDocument(
-            RalphMockCLITestSupport.queueReadDocument(
-                workspaceURL: fixture.workspaceURL,
-                activeTasks: [task],
-                nextRunnableTaskID: task.id
-            ),
-            in: fixture.rootURL,
-            name: "queue-read.json"
-        )
+        let commandLogURL = fixture.rootURL.appendingPathComponent("command-log.txt", isDirectory: false)
 
         let script = """
             #!/bin/sh
-            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "queue" ] && [ "$4" = "read" ]; then
-              sleep 1
-              cat "\(queueReadURL.path)"
-              exit 0
-            fi
+            printf '%s\\n' "$*" >> "\(commandLogURL.path)"
+
+            sleep 1
+
             if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "run" ] && [ "$4" = "one" ]; then
-              echo '{"version":2,"task_id":"RQ-PREP-1","exit_code":0,"outcome":"completed","blocking":null}'
+              shift 4
+              if [ "$#" -ne 1 ] || [ "$1" != "--resume" ]; then
+                echo "unexpected run one args: $*" 1>&2
+                exit 65
+              fi
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed","blocking":null}'
               exit 0
             fi
             echo "unexpected args: $*" 1>&2
@@ -77,12 +66,18 @@ final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
         XCTAssertTrue(workspace.runState.isPreparingRun)
         XCTAssertTrue(workspace.runState.isExecutionActive)
         XCTAssertFalse(workspace.runState.isRunning)
+        XCTAssertNil(workspace.runState.currentTaskID)
 
         let finished = await WorkspacePerformanceTestSupport.waitFor(timeout: 4.0) {
             !workspace.runState.isExecutionActive
         }
         XCTAssertTrue(finished)
         XCTAssertEqual(workspace.runState.lastExitStatus?.code, 0)
+
+        let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)
+        XCTAssertTrue(commandLog.contains("--no-color machine run one --resume"))
+        XCTAssertFalse(commandLog.contains("machine queue read"))
+        XCTAssertFalse(commandLog.contains(" --id "))
     }
 
     func test_cancel_stopsActiveRun_andRecordsCancellation() async throws {

@@ -214,27 +214,22 @@ final class WorkspaceRunnerController {
         guard let workspace, !workspace.isShutDown else { return }
         guard !hasPendingRunWork(for: workspace) else { return }
 
-        scheduleRunTask(preservingConsole: preservingConsole) { [weak self] workspace, repositoryContext in
+        scheduleRunTask(preservingConsole: preservingConsole) { workspace, repositoryContext in
             let requestedTaskID = taskIDOverride?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let selectedTaskID = requestedTaskID.flatMap { $0.isEmpty ? nil : $0 }
-            let resolvedTaskID = if let selectedTaskID {
-                selectedTaskID
-            } else {
-                await self?.resolveNextRunnableTaskID(repositoryContext: repositoryContext)
-            }
+            let explicitTaskID = requestedTaskID.flatMap { $0.isEmpty ? nil : $0 }
 
             guard !Task.isCancelled, workspace.isCurrentRepositoryContext(repositoryContext) else {
                 return nil
             }
 
-            workspace.runState.currentTaskID = resolvedTaskID
+            workspace.runState.currentTaskID = explicitTaskID
 
             var arguments = ["--no-color", "machine", "run", "one", "--resume"]
             if forceDirtyRepo {
                 arguments.append("--force")
             }
-            if let resolvedTaskID {
-                arguments.append(contentsOf: ["--id", resolvedTaskID])
+            if let explicitTaskID {
+                arguments.append(contentsOf: ["--id", explicitTaskID])
             }
             return arguments
         }
