@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "skill": "comprehensive-codebase-audit",
         "runner_used": "codex",
-        "task_kind": "queue_shaping"
+        "skill": "comprehensive-codebase-audit",
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex"
       }
     },
     {
@@ -610,8 +610,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "runner_used": "codex",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex"
       }
     },
@@ -761,9 +761,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -890,9 +890,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
@@ -1174,6 +1174,46 @@
       "created_at": "2026-04-26T16:17:04Z",
       "updated_at": "2026-04-26T18:48:34.643109000Z",
       "completed_at": "2026-04-26T18:48:34.643109000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0022",
+      "status": "done",
+      "title": "Surface diagnostics persistence failures instead of swallowing write errors",
+      "description": "Principles violated: F (fail fast), H (operational hygiene), J (consistency/integrity). Diagnostics writers in app presentation coordinators use `try?` for JSON encoding and file writes, silently dropping failures without telemetry or recovery state updates. Why it matters: contract diagnostics can vanish exactly when needed for investigation, while the UI appears healthy. Minimal fix: replace silent `try?` writes with explicit error handling that logs/records persistence issues and preserves an operator-visible signal. Acceptance criteria: failed diagnostics writes emit structured error telemetry and are test-covered.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "ralphmac",
+        "observability",
+        "fail-fast"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/WorkspaceContractPresentationCoordinator.swift",
+        "apps/RalphMac/RalphMac/SettingsWindowDiagnostics.swift",
+        "apps/RalphMac/RalphCoreTests/"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphMac/WorkspaceContractPresentationCoordinator.swift:160-167 :: persistDiagnosticsIfNeeded :: uses try? encode/createDirectory/write and drops all errors",
+        "path: apps/RalphMac/RalphMac/SettingsWindowDiagnostics.swift:248-255 :: persistDiagnosticsIfNeeded :: uses the same silent try? pattern",
+        "workflow: rg -n \"try\\? data.write|try\\? FileManager.default.createDirectory\" apps/RalphMac/RalphMac --glob '*.swift' :: confirms silent persistence failures on diagnostics paths"
+      ],
+      "plan": [
+        "Refactor diagnostics persistence helpers to return/record explicit errors instead of swallowing failures.",
+        "Wire persistence failures into existing diagnostics or logger channels so operators can act.",
+        "Add focused tests that simulate unwritable destinations and assert recorded error signals.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and checking diagnostics-persistence failure tests."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T19:40:51.783176000Z",
+      "completed_at": "2026-04-26T19:40:51.783176000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
