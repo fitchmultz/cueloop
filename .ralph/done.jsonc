@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "task_kind": "queue_shaping",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -540,8 +540,8 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -610,9 +610,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -760,9 +760,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -891,9 +891,74 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
+      }
+    },
+    {
+      "id": "RQ-0016",
+      "status": "done",
+      "title": "Add scenario-level app parity coverage",
+      "description": "Expand app parity tracking beyond top-level command presence so it catches the actual cross-surface drift found in the audit: loop summaries, stop behavior, custom queue paths, plugin/native controls, and continuation actions. The parity source should describe user-visible scenarios and point to Rust plus RalphMac tests that prove each surface stays aligned.",
+      "priority": "low",
+      "tags": [
+        "app-parity",
+        "ralphmac",
+        "machine-api",
+        "tests",
+        "governance",
+        "run-control"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/app_parity.rs",
+        "crates/ralph/src/cli/tests.rs",
+        "crates/ralph/tests/machine_contract_test/",
+        "apps/RalphMac/RalphCoreTests/",
+        "apps/RalphMac/RalphCore/Workspace+RunnerState.swift",
+        "docs/features/app.md",
+        "docs/machine-contract.md",
+        "docs/decisions.md"
+      ],
+      "evidence": [
+        "`crates/ralph/src/cli/app_parity.rs` currently registers top-level command families with a single freeform `tests` string, and `crates/ralph/src/cli/tests.rs` only enforces that every human root command is classified.",
+        "`docs/machine-contract.md` and `/tmp/ralph-report.md` identify scenario-level drift the coarse registry cannot prove: loop summaries must preserve `no_candidates`/`blocked`/`stalled`/`failed`, Stop After Current must use `ralph machine run stop`, continuation documents must carry actionable `next_steps`, and parallel/custom-path behavior must stay machine-backed.",
+        "`docs/features/app.md` already says execution controls should come from `ralph machine config resolve.execution_controls`, Stop After Current should avoid human `queue stop` parsing, and continuation cards should prefer structured native actions; parity tracking does not currently assert those expectations against Rust and RalphMac tests.",
+        "Existing tests already cover pieces of these flows, including `crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs`, `crates/ralph/tests/machine_contract_test/machine_contract_test_parallel.rs`, `apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift`, `WorkspaceParallelRunControlTests.swift`, `WorkspaceRunStateResumeBlockingTests.swift`, `WorkspaceDiagnosticsServiceTests.swift`, and `MachineContractTests.swift`, but the parity source does not point to them scenario-by-scenario."
+      ],
+      "plan": [
+        "Replace the command-family-only registry with a scenario-level parity source that models the user-visible cases called out in the audit: empty loop queue, blocked loop queue, loop runner failure after `run_started`, Stop After Current, custom queue-path workspace load, plugin runner/native override visibility, configured parallel workers above the current menu default, and continuation next-step actions.",
+        "Make the parity data point to concrete proof surfaces instead of a single generic test label. Each scenario should name the authoritative machine/app expectation plus the Rust and RalphMac tests that cover it, and the parity checks should fail loudly when a declared proof file/test anchor is missing or when new scenarios are added without coverage.",
+        "Update parity output and docs so operators can see scenario coverage and gaps without mistaking GitHub Actions or Advanced Runner access for parity completion. Keep `docs/machine-contract.md` as the machine boundary source of truth, `docs/features/app.md` as the user-facing app parity guide, and record any governance change in `docs/decisions.md`.",
+        "Add or extend Rust tests around machine loop summaries / stop / parallel-status and RalphMac tests around run-state reduction, continuation action mapping, custom queue-path diagnostics, and execution-control visibility until every scenario in the parity source has named coverage on both surfaces.",
+        "During Phase 2, run targeted Rust and RalphMac tests first, then `make agent-ci` if implementation changes any code or docs outside the plan/queue refresh."
+      ],
+      "notes": [
+        "The planning source of truth for scenario selection is the cross-surface audit at `/tmp/ralph-report.md`, but implementation should prefer repo evidence over report prose whenever they diverge.",
+        "This task is about parity governance and proof wiring, not about treating GitHub Actions as canonical CI.",
+        "Phase 3 review found and fixed a stale RalphMac proof anchor in the scenario parity registry.",
+        "Added a parity regression test that verifies every Rust and RalphMac proof anchor resolves to a real source-backed test symbol.",
+        "Validated with cargo test app_parity_registry and make agent-ci."
+      ],
+      "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
+      "created_at": "2026-04-26T00:04:48Z",
+      "updated_at": "2026-04-26T07:40:50.276015000Z",
+      "completed_at": "2026-04-26T07:40:50.276015000Z",
+      "started_at": "2026-04-26T07:12:44.230416000Z",
+      "depends_on": [
+        "RQ-0008",
+        "RQ-0011",
+        "RQ-0012",
+        "RQ-0013",
+        "RQ-0014"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
         "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     }
   ]

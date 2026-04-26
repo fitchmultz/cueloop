@@ -110,6 +110,10 @@ The app is a thin client that shells out to the `ralph` binary via `RalphCLIClie
 Practical implications:
 - Native workflows should use versioned `ralph machine ...` JSON contracts,
   not human CLI text or older app-targeted CLI JSON surfaces.
+- Scenario-level parity coverage lives in
+  `crates/ralph/src/cli/app_parity.rs`; every user-visible parity claim should
+  point to explicit Rust and RalphMac proof anchors instead of broad command
+  family labels alone.
 - Task override and Run Control execution affordances should come from
   `ralph machine config resolve.execution_controls`, not hardcoded native menus.
 - Decomposition preview/write flows should stay wired to

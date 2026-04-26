@@ -184,6 +184,10 @@ Example loop summary for an idle queue:
 
 Stop After Current is a machine-contract workflow under `ralph machine run stop`, not a human `ralph queue stop` parsing path.
 
+The scenario-level app parity registry in `crates/ralph/src/cli/app_parity.rs`
+should reference this contract through explicit Rust and RalphMac proof anchors
+whenever Stop After Current behavior changes.
+
 The success document includes:
 - `dry_run`
 - `action` (`would_create`, `created`, `already_present`)
@@ -261,6 +265,9 @@ Parallel status now returns a continuation-oriented document instead of a raw st
 - raw `status` payload with the persisted worker snapshot
 
 When present, the document-level `blocking` mirrors `continuation.blocking` so automation can consume the canonical operator-state field directly while still inspecting worker details from `status`.
+
+Scenario-level app parity entries should treat these continuation `next_steps`
+as the canonical input for native action mapping and copy-only fallbacks.
 
 ### `machine doctor report` (`version: 2`)
 

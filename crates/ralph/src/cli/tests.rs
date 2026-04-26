@@ -21,10 +21,32 @@
 //! - Removed flags/subcommands must remain rejected.
 
 use super::{Cli, Command};
-use crate::cli::app_parity::unclassified_human_cli_commands;
+use crate::cli::app_parity::{
+    APP_PARITY_SCENARIO_REGISTRY, app_parity_scenario_coverage_issues, app_parity_scenario_report,
+    unclassified_human_cli_commands,
+};
 use crate::cli::{machine, queue, run, task};
 use clap::Parser;
 use clap::error::ErrorKind;
+use std::path::{Path, PathBuf};
+
+fn assert_proof_anchor_exists(anchor: &str) {
+    let (relative_path, symbol) = anchor
+        .rsplit_once("::")
+        .unwrap_or_else(|| panic!("proof anchor must include a path and symbol: {anchor}"));
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let source_path: PathBuf = repo_root.join(relative_path);
+    assert!(
+        source_path.is_file(),
+        "proof anchor path does not exist: {anchor}"
+    );
+    let source = std::fs::read_to_string(&source_path)
+        .unwrap_or_else(|err| panic!("failed to read proof anchor source {anchor}: {err}"));
+    assert!(
+        source.contains(symbol),
+        "proof anchor symbol does not exist in source: {anchor}"
+    );
+}
 
 #[test]
 fn app_parity_registry_classifies_every_human_cli_root_command() {
@@ -33,6 +55,47 @@ fn app_parity_registry_classifies_every_human_cli_root_command() {
         missing.is_empty(),
         "new human-facing CLI commands need RalphMac parity registry entries: {missing:?}"
     );
+}
+
+#[test]
+fn app_parity_registry_tracks_required_scenarios_with_proof() {
+    let required = [
+        "run_loop_empty_queue_summary",
+        "run_loop_blocked_queue_summary",
+        "run_loop_failure_after_run_started",
+        "run_stop_after_current_machine_contract",
+        "workspace_custom_queue_path_resolution",
+        "execution_controls_plugin_runner_visibility",
+        "execution_controls_parallel_workers_above_menu_default",
+        "continuation_next_steps_native_actions",
+    ];
+
+    for scenario in required {
+        assert!(
+            APP_PARITY_SCENARIO_REGISTRY
+                .iter()
+                .any(|entry| entry.scenario == scenario),
+            "required app parity scenario is missing: {scenario}"
+        );
+    }
+}
+
+#[test]
+fn app_parity_registry_requires_contract_and_test_anchors() {
+    let issues = app_parity_scenario_coverage_issues();
+    assert!(issues.is_empty(), "{}", app_parity_scenario_report());
+}
+
+#[test]
+fn app_parity_registry_proof_anchors_point_to_real_tests() {
+    for entry in APP_PARITY_SCENARIO_REGISTRY {
+        for anchor in entry.rust_tests {
+            assert_proof_anchor_exists(anchor);
+        }
+        for anchor in entry.app_tests {
+            assert_proof_anchor_exists(anchor);
+        }
+    }
 }
 
 #[test]
