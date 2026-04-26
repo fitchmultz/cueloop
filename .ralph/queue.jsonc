@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0024",
-      "status": "todo",
-      "title": "Split `Workspace+RunnerState.swift` below hard 1,000 LOC limit",
-      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The file exceeds the repository hard file-size limit, increasing coupling and making run-state changes risky across unrelated concerns. Why it matters: one-file edits now mix multiple state-management responsibilities, raising merge conflict and regression risk. Minimal fix: split by bounded concerns (console buffering/render cadence, operator-state synthesis, parallel status, run metadata) with a thin facade. Acceptance criteria: no file remains above hard limit and targeted runner-state tests still pass.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "ralphmac",
-        "architecture",
-        "file-size"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "apps/RalphMac/RalphCore/Workspace+RunnerState.swift",
-        "apps/RalphMac/RalphCoreTests/"
-      ],
-      "evidence": [
-        "path: AGENTS.md:257-260 :: File Size Limits :: hard limit is 1,000 LOC (must split)",
-        "workflow: python3 line-count scan :: apps/RalphMac/RalphCore/Workspace+RunnerState.swift has 1072 LOC",
-        "path: apps/RalphMac/RalphCore/Workspace+RunnerState.swift :: mixed run-control/operator/console responsibilities concentrated in one file"
-      ],
-      "plan": [
-        "Identify cohesive runner-state subdomains and design a facade + companion-file split plan.",
-        "Move logic into focused files while preserving public API behavior for workspace state mutations.",
-        "Backfill or adjust tests around moved behaviors to guard refactor regressions.",
-        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and confirming file drops below 1,000 LOC."
-      ],
-      "notes": [],
-      "request": "scan: maintenance",
-      "created_at": "2026-04-26T16:17:04Z",
-      "updated_at": "2026-04-26T16:17:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0025",
       "status": "todo",
       "title": "Split `WorkspaceRunCancelAndLoopTests.swift` into focused suites under 800 LOC",
