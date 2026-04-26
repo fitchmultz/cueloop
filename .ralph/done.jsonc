@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "task_kind": "queue_shaping",
-        "model_used": "gpt-5.4",
         "skill": "comprehensive-codebase-audit",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -830,8 +830,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -955,9 +955,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex"
       }
     },
@@ -1087,6 +1087,51 @@
       "created_at": "2026-04-26T16:17:04Z",
       "updated_at": "2026-04-26T18:23:56.365885000Z",
       "completed_at": "2026-04-26T18:23:56.365885000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0020",
+      "status": "done",
+      "title": "Unify transient-error classification across retry and recovery surfaces",
+      "description": "Principles violated: C (DRY knowledge), D (localize change), J (consistency/integrity). Transient error pattern logic is duplicated across `RalphCLIClient+Retry`, `RetryHelper`, and `RalphCLIRecoveryClassifier` with divergent literal sets and behavior. Why it matters: a newly observed transient failure may be retried in one path but classified as non-retryable/unknown in another, causing inconsistent UX and harder debugging. Minimal fix: centralize transient error classification in one shared policy module used by retry execution and recovery UI classification. Acceptance criteria: one authoritative pattern source, consistent classification results across all three call paths, and focused tests for shared policy outputs.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "ralphmac",
+        "reliability",
+        "dry"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/RalphCLIClient+Retry.swift",
+        "apps/RalphMac/RalphCore/RetryHelper.swift",
+        "apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift",
+        "apps/RalphMac/RalphCoreTests/RetryHelperTests.swift",
+        "apps/RalphMac/RalphCoreTests/RetryIntegrationTests.swift",
+        "apps/RalphMac/RalphCoreTests/ErrorRecoveryCategoryTests.swift"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphCore/RalphCLIClient+Retry.swift:90-105 :: isRetryableFailure :: inline retryable stderr patterns",
+        "path: apps/RalphMac/RalphCore/RetryHelper.swift:247-268 and 299-313 :: defaultShouldRetry :: separate retryable pattern lists and exit-code checks",
+        "path: apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift:137-254 :: classify :: independent normalized-string classification ladder",
+        "workflow: python3 literal scan over retry/recovery files :: found divergent transient/error literal sets (11 vs 12 vs broader classifier taxonomy)"
+      ],
+      "plan": [
+        "Create a shared classification policy for transient/retryable/process-error signals.",
+        "Refactor `RetryHelper`, `CollectedOutput` helpers, and recovery classifier to call shared policy APIs.",
+        "Document intentional differences (if any) as explicit policy modes rather than ad-hoc literal drift.",
+        "Add table-driven tests asserting identical outcomes for shared transient error fixtures across call sites.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)' -only-testing:RalphCoreTests/RetryHelperTests -only-testing:RalphCoreTests/RetryIntegrationTests -only-testing:RalphCoreTests/ErrorRecoveryCategoryTests`."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T18:41:31.464759000Z",
+      "completed_at": "2026-04-26T18:41:31.464759000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
