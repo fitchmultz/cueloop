@@ -879,6 +879,61 @@
         ],
         "type": "object"
       },
+      "MachineExecutionControls": {
+        "additionalProperties": false,
+        "properties": {
+          "parallel_workers": {
+            "$ref": "#/$defs/MachineParallelWorkersControl"
+          },
+          "reasoning_efforts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "runners": {
+            "items": {
+              "$ref": "#/$defs/MachineRunnerOption"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "runners",
+          "reasoning_efforts",
+          "parallel_workers"
+        ],
+        "type": "object"
+      },
+      "MachineParallelWorkersControl": {
+        "additionalProperties": false,
+        "properties": {
+          "default_missing_value": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "min": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "min",
+          "max",
+          "default_missing_value"
+        ],
+        "type": "object"
+      },
       "MachineQueuePaths": {
         "additionalProperties": false,
         "properties": {
@@ -942,6 +997,46 @@
           "reason",
           "message",
           "detail"
+        ],
+        "type": "object"
+      },
+      "MachineRunnerOption": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "default_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reasoning_effort_supported": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "supports_arbitrary_model": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "source",
+          "reasoning_effort_supported",
+          "supports_arbitrary_model"
         ],
         "type": "object"
       },
@@ -1866,6 +1961,9 @@
       "config": {
         "$ref": "#/$defs/Config"
       },
+      "execution_controls": {
+        "$ref": "#/$defs/MachineExecutionControls"
+      },
       "paths": {
         "$ref": "#/$defs/MachineQueuePaths"
       },
@@ -1892,7 +1990,8 @@
       "version",
       "paths",
       "safety",
-      "config"
+      "config",
+      "execution_controls"
     ],
     "title": "MachineConfigResolveDocument",
     "type": "object"
@@ -8174,6 +8273,9 @@
           "config": {
             "$ref": "#/$defs/Config"
           },
+          "execution_controls": {
+            "$ref": "#/$defs/MachineExecutionControls"
+          },
           "paths": {
             "$ref": "#/$defs/MachineQueuePaths"
           },
@@ -8200,7 +8302,8 @@
           "version",
           "paths",
           "safety",
-          "config"
+          "config",
+          "execution_controls"
         ],
         "type": "object"
       },
@@ -8251,6 +8354,61 @@
           "parallel_configured",
           "execution_interactivity",
           "interactive_approval_supported"
+        ],
+        "type": "object"
+      },
+      "MachineExecutionControls": {
+        "additionalProperties": false,
+        "properties": {
+          "parallel_workers": {
+            "$ref": "#/$defs/MachineParallelWorkersControl"
+          },
+          "reasoning_efforts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "runners": {
+            "items": {
+              "$ref": "#/$defs/MachineRunnerOption"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "runners",
+          "reasoning_efforts",
+          "parallel_workers"
+        ],
+        "type": "object"
+      },
+      "MachineParallelWorkersControl": {
+        "additionalProperties": false,
+        "properties": {
+          "default_missing_value": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "min": {
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "min",
+          "max",
+          "default_missing_value"
         ],
         "type": "object"
       },
@@ -8351,6 +8509,46 @@
           "reason",
           "message",
           "detail"
+        ],
+        "type": "object"
+      },
+      "MachineRunnerOption": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "default_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reasoning_effort_supported": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "supports_arbitrary_model": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "source",
+          "reasoning_effort_supported",
+          "supports_arbitrary_model"
         ],
         "type": "object"
       },

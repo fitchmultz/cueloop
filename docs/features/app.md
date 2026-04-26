@@ -109,6 +109,11 @@ The app is a thin client that shells out to the `ralph` binary via `RalphCLIClie
 Practical implications:
 - Native workflows should use versioned `ralph machine ...` JSON contracts or
   shared structured JSON command outputs, not human CLI text.
+- Task override and Run Control execution affordances should come from
+  `ralph machine config resolve.execution_controls`, not hardcoded native menus.
+- Trusted plugin runners appear in native controls through the same machine-fed
+  contract; unknown configured runner or effort values must remain visible
+  instead of being coerced away.
 - Stop After Current specifically uses `ralph machine run stop`; the app should
   never infer stop state by streaming or scraping human `ralph queue stop`
   output.

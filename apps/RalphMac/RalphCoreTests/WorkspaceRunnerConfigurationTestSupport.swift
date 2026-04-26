@@ -28,21 +28,27 @@ enum WorkspaceRunnerConfigurationTestSupport {
         name: String,
         workspaceURL: URL,
         model: String,
+        runner: String? = nil,
+        reasoningEffort: String? = nil,
         phases: Int? = nil,
         iterations: Int? = nil,
         gitPublishMode: String? = nil,
-        safety: MachineConfigSafetySummary = RalphMockCLITestSupport.defaultSafetySummary
+        safety: MachineConfigSafetySummary = RalphMockCLITestSupport.defaultSafetySummary,
+        executionControls: MachineExecutionControls = RalphMockCLITestSupport.defaultExecutionControls
     ) throws -> URL {
         try RalphMockCLITestSupport.writeJSONDocument(
             RalphMockCLITestSupport.configResolveDocument(
                 workspaceURL: workspaceURL,
                 safety: safety,
                 agent: AgentConfig(
+                    runner: runner,
                     model: model,
                     phases: phases,
                     iterations: iterations,
+                    reasoningEffort: reasoningEffort,
                     gitPublishMode: gitPublishMode
-                )
+                ),
+                executionControls: executionControls
             ),
             in: directory,
             name: name

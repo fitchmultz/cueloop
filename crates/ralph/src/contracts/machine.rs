@@ -36,7 +36,7 @@ pub const MACHINE_QUEUE_READ_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_VALIDATE_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_REPAIR_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_UNDO_VERSION: u32 = 1;
-pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 3;
+pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 4;
 pub const MACHINE_WORKSPACE_OVERVIEW_VERSION: u32 = 1;
 pub const MACHINE_TASK_CREATE_VERSION: u32 = 1;
 pub const MACHINE_TASK_BUILD_VERSION: u32 = 1;
@@ -216,6 +216,7 @@ pub struct MachineConfigResolveDocument {
     pub paths: MachineQueuePaths,
     pub safety: MachineConfigSafetySummary,
     pub config: Config,
+    pub execution_controls: MachineExecutionControls,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resume_preview: Option<MachineResumeDecision>,
 }
@@ -241,6 +242,36 @@ pub struct MachineConfigSafetySummary {
     pub parallel_configured: bool,
     pub execution_interactivity: String,
     pub interactive_approval_supported: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineExecutionControls {
+    pub runners: Vec<MachineRunnerOption>,
+    pub reasoning_efforts: Vec<String>,
+    pub parallel_workers: MachineParallelWorkersControl,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineRunnerOption {
+    pub id: String,
+    pub display_name: String,
+    pub source: String,
+    pub reasoning_effort_supported: bool,
+    pub supports_arbitrary_model: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allowed_models: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_model: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineParallelWorkersControl {
+    pub min: u8,
+    pub max: u8,
+    pub default_missing_value: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

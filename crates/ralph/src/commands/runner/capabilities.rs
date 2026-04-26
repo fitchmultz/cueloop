@@ -74,6 +74,16 @@ pub struct BinaryInfo {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct RunnerCatalogEntry {
+    pub id: String,
+    pub display_name: String,
+    pub default_model: Option<String>,
+    pub allowed_models: Vec<String>,
+    pub reasoning_effort_supported: bool,
+    pub supports_arbitrary_model: bool,
+}
+
 /// Get capabilities for a specific runner.
 pub fn get_runner_capabilities(runner: &Runner, bin_name: &str) -> RunnerCapabilityReport {
     let plugin = runner_to_plugin(runner);
@@ -106,6 +116,36 @@ pub fn get_runner_capabilities(runner: &Runner, bin_name: &str) -> RunnerCapabil
         default_model: default_model.as_str().to_string(),
         binary: binary_info,
     }
+}
+
+pub(crate) fn built_in_runner_catalog() -> Vec<RunnerCatalogEntry> {
+    built_in_runners()
+        .into_iter()
+        .map(|runner| {
+            let metadata = runner_to_plugin(&runner).metadata();
+            let allowed_models = get_allowed_models(&runner).unwrap_or_default();
+            RunnerCatalogEntry {
+                id: runner.id().to_string(),
+                display_name: metadata.name,
+                default_model: Some(default_model_for_runner(&runner).as_str().to_string()),
+                allowed_models: allowed_models.clone(),
+                reasoning_effort_supported: get_runner_features(&runner).reasoning_effort,
+                supports_arbitrary_model: allowed_models.is_empty(),
+            }
+        })
+        .collect()
+}
+
+fn built_in_runners() -> Vec<Runner> {
+    vec![
+        Runner::Claude,
+        Runner::Codex,
+        Runner::Opencode,
+        Runner::Gemini,
+        Runner::Cursor,
+        Runner::Kimi,
+        Runner::Pi,
+    ]
 }
 
 fn runner_to_plugin(runner: &Runner) -> BuiltInRunnerPlugin {
@@ -206,7 +246,7 @@ pub(crate) fn get_runner_features(runner: &Runner) -> RunnerFeatures {
     }
 }
 
-fn get_allowed_models(runner: &Runner) -> Option<Vec<String>> {
+pub(crate) fn get_allowed_models(runner: &Runner) -> Option<Vec<String>> {
     match runner {
         Runner::Codex => Some(vec![
             "gpt-5.4".into(),

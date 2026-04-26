@@ -71,6 +71,8 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
             let event_handler = build_run_event_handler("one");
             let resume_preview =
                 build_resume_preview(&resolved, args.id.as_deref(), args.resume, true, false)?;
+            let config_resolve =
+                build_config_resolve_document(&resolved, repo_trusted, dirty_repo, resume_preview)?;
             emit_run_event(MachineRunEventEnvelope {
                 version: MACHINE_RUN_EVENT_VERSION,
                 kind: MachineRunEventKind::RunStarted,
@@ -82,12 +84,7 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                 message: None,
                 stream: None,
                 payload: Some(json!({
-                    "config": build_config_resolve_document(
-                        &resolved,
-                        repo_trusted,
-                        dirty_repo,
-                        resume_preview
-                    ),
+                    "config": config_resolve,
                 })),
             })?;
             let resume_options = RunOneResumeOptions::detect(args.resume, true);
@@ -122,6 +119,8 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
             let event_handler = build_run_event_handler("loop");
             let resume_preview =
                 build_resume_preview(&resolved, None, args.resume, true, args.resume)?;
+            let config_resolve =
+                build_config_resolve_document(&resolved, repo_trusted, dirty_repo, resume_preview)?;
             emit_run_event(MachineRunEventEnvelope {
                 version: MACHINE_RUN_EVENT_VERSION,
                 kind: MachineRunEventKind::RunStarted,
@@ -133,12 +132,7 @@ pub(super) fn handle_run(args: MachineRunArgs) -> Result<()> {
                 message: None,
                 stream: None,
                 payload: Some(json!({
-                    "config": build_config_resolve_document(
-                        &resolved,
-                        repo_trusted,
-                        dirty_repo,
-                        resume_preview
-                    ),
+                    "config": config_resolve,
                 })),
             })?;
             let result = crate::commands::run::run_loop(

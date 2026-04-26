@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "task_kind": "queue_shaping",
-        "runner_used": "codex"
+        "skill": "comprehensive-codebase-audit",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -609,10 +609,87 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
+      }
+    },
+    {
+      "id": "RQ-0012",
+      "status": "done",
+      "title": "Derive native execution controls from machine capabilities",
+      "description": "Replace hardcoded RalphMac runner, effort, and loop-worker controls with machine-visible capabilities/configuration so native controls do not lag behind CLI, plugin runner, or model support. The app should preserve unknown configured values, expose available plugin runners when trusted, and avoid arbitrary worker caps that are narrower than the CLI contract.",
+      "priority": "medium",
+      "tags": [
+        "ralphmac",
+        "capabilities",
+        "configuration",
+        "machine-contract",
+        "plugins",
+        "run-control",
+        "ux"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphMac/TaskExecutionOverrideSupport.swift",
+        "apps/RalphMac/RalphMac/TaskExecutionOverrideSections.swift",
+        "apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift",
+        "apps/RalphMac/RalphCore/ConfigModels.swift",
+        "apps/RalphMac/RalphCore/Workspace+CLISpec.swift",
+        "apps/RalphMac/RalphCore/Workspace+RunnerState.swift",
+        "apps/RalphMac/RalphCore/WorkspaceRunnerController.swift",
+        "apps/RalphMac/RalphCore/RalphCLISpecModels.swift",
+        "apps/RalphMac/RalphCore/MachineContract.swift",
+        "apps/RalphMac/RalphCoreTests/RalphMockCLITestSupport.swift",
+        "crates/ralph/src/commands/runner/capabilities.rs",
+        "crates/ralph/src/commands/runner/list.rs",
+        "crates/ralph/src/contracts/machine.rs",
+        "crates/ralph/src/cli/machine/",
+        "crates/ralph/src/agent/args.rs",
+        "crates/ralph/src/plugins/registry.rs",
+        "apps/RalphMac/RalphCoreTests/",
+        "docs/machine-contract.md",
+        "docs/features/app.md"
+      ],
+      "evidence": [
+        "`apps/RalphMac/RalphMac/TaskExecutionOverrideSupport.swift` hardcodes built-in runner ids and effort options, and both task-level and per-phase pickers render directly from those arrays.",
+        "`apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift` limits loop workers to `Auto` plus `2...8` even though `WorkspaceRunnerController` forwards any override value and `crates/ralph/src/cli/machine/args.rs` accepts `--parallel` values from `2` through `u8::MAX` with `default_missing_value = 2`.",
+        "`ralph machine cli-spec` already exposes arg shape, but `--runner` and `--effort` are raw `String` clap args in `crates/ralph/src/agent/args.rs`, so the machine spec emits empty `possible_values` and does not expose a structured runner or effort menu.",
+        "`ralph machine config resolve` already returns the resolved config and trust/safety state, but `WorkspaceRunnerController.applyConfigResolveDocument` drops resolved `agent.runner` and `agent.reasoning_effort`, and the current machine contract does not include execution-control affordances for native pickers.",
+        "`crates/ralph/src/commands/runner/capabilities.rs` contains per-runner feature data, but it is not machine-visible and its current `Runner::Plugin(_)` fallback borrows Claude metadata instead of describing actual plugin runners.",
+        "`crates/ralph/src/commands/runner/list.rs` is still built-in-only, so the app has no machine-visible way to enumerate trusted plugin runners for native override controls."
+      ],
+      "plan": [
+        "Extend the existing machine config contract so `ralph machine config resolve` carries execution-control metadata for native UI: available runners, runner feature flags, effort options, and the parallel worker numeric contract.",
+        "Build the runner inventory from shared Rust capability/catalog helpers instead of a new hardcoded list, and include trusted plugin runners without reusing the current Claude fallback for `Runner::Plugin(_)`.",
+        "Expand RalphCore machine/config models and `Workspace.RunnerConfig` so the app keeps resolved runner and reasoning-effort values alongside the new execution-control metadata.",
+        "Refactor task override pickers to render runner and effort choices from machine data, keeping model entry freeform while surfacing capability-aware defaults or allowed-model hints.",
+        "Replace the fixed loop-worker menu with a capability-driven control that supports any valid CLI value from `2` through `255`, preserves configured values above legacy UI limits, and keeps `Auto` / `default_missing_value` semantics explicit.",
+        "Render configured values that are unknown, unsupported, or no longer advertised as explicit UI options instead of coercing them away.",
+        "Add Rust and Swift regression coverage for machine-contract decoding, trusted plugin runner visibility, worker counts above `8`, and configured runner or effort values that are outside the app's former built-in menus.",
+        "Update machine-contract and app docs anywhere the new versioned config payload or native execution-control behavior becomes operator-visible."
+      ],
+      "notes": [
+        "Prefer extending `machine config resolve` over adding a second machine fetch. The app already loads this document during workspace refresh, and `cli-spec` alone cannot express the `--parallel` numeric bounds or missing-value semantics.",
+        "Do not treat the current `runner capabilities` plugin fallback as source-of-truth for plugin runners. Phase 2 should either provide plugin-specific machine metadata or advertise plugin runners with clearly generic capability fields.",
+        "Derived RalphMac execution controls from machine-visible config and capability data.",
+        "Phase 3 fixed preserved unknown runner/effort handling and machine-advertised parallel minimum enforcement.",
+        "Machine execution controls now degrade safely when plugin discovery is malformed and skip conflicting runner ids.",
+        "Validation passed: targeted Rust/macos tests plus make agent-ci."
+      ],
+      "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
+      "created_at": "2026-04-26T00:04:48Z",
+      "updated_at": "2026-04-26T05:30:26.563870000Z",
+      "completed_at": "2026-04-26T05:30:26.563870000Z",
+      "started_at": "2026-04-26T04:06:30.647227000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
+        "model_used": "gpt-5.4"
       }
     }
   ]

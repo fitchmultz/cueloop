@@ -27,24 +27,30 @@ use std::path::Path;
 
 use anyhow::Result;
 
+use crate::commands::runner::capabilities::built_in_runner_catalog;
 use crate::config;
 use crate::contracts::{
     GitPublishMode, GitRevertMode, MACHINE_CONFIG_RESOLVE_VERSION,
     MACHINE_WORKSPACE_OVERVIEW_VERSION, MachineConfigResolveDocument, MachineConfigSafetySummary,
-    MachineQueuePaths, MachineQueueReadDocument, MachineResumeDecision,
+    MachineExecutionControls, MachineParallelWorkersControl, MachineQueuePaths,
+    MachineQueueReadDocument, MachineResumeDecision, MachineRunnerOption,
     MachineWorkspaceOverviewDocument, QueueFile,
 };
+use crate::plugins::discovery::PluginScope;
+use crate::plugins::registry::PluginRegistry;
 use crate::queue;
 use crate::queue::operations::{RunnableSelectionOptions, queue_runnability_report};
 use crate::session::{ResumeBehavior, ResumeDecisionMode, ResumeReason, ResumeScope, ResumeStatus};
+
+const MACHINE_PARALLEL_MIN_WORKERS: u8 = 2;
 
 pub(super) fn build_config_resolve_document(
     resolved: &config::Resolved,
     repo_trusted: bool,
     dirty_repo: bool,
     resume_preview: Option<MachineResumeDecision>,
-) -> MachineConfigResolveDocument {
-    MachineConfigResolveDocument {
+) -> Result<MachineConfigResolveDocument> {
+    Ok(MachineConfigResolveDocument {
         version: MACHINE_CONFIG_RESOLVE_VERSION,
         paths: queue_paths(resolved),
         safety: MachineConfigSafetySummary {
@@ -67,8 +73,9 @@ pub(super) fn build_config_resolve_document(
             interactive_approval_supported: false,
         },
         config: resolved.config.clone(),
+        execution_controls: build_execution_controls(resolved)?,
         resume_preview,
-    }
+    })
 }
 
 pub(super) fn machine_safety_context(resolved: &config::Resolved) -> Result<(bool, bool)> {
@@ -109,8 +116,82 @@ pub(super) fn build_workspace_overview_document(
     Ok(MachineWorkspaceOverviewDocument {
         version: MACHINE_WORKSPACE_OVERVIEW_VERSION,
         queue: build_queue_read_document(resolved)?,
-        config: build_config_resolve_document(resolved, repo_trusted, dirty_repo, resume_preview),
+        config: build_config_resolve_document(resolved, repo_trusted, dirty_repo, resume_preview)?,
     })
+}
+
+fn build_execution_controls(resolved: &config::Resolved) -> Result<MachineExecutionControls> {
+    let mut runners: Vec<MachineRunnerOption> = built_in_runner_catalog()
+        .into_iter()
+        .map(|entry| MachineRunnerOption {
+            id: entry.id,
+            display_name: entry.display_name,
+            source: "built_in".to_string(),
+            reasoning_effort_supported: entry.reasoning_effort_supported,
+            supports_arbitrary_model: entry.supports_arbitrary_model,
+            allowed_models: entry.allowed_models,
+            default_model: entry.default_model,
+        })
+        .collect();
+
+    match PluginRegistry::load(&resolved.repo_root, &resolved.config) {
+        Ok(registry) => {
+            for (plugin_id, discovered) in registry.discovered() {
+                if !registry.is_enabled(plugin_id) {
+                    continue;
+                }
+                let Some(runner) = discovered.manifest.runner.as_ref() else {
+                    continue;
+                };
+                if runners
+                    .iter()
+                    .any(|existing| existing.id.eq_ignore_ascii_case(plugin_id))
+                {
+                    log::warn!(
+                        "Skipping plugin runner '{}' in machine execution controls because its id conflicts with an existing runner id",
+                        plugin_id
+                    );
+                    continue;
+                }
+                runners.push(MachineRunnerOption {
+                    id: plugin_id.clone(),
+                    display_name: discovered.manifest.name.clone(),
+                    source: plugin_source_label(discovered.scope).to_string(),
+                    reasoning_effort_supported: false,
+                    supports_arbitrary_model: true,
+                    allowed_models: Vec::new(),
+                    default_model: runner.default_model.clone(),
+                });
+            }
+        }
+        Err(err) => {
+            log::warn!(
+                "Failed to load plugin registry while building machine execution controls; falling back to built-in runners only: {err:#}"
+            );
+        }
+    }
+
+    Ok(MachineExecutionControls {
+        runners,
+        reasoning_efforts: vec![
+            "low".to_string(),
+            "medium".to_string(),
+            "high".to_string(),
+            "xhigh".to_string(),
+        ],
+        parallel_workers: MachineParallelWorkersControl {
+            min: MACHINE_PARALLEL_MIN_WORKERS,
+            max: u8::MAX,
+            default_missing_value: MACHINE_PARALLEL_MIN_WORKERS,
+        },
+    })
+}
+
+fn plugin_source_label(scope: PluginScope) -> &'static str {
+    match scope {
+        PluginScope::Global => "global_plugin",
+        PluginScope::Project => "project_plugin",
+    }
 }
 
 pub(super) fn build_resume_preview(
@@ -292,4 +373,162 @@ pub(crate) fn machine_run_loop_command(parallel: bool, force: bool) -> &'static 
 
 pub(crate) fn machine_doctor_report_command() -> &'static str {
     "ralph machine doctor report"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MACHINE_PARALLEL_MIN_WORKERS, build_execution_controls};
+    use crate::config::Resolved;
+    use crate::contracts::{Config, PluginConfig};
+    use tempfile::TempDir;
+
+    fn resolved_for_repo(repo_root: &std::path::Path, config: Config) -> Resolved {
+        Resolved {
+            config,
+            repo_root: repo_root.to_path_buf(),
+            queue_path: repo_root.join(".ralph/queue.jsonc"),
+            done_path: repo_root.join(".ralph/done.jsonc"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+        }
+    }
+
+    fn write_runner_plugin(repo_root: &std::path::Path, plugin_id: &str, name: &str) {
+        let plugin_dir = repo_root.join(".ralph/plugins").join(plugin_id);
+        std::fs::create_dir_all(&plugin_dir).unwrap();
+        std::fs::write(
+            plugin_dir.join("plugin.json"),
+            format!(
+                r#"{{
+  "api_version": 1,
+  "id": "{plugin_id}",
+  "version": "1.0.0",
+  "name": "{name}",
+  "runner": {{
+    "bin": "runner.sh",
+    "default_model": "plugin-default"
+  }}
+}}"#
+            ),
+        )
+        .unwrap();
+    }
+
+    fn trust_repo(repo_root: &std::path::Path) {
+        let ralph_dir = repo_root.join(".ralph");
+        std::fs::create_dir_all(&ralph_dir).unwrap();
+        std::fs::write(
+            ralph_dir.join("trust.jsonc"),
+            r#"{"allow_project_commands": true}"#,
+        )
+        .unwrap();
+    }
+
+    fn enabled_plugin_config(plugin_id: &str) -> Config {
+        let mut config = Config::default();
+        config.plugins.plugins.insert(
+            plugin_id.to_string(),
+            PluginConfig {
+                enabled: Some(true),
+                ..Default::default()
+            },
+        );
+        config
+    }
+
+    #[test]
+    fn execution_controls_include_enabled_trusted_project_plugin_runner() {
+        let tmp = TempDir::new().unwrap();
+        trust_repo(tmp.path());
+        write_runner_plugin(tmp.path(), "acme.runner", "Acme Runner");
+        let resolved = resolved_for_repo(tmp.path(), enabled_plugin_config("acme.runner"));
+
+        let controls = build_execution_controls(&resolved).unwrap();
+        let plugin = controls
+            .runners
+            .iter()
+            .find(|runner| runner.id == "acme.runner")
+            .expect("trusted enabled project plugin runner should be visible");
+
+        assert_eq!(plugin.display_name, "Acme Runner");
+        assert_eq!(plugin.source, "project_plugin");
+        assert_eq!(plugin.default_model.as_deref(), Some("plugin-default"));
+        assert!(plugin.supports_arbitrary_model);
+        assert!(!plugin.reasoning_effort_supported);
+    }
+
+    #[test]
+    fn execution_controls_hide_untrusted_project_plugin_runner() {
+        let tmp = TempDir::new().unwrap();
+        write_runner_plugin(tmp.path(), "acme.runner", "Acme Runner");
+        let resolved = resolved_for_repo(tmp.path(), enabled_plugin_config("acme.runner"));
+
+        let controls = build_execution_controls(&resolved).unwrap();
+
+        assert!(
+            controls
+                .runners
+                .iter()
+                .all(|runner| runner.id != "acme.runner")
+        );
+    }
+
+    #[test]
+    fn execution_controls_parallel_worker_contract_matches_cli_bounds() {
+        let tmp = TempDir::new().unwrap();
+        let resolved = resolved_for_repo(tmp.path(), Config::default());
+
+        let controls = build_execution_controls(&resolved).unwrap();
+        assert_eq!(controls.parallel_workers.min, MACHINE_PARALLEL_MIN_WORKERS);
+        assert_eq!(
+            controls.parallel_workers.default_missing_value,
+            MACHINE_PARALLEL_MIN_WORKERS
+        );
+        assert_eq!(controls.parallel_workers.max, u8::MAX);
+    }
+
+    #[test]
+    fn execution_controls_fall_back_to_built_ins_when_plugin_discovery_fails() {
+        let tmp = TempDir::new().unwrap();
+        trust_repo(tmp.path());
+        let plugin_dir = tmp.path().join(".ralph/plugins/broken.runner");
+        std::fs::create_dir_all(&plugin_dir).unwrap();
+        std::fs::write(plugin_dir.join("plugin.json"), "{not valid json").unwrap();
+        let resolved = resolved_for_repo(tmp.path(), Config::default());
+
+        let controls = build_execution_controls(&resolved).unwrap();
+
+        assert!(controls.runners.iter().any(|runner| runner.id == "codex"));
+        assert!(
+            controls
+                .runners
+                .iter()
+                .all(|runner| runner.id != "broken.runner")
+        );
+    }
+
+    #[test]
+    fn execution_controls_skip_plugin_runner_ids_that_conflict_with_built_ins() {
+        let tmp = TempDir::new().unwrap();
+        trust_repo(tmp.path());
+        write_runner_plugin(tmp.path(), "CODEX", "Codex Shadow Plugin");
+        let resolved = resolved_for_repo(tmp.path(), enabled_plugin_config("CODEX"));
+
+        let controls = build_execution_controls(&resolved).unwrap();
+        let codex_runners = controls
+            .runners
+            .iter()
+            .filter(|runner| runner.id.eq_ignore_ascii_case("codex"))
+            .count();
+
+        assert_eq!(codex_runners, 1);
+        assert!(
+            controls
+                .runners
+                .iter()
+                .all(|runner| runner.display_name != "Codex Shadow Plugin")
+        );
+    }
 }

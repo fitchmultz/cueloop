@@ -51,6 +51,76 @@ enum RalphMockCLITestSupport {
         interactiveApprovalSupported: false
     )
 
+    static let defaultExecutionControls = MachineExecutionControls(
+        runners: [
+            MachineRunnerOption(
+                id: "claude",
+                displayName: "Anthropic Claude Code",
+                source: "built_in",
+                reasoningEffortSupported: false,
+                supportsArbitraryModel: true,
+                allowedModels: [],
+                defaultModel: "sonnet"
+            ),
+            MachineRunnerOption(
+                id: "codex",
+                displayName: "OpenAI Codex CLI",
+                source: "built_in",
+                reasoningEffortSupported: true,
+                supportsArbitraryModel: false,
+                allowedModels: ["gpt-5.4", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.3"],
+                defaultModel: "gpt-5.4"
+            ),
+            MachineRunnerOption(
+                id: "opencode",
+                displayName: "Opencode",
+                source: "built_in",
+                reasoningEffortSupported: false,
+                supportsArbitraryModel: true,
+                allowedModels: [],
+                defaultModel: "gpt-5.3"
+            ),
+            MachineRunnerOption(
+                id: "gemini",
+                displayName: "Google Gemini CLI",
+                source: "built_in",
+                reasoningEffortSupported: false,
+                supportsArbitraryModel: true,
+                allowedModels: [],
+                defaultModel: "gemini-3-pro-preview"
+            ),
+            MachineRunnerOption(
+                id: "cursor",
+                displayName: "Cursor Agent",
+                source: "built_in",
+                reasoningEffortSupported: false,
+                supportsArbitraryModel: true,
+                allowedModels: [],
+                defaultModel: "gpt-5.3"
+            ),
+            MachineRunnerOption(
+                id: "kimi",
+                displayName: "Kimi CLI",
+                source: "built_in",
+                reasoningEffortSupported: false,
+                supportsArbitraryModel: true,
+                allowedModels: [],
+                defaultModel: "kimi-for-coding"
+            ),
+            MachineRunnerOption(
+                id: "pi",
+                displayName: "Pi Coding Agent",
+                source: "built_in",
+                reasoningEffortSupported: true,
+                supportsArbitraryModel: true,
+                allowedModels: [],
+                defaultModel: "gpt-5.3"
+            ),
+        ],
+        reasoningEfforts: ["low", "medium", "high", "xhigh"],
+        parallelWorkers: MachineParallelWorkersControl(min: 2, max: 255, defaultMissingValue: 2)
+    )
+
     static let emptyRunnability: RalphJSONValue = .object([:])
 
     static func makeFixture(
@@ -154,13 +224,15 @@ enum RalphMockCLITestSupport {
         workspaceURL: URL,
         safety: MachineConfigSafetySummary = defaultSafetySummary,
         agent: AgentConfig = AgentConfig(),
+        executionControls: MachineExecutionControls = defaultExecutionControls,
         resumePreview: MachineResumeDecision? = nil
     ) -> MachineConfigResolveDocument {
         MachineConfigResolveDocument(
-            version: 3,
+            version: RalphMachineContract.configResolveVersion,
             paths: resolvedPaths(for: workspaceURL),
             safety: safety,
             config: RalphConfig(agent: agent),
+            executionControls: executionControls,
             resumePreview: resumePreview
         )
     }
@@ -173,6 +245,7 @@ enum RalphMockCLITestSupport {
         runnability: RalphJSONValue = emptyRunnability,
         safety: MachineConfigSafetySummary = defaultSafetySummary,
         agent: AgentConfig = AgentConfig(),
+        executionControls: MachineExecutionControls = defaultExecutionControls,
         resumePreview: MachineResumeDecision? = nil
     ) -> MachineWorkspaceOverviewDocument {
         MachineWorkspaceOverviewDocument(
@@ -188,6 +261,7 @@ enum RalphMockCLITestSupport {
                 workspaceURL: workspaceURL,
                 safety: safety,
                 agent: agent,
+                executionControls: executionControls,
                 resumePreview: resumePreview
             )
         )

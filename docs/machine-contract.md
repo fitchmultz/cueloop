@@ -58,13 +58,19 @@ Machine clients should decode that document instead of scraping English stderr t
 `ralph machine run loop` accepts the same `--parallel <N>` worker override pattern as the human `ralph run loop` surface, including bare `--parallel` defaulting to `2`.
 
 
-### `machine config resolve` (`version: 3`)
+### `machine config resolve` (`version: 4`)
 
 Includes:
 - resolved queue/config paths
 - safety summary
 - resolved config
+- `execution_controls` for native runner, reasoning-effort, and parallel-worker affordances
 - optional `resume_preview`
+
+`execution_controls` is the canonical native-control catalog for RalphMac. It includes:
+- runner options with stable ids, display names, source (`built_in`, `global_plugin`, `project_plugin`), reasoning-effort support, model-affordance metadata, and optional default model
+- reasoning-effort options
+- the numeric `parallel_workers` contract (`min`, `max`, `default_missing_value`)
 
 `resume_preview` is the app/automation preflight signal for whether the next run would:
 - resume the same session

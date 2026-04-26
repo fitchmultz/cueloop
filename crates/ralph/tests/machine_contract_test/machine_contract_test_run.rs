@@ -121,6 +121,11 @@ printf '{"type":"assistant","message":{"content":[{"type":"output_text","text":"
     let run_started = lines.first().context("expected run_started event")?;
     assert_eq!(run_started["kind"], "run_started");
     assert!(run_started["task_id"].is_null());
+    assert!(run_started["payload"]["config"]["execution_controls"]["runners"].is_array());
+    assert_eq!(
+        run_started["payload"]["config"]["execution_controls"]["parallel_workers"]["max"],
+        255
+    );
 
     let task_selected = lines
         .iter()

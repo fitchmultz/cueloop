@@ -40,7 +40,9 @@ struct RunControlRunnerConfigurationSection: View {
                     }
                 }
 
+                RunControlConfigRow(icon: "bolt.circle", label: "Runner", value: workspace.runState.currentRunnerConfig?.runner ?? "Default")
                 RunControlConfigRow(icon: "cpu", label: "Model", value: workspace.runState.currentRunnerConfig?.model ?? "Default")
+                RunControlConfigRow(icon: "speedometer", label: "Reasoning Effort", value: workspace.runState.currentRunnerConfig?.reasoningEffort ?? "Default")
                 RunControlConfigRow(icon: "square.split.2x1", label: "Phases", value: workspace.runState.currentRunnerConfig?.phases.map(String.init) ?? "Auto")
                 RunControlConfigRow(icon: "number", label: "Max Iterations", value: workspace.runState.currentRunnerConfig?.maxIterations.map(String.init) ?? "Auto")
 
@@ -78,10 +80,54 @@ struct RunControlExecutionControlsSection: View {
         .joined(separator: "|")
     }
 
-    private var loopWorkersBinding: Binding<Int?> {
+    private enum LoopWorkerMode: String {
+        case auto
+        case custom
+    }
+
+    private var loopWorkersControl: MachineParallelWorkersControl? {
+        workspace.runState.currentRunnerConfig?.executionControls?.parallelWorkers
+    }
+
+    private var loopWorkersMinimum: Int {
+        Int(loopWorkersControl?.min ?? 2)
+    }
+
+    private var loopWorkersMaximum: Int {
+        Int(loopWorkersControl?.max ?? UInt8.max)
+    }
+
+    private var loopWorkersDefaultMissingValue: Int {
+        Int(loopWorkersControl?.defaultMissingValue ?? 2)
+    }
+
+    private var loopWorkersModeBinding: Binding<LoopWorkerMode> {
         Binding(
-            get: { workspace.runState.runControlParallelWorkersOverride },
-            set: { workspace.runState.runControlParallelWorkersOverride = $0 }
+            get: {
+                workspace.runState.runControlParallelWorkersOverride == nil ? .auto : .custom
+            },
+            set: { mode in
+                switch mode {
+                case .auto:
+                    workspace.runState.runControlParallelWorkersOverride = nil
+                case .custom:
+                    if workspace.runState.runControlParallelWorkersOverride == nil {
+                        workspace.runState.runControlParallelWorkersOverride = loopWorkersDefaultMissingValue
+                    }
+                }
+            }
+        )
+    }
+
+    private var customLoopWorkersBinding: Binding<Int> {
+        Binding(
+            get: { workspace.runState.runControlParallelWorkersOverride ?? loopWorkersDefaultMissingValue },
+            set: { value in
+                workspace.runState.runControlParallelWorkersOverride = min(
+                    max(value, loopWorkersMinimum),
+                    loopWorkersMaximum
+                )
+            }
         )
     }
 
@@ -102,7 +148,7 @@ struct RunControlExecutionControlsSection: View {
         if workspace.runState.currentRunnerConfig?.safety?.parallelConfigured == true {
             return "No app override is set. The next loop will use the repository or global parallel worker setting from resolved config."
         }
-        return "No app override is set. The next loop will use the default sequential machine run loop."
+        return "No app override is set. If you later enable --parallel without a value, Ralph defaults to \(loopWorkersDefaultMissingValue) workers. Valid range: \(loopWorkersMinimum)-\(loopWorkersMaximum)."
     }
 
     var body: some View {
@@ -131,15 +177,26 @@ struct RunControlExecutionControlsSection: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        Picker("Loop workers", selection: loopWorkersBinding) {
-                            Text("Auto").tag(Optional<Int>.none)
-                            ForEach(Array(2...8), id: \.self) { workers in
-                                Text("\(workers) workers").tag(Optional(workers))
-                            }
+                        Picker("Loop workers mode", selection: loopWorkersModeBinding) {
+                            Text("Auto").tag(LoopWorkerMode.auto)
+                            Text("Custom").tag(LoopWorkerMode.custom)
                         }
                         .pickerStyle(.menu)
                         .frame(maxWidth: 180, alignment: .leading)
-                        .help("Auto uses resolved config. Choose a worker count to pass --parallel N for the next loop.")
+                        .help("Auto uses resolved config. Custom passes an explicit --parallel worker count for the next loop.")
+
+                        if workspace.runState.runControlParallelWorkersOverride != nil {
+                            TextField("Workers", value: customLoopWorkersBinding, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 76)
+
+                            Stepper(
+                                "",
+                                value: customLoopWorkersBinding,
+                                in: loopWorkersMinimum...loopWorkersMaximum
+                            )
+                            .labelsHidden()
+                        }
 
                         Text(loopWorkersSummary)
                             .font(.caption.weight(.medium))

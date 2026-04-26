@@ -589,20 +589,29 @@ public extension Workspace {
     }
 
     struct RunnerConfig: Sendable {
+        public let runner: String?
         public let model: String?
+        public let reasoningEffort: String?
         public let phases: Int?
         public let maxIterations: Int?
+        public let executionControls: MachineExecutionControls?
         public let safety: RunnerSafetySummary?
 
         public init(
+            runner: String? = nil,
             model: String? = nil,
+            reasoningEffort: String? = nil,
             phases: Int? = nil,
             maxIterations: Int? = nil,
+            executionControls: MachineExecutionControls? = nil,
             safety: RunnerSafetySummary? = nil
         ) {
+            self.runner = runner
             self.model = model
+            self.reasoningEffort = reasoningEffort
             self.phases = phases
             self.maxIterations = maxIterations
+            self.executionControls = executionControls
             self.safety = safety
         }
     }

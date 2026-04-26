@@ -69,7 +69,7 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
                     repo_trusted,
                     dirty_repo,
                     resume_preview,
-                ))
+                )?)
             }
         },
         MachineCommand::Workspace(args) => match args.command {

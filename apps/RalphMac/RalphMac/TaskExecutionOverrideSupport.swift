@@ -21,13 +21,153 @@ import RalphCore
 import SwiftUI
 
 enum TaskExecutionOverrideSupport {
-    static let runnerOptions = ["codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi"]
-    static let effortOptions = ["low", "medium", "high", "xhigh"]
+    struct ExecutionMenuOption: Identifiable, Equatable {
+        let value: String
+        let title: String
+        let isConfiguredFallback: Bool
+
+        var id: String { value }
+    }
+
+    private static let legacyRunnerOptions = ["codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi"]
+    private static let legacyEffortOptions = ["low", "medium", "high", "xhigh"]
 
     static func normalizedRunnerName(_ value: String?) -> String? {
         guard let value else { return nil }
         let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return normalized.isEmpty ? nil : normalized
+    }
+
+    static func normalizedEffortName(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    static func runnerMenuOptions(
+        controls: MachineExecutionControls?,
+        configuredRunner: String?
+    ) -> [ExecutionMenuOption] {
+        let options = controls?.runners.map { runner in
+            ExecutionMenuOption(
+                value: runner.id,
+                title: runnerMenuTitle(for: runner),
+                isConfiguredFallback: false
+            )
+        } ?? legacyRunnerOptions.map {
+            ExecutionMenuOption(value: $0, title: $0, isConfiguredFallback: false)
+        }
+
+        return withConfiguredFallback(
+            options,
+            configuredValue: configuredRunner,
+            labelPrefix: "Configured runner"
+        )
+    }
+
+    static func effortMenuOptions(
+        controls: MachineExecutionControls?,
+        configuredEffort: String?
+    ) -> [ExecutionMenuOption] {
+        let options = controls?.reasoningEfforts.map {
+            ExecutionMenuOption(value: $0, title: $0, isConfiguredFallback: false)
+        } ?? legacyEffortOptions.map {
+            ExecutionMenuOption(value: $0, title: $0, isConfiguredFallback: false)
+        }
+
+        return withConfiguredFallback(
+            options,
+            configuredValue: configuredEffort,
+            labelPrefix: "Configured effort"
+        )
+    }
+
+    static func runnerOption(
+        controls: MachineExecutionControls?,
+        runnerID: String?
+    ) -> MachineRunnerOption? {
+        guard let normalized = normalizedRunnerName(runnerID) else { return nil }
+        return controls?.runners.first {
+            normalizedRunnerName($0.id) == normalized
+        }
+    }
+
+    static func effectiveRunnerSupportsReasoningEffort(
+        selectedRunner: String?,
+        inheritedRunner: String?,
+        controls: MachineExecutionControls?
+    ) -> Bool {
+        guard let effectiveRunner = normalizedRunnerName(selectedRunner)
+            ?? normalizedRunnerName(inheritedRunner)
+        else {
+            return true
+        }
+
+        guard let runner = runnerOption(controls: controls, runnerID: effectiveRunner) else {
+            return true
+        }
+
+        return runner.reasoningEffortSupported
+    }
+
+    static func modelHint(
+        selectedRunner: String?,
+        inheritedRunner: String?,
+        controls: MachineExecutionControls?
+    ) -> String? {
+        guard let runner = runnerOption(
+            controls: controls,
+            runnerID: normalizedRunnerName(selectedRunner) ?? normalizedRunnerName(inheritedRunner)
+        ) else {
+            return nil
+        }
+
+        if !runner.allowedModels.isEmpty {
+            let allowed = runner.allowedModels.joined(separator: ", ")
+            if let defaultModel = runner.defaultModel {
+                return "Allowed models: \(allowed). Default when omitted: \(defaultModel)."
+            }
+            return "Allowed models: \(allowed)."
+        }
+
+        if runner.supportsArbitraryModel, let defaultModel = runner.defaultModel {
+            return "This runner accepts arbitrary model IDs. Default when omitted: \(defaultModel)."
+        }
+
+        if runner.supportsArbitraryModel {
+            return "This runner accepts arbitrary model IDs."
+        }
+
+        return nil
+    }
+
+    private static func runnerMenuTitle(for runner: MachineRunnerOption) -> String {
+        if runner.displayName.caseInsensitiveCompare(runner.id) == .orderedSame {
+            return runner.displayName
+        }
+        return "\(runner.displayName) (\(runner.id))"
+    }
+
+    private static func withConfiguredFallback(
+        _ options: [ExecutionMenuOption],
+        configuredValue: String?,
+        labelPrefix: String
+    ) -> [ExecutionMenuOption] {
+        guard let configuredValue else { return options }
+        let trimmedValue = configuredValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedValue.isEmpty else { return options }
+        let alreadyKnown = options.contains {
+            normalizedRunnerName($0.value) == normalizedRunnerName(trimmedValue)
+                || normalizedEffortName($0.value) == normalizedEffortName(trimmedValue)
+        }
+        guard !alreadyKnown else { return options }
+        return options + [
+            ExecutionMenuOption(
+                value: trimmedValue,
+                title: "\(labelPrefix): \(trimmedValue)",
+                isConfiguredFallback: true
+            )
+        ]
     }
 }
 
@@ -95,11 +235,26 @@ struct PhaseOverrideEditor: View {
     let title: String
     let phase: Int
     @Binding var draftTask: RalphTask
+    let workspace: Workspace
     let mutateTaskAgent: ((inout RalphTaskAgent) -> Void) -> Void
 
     var body: some View {
         let effortDisabled = phaseEffortDisabled
         let hasOverride = phaseOverride != nil
+        let executionControls = workspace.runState.currentRunnerConfig?.executionControls
+        let runnerOptions = TaskExecutionOverrideSupport.runnerMenuOptions(
+            controls: executionControls,
+            configuredRunner: phaseOverride?.runner
+        )
+        let effortOptions = TaskExecutionOverrideSupport.effortMenuOptions(
+            controls: executionControls,
+            configuredEffort: phaseOverride?.reasoningEffort
+        )
+        let modelHint = TaskExecutionOverrideSupport.modelHint(
+            selectedRunner: phaseOverride?.runner,
+            inheritedRunner: draftTask.agent?.runner ?? workspace.runState.currentRunnerConfig?.runner,
+            controls: executionControls
+        )
 
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -118,8 +273,8 @@ struct PhaseOverrideEditor: View {
             HStack(spacing: 12) {
                 Picker("Runner", selection: phaseRunnerBinding) {
                     Text("Inherit").tag("inherit")
-                    ForEach(TaskExecutionOverrideSupport.runnerOptions, id: \.self) { runner in
-                        Text(runner).tag(runner)
+                    ForEach(runnerOptions) { runner in
+                        Text(runner.title).tag(runner.value)
                     }
                 }
                 .pickerStyle(.menu)
@@ -127,11 +282,12 @@ struct PhaseOverrideEditor: View {
 
                 TextField("Model (inherit if empty)", text: phaseModelBinding)
                     .textFieldStyle(.roundedBorder)
+                    .help(modelHint ?? "When empty, Ralph uses the runner's default model resolution.")
 
                 Picker("Effort", selection: phaseEffortBinding) {
                     Text("Inherit").tag("inherit")
-                    ForEach(TaskExecutionOverrideSupport.effortOptions, id: \.self) { effort in
-                        Text(effort).tag(effort)
+                    ForEach(effortOptions) { effort in
+                        Text(effort.title).tag(effort.value)
                     }
                 }
                 .pickerStyle(.menu)
@@ -139,8 +295,14 @@ struct PhaseOverrideEditor: View {
                 .disabled(effortDisabled)
             }
 
+            if let modelHint {
+                Text(modelHint)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
             if effortDisabled {
-                Text("Reasoning effort applies only when the effective runner is codex.")
+                Text("Reasoning effort is disabled because the effective runner does not advertise reasoning-effort support.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -207,10 +369,11 @@ struct PhaseOverrideEditor: View {
     }
 
     private var phaseEffortDisabled: Bool {
-        let phaseRunner = TaskExecutionOverrideSupport.normalizedRunnerName(phaseOverride?.runner)
-        let taskRunner = TaskExecutionOverrideSupport.normalizedRunnerName(draftTask.agent?.runner)
-        guard let effectiveRunner = phaseRunner ?? taskRunner else { return false }
-        return effectiveRunner != "codex"
+        !TaskExecutionOverrideSupport.effectiveRunnerSupportsReasoningEffort(
+            selectedRunner: phaseOverride?.runner ?? draftTask.agent?.runner,
+            inheritedRunner: workspace.runState.currentRunnerConfig?.runner,
+            controls: workspace.runState.currentRunnerConfig?.executionControls
+        )
     }
 }
 

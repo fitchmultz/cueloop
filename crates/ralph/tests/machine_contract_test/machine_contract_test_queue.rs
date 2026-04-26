@@ -82,10 +82,15 @@ fn machine_workspace_overview_returns_queue_and_config_in_one_document() -> Resu
     let document: Value = serde_json::from_str(&stdout)?;
     assert_eq!(document["version"], 1);
     assert_eq!(document["queue"]["version"], 1);
-    assert_eq!(document["config"]["version"], 3);
+    assert_eq!(document["config"]["version"], 4);
     assert!(document["queue"]["paths"]["queue_path"].is_string());
     assert!(document["queue"]["active"]["tasks"].is_array());
     assert!(document["config"]["paths"]["project_config_path"].is_string());
     assert!(document["config"]["config"].is_object());
+    assert!(document["config"]["execution_controls"]["runners"].is_array());
+    assert_eq!(
+        document["config"]["execution_controls"]["parallel_workers"]["max"],
+        255
+    );
     Ok(())
 }

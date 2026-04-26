@@ -34,6 +34,8 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
             name: "config-resolve.json",
             workspaceURL: fixture.workspaceURL,
             model: "kimi-code/kimi-for-coding",
+            runner: "kimi",
+            reasoningEffort: "high",
             phases: 2,
             iterations: 3
         )
@@ -56,9 +58,12 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
 
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.runner, "kimi")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.model, "kimi-code/kimi-for-coding")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.reasoningEffort, "high")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.phases, 2)
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.maxIterations, 3)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.executionControls?.parallelWorkers.max, 255)
     }
 
     func test_loadRunnerConfiguration_decodesSafetySummary() async throws {
@@ -82,6 +87,8 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
             name: "config-resolve.json",
             workspaceURL: fixture.workspaceURL,
             model: "gpt-5.4",
+            runner: "codex",
+            reasoningEffort: "medium",
             phases: 3,
             iterations: 2,
             gitPublishMode: "commit_and_push",
@@ -106,7 +113,9 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
 
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
 
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.runner, "codex")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.model, "gpt-5.4")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.reasoningEffort, "medium")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.phases, 3)
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.maxIterations, 2)
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.repoTrusted, false)
@@ -118,6 +127,52 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.parallelConfigured, true)
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.executionInteractivity, "noninteractive_streaming")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.safety?.interactiveApprovalSupported, false)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.executionControls?.runners.first?.id, "claude")
+    }
+
+    func test_loadRunnerConfiguration_preservesUnknownConfiguredRunnerAndEffort() async throws {
+        var workspace: Workspace!
+        let fixture = try RalphMockCLITestSupport.makeFixture(prefix: "ralph-workspace-config-unknown")
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let configResolveURL = try WorkspaceRunnerConfigurationTestSupport.writeConfigResolveDocument(
+            in: fixture.rootURL,
+            name: "config-resolve-unknown.json",
+            workspaceURL: fixture.workspaceURL,
+            model: "future-model",
+            runner: "future.runner",
+            reasoningEffort: "turbo",
+            phases: 2,
+            iterations: 5
+        )
+
+        let script = """
+            #!/bin/sh
+            if [ "$1" = "--no-color" ] && [ "$2" = "machine" ] && [ "$3" = "config" ] && [ "$4" = "resolve" ]; then
+              cat "\(configResolveURL.path)"
+              exit 0
+            fi
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: "mock-ralph-config-unknown",
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.runner, "future.runner")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.reasoningEffort, "turbo")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.model, "future-model")
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.phases, 2)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.maxIterations, 5)
     }
 
     func test_loadRunnerConfiguration_onFailure_clearsCurrentRunnerConfig() async throws {
@@ -130,6 +185,7 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
             name: "config-success.json",
             workspaceURL: fixture.workspaceURL,
             model: "kimi-initial",
+            runner: "kimi",
             phases: 3,
             iterations: 2
         )
@@ -154,6 +210,7 @@ final class WorkspaceRunnerConfigurationLoadingTests: WorkspacePerformanceTestCa
         )
 
         await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+        XCTAssertEqual(workspace.runState.currentRunnerConfig?.runner, "kimi")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.model, "kimi-initial")
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.phases, 3)
         XCTAssertEqual(workspace.runState.currentRunnerConfig?.maxIterations, 2)

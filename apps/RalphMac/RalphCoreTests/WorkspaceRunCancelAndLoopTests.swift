@@ -372,6 +372,141 @@ final class WorkspaceRunCancelAndLoopTests: WorkspacePerformanceTestCase {
         XCTAssertFalse(workspace.isLoopMode)
     }
 
+    func test_startLoop_withParallelWorkersAboveLegacyMenuCeiling_appendsParallelOverride() async throws {
+        var workspace: Workspace!
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-loop-parallel-forty-two",
+            scriptName: "mock-ralph-loop-parallel-forty-two",
+            seedQueueTasks: []
+        )
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+        let commandLogURL = fixture.rootURL.appendingPathComponent("command-log.txt", isDirectory: false)
+
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 2)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+
+        let script = """
+            #!/bin/sh
+            printf '%s\\n' "$*" >> "\(commandLogURL.path)"
+
+            case "$*" in
+              *"--no-color machine config resolve"*)
+              cat "\(configResolveURL.path)"
+              exit 0
+              ;;
+              *"--no-color machine run loop --resume --max-tasks 0 --parallel 42"*)
+              echo '{"version":3,"kind":"run_started","task_id":"RQ-LOOP-PARALLEL-42","phase":null,"message":null,"payload":null}'
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed"}'
+              exit 0
+              ;;
+            esac
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        workspace.startLoop(parallelWorkers: 42)
+
+        let loopFinished = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+            !workspace.isRunning && workspace.lastExitStatus?.code == 0
+        }
+        XCTAssertTrue(loopFinished)
+
+        let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)
+        XCTAssertTrue(commandLog.contains("--no-color machine run loop --resume --max-tasks 0 --parallel 42"))
+        XCTAssertEqual(workspace.lastExitStatus?.code, 0)
+        XCTAssertFalse(workspace.isLoopMode)
+    }
+
+    func test_startLoop_honorsMachineAdvertisedParallelWorkerMinimum() async throws {
+        var workspace: Workspace!
+        let fixture = try RalphMockCLITestSupport.makeFixture(
+            prefix: "ralph-workspace-loop-parallel-minimum-three",
+            scriptName: "mock-ralph-loop-parallel-minimum-three",
+            seedQueueTasks: []
+        )
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+        let commandLogURL = fixture.rootURL.appendingPathComponent("command-log-minimum.txt", isDirectory: false)
+
+        let executionControls = MachineExecutionControls(
+            runners: RalphMockCLITestSupport.defaultExecutionControls.runners,
+            reasoningEfforts: RalphMockCLITestSupport.defaultExecutionControls.reasoningEfforts,
+            parallelWorkers: MachineParallelWorkersControl(
+                min: 3,
+                max: 6,
+                defaultMissingValue: 3
+            )
+        )
+        let configResolveURL = try RalphMockCLITestSupport.writeJSONDocument(
+            RalphMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 2),
+                executionControls: executionControls
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve-minimum-three.json"
+        )
+
+        let script = """
+            #!/bin/sh
+            printf '%s\\n' "$*" >> "\(commandLogURL.path)"
+
+            case "$*" in
+              *"--no-color machine config resolve"*)
+              cat "\(configResolveURL.path)"
+              exit 0
+              ;;
+              *"--no-color machine run loop --resume --max-tasks 0 --parallel 3"*)
+              echo '{"version":3,"kind":"run_started","task_id":"RQ-LOOP-PARALLEL-MINIMUM","phase":null,"message":null,"payload":null}'
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed"}'
+              exit 0
+              ;;
+            esac
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: script
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        workspace.startLoop(parallelWorkers: 3)
+
+        let loopFinished = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+            !workspace.isRunning && workspace.lastExitStatus?.code == 0
+        }
+        XCTAssertTrue(loopFinished)
+
+        let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)
+        XCTAssertTrue(commandLog.contains("--no-color machine run loop --resume --max-tasks 0 --parallel 3"))
+        XCTAssertFalse(commandLog.contains("--parallel 2"))
+    }
+
     func test_stopLoop_requestsQueueStopSignalForActiveMachineLoop() async throws {
         var workspace: Workspace!
         let fixture = try RalphMockCLITestSupport.makeFixture(

@@ -26,7 +26,7 @@ final class ConfigModelsTests: RalphCoreTestCase {
     func test_decode_machineConfigResolve_includesWebhookUrlPolicyFields() throws {
         let json = #"""
         {
-          "version": 3,
+          "version": 4,
           "paths": {
             "repo_root": "/tmp/ws",
             "queue_path": "/tmp/ws/.ralph/queue.jsonc",
@@ -61,12 +61,39 @@ final class ConfigModelsTests: RalphCoreTestCase {
               }
             }
           },
+          "execution_controls": {
+            "runners": [
+              {
+                "id": "codex",
+                "display_name": "OpenAI Codex CLI",
+                "source": "built_in",
+                "reasoning_effort_supported": true,
+                "supports_arbitrary_model": false,
+                "allowed_models": ["gpt-5.4"],
+                "default_model": "gpt-5.4"
+              },
+              {
+                "id": "acme.runner",
+                "display_name": "Acme Runner",
+                "source": "project_plugin",
+                "reasoning_effort_supported": false,
+                "supports_arbitrary_model": true,
+                "default_model": "acme-fast"
+              }
+            ],
+            "reasoning_efforts": ["low", "medium", "high", "xhigh"],
+            "parallel_workers": {
+              "min": 2,
+              "max": 255,
+              "default_missing_value": 2
+            }
+          },
           "resume_preview": null
         }
         """#
 
         let doc = try JSONDecoder().decode(MachineConfigResolveDocument.self, from: Data(json.utf8))
-        XCTAssertEqual(doc.version, 3)
+        XCTAssertEqual(doc.version, 4)
         let webhook = try XCTUnwrap(doc.config.agent?.webhook)
         XCTAssertEqual(webhook.enabled, true)
         XCTAssertEqual(webhook.url, "https://hooks.example.com/ralph")
@@ -74,6 +101,9 @@ final class ConfigModelsTests: RalphCoreTestCase {
         XCTAssertEqual(webhook.allowPrivateTargets, true)
         XCTAssertEqual(webhook.retryCount, 5)
         XCTAssertEqual(webhook.retryBackoffMs, 2000)
+        XCTAssertEqual(doc.executionControls.runners.map(\.id), ["codex", "acme.runner"])
+        XCTAssertEqual(doc.executionControls.reasoningEfforts, ["low", "medium", "high", "xhigh"])
+        XCTAssertEqual(doc.executionControls.parallelWorkers.max, 255)
     }
 
     func test_decode_ralphConfig_notification_includesWatchNewTasksField() throws {

@@ -19,8 +19,7 @@ use anyhow::Result;
 use serde::Serialize;
 
 use crate::cli::runner::RunnerFormat;
-use crate::contracts::Runner;
-use crate::runner::default_model_for_runner;
+use crate::commands::runner::capabilities::built_in_runner_catalog;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RunnerInfo {
@@ -31,60 +30,28 @@ pub struct RunnerInfo {
 }
 
 fn get_all_runners() -> Vec<RunnerInfo> {
-    vec![
-        RunnerInfo {
-            id: "claude".into(),
-            name: "Anthropic Claude Code".into(),
-            provider: "Anthropic".into(),
-            default_model: default_model_for_runner(&Runner::Claude)
-                .as_str()
-                .to_string(),
-        },
-        RunnerInfo {
-            id: "codex".into(),
-            name: "OpenAI Codex CLI".into(),
-            provider: "OpenAI".into(),
-            default_model: default_model_for_runner(&Runner::Codex)
-                .as_str()
-                .to_string(),
-        },
-        RunnerInfo {
-            id: "opencode".into(),
-            name: "Opencode".into(),
-            provider: "Flexible".into(),
-            default_model: default_model_for_runner(&Runner::Opencode)
-                .as_str()
-                .to_string(),
-        },
-        RunnerInfo {
-            id: "gemini".into(),
-            name: "Google Gemini CLI".into(),
-            provider: "Google".into(),
-            default_model: default_model_for_runner(&Runner::Gemini)
-                .as_str()
-                .to_string(),
-        },
-        RunnerInfo {
-            id: "cursor".into(),
-            name: "Cursor Agent".into(),
-            provider: "Cursor".into(),
-            default_model: default_model_for_runner(&Runner::Cursor)
-                .as_str()
-                .to_string(),
-        },
-        RunnerInfo {
-            id: "kimi".into(),
-            name: "Kimi CLI".into(),
-            provider: "Moonshot AI".into(),
-            default_model: default_model_for_runner(&Runner::Kimi).as_str().to_string(),
-        },
-        RunnerInfo {
-            id: "pi".into(),
-            name: "Pi Coding Agent".into(),
-            provider: "Pi".into(),
-            default_model: default_model_for_runner(&Runner::Pi).as_str().to_string(),
-        },
-    ]
+    built_in_runner_catalog()
+        .into_iter()
+        .map(|entry| RunnerInfo {
+            provider: provider_for_runner(&entry.id).to_string(),
+            default_model: entry.default_model.unwrap_or_else(|| "<unset>".to_string()),
+            id: entry.id,
+            name: entry.display_name,
+        })
+        .collect()
+}
+
+fn provider_for_runner(id: &str) -> &'static str {
+    match id {
+        "claude" => "Anthropic",
+        "codex" => "OpenAI",
+        "opencode" => "Flexible",
+        "gemini" => "Google",
+        "cursor" => "Cursor",
+        "kimi" => "Moonshot AI",
+        "pi" => "Pi",
+        _ => "Unknown",
+    }
 }
 
 pub fn handle_list(format: RunnerFormat) -> Result<()> {

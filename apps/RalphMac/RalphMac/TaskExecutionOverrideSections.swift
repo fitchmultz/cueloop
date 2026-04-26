@@ -88,8 +88,8 @@ struct TaskExecutionSummarySection: View {
                 .foregroundStyle(.secondary)
 
             Text(taskEffortDisabled
-                ? "Reasoning effort is ignored unless runner is codex. Set runner to codex or inherit."
-                : "Reasoning effort is only used when the resolved runner is codex."
+                ? "Reasoning effort is disabled because the effective runner does not advertise reasoning-effort support."
+                : "Reasoning effort follows machine-advertised runner capabilities."
             )
             .font(.caption2)
             .foregroundStyle(.secondary)
@@ -115,17 +115,19 @@ struct TaskExecutionSummarySection: View {
     }
 
     private var inheritedConfigCaption: String {
+        let inheritedRunner = workspace.runState.currentRunnerConfig?.runner ?? "default"
         let inheritedModel = workspace.runState.currentRunnerConfig?.model ?? "default"
         let inheritedIterations = workspace.runState.currentRunnerConfig?.maxIterations.map(String.init) ?? "default"
         let inheritedPhases = workspace.runState.currentRunnerConfig?.phases.map(String.init) ?? "default"
-        return "Current inherited config: model \(inheritedModel), phases \(inheritedPhases), iterations \(inheritedIterations)."
+        return "Current inherited config: runner \(inheritedRunner), model \(inheritedModel), phases \(inheritedPhases), iterations \(inheritedIterations)."
     }
 
     private var taskEffortDisabled: Bool {
-        guard let runner = TaskExecutionOverrideSupport.normalizedRunnerName(draftTask.agent?.runner) else {
-            return false
-        }
-        return runner != "codex"
+        !TaskExecutionOverrideSupport.effectiveRunnerSupportsReasoningEffort(
+            selectedRunner: draftTask.agent?.runner,
+            inheritedRunner: workspace.runState.currentRunnerConfig?.runner,
+            controls: workspace.runState.currentRunnerConfig?.executionControls
+        )
     }
 }
 
@@ -136,12 +138,27 @@ struct TaskExecutionMainOverridesSection: View {
     let workspace: Workspace
 
     var body: some View {
+        let executionControls = workspace.runState.currentRunnerConfig?.executionControls
+        let runnerOptions = TaskExecutionOverrideSupport.runnerMenuOptions(
+            controls: executionControls,
+            configuredRunner: draftTask.agent?.runner
+        )
+        let effortOptions = TaskExecutionOverrideSupport.effortMenuOptions(
+            controls: executionControls,
+            configuredEffort: draftTask.agent?.modelEffort
+        )
+        let modelHint = TaskExecutionOverrideSupport.modelHint(
+            selectedRunner: draftTask.agent?.runner,
+            inheritedRunner: workspace.runState.currentRunnerConfig?.runner,
+            controls: executionControls
+        )
+
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 16) {
                 Picker("Runner", selection: taskRunnerBinding) {
                     Text("Inherit").tag("inherit")
-                    ForEach(TaskExecutionOverrideSupport.runnerOptions, id: \.self) { runner in
-                        Text(runner).tag(runner)
+                    ForEach(runnerOptions) { runner in
+                        Text(runner.title).tag(runner.value)
                     }
                 }
                 .pickerStyle(.menu)
@@ -154,6 +171,7 @@ struct TaskExecutionMainOverridesSection: View {
                     TextField("Inherit from config", text: taskModelBinding)
                         .textFieldStyle(.roundedBorder)
                         .frame(minWidth: 220)
+                        .help(modelHint ?? "Leave empty to inherit the configured runner model.")
                 }
 
                 Spacer()
@@ -162,8 +180,8 @@ struct TaskExecutionMainOverridesSection: View {
             HStack(spacing: 16) {
                 Picker("Reasoning Effort", selection: taskEffortBinding) {
                     Text("Inherit").tag("inherit")
-                    ForEach(TaskExecutionOverrideSupport.effortOptions, id: \.self) { effort in
-                        Text(effort).tag(effort)
+                    ForEach(effortOptions) { effort in
+                        Text(effort.title).tag(effort.value)
                     }
                 }
                 .pickerStyle(.menu)
@@ -190,14 +208,21 @@ struct TaskExecutionMainOverridesSection: View {
 
                 Spacer()
             }
+
+            if let modelHint {
+                Text(modelHint)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     private var taskEffortDisabled: Bool {
-        guard let runner = TaskExecutionOverrideSupport.normalizedRunnerName(draftTask.agent?.runner) else {
-            return false
-        }
-        return runner != "codex"
+        !TaskExecutionOverrideSupport.effectiveRunnerSupportsReasoningEffort(
+            selectedRunner: draftTask.agent?.runner,
+            inheritedRunner: workspace.runState.currentRunnerConfig?.runner,
+            controls: workspace.runState.currentRunnerConfig?.executionControls
+        )
     }
 
     private var taskRunnerBinding: Binding<String> {
@@ -281,6 +306,7 @@ struct TaskExecutionPhaseOverridesSection: View {
                 title: phaseTitle(phase),
                 phase: phase,
                 draftTask: $draftTask,
+                workspace: workspace,
                 mutateTaskAgent: mutateTaskAgent
             )
         }

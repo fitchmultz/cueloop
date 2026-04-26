@@ -57,9 +57,12 @@ final class WorkspaceRunnerController {
         applyResumeProjection(document.resumePreview, workspace: workspace)
         let safety = document.safety
         workspace.runState.currentRunnerConfig = Workspace.RunnerConfig(
+            runner: document.config.agent?.runner,
             model: document.config.agent?.model,
+            reasoningEffort: document.config.agent?.reasoningEffort,
             phases: document.config.agent?.phases,
             maxIterations: document.config.agent?.iterations,
+            executionControls: document.executionControls,
             safety: Workspace.RunnerSafetySummary(
                 repoTrusted: safety.repoTrusted,
                 dirtyRepo: safety.dirtyRepo,
@@ -247,12 +250,15 @@ final class WorkspaceRunnerController {
         workspace.runState.stopAfterCurrent = false
         let shouldForceDirtyRepo = forceDirtyRepo ?? workspace.runState.runControlForceDirtyRepo
         let requestedParallelWorkers = parallelWorkers ?? workspace.runState.runControlParallelWorkersOverride
+        let minimumParallelWorkers = Int(
+            workspace.runState.currentRunnerConfig?.executionControls?.parallelWorkers.min ?? 2
+        )
 
         var arguments = ["--no-color", "machine", "run", "loop", "--resume", "--max-tasks", "0"]
         if shouldForceDirtyRepo {
             arguments.append("--force")
         }
-        if let requestedParallelWorkers, requestedParallelWorkers >= 2 {
+        if let requestedParallelWorkers, requestedParallelWorkers >= minimumParallelWorkers {
             arguments.append(contentsOf: ["--parallel", String(requestedParallelWorkers)])
         }
         run(arguments: arguments)

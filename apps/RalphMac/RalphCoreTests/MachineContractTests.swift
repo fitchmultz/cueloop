@@ -163,7 +163,7 @@ final class MachineContractTests: XCTestCase {
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
 
         let items = decoder.append("""
-        {"version":3,"kind":"config_resolved","payload":{"config":{"version":999,"paths":{"repo_root":"/tmp/bad-root","queue_path":"/tmp/bad-queue.jsonc","done_path":"/tmp/bad-done.jsonc","project_config_path":null,"global_config_path":null},"safety":{"repo_trusted":false,"dirty_repo":false,"git_publish_mode":"never","approval_mode":null,"ci_gate_enabled":false,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive","interactive_approval_supported":false},"config":{},"resume_preview":null}}}
+        {"version":3,"kind":"config_resolved","payload":{"config":{"version":999,"paths":{"repo_root":"/tmp/bad-root","queue_path":"/tmp/bad-queue.jsonc","done_path":"/tmp/bad-done.jsonc","project_config_path":null,"global_config_path":null},"safety":{"repo_trusted":false,"dirty_repo":false,"git_publish_mode":"never","approval_mode":null,"ci_gate_enabled":false,"git_revert_mode":"ask","parallel_configured":false,"execution_interactivity":"noninteractive","interactive_approval_supported":false},"config":{},"execution_controls":{"runners":[],"reasoning_efforts":["low","medium","high","xhigh"],"parallel_workers":{"min":2,"max":255,"default_missing_value":2}},"resume_preview":null}}}
 
         """)
 

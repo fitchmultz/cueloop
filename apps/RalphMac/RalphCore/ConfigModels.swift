@@ -280,6 +280,79 @@ public struct MachineResumeDecision: Codable, Sendable, Equatable {
     }
 }
 
+public struct MachineExecutionControls: Codable, Sendable, Equatable {
+    public let runners: [MachineRunnerOption]
+    public let reasoningEfforts: [String]
+    public let parallelWorkers: MachineParallelWorkersControl
+
+    private enum CodingKeys: String, CodingKey {
+        case runners
+        case reasoningEfforts = "reasoning_efforts"
+        case parallelWorkers = "parallel_workers"
+    }
+}
+
+public struct MachineRunnerOption: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let displayName: String
+    public let source: String
+    public let reasoningEffortSupported: Bool
+    public let supportsArbitraryModel: Bool
+    public let allowedModels: [String]
+    public let defaultModel: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case displayName = "display_name"
+        case source
+        case reasoningEffortSupported = "reasoning_effort_supported"
+        case supportsArbitraryModel = "supports_arbitrary_model"
+        case allowedModels = "allowed_models"
+        case defaultModel = "default_model"
+    }
+
+    public init(
+        id: String,
+        displayName: String,
+        source: String,
+        reasoningEffortSupported: Bool,
+        supportsArbitraryModel: Bool,
+        allowedModels: [String],
+        defaultModel: String?
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.source = source
+        self.reasoningEffortSupported = reasoningEffortSupported
+        self.supportsArbitraryModel = supportsArbitraryModel
+        self.allowedModels = allowedModels
+        self.defaultModel = defaultModel
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        source = try container.decode(String.self, forKey: .source)
+        reasoningEffortSupported = try container.decode(Bool.self, forKey: .reasoningEffortSupported)
+        supportsArbitraryModel = try container.decode(Bool.self, forKey: .supportsArbitraryModel)
+        allowedModels = try container.decodeIfPresent([String].self, forKey: .allowedModels) ?? []
+        defaultModel = try container.decodeIfPresent(String.self, forKey: .defaultModel)
+    }
+}
+
+public struct MachineParallelWorkersControl: Codable, Sendable, Equatable {
+    public let min: UInt8
+    public let max: UInt8
+    public let defaultMissingValue: UInt8
+
+    private enum CodingKeys: String, CodingKey {
+        case min
+        case max
+        case defaultMissingValue = "default_missing_value"
+    }
+}
+
 public struct MachineConfigResolveDocument: Codable, Sendable, Equatable, VersionedMachineDocument {
     public static let expectedVersion = RalphMachineContract.configResolveVersion
     public static let documentName = "machine config resolve"
@@ -288,6 +361,7 @@ public struct MachineConfigResolveDocument: Codable, Sendable, Equatable, Versio
     public let paths: MachineQueuePaths
     public let safety: MachineConfigSafetySummary
     public let config: RalphConfig
+    public let executionControls: MachineExecutionControls
     public let resumePreview: MachineResumeDecision?
 
     private enum CodingKeys: String, CodingKey {
@@ -295,6 +369,7 @@ public struct MachineConfigResolveDocument: Codable, Sendable, Equatable, Versio
         case paths
         case safety
         case config
+        case executionControls = "execution_controls"
         case resumePreview = "resume_preview"
     }
 }

@@ -2,55 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0012",
-      "status": "todo",
-      "title": "Derive native execution controls from machine capabilities",
-      "description": "Replace hardcoded RalphMac runner, effort, and loop-worker controls with machine-visible capabilities/configuration so native controls do not lag behind CLI, plugin runner, or model support. The app should preserve unknown configured values, expose available plugin runners when trusted, and avoid arbitrary worker caps that are narrower than the CLI contract.",
-      "priority": "medium",
-      "tags": [
-        "ralphmac",
-        "capabilities",
-        "configuration",
-        "plugins",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphMac/TaskExecutionOverrideSupport.swift",
-        "apps/RalphMac/RalphMac/TaskExecutionOverrideSections.swift",
-        "apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift",
-        "apps/RalphMac/RalphCore/Workspace+CLISpec.swift",
-        "apps/RalphMac/RalphCore/RalphCLISpecModels.swift",
-        "crates/ralph/src/commands/runner/capabilities.rs",
-        "crates/ralph/src/cli/machine/",
-        "crates/ralph/src/agent/args.rs",
-        "apps/RalphMac/RalphCoreTests/"
-      ],
-      "evidence": [
-        "`TaskExecutionOverrideSupport.swift` hardcodes runner and effort options.",
-        "`RunControlDetailSections+Configuration.swift` hardcodes loop worker choices to Auto and 2 through 8.",
-        "`crates/ralph/src/cli/machine/args.rs` accepts `--parallel` values from 2 through u8::MAX.",
-        "The app already loads CLI spec metadata for Advanced Runner, and Rust has runner capability data, but native controls do not use those sources."
-      ],
-      "plan": [
-        "Define or reuse a machine-visible capability/config document for native runner, model, effort, and parallel worker affordances.",
-        "Refactor native runner and effort pickers to render from capability data instead of fixed Swift arrays.",
-        "Replace the fixed 2 through 8 worker menu with a control that preserves configured values and allows valid CLI-supported values.",
-        "Render unknown or unsupported configured values explicitly so the app does not silently coerce them to a default.",
-        "Add tests for plugin runner visibility, worker counts above 8, and configured values that are not in the app's built-in defaults."
-      ],
-      "notes": [],
-      "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
-      "created_at": "2026-04-26T00:04:48Z",
-      "updated_at": "2026-04-26T00:04:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
-      }
-    },
-    {
       "id": "RQ-0013",
       "status": "todo",
       "title": "Make custom queue paths first-class in RalphMac",
@@ -141,8 +92,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
       }
     },
     {
@@ -185,8 +136,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
