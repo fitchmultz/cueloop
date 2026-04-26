@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -194,9 +194,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping",
-        "model_used": "gpt-5.4"
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -610,8 +610,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex"
       }
     },
     {
@@ -830,8 +830,8 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex"
       }
     },
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -1214,6 +1214,46 @@
       "created_at": "2026-04-26T16:17:04Z",
       "updated_at": "2026-04-26T19:40:51.783176000Z",
       "completed_at": "2026-04-26T19:40:51.783176000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0023",
+      "status": "done",
+      "title": "Make workspace reveal timeout explicit instead of silent polling exhaustion",
+      "description": "Principles violated: F (fail fast), G (least astonishment), H (operational hygiene). `scheduleWorkspaceReveal` polls up to 60 attempts with fixed sleep/yield and then silently exits with no user-visible error or telemetry if reveal never succeeds. Why it matters: workspace focus failures can become silent UX dead-ends that are difficult to diagnose. Minimal fix: replace silent exhaustion with an explicit timeout state and diagnostic event, and prefer event-driven readiness when possible. Acceptance criteria: reveal timeout is observable in diagnostics/logs and covered by deterministic tests.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "ralphmac",
+        "ux",
+        "operability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/WorkspaceManager+Routing.swift",
+        "apps/RalphMac/RalphCoreTests/"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphCore/WorkspaceManager+Routing.swift:115-129 :: scheduleWorkspaceReveal :: loops 60 attempts and uses fixed yield/sleep polling",
+        "path: apps/RalphMac/RalphCore/WorkspaceManager+Routing.swift:131-133 :: post-loop path :: clears task without surfacing timeout/failure state",
+        "workflow: rg -n \"scheduleWorkspaceReveal|workspaceRevealTask\" apps/RalphMac/RalphCore --glob '*.swift' :: confirms reveal timeout has no explicit operator-visible failure signal"
+      ],
+      "plan": [
+        "Introduce explicit timeout outcome reporting for workspace reveal attempts.",
+        "Emit structured diagnostics/log entries when reveal polling exhausts without success.",
+        "Replace or minimize fixed polling with event-driven triggers where feasible.",
+        "Add deterministic tests for success and timeout branches of reveal scheduling.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and asserting reveal-timeout tests pass."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T20:08:53.550536000Z",
+      "completed_at": "2026-04-26T20:08:53.550536000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

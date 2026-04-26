@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0023",
-      "status": "todo",
-      "title": "Make workspace reveal timeout explicit instead of silent polling exhaustion",
-      "description": "Principles violated: F (fail fast), G (least astonishment), H (operational hygiene). `scheduleWorkspaceReveal` polls up to 60 attempts with fixed sleep/yield and then silently exits with no user-visible error or telemetry if reveal never succeeds. Why it matters: workspace focus failures can become silent UX dead-ends that are difficult to diagnose. Minimal fix: replace silent exhaustion with an explicit timeout state and diagnostic event, and prefer event-driven readiness when possible. Acceptance criteria: reveal timeout is observable in diagnostics/logs and covered by deterministic tests.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "ralphmac",
-        "ux",
-        "operability"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/WorkspaceManager+Routing.swift",
-        "apps/RalphMac/RalphCoreTests/"
-      ],
-      "evidence": [
-        "path: apps/RalphMac/RalphCore/WorkspaceManager+Routing.swift:115-129 :: scheduleWorkspaceReveal :: loops 60 attempts and uses fixed yield/sleep polling",
-        "path: apps/RalphMac/RalphCore/WorkspaceManager+Routing.swift:131-133 :: post-loop path :: clears task without surfacing timeout/failure state",
-        "workflow: rg -n \"scheduleWorkspaceReveal|workspaceRevealTask\" apps/RalphMac/RalphCore --glob '*.swift' :: confirms reveal timeout has no explicit operator-visible failure signal"
-      ],
-      "plan": [
-        "Introduce explicit timeout outcome reporting for workspace reveal attempts.",
-        "Emit structured diagnostics/log entries when reveal polling exhausts without success.",
-        "Replace or minimize fixed polling with event-driven triggers where feasible.",
-        "Add deterministic tests for success and timeout branches of reveal scheduling.",
-        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and asserting reveal-timeout tests pass."
-      ],
-      "notes": [],
-      "request": "scan: maintenance",
-      "created_at": "2026-04-26T16:17:04Z",
-      "updated_at": "2026-04-26T16:17:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0024",
       "status": "todo",
       "title": "Split `Workspace+RunnerState.swift` below hard 1,000 LOC limit",
