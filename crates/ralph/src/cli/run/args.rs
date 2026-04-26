@@ -110,7 +110,12 @@ pub struct RunOneArgs {
 
 #[derive(Args)]
 pub struct RunLoopArgs {
-    #[arg(long, default_value_t = 0)]
+    #[arg(
+        long,
+        default_value_t = 0,
+        value_name = "COUNT",
+        help = "Maximum tasks to run before stopping (0 = unlimited)"
+    )]
     pub max_tasks: u32,
     #[arg(long)]
     pub debug: bool,

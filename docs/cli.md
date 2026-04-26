@@ -77,9 +77,12 @@ ralph task "Stabilize flaky CI test"
 ralph run one --profile safe
 ralph run one --resume
 ralph run one --debug
+ralph run loop --max-tasks 0
 ralph run loop --max-tasks 5
 ralph run resume
 ```
+
+`ralph run loop --max-tasks 0` means unlimited execution. Use a positive `--max-tasks` value when you want a fixed cap on successful iterations.
 
 ### Resume-aware execution
 
@@ -197,6 +200,8 @@ ralph undo --dry-run
 
 These commands are now first-class continuation tools. They explain whether Ralph is ready, waiting, blocked, or stalled, preserve partial value where safe, and point to the next recovery step instead of treating queue repair or undo as emergency-only workflows.
 
+If `ralph run loop` stops on queue validation, start with `ralph queue repair --dry-run` to preview recoverable fixes, apply them with `ralph queue repair`, and optionally confirm the result with `ralph queue validate`.
+
 `ralph task mutate --format json` and `ralph task decompose --format json` now emit the same shared versioned continuation documents used by `ralph machine ...`.
 `ralph task followups apply` consumes `.ralph/cache/followups/<TASK_ID>.json`, validates the proposal, creates undo, inserts generated tasks into the queue, and removes the proposal after a successful apply.
 
@@ -216,6 +221,8 @@ ralph machine run loop --resume --max-tasks 5
 ralph machine run loop --resume --max-tasks 0 --parallel 2
 ralph machine schema
 ```
+
+Machine run loops use the same convention: `--max-tasks 0` means unlimited execution.
 
 ### Experimental Parallel Supervision
 

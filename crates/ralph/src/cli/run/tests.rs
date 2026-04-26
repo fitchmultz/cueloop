@@ -49,6 +49,20 @@ fn run_loop_help_mentions_repo_prompt_examples() {
 }
 
 #[test]
+fn run_loop_help_clarifies_unlimited_max_tasks() {
+    let mut cmd = Cli::command();
+    let run = cmd.find_subcommand_mut("run").expect("run subcommand");
+    let run_loop = run
+        .find_subcommand_mut("loop")
+        .expect("run loop subcommand");
+    let help = run_loop.render_long_help().to_string();
+
+    assert!(help.contains("Maximum tasks to run before stopping (0 = unlimited)"));
+    assert!(help.contains("`--max-tasks 0` means unlimited successful iterations."));
+    assert!(help.contains("ralph run loop --max-tasks 0 (unlimited)"));
+}
+
+#[test]
 fn run_one_non_interactive_parses() {
     let cli = Cli::parse_from(["ralph", "run", "one", "--non-interactive"]);
     match cli.command {

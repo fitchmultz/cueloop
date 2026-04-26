@@ -13,7 +13,7 @@
 //!
 //! Invariants/Assumptions:
 //! - The queue fixture contents and `RunLoopOptions` must remain aligned with the pre-split monolith.
-//! - Assertion text and timing thresholds remain unchanged.
+//! - Timing thresholds remain unchanged.
 
 use super::*;
 
@@ -71,6 +71,18 @@ fn run_loop_aborts_immediately_on_queue_validation_error() -> Result<()> {
     anyhow::ensure!(
         err_msg.contains("non-existent") || err_msg.contains("RQ-9999"),
         "expected 'non-existent' or task ID in error: {err_msg}"
+    );
+    anyhow::ensure!(
+        err_msg.contains("ralph queue repair --dry-run"),
+        "expected repair preview guidance in error: {err_msg}"
+    );
+    anyhow::ensure!(
+        err_msg.contains("ralph queue repair"),
+        "expected repair guidance in error: {err_msg}"
+    );
+    anyhow::ensure!(
+        err_msg.contains("ralph queue validate"),
+        "expected post-repair validation guidance in error: {err_msg}"
     );
 
     anyhow::ensure!(

@@ -22,6 +22,10 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
   2) task's `agent` override (runner/model plus `model_effort` if set)\n\
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
+Loop limits:\n\
+  - `ralph run loop --max-tasks 0` means unlimited execution until Ralph runs out of runnable work, blocks, or is stopped.\n\
+  - Use a positive `--max-tasks` value to cap successful task iterations.\n\
+ \n\
  Resume behavior:\n\
   - Ralph now narrates whether it is resuming the same session, starting fresh, or refusing to guess.\n\
   - `ralph run one` inspects interrupted-session state too; add `--resume` to auto-continue when safe.\n\
@@ -79,7 +83,7 @@ Examples:\n\
  ralph run one --git-revert-mode disabled\n\
  ralph run one --git-publish-mode off\n\
  ralph run one --lfs-check\n\
- ralph run loop --max-tasks 0\n\
+ ralph run loop --max-tasks 0 (unlimited)\n\
  ralph run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
  ralph run loop --include-draft --max-tasks 1\n\
  ralph run loop --git-revert-mode ask --max-tasks 1\n\
@@ -151,17 +155,25 @@ pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - Without `--resume`, Ralph still narrates stale/fresh/refusal cases instead of hiding them.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
 \n\
+Loop limits:\n\
+ - `--max-tasks 0` means unlimited successful iterations.\n\
+ - Use a positive `--max-tasks` value when you want a fixed cap.\n\
+\n\
 Blocking-state diagnosis:\n\
  - `ralph run loop` emits canonical blocking states during waiting and stall transitions.\n\
  - Use `ralph doctor` to diagnose the same state outside the live run loop.\n\
 \n\
+Queue validation recovery:\n\
+ - If the loop stops on queue validation, preview repair with `ralph queue repair --dry-run`.\n\
+ - Apply recoverable fixes with `ralph queue repair`, then re-run `ralph queue validate` if desired.\n\
+\n\
 Examples:\n\
- ralph run loop --max-tasks 0\n\
+ ralph run loop --max-tasks 0 (unlimited)\n\
  ralph run loop --profile fast-local --max-tasks 5\n\
  ralph run loop --profile deep-review --max-tasks 5\n\
  ralph run loop --resume --max-tasks 5\n\
- ralph run loop --phases 3 --max-tasks 0 (plan/implement+CI/review+complete)\n\
- ralph run loop --phases 2 --max-tasks 0 (plan/implement)\n\
+ ralph run loop --phases 3 --max-tasks 0 (unlimited, plan/implement+CI/review+complete)\n\
+ ralph run loop --phases 2 --max-tasks 0 (unlimited, plan/implement)\n\
  ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\
  ralph run loop --quick --max-tasks 1 (single-pass, same as --phases 1)\n\
  ralph run loop --max-tasks 3\n\

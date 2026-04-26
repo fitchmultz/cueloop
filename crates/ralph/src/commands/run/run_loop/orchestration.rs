@@ -70,8 +70,8 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<()>
     }
 
     let label = format!(
-        "RunLoop (todo={initial_todo_count}, max_tasks={})",
-        opts.max_tasks
+        "RunLoop (todo={initial_todo_count}, task_limit={})",
+        task_limit_label(opts.max_tasks)
     );
     let mut lifecycle =
         LoopLifecycle::start(resolved, initial_todo_count, resume_state.completed_count);
@@ -300,7 +300,7 @@ fn run_loop_state_machine(
                 }
                 if runutil::is_queue_validation_error(&err) {
                     log::error!("RunLoop: aborting due to queue validation error");
-                    return Err(err);
+                    return Err(add_queue_validation_recovery_guidance(err));
                 }
                 if let Some(ci_failure) =
                     err.downcast_ref::<crate::commands::run::supervision::CiFailure>()
@@ -316,4 +316,19 @@ fn run_loop_state_machine(
             }
         }
     }
+}
+
+fn task_limit_label(max_tasks: u32) -> String {
+    if max_tasks == 0 {
+        "unlimited".to_string()
+    } else {
+        max_tasks.to_string()
+    }
+}
+
+fn add_queue_validation_recovery_guidance(err: anyhow::Error) -> anyhow::Error {
+    let detail = err.to_string();
+    err.context(format!(
+        "{detail}\n\nNext:\n  1. ralph queue repair --dry-run\n  2. ralph queue repair\n  3. ralph queue validate"
+    ))
 }
