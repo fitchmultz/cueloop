@@ -263,6 +263,38 @@ fn ensure_workspace_exists_replaces_invalid_workspace() -> Result<()> {
 }
 
 #[test]
+fn ensure_workspace_exists_replaces_unusable_git_workspace() -> Result<()> {
+    let temp = seeded_repo()?;
+    let branch = current_branch(temp.path())?;
+    let workspace_path = temp.path().join("workspaces/RQ-0005");
+
+    ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
+
+    let pack_dir = workspace_path.join(".git/objects/pack");
+    let mut removed_pack_artifacts = 0;
+    for entry in std::fs::read_dir(&pack_dir)? {
+        let path = entry?.path();
+        if path.is_file() {
+            std::fs::remove_file(path)?;
+            removed_pack_artifacts += 1;
+        }
+    }
+    assert!(
+        removed_pack_artifacts > 0,
+        "expected packed clone objects under {}",
+        pack_dir.display()
+    );
+    std::fs::write(workspace_path.join("stale.txt"), "stale")?;
+
+    ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
+
+    assert!(workspace_path.join(".git").exists());
+    assert!(!workspace_path.join("stale.txt").exists());
+    assert_eq!(current_branch(&workspace_path)?, branch);
+    Ok(())
+}
+
+#[test]
 fn ensure_workspace_exists_fails_without_origin() -> Result<()> {
     let temp = TempDir::new()?;
     git_test::init_repo(temp.path())?;

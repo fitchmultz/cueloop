@@ -59,6 +59,14 @@ pub(super) fn ensure_workspace_repo(repo_root: &Path, workspace_path: &Path) -> 
                 )
             })?;
             clone_repo_from_local(repo_root, workspace_path)?;
+        } else if !workspace_git_is_usable(workspace_path) {
+            std::fs::remove_dir_all(workspace_path).with_context(|| {
+                format!(
+                    "remove invalid workspace (unusable git repo) {}",
+                    workspace_path.display()
+                )
+            })?;
+            clone_repo_from_local(repo_root, workspace_path)?;
         }
     } else {
         if let Some(parent) = workspace_path.parent() {
@@ -70,6 +78,17 @@ pub(super) fn ensure_workspace_repo(repo_root: &Path, workspace_path: &Path) -> 
     }
 
     Ok(())
+}
+
+fn workspace_git_is_usable(workspace_path: &Path) -> bool {
+    git_output(workspace_path, &["status", "--porcelain"]).is_ok_and(|output| {
+        if !output.status.success() {
+            return false;
+        }
+
+        git_output(workspace_path, &["rev-parse", "--verify", "HEAD^{tree}"])
+            .is_ok_and(|tree_output| tree_output.status.success())
+    })
 }
 
 pub(super) fn reset_workspace_to_branch(
