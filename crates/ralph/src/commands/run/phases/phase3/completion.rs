@@ -126,6 +126,58 @@ pub(super) fn finalize_phase3_if_done(
     );
     // #endregion
 
+    match apply_followups_if_present_for_finalization(resolved, task_id) {
+        Ok(Some(report)) => {
+            // #region agent log
+            append_debug_log(
+                "H2",
+                "crates/ralph/src/commands/run/phases/phase3/completion.rs:finalize_phase3_if_done",
+                "phase3 auto-applied followups proposal",
+                serde_json::json!({
+                    "taskId": task_id,
+                    "applied": true,
+                    "createdTasksCount": report.created_tasks.len(),
+                    "proposalPath": report.proposal_path.as_str(),
+                }),
+            );
+            // #endregion
+            log::info!(
+                "Applied {} follow-up task(s) for {} from {}",
+                report.created_tasks.len(),
+                task_id,
+                report.proposal_path
+            );
+        }
+        Ok(None) => {
+            // #region agent log
+            append_debug_log(
+                "H2",
+                "crates/ralph/src/commands/run/phases/phase3/completion.rs:finalize_phase3_if_done",
+                "phase3 found no followups proposal to apply",
+                serde_json::json!({
+                    "taskId": task_id,
+                    "applied": false,
+                }),
+            );
+            // #endregion
+        }
+        Err(err) => {
+            // #region agent log
+            append_debug_log(
+                "H2",
+                "crates/ralph/src/commands/run/phases/phase3/completion.rs:finalize_phase3_if_done",
+                "phase3 followups auto-apply failed",
+                serde_json::json!({
+                    "taskId": task_id,
+                    "applied": false,
+                    "error": format!("{err:#}"),
+                }),
+            );
+            // #endregion
+            return Err(err);
+        }
+    }
+
     crate::commands::run::post_run_supervise(
         resolved,
         queue_lock,
@@ -202,6 +254,156 @@ pub fn ensure_phase3_completion(
         );
     }
     Ok(())
+}
+
+fn apply_followups_if_present_for_finalization(
+    resolved: &config::Resolved,
+    task_id: &str,
+) -> Result<Option<queue::FollowupApplyReport>> {
+    queue::apply_default_followups_if_present_with_removal(resolved, task_id, true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_followups_if_present_for_finalization;
+    use crate::config;
+    use crate::contracts::{Config, QueueFile, Task, TaskPriority, TaskStatus};
+    use crate::queue;
+    use anyhow::Result;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn resolved_for_repo(repo_root: PathBuf) -> config::Resolved {
+        config::Resolved {
+            config: Config::default(),
+            repo_root: repo_root.clone(),
+            queue_path: repo_root.join(".ralph/queue.jsonc"),
+            done_path: repo_root.join(".ralph/done.jsonc"),
+            id_prefix: "RQ".to_string(),
+            id_width: 4,
+            global_config_path: None,
+            project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+        }
+    }
+
+    fn done_task(task_id: &str) -> Task {
+        Task {
+            id: task_id.to_string(),
+            status: TaskStatus::Done,
+            title: "Completed parent task".to_string(),
+            description: Some("Parent task for follow-up apply coverage.".to_string()),
+            priority: TaskPriority::High,
+            tags: vec!["tests".to_string()],
+            scope: vec!["crates/ralph".to_string()],
+            evidence: vec!["runtime observation".to_string()],
+            plan: vec!["validate follow-up auto-apply path".to_string()],
+            notes: vec![],
+            request: Some("Keep follow-up task creation deterministic".to_string()),
+            agent: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+            completed_at: Some("2026-01-18T00:00:00Z".to_string()),
+            started_at: None,
+            scheduled_start: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: HashMap::new(),
+            parent_id: None,
+            estimated_minutes: None,
+            actual_minutes: None,
+        }
+    }
+
+    #[test]
+    fn apply_followups_for_finalization_applies_and_removes_default_proposal() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_for_repo(temp.path().to_path_buf());
+        std::fs::create_dir_all(temp.path().join(".ralph/cache/followups"))?;
+
+        queue::save_queue(
+            &resolved.queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![],
+            },
+        )?;
+        queue::save_queue(
+            &resolved.done_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![done_task("RQ-0001")],
+            },
+        )?;
+
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_doc = serde_json::json!({
+            "version": 1,
+            "source_task_id": "RQ-0001",
+            "tasks": [
+                {
+                    "key": "quickagent-doc",
+                    "title": "Write QuickAgent doc update",
+                    "description": "Capture actionable guidance from the roadmap deep dive.",
+                    "priority": "medium",
+                    "tags": ["docs"],
+                    "scope": ["docs/"],
+                    "evidence": ["roadmap findings"],
+                    "plan": ["draft", "review", "publish"],
+                    "depends_on_keys": [],
+                    "independence_rationale": "Independent documentation follow-up."
+                }
+            ]
+        });
+        std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal_doc)?)?;
+
+        let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?
+            .expect("expected follow-up proposal to be applied");
+        assert_eq!(report.created_tasks.len(), 1);
+        assert!(
+            !proposal_path.exists(),
+            "proposal file should be removed after apply"
+        );
+
+        let queue_after = queue::load_queue(&resolved.queue_path)?;
+        assert_eq!(queue_after.tasks.len(), 1);
+        assert_eq!(queue_after.tasks[0].status, TaskStatus::Todo);
+        assert!(
+            queue_after.tasks[0]
+                .relates_to
+                .iter()
+                .any(|related| related == "RQ-0001")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn apply_followups_for_finalization_without_proposal_is_noop() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_for_repo(temp.path().to_path_buf());
+        std::fs::create_dir_all(temp.path().join(".ralph/cache/followups"))?;
+
+        queue::save_queue(
+            &resolved.queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![],
+            },
+        )?;
+        queue::save_queue(
+            &resolved.done_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![done_task("RQ-0001")],
+            },
+        )?;
+
+        let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?;
+        assert!(report.is_none(), "expected no-op without proposal file");
+        Ok(())
+    }
 }
 
 fn append_debug_log(hypothesis_id: &str, location: &str, message: &str, data: serde_json::Value) {

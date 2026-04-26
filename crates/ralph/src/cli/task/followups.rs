@@ -33,6 +33,7 @@ pub fn handle(args: &TaskFollowupsArgs, force: bool, resolved: &config::Resolved
         TaskFollowupsCommand::Apply(args) => {
             let default_proposal_path =
                 queue::default_followups_path(&resolved.repo_root, &args.task);
+            let lock_label = "task";
             // #region agent log
             append_debug_log(
                 "H1",
@@ -43,13 +44,12 @@ pub fn handle(args: &TaskFollowupsArgs, force: bool, resolved: &config::Resolved
                     "force": force,
                     "defaultProposalPath": default_proposal_path.display().to_string(),
                     "defaultProposalExists": default_proposal_path.exists(),
-                    "lockLabel": "task followups apply",
+                    "lockLabel": lock_label,
                 }),
             );
             // #endregion
             let _queue_lock =
-                match queue::acquire_queue_lock(&resolved.repo_root, "task followups apply", force)
-                {
+                match queue::acquire_queue_lock(&resolved.repo_root, lock_label, force) {
                     Ok(lock) => {
                         // #region agent log
                         append_debug_log(
@@ -58,7 +58,7 @@ pub fn handle(args: &TaskFollowupsArgs, force: bool, resolved: &config::Resolved
                             "followups apply lock acquisition succeeded",
                             serde_json::json!({
                                 "taskId": args.task.as_str(),
-                                "lockLabel": "task followups apply",
+                                "lockLabel": lock_label,
                             }),
                         );
                         // #endregion
@@ -72,7 +72,7 @@ pub fn handle(args: &TaskFollowupsArgs, force: bool, resolved: &config::Resolved
                             "followups apply lock acquisition failed",
                             serde_json::json!({
                                 "taskId": args.task.as_str(),
-                                "lockLabel": "task followups apply",
+                                "lockLabel": lock_label,
                                 "error": format!("{err:#}"),
                             }),
                         );
