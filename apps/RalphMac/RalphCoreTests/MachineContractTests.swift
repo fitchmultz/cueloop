@@ -265,6 +265,49 @@ final class MachineContractTests: XCTestCase {
     }
 
     @MainActor
+    func testWorkspaceOverviewRejectsNestedConfigContractVersionMismatchBeforeApplying() throws {
+        let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "overview-nested-config-version")
+        let workspace = Workspace(
+            workingDirectoryURL: workspaceURL,
+            bootstrapRepositoryStateOnInit: false
+        )
+        let queue = RalphMockCLITestSupport.queueReadDocument(
+            workspaceURL: workspaceURL,
+            activeTasks: [
+                RalphMockCLITestSupport.task(
+                    id: "RQ-8888",
+                    status: .todo,
+                    title: "Should not apply",
+                    priority: .medium
+                )
+            ],
+            nextRunnableTaskID: "RQ-8888"
+        )
+        let goodConfig = RalphMockCLITestSupport.configResolveDocument(workspaceURL: workspaceURL)
+        let badConfig = MachineConfigResolveDocument(
+            version: 999,
+            paths: goodConfig.paths,
+            safety: goodConfig.safety,
+            config: goodConfig.config,
+            executionControls: goodConfig.executionControls,
+            resumePreview: goodConfig.resumePreview
+        )
+        let document = MachineWorkspaceOverviewDocument(
+            version: MachineWorkspaceOverviewDocument.expectedVersion,
+            queue: queue,
+            config: badConfig
+        )
+
+        XCTAssertThrowsError(try workspace.validateWorkspaceOverviewDocument(document)) { error in
+            let recovery = error as? RecoveryError
+            XCTAssertEqual(recovery?.category, .versionMismatch)
+            XCTAssertTrue(recovery?.message.contains("Unsupported machine config resolve version 999") == true)
+        }
+        XCTAssertTrue(workspace.taskState.tasks.isEmpty)
+        XCTAssertNil(workspace.identityState.resolvedPaths)
+    }
+
+    @MainActor
     func testApplyConfigResolveDocumentPreservesCustomResolvedPaths() {
         let workspaceURL = RalphCoreTestSupport.workspaceURL(label: "custom-resolved-paths")
         let workspace = Workspace(

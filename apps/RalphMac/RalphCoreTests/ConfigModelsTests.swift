@@ -121,4 +121,51 @@ final class ConfigModelsTests: RalphCoreTestCase {
         let notification = try XCTUnwrap(config.agent?.notification)
         XCTAssertEqual(notification.notifyOnWatchNewTasks, false)
     }
+
+    func test_decode_machineErrorDocument_ifPresent_returnsNilForBlankAndNonEnvelopeJSON() throws {
+        XCTAssertNil(
+            try MachineErrorDocument.decodeIfPresent(
+                from: "  \n\t",
+                operation: "unit-test"
+            )
+        )
+        XCTAssertNil(
+            try MachineErrorDocument.decodeIfPresent(
+                from: #"{"status":"error","message":"not-machine-error-envelope"}"#,
+                operation: "unit-test"
+            )
+        )
+    }
+
+    func test_decode_machineErrorDocument_ifPresent_throwsVersionMismatchForUnsupportedEnvelopeVersion() {
+        let raw = #"{"version":999,"code":"resource_busy","message":"boom","detail":"x","retryable":true}"#
+
+        XCTAssertThrowsError(
+            try MachineErrorDocument.decodeIfPresent(
+                from: raw,
+                operation: "unit-test"
+            )
+        ) { error in
+            guard let recovery = error as? RecoveryError else {
+                return XCTFail("expected RecoveryError, got \(error)")
+            }
+            XCTAssertEqual(recovery.category, .versionMismatch)
+            XCTAssertTrue(recovery.message.contains("Unsupported machine error version 999"))
+        }
+    }
+
+    func test_machineErrorDocument_userFacingDescription_omitsBlankDetail() {
+        let document = MachineErrorDocument(
+            version: MachineErrorDocument.expectedVersion,
+            code: .queueCorrupted,
+            message: "bad",
+            detail: "   \n",
+            retryable: false
+        )
+
+        XCTAssertEqual(
+            document.userFacingDescription,
+            "Code: queue_corrupted\nMessage: bad\nRetryable: no"
+        )
+    }
 }
