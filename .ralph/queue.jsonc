@@ -44,51 +44,6 @@
       }
     },
     {
-      "id": "RQ-0018",
-      "status": "todo",
-      "title": "Enforce `machine_error` version checks before retry/recovery classification",
-      "description": "Principles violated: E (make bugs hard to write), F (fail fast), J (consistency/integrity). RalphMac defines `RalphMachineContract.errorVersion` but `MachineErrorDocument.decode(from:)` bypasses contract validation and accepts any version value. Retry and recovery paths then trust that decoded payload as authoritative. Why it matters: incompatible `machine_error` payloads can be misclassified as valid structured errors, masking contract drift and producing incorrect retry/recovery behavior. Minimal fix: move machine-error decoding behind contract validation and reject unsupported versions with explicit recovery errors. Acceptance criteria: malformed/unknown machine-error versions no longer classify as valid machine errors; supported version behavior remains unchanged.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "ralphmac",
-        "machine-contract",
-        "reliability"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/ConfigModels.swift",
-        "apps/RalphMac/RalphCore/MachineContract.swift",
-        "apps/RalphMac/RalphCore/RetryHelper.swift",
-        "apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift",
-        "apps/RalphMac/RalphCore/RalphCLIClient+Retry.swift",
-        "apps/RalphMac/RalphCoreTests/"
-      ],
-      "evidence": [
-        "path: apps/RalphMac/RalphCore/MachineContract.swift:44 :: errorVersion constant :: defined but unused elsewhere",
-        "path: apps/RalphMac/RalphCore/ConfigModels.swift:204-209 :: MachineErrorDocument.decode :: direct JSONDecoder decode with no version validation",
-        "path: apps/RalphMac/RalphCore/RetryHelper.swift:96,215 :: defaultShouldRetry/isRetryableFailure :: trusts MachineErrorDocument.decode(stderr)",
-        "path: apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift:48,129 :: classify :: trusts MachineErrorDocument.decode(description/stderr)",
-        "workflow: rg -n \"RalphMachineContract\\.errorVersion\" apps/RalphMac/RalphCore --glob '*.swift' :: only declaration found, no enforcement call sites"
-      ],
-      "plan": [
-        "Make `MachineErrorDocument` conform to the versioned-document contract and validate against `RalphMachineContract.errorVersion`.",
-        "Refactor callers to use the contract-validated decode path instead of raw permissive decode.",
-        "Ensure unsupported error-document versions return explicit version-mismatch classification rather than falling through as valid structured errors.",
-        "Add regression tests for supported vs unsupported machine-error versions across retry and recovery classifiers.",
-        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)' -only-testing:RalphCoreTests/RetryHelperTests -only-testing:RalphCoreTests/ErrorRecoveryCategoryTests`."
-      ],
-      "notes": [],
-      "request": "scan: maintenance",
-      "created_at": "2026-04-26T16:17:04Z",
-      "updated_at": "2026-04-26T16:17:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0019",
       "status": "todo",
       "title": "Replace stderr text heuristics for workspace-overview fallback detection",

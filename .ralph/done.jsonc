@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "task_kind": "queue_shaping",
         "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4"
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -610,9 +610,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -687,9 +687,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -830,9 +830,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
@@ -955,10 +955,56 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
+      }
+    },
+    {
+      "id": "RQ-0018",
+      "status": "done",
+      "title": "Enforce `machine_error` version checks before retry/recovery classification",
+      "description": "Principles violated: E (make bugs hard to write), F (fail fast), J (consistency/integrity). RalphMac defines `RalphMachineContract.errorVersion` but `MachineErrorDocument.decode(from:)` bypasses contract validation and accepts any version value. Retry and recovery paths then trust that decoded payload as authoritative. Why it matters: incompatible `machine_error` payloads can be misclassified as valid structured errors, masking contract drift and producing incorrect retry/recovery behavior. Minimal fix: move machine-error decoding behind contract validation and reject unsupported versions with explicit recovery errors. Acceptance criteria: malformed/unknown machine-error versions no longer classify as valid machine errors; supported version behavior remains unchanged.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "ralphmac",
+        "machine-contract",
+        "reliability"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/ConfigModels.swift",
+        "apps/RalphMac/RalphCore/MachineContract.swift",
+        "apps/RalphMac/RalphCore/RetryHelper.swift",
+        "apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient+Retry.swift",
+        "apps/RalphMac/RalphCoreTests/"
+      ],
+      "evidence": [
+        "path: apps/RalphMac/RalphCore/MachineContract.swift:44 :: errorVersion constant :: defined but unused elsewhere",
+        "path: apps/RalphMac/RalphCore/ConfigModels.swift:204-209 :: MachineErrorDocument.decode :: direct JSONDecoder decode with no version validation",
+        "path: apps/RalphMac/RalphCore/RetryHelper.swift:96,215 :: defaultShouldRetry/isRetryableFailure :: trusts MachineErrorDocument.decode(stderr)",
+        "path: apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift:48,129 :: classify :: trusts MachineErrorDocument.decode(description/stderr)",
+        "workflow: rg -n \"RalphMachineContract\\.errorVersion\" apps/RalphMac/RalphCore --glob '*.swift' :: only declaration found, no enforcement call sites"
+      ],
+      "plan": [
+        "Make `MachineErrorDocument` conform to the versioned-document contract and validate against `RalphMachineContract.errorVersion`.",
+        "Refactor callers to use the contract-validated decode path instead of raw permissive decode.",
+        "Ensure unsupported error-document versions return explicit version-mismatch classification rather than falling through as valid structured errors.",
+        "Add regression tests for supported vs unsupported machine-error versions across retry and recovery classifiers.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)' -only-testing:RalphCoreTests/RetryHelperTests -only-testing:RalphCoreTests/ErrorRecoveryCategoryTests`."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T16:53:16.409453000Z",
+      "completed_at": "2026-04-26T16:53:16.409453000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
       }
     }
   ]
