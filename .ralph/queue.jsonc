@@ -36,6 +36,7 @@
         "Add Rust machine-contract tests for empty queue, blocked queue, and no-candidate loop summaries, plus Swift state-reduction tests proving Run Control preserves actionable blocking state.",
         "Update `docs/machine-contract.md` examples for loop summaries and blocking outcomes."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -83,6 +84,7 @@
         "Add contract tests proving runner failure during loop still produces a terminal machine summary with exit code, outcome, and blocking/stalled context where appropriate.",
         "Update RalphMac tests so loop failure state is driven by machine documents rather than raw stderr interpretation."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -92,52 +94,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md"
-      }
-    },
-    {
-      "id": "RQ-0010",
-      "status": "todo",
-      "title": "Let machine run one select the next task for RalphMac",
-      "description": "Remove RalphMac's duplicated next-task selection before `machine run one`. The app currently reads the queue, chooses a task ID, then invokes `machine run one --id <id>`, which can race external queue changes and drift from CLI selection rules. When the user clicks Run Next without an explicit task selection, the app should call no-ID `ralph machine run one --resume` and render the actual selected task from machine output.",
-      "priority": "medium",
-      "tags": [
-        "ralphmac",
-        "machine-api",
-        "queue",
-        "race",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/WorkspaceRunnerController.swift",
-        "apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift",
-        "apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift",
-        "apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift",
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/tests/machine_contract_test/"
-      ],
-      "evidence": [
-        "`apps/RalphMac/RalphCore/WorkspaceRunnerController.swift` resolves a task ID in the app before invoking `machine run one --id <id>`.",
-        "`apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift` calls `machine queue read` and falls back to local `workspace.nextTask()` for run selection.",
-        "The Rust machine command already supports no-ID selection through canonical CLI queue logic."
-      ],
-      "plan": [
-        "Change RalphMac Run Next so the default no-explicit-selection path invokes `ralph machine run one --resume` without `--id`.",
-        "Keep app-side queue reads for display/previews only, not command shaping.",
-        "Ensure machine output carries enough selected-task detail for the app to update the current task after CLI-side selection.",
-        "Add a test that simulates stale app queue state and verifies the CLI still selects the canonical current next task.",
-        "Preserve explicit selected-task runs by passing `--id` only when the user intentionally selected a specific task."
-      ],
-      "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
-      "created_at": "2026-04-26T00:04:48Z",
-      "updated_at": "2026-04-26T00:04:48Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -176,6 +134,7 @@
         "Remove raw stdout/stderr based stop-state interpretation from the native workflow.",
         "Add Rust contract tests and Swift tests for created, already-present, and failed stop-marker states."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -183,8 +142,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
@@ -224,6 +183,7 @@
         "Render unknown or unsupported configured values explicitly so the app does not silently coerce them to a default.",
         "Add tests for plugin runner visibility, worker counts above 8, and configured values that are not in the app's built-in defaults."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -231,8 +191,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
       }
     },
     {
@@ -271,6 +231,7 @@
         "Add Swift tests for a repo whose queue and done files are configured away from `.ralph/queue.jsonc`.",
         "Update app troubleshooting docs to refer to the configured queue file and machine config resolution."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -278,8 +239,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -315,6 +276,7 @@
         "Keep terminal command rendering only as a fallback for actions that are intentionally not native.",
         "Add Swift UI/state tests covering at least one blocking state with actionable continuation buttons beyond lock recovery."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -360,6 +322,7 @@
         "If an existing docs validation hook is appropriate, add a lightweight check for stale command/version snippets without creating a new CI workflow.",
         "Run the docs-relevant local validation gate for the changed files."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -404,6 +367,7 @@
         "Record any meaningful parity-governance decision in the nearest existing project source of truth.",
         "Run targeted parity tests plus `make agent-ci` if the implementation changes code."
       ],
+      "notes": [],
       "request": "update the .ralph/queue.jsonc with tasks to remediate every finding.",
       "created_at": "2026-04-26T00:04:48Z",
       "updated_at": "2026-04-26T00:04:48Z",
@@ -417,8 +381,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     }
   ]
