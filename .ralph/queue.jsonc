@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0019",
-      "status": "todo",
-      "title": "Replace stderr text heuristics for workspace-overview fallback detection",
-      "description": "Principles violated: E (make bugs hard to write), F (fail fast), G (least astonishment), J (consistency/integrity). `Workspace+QueueLoading` falls back from `machine workspace overview` by matching human stderr phrases like `usage:` and `unknown command`. This contradicts the documented machine-contract guidance to consume structured payloads instead of prose scraping. Why it matters: unrelated command failures that mention those strings can trigger incorrect legacy fallback paths and hide the real error class. Minimal fix: use a structured machine capability/version signal (or machine_error code) for fallback decisions and reserve string heuristics only as a temporary, explicit compatibility bridge with tests. Acceptance criteria: fallback triggers only on explicit unsupported-capability signals, not generic stderr text.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "ralphmac",
-        "machine-contract",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/Workspace+QueueLoading.swift",
-        "apps/RalphMac/RalphCore/RetryHelper.swift",
-        "apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift",
-        "docs/machine-contract.md",
-        "apps/RalphMac/RalphCoreTests/"
-      ],
-      "evidence": [
-        "path: apps/RalphMac/RalphCore/Workspace+QueueLoading.swift:147-149 :: loadWorkspaceOverviewAndConfig :: enters fallback path when shouldFallbackToLegacyWorkspaceOverview returns true",
-        "path: apps/RalphMac/RalphCore/Workspace+QueueLoading.swift:306-321 :: shouldFallbackToLegacyWorkspaceOverview :: uses stderr contains checks for 'unrecognized subcommand', 'unknown command', 'usage:', and empty stderr + exit code heuristics",
-        "path: docs/machine-contract.md:19 :: Rules :: machine clients should consume structured payloads instead of scraping prose",
-        "workflow: rg -n \"shouldFallbackToLegacyWorkspaceOverview|usage:\" apps/RalphMac/RalphCore --glob '*.swift' :: confirmed fallback is text-heuristic driven"
-      ],
-      "plan": [
-        "Define/consume a structured unsupported-capability signal for workspace-overview fallback decisions.",
-        "Refactor fallback gate to rely on machine_error code/version or explicit capability metadata instead of free-text parsing.",
-        "Keep any temporary text fallback behind an explicit guard with cleanup notes and telemetry.",
-        "Add tests proving generic stderr text does not trigger fallback and explicit unsupported-capability responses do.",
-        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'` and confirming fallback tests cover both positive and negative cases."
-      ],
-      "notes": [],
-      "request": "scan: maintenance",
-      "created_at": "2026-04-26T16:17:04Z",
-      "updated_at": "2026-04-26T16:17:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0020",
       "status": "todo",
       "title": "Unify transient-error classification across retry and recovery surfaces",
