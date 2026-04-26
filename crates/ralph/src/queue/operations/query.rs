@@ -25,8 +25,6 @@ use super::QueueQueryError;
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::timeutil;
 use anyhow::Result;
-use std::io::Write;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn find_task<'a>(queue: &'a QueueFile, task_id: &str) -> Option<&'a Task> {
     let needle = task_id.trim();
@@ -148,37 +146,6 @@ pub fn select_runnable_task_index(
         .iter()
         .position(|task| task.status == TaskStatus::Todo && is_task_runnable(task, active, done))
     {
-        let selected = &active.tasks[idx];
-        let runnable_preview = active
-            .tasks
-            .iter()
-            .enumerate()
-            .filter(|(_, task)| task.status == TaskStatus::Todo)
-            .take(5)
-            .map(|(index, task)| {
-                serde_json::json!({
-                    "index": index,
-                    "taskId": task.id.as_str(),
-                    "priority": task.priority.to_string(),
-                    "runnable": is_task_runnable(task, active, done),
-                })
-            })
-            .collect::<Vec<_>>();
-        // #region agent log
-        append_debug_log(
-            "H3",
-            "crates/ralph/src/queue/operations/query.rs:select_runnable_task_index",
-            "selected runnable todo task by file order",
-            serde_json::json!({
-                "selectedIndex": idx,
-                "selectedTaskId": selected.id.as_str(),
-                "selectedPriority": selected.priority.to_string(),
-                "runnableTodoPreview": runnable_preview,
-                "preferDoing": options.prefer_doing,
-                "includeDraft": options.include_draft,
-            }),
-        );
-        // #endregion
         return Some(idx);
     }
 
@@ -189,30 +156,6 @@ pub fn select_runnable_task_index(
     }
 
     None
-}
-
-fn append_debug_log(hypothesis_id: &str, location: &str, message: &str, data: serde_json::Value) {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as u64)
-        .unwrap_or(0);
-    let payload = serde_json::json!({
-        "sessionId": "f05fb4",
-        "runId": "pre-fix",
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": timestamp,
-    });
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/Users/mitchfultz/Projects/AI/ralph/.cursor/debug-f05fb4.log")
-        && let Ok(line) = serde_json::to_string(&payload)
-    {
-        let _ = writeln!(file, "{line}");
-    }
 }
 
 /// Select a runnable task index by target task id, with validation.

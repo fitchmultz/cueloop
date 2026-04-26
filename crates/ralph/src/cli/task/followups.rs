@@ -21,8 +21,6 @@
 //! - Dry runs never save queue changes or remove proposal files.
 
 use anyhow::Result;
-use std::io::Write;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::cli::task::args::{TaskFollowupsArgs, TaskFollowupsCommand, TaskFollowupsFormatArg};
 use crate::config;
@@ -31,55 +29,7 @@ use crate::queue::{self, FollowupApplyOptions, FollowupApplyReport};
 pub fn handle(args: &TaskFollowupsArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
     match &args.command {
         TaskFollowupsCommand::Apply(args) => {
-            let default_proposal_path =
-                queue::default_followups_path(&resolved.repo_root, &args.task);
-            let lock_label = "task";
-            // #region agent log
-            append_debug_log(
-                "H1",
-                "crates/ralph/src/cli/task/followups.rs:handle",
-                "attempting followups apply lock acquisition",
-                serde_json::json!({
-                    "taskId": args.task.as_str(),
-                    "force": force,
-                    "defaultProposalPath": default_proposal_path.display().to_string(),
-                    "defaultProposalExists": default_proposal_path.exists(),
-                    "lockLabel": lock_label,
-                }),
-            );
-            // #endregion
-            let _queue_lock =
-                match queue::acquire_queue_lock(&resolved.repo_root, lock_label, force) {
-                    Ok(lock) => {
-                        // #region agent log
-                        append_debug_log(
-                            "H1",
-                            "crates/ralph/src/cli/task/followups.rs:handle",
-                            "followups apply lock acquisition succeeded",
-                            serde_json::json!({
-                                "taskId": args.task.as_str(),
-                                "lockLabel": lock_label,
-                            }),
-                        );
-                        // #endregion
-                        lock
-                    }
-                    Err(err) => {
-                        // #region agent log
-                        append_debug_log(
-                            "H1",
-                            "crates/ralph/src/cli/task/followups.rs:handle",
-                            "followups apply lock acquisition failed",
-                            serde_json::json!({
-                                "taskId": args.task.as_str(),
-                                "lockLabel": lock_label,
-                                "error": format!("{err:#}"),
-                            }),
-                        );
-                        // #endregion
-                        return Err(err);
-                    }
-                };
+            let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task", force)?;
             let report = queue::apply_followups_file(
                 resolved,
                 &FollowupApplyOptions {
@@ -90,45 +40,8 @@ pub fn handle(args: &TaskFollowupsArgs, force: bool, resolved: &config::Resolved
                     remove_proposal: true,
                 },
             )?;
-            // #region agent log
-            append_debug_log(
-                "H4",
-                "crates/ralph/src/cli/task/followups.rs:handle",
-                "followups apply finished",
-                serde_json::json!({
-                    "taskId": args.task.as_str(),
-                    "dryRun": args.dry_run,
-                    "createdTasksCount": report.created_tasks.len(),
-                    "proposalPath": report.proposal_path.as_str(),
-                }),
-            );
-            // #endregion
             print_report(&report, args.format)
         }
-    }
-}
-
-fn append_debug_log(hypothesis_id: &str, location: &str, message: &str, data: serde_json::Value) {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis() as u64)
-        .unwrap_or(0);
-    let payload = serde_json::json!({
-        "sessionId": "f05fb4",
-        "runId": "pre-fix",
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": timestamp,
-    });
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/Users/mitchfultz/Projects/AI/ralph/.cursor/debug-f05fb4.log")
-        && let Ok(line) = serde_json::to_string(&payload)
-    {
-        let _ = writeln!(file, "{line}");
     }
 }
 
