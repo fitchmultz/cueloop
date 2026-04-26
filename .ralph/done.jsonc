@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -194,9 +194,9 @@
       "relates_to": [],
       "custom_fields": {
         "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4",
+        "task_kind": "queue_shaping",
         "runner_used": "codex",
-        "task_kind": "queue_shaping"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -539,8 +539,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "source_report": "/tmp/ralph-report.md"
       }
@@ -610,8 +610,8 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
       }
     },
     {
@@ -760,9 +760,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
@@ -956,9 +956,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "model_used": "gpt-5.4",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -1417,6 +1417,51 @@
       "created_at": "2026-04-26T16:17:04Z",
       "updated_at": "2026-04-26T23:26:12.182496000Z",
       "completed_at": "2026-04-26T23:26:12.182496000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0028",
+      "status": "done",
+      "title": "Add targeted tests for fallback/versioning/diagnostics error paths",
+      "description": "Principles violated: E (make bugs hard to write), H (operational hygiene), J (consistency/integrity). Several high-risk branches (workspace-overview fallback heuristics, machine-system-info versioning, machine-error version compatibility, diagnostics write failures) lack direct focused tests. Why it matters: contract regressions in these boundaries can ship silently because broad suite coverage does not pin exact edge behavior. Minimal fix: add deterministic unit/integration tests for each boundary branch and expected error classification. Acceptance criteria: new tests fail on regressions in fallback gating, version mismatch handling, and diagnostics persistence error reporting.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "tests",
+        "ralphmac",
+        "contracts"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCoreTests/",
+        "apps/RalphMac/RalphCore/Workspace+QueueLoading.swift",
+        "apps/RalphMac/RalphCore/WorkspaceManager+Versioning.swift",
+        "apps/RalphMac/RalphCore/ConfigModels.swift",
+        "apps/RalphMac/RalphMac/WorkspaceContractPresentationCoordinator.swift",
+        "apps/RalphMac/RalphMac/SettingsWindowDiagnostics.swift"
+      ],
+      "evidence": [
+        "workflow: rg -n \"shouldFallbackToLegacyWorkspaceOverview\" apps/RalphMac/RalphCoreTests --glob '*.swift' :: no direct tests found",
+        "workflow: rg -n \"executeVersionCheck|machine system info\" apps/RalphMac/RalphCoreTests --glob '*.swift' :: only command-surface references, no explicit version-mismatch tests",
+        "workflow: rg -n \"WorkspaceContractPresentationCoordinator|SettingsWindowDiagnostics\" apps/RalphMac/RalphCoreTests --glob '*.swift' :: no focused diagnostics persistence failure coverage",
+        "path: apps/RalphMac/RalphCore/ConfigModels.swift:204-209 :: machine_error decoding branch currently unguarded by version-specific tests"
+      ],
+      "plan": [
+        "Add focused tests for workspace-overview fallback positive/negative triggers.",
+        "Add tests for system-info and machine-error version mismatch behavior.",
+        "Add diagnostics persistence tests that force write failures and assert recorded error outcomes.",
+        "Keep tests deterministic with fixture-based stderr/data inputs rather than timing-dependent flows.",
+        "Verify by running `xcodebuild test -project apps/RalphMac/RalphMac.xcodeproj -scheme RalphCore -destination 'platform=macOS,arch=$(uname -m)'`."
+      ],
+      "notes": [],
+      "request": "scan: maintenance",
+      "created_at": "2026-04-26T16:17:04Z",
+      "updated_at": "2026-04-26T23:57:25.708297000Z",
+      "completed_at": "2026-04-26T23:57:25.708297000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
