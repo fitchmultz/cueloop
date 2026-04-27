@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "task_kind": "queue_shaping",
-        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4",
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -610,9 +610,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
         "runner_used": "codex"
       }
     },
@@ -761,9 +761,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -891,9 +891,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -2210,6 +2210,45 @@
       "created_at": "2026-04-27T03:11:26Z",
       "updated_at": "2026-04-27T03:41:57.406340000Z",
       "completed_at": "2026-04-27T03:41:57.406340000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0049",
+      "status": "done",
+      "title": "Investigate tracked queue and done staleness after best-effort coordinator refresh failures",
+      "description": "Principles violated: J (consistency/integrity), G (least astonishment), H (operational hygiene). The successful worker-finish path tolerates coordinator branch refresh failures, and tracked queue/done files are explicitly excluded from workspace-to-source mirroring, so tracked source bookkeeping may stay stale whenever the local fast-forward step cannot run cleanly. Why it matters: operators can see a successful worker and updated remote branch while their local tracked queue/done files still show pre-integration state, which invites repeated work or incorrect manual recovery. Minimal fix if confirmed: either make tracked bookkeeping refresh explicit after a successful worker push or surface a blocking error when the source branch cannot be refreshed cleanly. Acceptance criteria: a focused regression or temp harness proves whether tracked source queue/done can stay stale after a successful worker completion with refresh failure; go if stale local bookkeeping persists, no-go if source files are already refreshed or the flow correctly blocks.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "parallel",
+        "investigate"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/orchestration/events.rs",
+        "crates/ralph/src/commands/run/parallel/sync/mod.rs",
+        "crates/ralph/src/commands/run/parallel/orchestration/events.rs::tests"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/commands/run/parallel/orchestration/events.rs:115-117 and 180-187 :: successful worker completion only does a best-effort fast-forward refresh before syncing bookkeeping back to source",
+        "path: crates/ralph/src/commands/run/parallel/sync/mod.rs:80-85 and 158-166 :: tracked queue/done files are left to git branch updates and are never mirrored back from the workspace on success",
+        "path: crates/ralph/src/commands/run/parallel/orchestration/events.rs:438-467 :: finished_success_tolerates_branch_refresh_failure proves success is still reported when coordinator refresh fails, but there is no assertion that tracked source bookkeeping stays current"
+      ],
+      "plan": [
+        "Build a focused temp-repo repro where queue/done are tracked, worker completion succeeds, and local coordinator refresh is forced to fail.",
+        "Observe whether the local tracked queue/done files remain stale even though the worker success path returns Ok and remote integration succeeds.",
+        "If confirmed, implement explicit tracked bookkeeping refresh or promote the refresh failure to a surfaced operator-facing failure path.",
+        "Verify by adding a regression for the forced-refresh-failure scenario and confirming the local source queue/done files are either refreshed or the run surfaces a blocking error instead of silently succeeding."
+      ],
+      "notes": [],
+      "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
+      "created_at": "2026-04-27T03:11:26Z",
+      "updated_at": "2026-04-27T03:45:12.135805000Z",
+      "completed_at": "2026-04-27T03:45:12.135805000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
