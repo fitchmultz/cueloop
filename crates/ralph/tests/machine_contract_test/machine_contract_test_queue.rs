@@ -79,6 +79,64 @@ fn machine_queue_read_failure_returns_structured_error_document() -> Result<()> 
 }
 
 #[test]
+fn machine_queue_read_gates_runnability_when_queue_validation_fails() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    std::fs::write(
+        &queue_path,
+        r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "title": "Missing created_at should stall queue read",
+      "priority": "medium",
+      "updated_at": "2026-04-01T00:00:00Z"
+    }
+  ]
+}
+"#,
+    )?;
+
+    let (validate_status, validate_stdout, validate_stderr) =
+        run_in_dir(dir.path(), &["queue", "validate"]);
+    assert!(
+        !validate_status.success(),
+        "queue validate should reject missing created_at\nstdout:\n{validate_stdout}\nstderr:\n{validate_stderr}"
+    );
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        status.success(),
+        "machine queue read should emit a validation-gated snapshot\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert!(
+        document.get("next_runnable_task_id").is_none()
+            || document["next_runnable_task_id"].is_null(),
+        "invalid queue must not advertise a next runnable task: {stdout}"
+    );
+    assert!(document["runnability"]["selection"]["selected_task_id"].is_null());
+    assert!(document["runnability"]["selection"]["selected_task_status"].is_null());
+    assert_eq!(document["runnability"]["summary"]["runnable_candidates"], 0);
+    let blocking = &document["runnability"]["summary"]["blocking"];
+    assert_eq!(blocking["status"], "stalled");
+    assert_eq!(blocking["reason"]["kind"], "operator_recovery");
+    assert_eq!(blocking["reason"]["scope"], "queue_validate");
+    assert_eq!(blocking["reason"]["reason"], "validation_failed");
+    assert!(
+        blocking["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("Missing created_at"),
+        "blocking detail should include validation failure: {stdout}"
+    );
+    Ok(())
+}
+
+#[test]
 fn machine_workspace_overview_returns_queue_and_config_in_one_document() -> Result<()> {
     let dir = setup_ralph_repo()?;
 

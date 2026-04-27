@@ -27,19 +27,22 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
+use crate::cli::machine::queue_docs::queue_validation_failed_state;
 use crate::commands::runner::capabilities::built_in_runner_catalog;
 use crate::config;
 use crate::contracts::{
-    GitPublishMode, GitRevertMode, MACHINE_CONFIG_RESOLVE_VERSION,
+    BlockingState, GitPublishMode, GitRevertMode, MACHINE_CONFIG_RESOLVE_VERSION,
     MACHINE_WORKSPACE_OVERVIEW_VERSION, MachineConfigResolveDocument, MachineConfigSafetySummary,
     MachineExecutionControls, MachineParallelWorkersControl, MachineQueuePaths,
     MachineQueueReadDocument, MachineResumeDecision, MachineRunnerOption,
-    MachineWorkspaceOverviewDocument, QueueFile,
+    MachineWorkspaceOverviewDocument, QueueFile, TaskStatus,
 };
 use crate::plugins::discovery::PluginScope;
 use crate::plugins::registry::PluginRegistry;
 use crate::queue;
-use crate::queue::operations::{RunnableSelectionOptions, queue_runnability_report};
+use crate::queue::operations::{
+    RUNNABILITY_REPORT_VERSION, RunnableSelectionOptions, queue_runnability_report,
+};
 use crate::session::{ResumeBehavior, ResumeDecisionMode, ResumeReason, ResumeScope, ResumeStatus};
 
 const MACHINE_PARALLEL_MIN_WORKERS: u8 = 2;
@@ -93,9 +96,29 @@ pub(super) fn build_queue_read_document(
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = done_queue_ref(&done, &resolved.done_path);
     let options = RunnableSelectionOptions::new(false, true);
-    let runnability = queue_runnability_report(&active, done_ref, options)?;
-    let next_runnable_task_id =
-        queue::operations::next_runnable_task(&active, done_ref).map(|task| task.id.clone());
+    let validation = queue::validate_queue_set(
+        &active,
+        done_ref,
+        &resolved.id_prefix,
+        resolved.id_width,
+        queue_max_dependency_depth(resolved),
+    );
+
+    let (next_runnable_task_id, runnability) = match validation {
+        Ok(_) => {
+            let runnability = queue_runnability_report(&active, done_ref, options)?;
+            let next_runnable_task_id = queue::operations::next_runnable_task(&active, done_ref)
+                .map(|task| task.id.clone());
+            (next_runnable_task_id, serde_json::to_value(runnability)?)
+        }
+        Err(err) => {
+            let blocking = queue_validation_failed_state(err.to_string());
+            (
+                None,
+                validation_failed_runnability(&active, options, blocking)?,
+            )
+        }
+    };
 
     Ok(MachineQueueReadDocument {
         version: crate::contracts::MACHINE_QUEUE_READ_VERSION,
@@ -103,8 +126,49 @@ pub(super) fn build_queue_read_document(
         active,
         done,
         next_runnable_task_id,
-        runnability: serde_json::to_value(runnability)?,
+        runnability,
     })
+}
+
+fn validation_failed_runnability(
+    active: &QueueFile,
+    options: RunnableSelectionOptions,
+    blocking: BlockingState,
+) -> Result<serde_json::Value> {
+    let now = blocking
+        .observed_at
+        .clone()
+        .unwrap_or_else(crate::timeutil::now_utc_rfc3339_or_fallback);
+    let candidates_total = active
+        .tasks
+        .iter()
+        .filter(|task| {
+            task.status == TaskStatus::Todo
+                || (options.include_draft && task.status == TaskStatus::Draft)
+        })
+        .count();
+
+    serde_json::to_value(serde_json::json!({
+        "version": RUNNABILITY_REPORT_VERSION,
+        "now": now,
+        "selection": {
+            "include_draft": options.include_draft,
+            "prefer_doing": options.prefer_doing,
+            "selected_task_id": null,
+            "selected_task_status": null,
+        },
+        "summary": {
+            "total_active": active.tasks.len(),
+            "candidates_total": candidates_total,
+            "runnable_candidates": 0,
+            "blocked_by_dependencies": 0,
+            "blocked_by_schedule": 0,
+            "blocked_by_status_or_flags": 0,
+            "blocking": blocking,
+        },
+        "tasks": [],
+    }))
+    .map_err(Into::into)
 }
 
 pub(super) fn build_workspace_overview_document(

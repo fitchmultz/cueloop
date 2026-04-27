@@ -37,9 +37,8 @@ use crate::contracts::{
 };
 use crate::queue;
 use crate::queue::operations::{RunnableSelectionOptions, queue_runnability_report};
-use support::{
-    continuation_for_valid_queue, queue_validation_failed_state, repair_preview_continuation, step,
-};
+pub(crate) use support::queue_validation_failed_state;
+use support::{continuation_for_valid_queue, repair_preview_continuation, step};
 
 pub(crate) fn build_validate_document(
     resolved: &crate::config::Resolved,

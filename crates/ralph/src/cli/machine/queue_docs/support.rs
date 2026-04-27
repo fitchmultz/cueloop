@@ -28,7 +28,7 @@ use crate::contracts::{
     MachineValidationWarning,
 };
 
-pub(super) fn queue_validation_failed_state(detail: String) -> BlockingState {
+pub(crate) fn queue_validation_failed_state(detail: String) -> BlockingState {
     BlockingState::operator_recovery(
         BlockingStatus::Stalled,
         "queue_validate",

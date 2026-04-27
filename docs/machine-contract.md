@@ -211,7 +211,9 @@ App and automation clients should decode this document on stdout for successful 
 
 ### `machine queue read`
 
-`runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, or mixed.
+`runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, mixed, or structurally invalid.
+
+When the queue and done files are readable but structural validation fails, `machine queue read` still returns the queue snapshot for app recovery UI, but it must not advertise runnable work: `next_runnable_task_id` is omitted/null, `runnability.selection.selected_task_id` is null, and `runnability.summary.blocking` carries a stalled `operator_recovery` state whose `scope` is `queue_validate`.
 
 ### `machine queue validate` (`version: 1`)
 
