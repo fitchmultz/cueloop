@@ -116,6 +116,121 @@ fn failed_delivery_records_store_redacted_destination() {
 
 #[test]
 #[serial]
+fn failed_delivery_records_store_sanitized_payload_text() {
+    reset_webhook_test_state();
+    let repo_root = tempfile::tempdir().expect("tempdir");
+    let sensitive_repo_root = repo_root.path().join("customer-token=path-secret");
+
+    let msg = WebhookMessage {
+        payload: WebhookPayload {
+            event: "task_failed".to_string(),
+            timestamp: "2026-02-13T00:00:00Z".to_string(),
+            task_id: Some("RQ-0814".to_string()),
+            task_title: Some("Customer Jane Doe token=title-secret".to_string()),
+            previous_status: Some("doing token=prev-secret".to_string()),
+            current_status: Some("rejected token=current-secret".to_string()),
+            note: Some(
+                "operator note includes customer data token=supersecret bearer abcdef".to_string(),
+            ),
+            context: WebhookContext {
+                repo_root: Some(sensitive_repo_root.display().to_string()),
+                branch: Some("feature/token=branch-secret".to_string()),
+                ..WebhookContext::default()
+            },
+        },
+        config: ResolvedWebhookConfig {
+            enabled: true,
+            url: Some("https://hooks.example.com/delivery".to_string()),
+            secret: None,
+            timeout: Duration::from_secs(1),
+            retry_count: 0,
+            retry_backoff: Duration::from_millis(10),
+            allow_insecure_http: false,
+            allow_private_targets: false,
+        },
+    };
+
+    crate::webhook::diagnostics::persist_failed_delivery_for_tests(
+        repo_root.path(),
+        &msg,
+        &anyhow::anyhow!("simulated failure"),
+        1,
+    )
+    .expect("persist failed delivery");
+
+    let rendered = std::fs::read_to_string(crate::webhook::diagnostics::failure_store_path(
+        repo_root.path(),
+    ))
+    .expect("read failure store");
+    assert!(!rendered.contains("operator note"), "{rendered}");
+    assert!(!rendered.contains("customer data"), "{rendered}");
+    assert!(!rendered.contains("token=supersecret"), "{rendered}");
+    assert!(!rendered.contains("Customer Jane Doe"), "{rendered}");
+    assert!(!rendered.contains("title-secret"), "{rendered}");
+    assert!(!rendered.contains("prev-secret"), "{rendered}");
+    assert!(!rendered.contains("current-secret"), "{rendered}");
+    assert!(!rendered.contains("path-secret"), "{rendered}");
+    assert!(!rendered.contains("branch-secret"), "{rendered}");
+
+    let records = crate::webhook::diagnostics::load_failure_records_for_tests(repo_root.path())
+        .expect("load failure records");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].payload.task_id.as_deref(), Some("RQ-0814"));
+    assert_eq!(records[0].payload.event, "task_failed");
+    assert_eq!(records[0].payload.task_title.as_deref(), Some("[REDACTED]"));
+    assert_eq!(
+        records[0].payload.previous_status.as_deref(),
+        Some("[REDACTED]")
+    );
+    assert_eq!(
+        records[0].payload.current_status.as_deref(),
+        Some("[REDACTED]")
+    );
+    assert_eq!(records[0].payload.note.as_deref(), Some("[REDACTED]"));
+    assert_eq!(
+        records[0].payload.context.branch.as_deref(),
+        Some("[REDACTED]")
+    );
+    assert_eq!(
+        records[0].payload.context.repo_root.as_deref(),
+        Some("[REDACTED]")
+    );
+
+    let (replay_tx, replay_rx) = bounded::<String>(1);
+    install_test_transport_for_tests(Some(Arc::new(move |request| {
+        replay_tx
+            .send(request.body.clone())
+            .expect("record replay request body");
+        Ok(())
+    })));
+
+    let replay_report = crate::webhook::diagnostics::replay_failed_deliveries(
+        repo_root.path(),
+        &webhook_test_config(),
+        &crate::webhook::diagnostics::ReplaySelector {
+            ids: Vec::new(),
+            event: Some("task_failed".to_string()),
+            task_id: Some("RQ-0814".to_string()),
+            limit: 10,
+            max_replay_attempts: 3,
+        },
+        false,
+    )
+    .expect("replay sanitized failure record");
+    assert_eq!(replay_report.matched_count, 1);
+    assert_eq!(replay_report.replayed_count, 1);
+
+    let replay_body = replay_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("replayed webhook request");
+    assert!(replay_body.contains("RQ-0814"), "{replay_body}");
+    assert!(replay_body.contains("[REDACTED]"), "{replay_body}");
+    assert!(!replay_body.contains("operator note"), "{replay_body}");
+    assert!(!replay_body.contains("Customer Jane Doe"), "{replay_body}");
+}
+
+#[test]
+#[serial]
 fn retry_backoff_is_scheduled_off_the_hot_worker_path() {
     reset_webhook_test_state();
 
@@ -131,15 +246,11 @@ fn retry_backoff_is_scheduled_off_the_hot_worker_path() {
 
         if request.url.contains("slow.test") {
             let attempt = attempts_for_transport.fetch_add(1, Ordering::SeqCst) + 1;
-            events_for_transport
-                .send(format!("slow-attempt-{attempt}"))
-                .expect("record slow attempt");
+            let _ = events_for_transport.send(format!("slow-attempt-{attempt}"));
             anyhow::bail!("simulated failure");
         }
 
-        events_for_transport
-            .send("fast-success".to_string())
-            .expect("record fast success");
+        let _ = events_for_transport.send("fast-success".to_string());
         Ok(())
     })));
 

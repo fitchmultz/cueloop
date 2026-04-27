@@ -3,7 +3,7 @@
 //! Responsibilities:
 //! - Store failed delivery records in the repo-local webhook diagnostics cache.
 //! - Enforce bounded retention, replay-count updates, and serialized failure-store access.
-//! - Redact destinations and sanitize persisted errors so secrets never reach disk.
+//! - Redact destinations, persisted errors, and freeform payload text so secrets never reach disk.
 //!
 //! Scope:
 //! - Failure-history file paths, locking, serialization, redaction, and retention only.
@@ -12,7 +12,7 @@
 //! - Called by metrics, replay, and test helper companions behind the diagnostics facade.
 //!
 //! Invariants/Assumptions:
-//! - Failure records never include raw secrets or token-bearing destination URLs.
+//! - Failure records never include raw freeform payload text, secrets, or token-bearing destination URLs.
 //! - Stored history is bounded to the newest 200 failure records.
 //! - Store writes are best-effort for runtime delivery failures and serialized by
 //!   cross-process locking around each read-modify-write mutation.
@@ -108,7 +108,7 @@ pub(super) fn persist_failed_delivery_at_path(
         error: sanitize_error(err, msg.config.url.as_deref()),
         attempts,
         replay_count: 0,
-        payload: msg.payload.clone(),
+        payload: sanitize_payload_for_persistence(&msg.payload),
     });
 
     if records.len() > MAX_WEBHOOK_FAILURE_RECORDS {
@@ -236,6 +236,33 @@ fn next_failure_id() -> String {
         .unwrap_or(0);
     let sequence = NEXT_FAILURE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     format!("wf-{nanos}-{sequence}")
+}
+
+fn sanitize_payload_for_persistence(payload: &WebhookPayload) -> WebhookPayload {
+    let mut sanitized = payload.clone();
+
+    sanitized.task_title = redact_optional_payload_text(sanitized.task_title);
+    sanitized.previous_status = redact_optional_payload_text(sanitized.previous_status);
+    sanitized.current_status = redact_optional_payload_text(sanitized.current_status);
+    sanitized.note = redact_optional_payload_text(sanitized.note);
+
+    sanitized.context.runner = redact_optional_payload_text(sanitized.context.runner);
+    sanitized.context.model = redact_optional_payload_text(sanitized.context.model);
+    sanitized.context.branch = redact_optional_payload_text(sanitized.context.branch);
+    sanitized.context.commit = redact_optional_payload_text(sanitized.context.commit);
+    sanitized.context.ci_gate = redact_optional_payload_text(sanitized.context.ci_gate);
+
+    if sanitized.context.repo_root.is_some() {
+        sanitized.context.repo_root = Some(crate::constants::defaults::REDACTED.to_string());
+    }
+
+    sanitized
+}
+
+fn redact_optional_payload_text(value: Option<String>) -> Option<String> {
+    value
+        .filter(|text| !text.trim().is_empty())
+        .map(|_| crate::constants::defaults::REDACTED.to_string())
 }
 
 fn sanitize_error(err: &anyhow::Error, destination_url: Option<&str>) -> String {
