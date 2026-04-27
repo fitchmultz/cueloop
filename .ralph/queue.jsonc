@@ -1,4 +1,494 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0029",
+      "status": "todo",
+      "title": "Keep `ralph queue validate` strictly read-only by default",
+      "description": "Principles violated: G (least astonishment), H (operational hygiene), J (consistency/integrity). The command is documented as read-only, but startup sanity auto-fixes mutate `.ralph` state when operators are only validating continuation safety. Why it matters: read-only verification commands currently introduce hidden writes that can surprise automation, dirty worktrees, and change state before triage. Minimal fix: gate startup auto-fixes for read-only queue surfaces (or default to no-write sanity for these commands) and require explicit opt-in for writes.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "queue",
+        "cli",
+        "safety"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/queue/mod.rs",
+        "crates/ralph/src/sanity/**",
+        "/tmp/ralph-scan-target/debug/ralph queue validate"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/cli/queue/mod.rs:127 :: QueueCommand::Validate long help declares \"This command is read-only.\"",
+        "repro: create temp repo with only `.ralph/queue.jsonc` and `.ralph/done.jsonc`, run `/tmp/ralph-scan-target/debug/ralph queue validate` :: expected no filesystem mutation :: actual `.ralph/README.md` is created (`before: done+queue`, `after: README+done+queue`)",
+        "workflow: /tmp/ralph-scan-target/debug/ralph queue validate :: stderr logs `sanity::readme ... Created README at version 7` while command exits 0"
+      ],
+      "plan": [
+        "Audit startup sanity hooks reachable from `queue validate` and classify each fix path as read-only-safe vs mutating.",
+        "Prevent mutating sanity fixes on read-only queue commands unless explicit write mode is requested.",
+        "Add regression coverage proving `queue validate` does not create or rewrite files in a minimal initialized workspace.",
+        "Verify by reproducing the before/after file-list check and confirming no new `.ralph/*` files appear after `ralph queue validate`."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0030",
+      "status": "todo",
+      "title": "Decouple `machine config resolve` from required queue-file presence",
+      "description": "Principles violated: E (make bugs hard to write), F (fail fast appropriately), J (consistency/integrity). `machine config resolve` currently hard-fails when `.ralph/queue.jsonc` is missing because resume preview calls strict queue load. Why it matters: machine clients cannot fetch resolved paths/safety/config in bootstrap or degraded states, even though the contract describes config/paths with optional `resume_preview`. Minimal fix: make resume preview resilient to missing queue files (for example, default queue context with `resume_preview: null` or a structured no-session preview) while keeping command success for config introspection.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "machine-contract",
+        "queue",
+        "app-parity"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/machine/common.rs",
+        "crates/ralph/src/cli/machine/handle.rs",
+        "docs/machine-contract.md"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/cli/machine/common.rs:204-206 :: `build_resume_preview` uses `crate::queue::load_queue(&resolved.queue_path)?`",
+        "repro: temp repo with `.ralph/config.jsonc` and trust file but no queue file, run `/tmp/ralph-scan-target/debug/ralph machine config resolve` :: expected config/paths document with optional or absent resume preview :: actual exit 1 with machine_error code `queue_corrupted` and message `No Ralph queue file found.`",
+        "path: docs/machine-contract.md:62-79 :: `machine config resolve` documents resolved paths/config with optional `resume_preview`"
+      ],
+      "plan": [
+        "Update resume preview construction to handle missing queue file without aborting `machine config resolve`.",
+        "Keep `resume_preview` optional and emit a stable no-session/none shape when queue state is unavailable.",
+        "Add machine-contract regression coverage for `machine config resolve` in a repo missing queue files.",
+        "Verify by running the missing-queue repro and confirming exit 0 with valid JSON stdout."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0031",
+      "status": "todo",
+      "title": "Align `machine queue read` runnability output with queue validation state",
+      "description": "Principles violated: E (make bugs hard to write), G (least astonishment), J (consistency/integrity). `machine queue read` currently emits runnable task selection and `next_runnable_task_id` even when `queue validate` reports structural invalidity. Why it matters: app/automation surfaces can present a runnable queue while the canonical continuation gate is stalled, creating cross-surface drift and unsafe operator guidance. Minimal fix: validate queue/read payload before reporting runnability, and gate or annotate runnability/next-task fields when structural errors exist.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "machine-contract",
+        "queue",
+        "app-parity"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/machine/common.rs",
+        "crates/ralph/src/cli/machine/queue.rs",
+        "docs/machine-contract.md"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/cli/machine/common.rs:84-103 :: `build_queue_read_document` loads queue/done and computes runnability without queue validation.",
+        "repro: temp queue with task missing `created_at`, run `/tmp/ralph-scan-target/debug/ralph queue validate` and `/tmp/ralph-scan-target/debug/ralph machine queue read` :: expected queue-read state to reflect invalid/stalled continuation :: actual validate exits 1 (`Missing created_at`) while machine queue read exits 0 and returns `next_runnable_task_id: RQ-0001`",
+        "path: docs/machine-contract.md:206 :: `runnability.summary.blocking` is documented as queue/read source of truth for operator blocking state"
+      ],
+      "plan": [
+        "Introduce shared validation-aware queue-read assembly so machine queue-read consumers cannot bypass structural validity checks.",
+        "Define machine queue-read behavior for invalid queues (for example explicit invalid/continuation block with null next-runnable).",
+        "Add regression tests covering missing required task fields and mismatched queue-read vs queue-validate outputs.",
+        "Verify by rerunning the missing-`created_at` repro and confirming queue-read no longer reports runnable next-task when validation fails."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0032",
+      "status": "todo",
+      "title": "Classify untrusted execution-settings failures as config errors in machine stderr",
+      "description": "Principles violated: F (fail fast appropriately), G (least astonishment), J (consistency/integrity). Untrusted-repo trust violations are currently emitted as machine error code `parse_error`, even though the underlying failure is project-config trust incompatibility. Why it matters: automation that branches on machine error codes can take the wrong remediation path (parse handling instead of trust/config handling). Minimal fix: add explicit trust/config-incompatibility matching before parse fallbacks and return `config_incompatible` with trust-focused message.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "machine-contract",
+        "trust",
+        "error-handling"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/machine/error.rs",
+        "crates/ralph/src/config/validation/trust.rs"
+      ],
+      "evidence": [
+        "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve in an untrusted repo with project `agent.codex_bin` override :: observed machine stderr JSON `code: parse_error` while detail is trust-policy message (`Project config defines execution-sensitive settings ... repo is not trusted`).",
+        "path: crates/ralph/src/cli/machine/error.rs:118-126 :: parse/decode/json catch-all classification executes for trust message text that includes JSON snippet.",
+        "path: crates/ralph/src/config/validation/trust.rs:26 :: canonical trust violation message identifies project config incompatibility, not parse failure"
+      ],
+      "plan": [
+        "Add trust-specific and config-trust pattern classification ahead of generic parse/decode/json buckets.",
+        "Return `MachineErrorCode::ConfigIncompatible` with stable trust-oriented message for this path.",
+        "Add regression tests for trust-error classification through `build_machine_error_document`.",
+        "Verify by rerunning the untrusted `machine config resolve` repro and confirming `code: config_incompatible`."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0033",
+      "status": "todo",
+      "title": "Expose plugin-registry load failures as structured machine diagnostics",
+      "description": "Principles violated: F (fail fast appropriately), H (operational hygiene), J (consistency/integrity). `machine config resolve` silently drops project/global plugin runners to built-ins when plugin registry loading fails, while only emitting a plain WARN line on stderr. Why it matters: machine consumers can neither detect nor explain why configured runners disappeared, and stderr logging is not a stable contract surface. Minimal fix: add structured warning diagnostics to machine config documents (and keep successful machine commands stderr-clean by default).",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "machine-contract",
+        "plugins",
+        "operability"
+      ],
+      "scope": [
+        "crates/ralph/src/cli/machine/common.rs",
+        "crates/ralph/src/contracts/machine.rs",
+        "docs/machine-contract.md"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/cli/machine/common.rs:137-171 :: plugin-registry load error path logs warning and returns built-in runner list only.",
+        "repro: trusted temp repo with malformed `.ralph/plugins/broken.runner/plugin.json`, run `/tmp/ralph-scan-target/debug/ralph machine config resolve` :: expected structured warning in machine JSON :: actual exit 0, stdout runner ids only built-ins, stderr contains plain text warn log.",
+        "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve :: successful machine stdout currently has no field carrying plugin-registry degradation reason."
+      ],
+      "plan": [
+        "Design and add versioned machine-contract field(s) for non-fatal execution-controls diagnostics.",
+        "Populate those diagnostics from plugin-registry load failures and keep runner list fallback behavior explicit.",
+        "Suppress unschematized stderr warning logs for successful machine command execution paths.",
+        "Verify by rerunning malformed-plugin repro and confirming diagnostics are present in stdout JSON with empty stderr on success."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0034",
+      "status": "todo",
+      "title": "Split `WorkspaceQueueRefreshTests.swift` to satisfy enforced hard file-size limit",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The test file exceeds the hard 1,000-line guardrail and currently hard-fails the repo size gate. Why it matters: `make ci-fast`/`make check-file-size-limits` fails immediately, blocking routine verification workflows and forcing unrelated work to stop. Minimal fix: split queue refresh test scenarios into focused companion test files with shared fixtures and keep each file under enforced limits.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "tests",
+        "ci",
+        "macos"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCoreTests/WorkspaceQueueRefreshTests.swift",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: `ERROR: hard file-size limit exceeded: 1052 apps/RalphMac/RalphCoreTests/WorkspaceQueueRefreshTests.swift`",
+        "workflow: CARGO_TARGET_DIR=/tmp/ralph-scan-target make ci-fast :: exits non-zero at file-size-limit gate before lint/test phases.",
+        "path: apps/RalphMac/RalphCoreTests/WorkspaceQueueRefreshTests.swift :: 1052 LOC exceeds hard limit of 1000."
+      ],
+      "plan": [
+        "Partition queue refresh tests into behavior-focused files (for example load semantics, refresh triggers, reconciliation edge cases) with shared support helpers.",
+        "Keep individual Swift test files under 1,000 LOC and preserve existing test intent/naming clarity.",
+        "Run macOS test slices touching moved tests to confirm no regressions.",
+        "Verify by running `make check-file-size-limits` and confirming no hard-limit violations remain."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0035",
+      "status": "todo",
+      "title": "Split `docs/guides/advanced.md` below soft file-size threshold",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). `advanced.md` exceeds the repo soft size guardrail and contributes to recurring gate warnings. Why it matters: oversized docs are harder to navigate and keep current, and warning noise can hide higher-severity gate signals. Minimal fix: split into linked sub-guides by advanced workflow domain and keep index-style navigation in the parent guide.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "ci"
+      ],
+      "scope": [
+        "docs/guides/advanced.md",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `976 docs/guides/advanced.md` above soft threshold.",
+        "workflow: CARGO_TARGET_DIR=/tmp/ralph-scan-target make ci-fast :: stops early at file-size checks, surfacing this warning set every run."
+      ],
+      "plan": [
+        "Identify logical advanced-guide sections suitable for dedicated child documents.",
+        "Move content into split docs and leave concise, canonical navigation in `advanced.md`.",
+        "Update cross-links and index references to new document locations.",
+        "Verify by running `make check-file-size-limits` and confirming `docs/guides/advanced.md` no longer appears in soft offenders."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0036",
+      "status": "todo",
+      "title": "Split `docs/features/plugins.md` below soft file-size threshold",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The plugins feature doc is above the soft size guardrail. Why it matters: plugin behavior and safety rules are high-change areas; monolithic docs increase drift risk and slow targeted updates. Minimal fix: split plugin architecture, lifecycle, and operator workflows into smaller linked docs while preserving one canonical entry point.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "plugins"
+      ],
+      "scope": [
+        "docs/features/plugins.md",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `975 docs/features/plugins.md` above soft threshold.",
+        "path: docs/features/plugins.md :: single-file feature reference currently carries multiple concerns (architecture, usage, troubleshooting) in one surface."
+      ],
+      "plan": [
+        "Refactor plugin doc into topic-specific files with stable anchors from the parent feature page.",
+        "Keep compatibility and trust-safety guidance centralized and cross-linked.",
+        "Run markdown link checks and docs sanity checks after split.",
+        "Verify by running `make check-file-size-limits` and confirming `docs/features/plugins.md` is removed from soft warnings."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0037",
+      "status": "todo",
+      "title": "Split `docs/features/tasks.md` below soft file-size threshold",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The tasks feature doc exceeds the soft size policy and aggregates many loosely coupled sections. Why it matters: task semantics are core correctness boundaries; oversized docs make relationship and validation rules easier to drift across edits. Minimal fix: separate schema/reference, lifecycle, and advanced relationship sections into linked docs with one authoritative index page.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "tasks"
+      ],
+      "scope": [
+        "docs/features/tasks.md",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `975 docs/features/tasks.md` above soft threshold.",
+        "path: docs/features/tasks.md :: large mixed-scope document covers schema, lifecycle, relationships, and operators in one file."
+      ],
+      "plan": [
+        "Define a split map for task schema, mutation workflows, and relationship validation guidance.",
+        "Extract content into child docs with clear canonical ownership per section.",
+        "Retain stable anchors/redirect notes from the parent feature file.",
+        "Verify by running `make check-file-size-limits` and confirming `docs/features/tasks.md` no longer exceeds soft limits."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0038",
+      "status": "todo",
+      "title": "Split `docs/features/configuration.md` below soft file-size threshold",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The feature configuration doc is above soft limits and overlaps broad configuration concerns. Why it matters: configuration guidance is a trust and safety surface; large overlapping docs increase mismatch risk across defaults, precedence, and trust policy updates. Minimal fix: break the feature-focused configuration narrative into concise sections with explicit links to canonical config reference pages.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "configuration"
+      ],
+      "scope": [
+        "docs/features/configuration.md",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `911 docs/features/configuration.md` above soft threshold.",
+        "path: docs/features/configuration.md :: broad feature coverage overlaps canonical config guidance, increasing drift surface."
+      ],
+      "plan": [
+        "Separate feature-level operator guidance from raw configuration reference content.",
+        "Introduce smaller linked sections for trust gating, precedence, and runner/plugin configuration.",
+        "Cross-link to canonical config source-of-truth entries after split.",
+        "Verify by running `make check-file-size-limits` and confirming the file is no longer in soft offenders."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0039",
+      "status": "todo",
+      "title": "Split top-level `docs/configuration.md` below soft file-size threshold",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The top-level configuration reference exceeds soft limits and carries high-churn policy details. Why it matters: this is a source-of-truth document for safety-critical config behavior; oversized structure makes targeted edits riskier and review harder. Minimal fix: partition into linked reference chapters (trust, precedence, runner controls, webhooks, migration notes) while keeping `docs/configuration.md` as canonical entry hub.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "configuration"
+      ],
+      "scope": [
+        "docs/configuration.md",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `849 docs/configuration.md` above soft threshold.",
+        "path: docs/configuration.md :: single large reference currently spans trust model, runner controls, policies, and migration details."
+      ],
+      "plan": [
+        "Define chapter-level split boundaries around configuration domains with minimal overlap.",
+        "Move content into dedicated reference docs and keep `docs/configuration.md` as navigable entrypoint.",
+        "Update intra-doc links and references from feature docs.",
+        "Verify by running `make check-file-size-limits` and confirming `docs/configuration.md` is not flagged."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0040",
+      "status": "todo",
+      "title": "Reduce `docs/features/daemon-and-watch.md` and `Makefile` soft-limit warnings",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). Both the daemon/watch feature doc and root Makefile exceed soft file-size thresholds, producing recurring warnings in size gates. Why it matters: gate warning volume grows and hides higher-severity signals, while large mixed-scope files make maintenance slower and riskier. Minimal fix: split daemon/watch documentation into linked subpages and extract Makefile sections into included `.mk` fragments with stable top-level targets.",
+      "priority": "low",
+      "tags": [
+        "maintenance",
+        "docs",
+        "build",
+        "ci"
+      ],
+      "scope": [
+        "docs/features/daemon-and-watch.md",
+        "Makefile",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `835 docs/features/daemon-and-watch.md` and `831 Makefile` above soft threshold.",
+        "path: Makefile :: one monolithic target surface currently mixes help text, CI routing, build/test/release targets, and macOS-specific workflows."
+      ],
+      "plan": [
+        "Split daemon/watch content into focused docs (overview, operations, troubleshooting) and maintain a concise feature index page.",
+        "Refactor Makefile into include-based fragments (for example ci, macos, release) while preserving command compatibility.",
+        "Run command discovery/help checks to confirm no target regressions after Makefile refactor.",
+        "Verify by running `make check-file-size-limits` and confirming both paths are removed from soft warnings."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0041",
+      "status": "todo",
+      "title": "Sync session-management `machine config resolve` example with live contract values",
+      "description": "Principles violated: J (consistency/integrity), G (least astonishment). The session-management doc example for `execution_controls` no longer matches actual machine output (`reasoning_efforts` and `parallel_workers.max`). Why it matters: app/automation implementers can encode incorrect bounds or omit valid effort values when following stale examples. Minimal fix: update the example payload to match current emitted contract values and add a contract-test-backed doc check if available.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "machine-contract",
+        "app-parity"
+      ],
+      "scope": [
+        "docs/features/session-management.md",
+        "crates/ralph/src/cli/machine/common.rs",
+        "/tmp/ralph-scan-target/debug/ralph machine config resolve"
+      ],
+      "evidence": [
+        "path: docs/features/session-management.md:181-189 :: example lists `reasoning_efforts` as low/medium/high and `parallel_workers.max` as 32.",
+        "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve | jq :: observed `reasoning_efforts=[\"low\",\"medium\",\"high\",\"xhigh\"]` and `parallel_workers.max=255`.",
+        "path: crates/ralph/src/cli/machine/common.rs:174-188 :: `execution_controls` builder includes `xhigh` and sets max workers to `u8::MAX`."
+      ],
+      "plan": [
+        "Update the session-management machine config sample payload to match current machine contract values.",
+        "Cross-check adjacent docs for copied stale execution-controls examples.",
+        "Add or extend a doc-contract check that compares example fields against current builder defaults when feasible.",
+        "Verify by rerunning `ralph machine config resolve` and confirming documentation example fields match emitted values."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T00:18:10Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    }
+  ]
 }
