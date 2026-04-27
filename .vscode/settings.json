@@ -16,5 +16,6 @@
     }
   ],
   "rust-analyzer.cargo.allFeatures": true,
-  "rust-analyzer.checkOnSave.command": "clippy"
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.checkOnSave": true
 }
