@@ -5,7 +5,7 @@ Owner: Maintainers
 Source of truth: this document
 Parent: [Ralph Documentation](index.md)
 Related: [Project Operating Constitution](guides/project-operating-constitution.md)
-Last updated: 2026-04-26
+Last updated: 2026-04-27
 
 This is the canonical decision log for project-level decisions that affect
 Ralph architecture, operations, documentation, release flow, or contributor and
@@ -26,6 +26,56 @@ Expected consequences:
 Follow-up actions:
 Review date, if any:
 ```
+
+## 2026-04-27: Accept current binary replacement behavior during Ralph self-development loops
+
+Decision: Keep Ralph's current long-running loop behavior when the installed
+`ralph` binary changes during Ralph self-development. Do not add automatic
+re-exec, stop-on-change, run-pinned executable copies, or queued remediation for
+this concern unless the maintainer explicitly reopens it.
+
+Date: 2026-04-27
+
+Owner: Maintainers
+
+Context: Ralph workers may change Ralph itself and run `make agent-ci`. For Rust
+crate changes, `make agent-ci` can route to `make ci`, and `make ci` runs
+`install-verify`, which installs the release CLI into the writable bin directory
+(typically `~/.local/bin/ralph`). Long-running loops are commonly started as
+`ralph run loop ...`, so the active coordinator process may have been launched
+from the same path that later gets replaced. The existing coordinator remains
+its original in-memory process, while later subprocesses may execute the
+replacement binary from that path.
+
+Chosen option: Accept the current behavior as an acknowledged self-development
+tradeoff. If a maintainer wants to use a clean binary generation, they can
+manually restart the loop after install. Do not change runtime behavior now.
+
+Rejected options: Stop the loop whenever the binary changes; automatically
+re-exec the coordinator at sequential or parallel safe boundaries; drain
+parallel workers before re-exec; pin every run to a copied executable; spawn
+future workers from a different binary discovery mechanism.
+
+Reason: No concrete failures have been observed from the current behavior, while
+the alternatives add non-trivial orchestration complexity or materially reduce
+parallel-loop productivity. Stop-on-change would make Ralph self-development
+loops behave like one task at a time because most meaningful Ralph changes can
+alter the binary. Parallel safe-boundary re-exec would still make throughput
+beholden to the slowest in-flight worker after each binary-changing task. More
+aggressive hot-swap/re-exec designs risk introducing worker lifecycle, queue,
+state, and cleanup bugs.
+
+Expected consequences: Ralph self-development loops may continue to run with an
+old in-memory coordinator after `~/.local/bin/ralph` is replaced. This is an
+accepted risk, not an open defect. Operators who want a fully fresh generation
+should restart the loop manually.
+
+Follow-up actions: None. Do not automatically add this as an outstanding task
+from `ralph scan`, audits, TODO sweeps, or agent-created follow-up queues. Only
+create work for this topic if a maintainer explicitly asks to revisit it or a
+concrete reproducible failure is reported.
+
+Review date, if any: None.
 
 ## 2026-04-26: Enforce repository file-size policy in local CI tiers
 
