@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0029",
-      "status": "todo",
-      "title": "Keep `ralph queue validate` strictly read-only by default",
-      "description": "Principles violated: G (least astonishment), H (operational hygiene), J (consistency/integrity). The command is documented as read-only, but startup sanity auto-fixes mutate `.ralph` state when operators are only validating continuation safety. Why it matters: read-only verification commands currently introduce hidden writes that can surprise automation, dirty worktrees, and change state before triage. Minimal fix: gate startup auto-fixes for read-only queue surfaces (or default to no-write sanity for these commands) and require explicit opt-in for writes.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "queue",
-        "cli",
-        "safety"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/queue/mod.rs",
-        "crates/ralph/src/sanity/**",
-        "/tmp/ralph-scan-target/debug/ralph queue validate"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/cli/queue/mod.rs:127 :: QueueCommand::Validate long help declares \"This command is read-only.\"",
-        "repro: create temp repo with only `.ralph/queue.jsonc` and `.ralph/done.jsonc`, run `/tmp/ralph-scan-target/debug/ralph queue validate` :: expected no filesystem mutation :: actual `.ralph/README.md` is created (`before: done+queue`, `after: README+done+queue`)",
-        "workflow: /tmp/ralph-scan-target/debug/ralph queue validate :: stderr logs `sanity::readme ... Created README at version 7` while command exits 0"
-      ],
-      "plan": [
-        "Audit startup sanity hooks reachable from `queue validate` and classify each fix path as read-only-safe vs mutating.",
-        "Prevent mutating sanity fixes on read-only queue commands unless explicit write mode is requested.",
-        "Add regression coverage proving `queue validate` does not create or rewrite files in a minimal initialized workspace.",
-        "Verify by reproducing the before/after file-list check and confirming no new `.ralph/*` files appear after `ralph queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
-      "created_at": "2026-04-27T00:18:10Z",
-      "updated_at": "2026-04-27T00:18:10Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0031",
       "status": "todo",
       "title": "Align `machine queue read` runnability output with queue validation state",
