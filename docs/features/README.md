@@ -35,7 +35,7 @@ Understand the fundamental building blocks of Ralph:
 | **[Queue](./queue.md)** | Task queue management, lifecycle, and operations |
 | **[Dependencies](./dependencies.md)** | Task relationships, DAG execution, and critical path analysis |
 | **[Context](./context.md)** | RepoPrompt integration and context building |
-| Tasks | Task structure and field reference *(see [Queue and Tasks](../queue-and-tasks.md))* |
+| **[Tasks](./tasks.md)** | Task system index with split schema, lifecycle, relationships, and operations references |
 
 ---
 
@@ -111,7 +111,8 @@ Additional reference documentation:
 | **[CLI Reference](../cli.md)** | Complete command-line documentation |
 | **[Error Handling](../error-handling.md)** | Patterns and best practices |
 | **[Environment](../environment.md)** | Environment variables reference |
-| **[Queue and Tasks](../queue-and-tasks.md)** | Task schema and lifecycle details |
+| **[Tasks](./tasks.md)** | Task system index and focused task reference pages |
+| **[Queue and Tasks](../queue-and-tasks.md)** | Legacy combined queue and task reference |
 | **[Workflow](../workflow.md)** | High-level workflow documentation |
 | **[Releasing](../releasing.md)** | Release process documentation |
 
