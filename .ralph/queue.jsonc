@@ -2,45 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0033",
-      "status": "todo",
-      "title": "Expose plugin-registry load failures as structured machine diagnostics",
-      "description": "Principles violated: F (fail fast appropriately), H (operational hygiene), J (consistency/integrity). `machine config resolve` silently drops project/global plugin runners to built-ins when plugin registry loading fails, while only emitting a plain WARN line on stderr. Why it matters: machine consumers can neither detect nor explain why configured runners disappeared, and stderr logging is not a stable contract surface. Minimal fix: add structured warning diagnostics to machine config documents (and keep successful machine commands stderr-clean by default).",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "machine-contract",
-        "plugins",
-        "operability"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/contracts/machine.rs",
-        "docs/machine-contract.md"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/cli/machine/common.rs:137-171 :: plugin-registry load error path logs warning and returns built-in runner list only.",
-        "repro: trusted temp repo with malformed `.ralph/plugins/broken.runner/plugin.json`, run `/tmp/ralph-scan-target/debug/ralph machine config resolve` :: expected structured warning in machine JSON :: actual exit 0, stdout runner ids only built-ins, stderr contains plain text warn log.",
-        "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve :: successful machine stdout currently has no field carrying plugin-registry degradation reason."
-      ],
-      "plan": [
-        "Design and add versioned machine-contract field(s) for non-fatal execution-controls diagnostics.",
-        "Populate those diagnostics from plugin-registry load failures and keep runner list fallback behavior explicit.",
-        "Suppress unschematized stderr warning logs for successful machine command execution paths.",
-        "Verify by rerunning malformed-plugin repro and confirming diagnostics are present in stdout JSON with empty stderr on success."
-      ],
-      "notes": [],
-      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
-      "created_at": "2026-04-27T00:18:10Z",
-      "updated_at": "2026-04-27T00:18:10Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0035",
       "status": "todo",
       "title": "Split `docs/guides/advanced.md` below soft file-size threshold",
