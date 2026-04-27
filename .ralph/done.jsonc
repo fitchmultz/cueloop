@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4",
+        "skill": "comprehensive-codebase-audit"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,8 +539,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "runner_used": "codex"
       }
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
@@ -830,9 +830,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
         "runner_used": "codex",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -956,9 +956,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -2129,6 +2129,46 @@
       "created_at": "2026-04-27T03:11:26Z",
       "updated_at": "2026-04-27T03:34:57.742213000Z",
       "completed_at": "2026-04-27T03:34:57.742213000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0048",
+      "status": "done",
+      "title": "Skip parallel webhook dispatcher startup when webhooks are disabled or unconfigured",
+      "description": "Principles violated: A (KISS), B (YAGNI), H (operational hygiene). Parallel preflight unconditionally starts the webhook runtime, and dispatcher construction does not check whether webhooks are enabled or even have a URL before spawning worker and scheduler threads. Why it matters: every parallel run pays thread and global-runtime overhead even in repos that do not use webhooks, and startup noise or failures can surface for a feature that is effectively off. Minimal fix: gate `init_worker_for_parallel` and dispatcher creation on resolved webhook enablement plus URL presence, and keep diagnostics capacity zero when no runtime is needed. Acceptance criteria: disabled/unconfigured webhook configs do not spawn dispatcher threads during parallel preflight, enabled configs still initialize correctly, and the focused runtime tests cover both gated and active cases.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "webhook",
+        "parallel"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/orchestration/preflight.rs",
+        "crates/ralph/src/webhook/worker/runtime/state.rs",
+        "crates/ralph/src/webhook/worker/runtime/tests.rs"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/commands/run/parallel/orchestration/preflight.rs:135-149 :: parallel preflight always calls init_worker_for_parallel before any webhook event is emitted",
+        "path: crates/ralph/src/webhook/worker/runtime/state.rs:78-115 :: dispatcher_for_config_with_factory builds a dispatcher from settings without checking enabled/url first",
+        "path: crates/ralph/src/webhook/worker/runtime/tests.rs:120-127 :: thread_spawn_failure_is_recoverable_on_later_attempt uses WebhookConfig::default() and still expects 5 spawned threads on recovery",
+        "workflow: cargo test -p ralph-agent-loop webhook::worker::runtime::tests::thread_spawn_failure_is_recoverable_on_later_attempt -- --exact :: current passing test proves default webhook config still drives dispatcher startup"
+      ],
+      "plan": [
+        "Add an explicit resolved-config gate so disabled or URL-less webhook configs do not start the dispatcher in parallel preflight or runtime lookup paths.",
+        "Keep dispatcher rebuild behavior unchanged for enabled configs while ensuring diagnostics capacity and counters stay idle when no runtime is active.",
+        "Extend runtime tests to cover both gated-off and enabled startup behavior.",
+        "Verify by running the focused runtime tests and confirming default webhook config no longer spawns dispatcher threads."
+      ],
+      "notes": [],
+      "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
+      "created_at": "2026-04-27T03:11:26Z",
+      "updated_at": "2026-04-27T03:40:26.407592000Z",
+      "completed_at": "2026-04-27T03:40:26.407592000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
