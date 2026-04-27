@@ -106,11 +106,12 @@ pub fn handle_done(args: &TaskDoneArgs, force: bool, resolved: &config::Resolved
 
     // Trigger webhook after successful completion
     let now = timeutil::now_utc_rfc3339()?;
-    webhook::notify_task_completed(
+    webhook::notify_task_completed_with_context(
         &args.task_id,
         &task_title,
         &resolved.config.agent.webhook,
         &now,
+        webhook::context_for_resolved_repo(resolved),
     );
 
     Ok(())
@@ -142,12 +143,13 @@ pub fn handle_reject(
 
     // Trigger webhook after successful rejection
     let now = timeutil::now_utc_rfc3339()?;
-    webhook::notify_task_failed(
+    webhook::notify_task_failed_with_context(
         &args.task_id,
         &task_title,
         Some(note_str),
         &resolved.config.agent.webhook,
         &now,
+        webhook::context_for_resolved_repo(resolved),
     );
 
     Ok(())

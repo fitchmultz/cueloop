@@ -21,6 +21,16 @@ use crate::contracts::WebhookConfig;
 use super::types::{WebhookContext, WebhookEventType, WebhookPayload};
 use super::worker::send_webhook_payload_internal;
 
+/// Build webhook context from resolved repo metadata for task lifecycle events.
+pub(crate) fn context_for_resolved_repo(resolved: &crate::config::Resolved) -> WebhookContext {
+    WebhookContext {
+        repo_root: Some(resolved.repo_root.display().to_string()),
+        branch: crate::git::current_branch(&resolved.repo_root).ok(),
+        commit: crate::session::get_git_head_commit(&resolved.repo_root),
+        ..Default::default()
+    }
+}
+
 /// Send a webhook notification (non-blocking, enqueues for delivery).
 ///
 /// This function returns immediately after enqueueing the webhook.

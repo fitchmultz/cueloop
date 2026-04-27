@@ -155,6 +155,74 @@ fn webhook_loop_event_payload_shape() {
 
 #[test]
 #[serial]
+fn webhook_task_event_includes_repo_context_fields() {
+    ensure_test_worker_initialized();
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+
+    let received_request = Arc::new(Mutex::new(None));
+    let request_clone = Arc::clone(&received_request);
+    let expected_task_id = unique_test_id("TEST-TASK-CONTEXT");
+    let expected_task_id_clone = expected_task_id.clone();
+    let expected_repo_root = portable_repo_root("task-event-context");
+    let expected_repo_root_clone = expected_repo_root.clone();
+
+    thread::spawn(move || {
+        while let Ok((mut stream, _)) = listener.accept() {
+            let request = read_http_request_with_body(&mut stream);
+            let _ = std::io::Write::write_all(&mut stream, b"HTTP/1.1 200 OK\r\n\r\n");
+            let matches_expected = parse_http_json_body(&request).is_some_and(|json| {
+                json.get("event").and_then(serde_json::Value::as_str) == Some("task_completed")
+                    && json.get("task_id").and_then(serde_json::Value::as_str)
+                        == Some(expected_task_id_clone.as_str())
+                    && json.get("repo_root").and_then(serde_json::Value::as_str)
+                        == Some(expected_repo_root_clone.as_str())
+            });
+            if matches_expected {
+                *request_clone.lock().unwrap() = Some(request);
+                break;
+            }
+        }
+    });
+
+    let mut config = base_webhook_config(port);
+    config.events = Some(vec![WebhookEventSubscription::TaskCompleted]);
+    config.queue_capacity = Some(1000);
+
+    webhook::notify_task_completed_with_context(
+        &expected_task_id,
+        "Test title",
+        &config,
+        "2024-01-01T00:00:00Z",
+        webhook::WebhookContext {
+            repo_root: Some(expected_repo_root.clone()),
+            branch: Some("main".to_string()),
+            commit: Some("abc123".to_string()),
+            ..Default::default()
+        },
+    );
+
+    let request = test_support::wait_for_mutex_value(
+        &received_request,
+        Duration::from_secs(10),
+        Duration::from_millis(50),
+    )
+    .expect("expected task_completed request bytes");
+
+    let json = parse_http_json_body(&request).expect("expected task_completed request JSON");
+    assert_eq!(json["event"], "task_completed");
+    assert_eq!(json["task_id"], expected_task_id);
+    assert_eq!(json["task_title"], "Test title");
+    assert_eq!(json["previous_status"], "doing");
+    assert_eq!(json["current_status"], "done");
+    assert_eq!(json["repo_root"], expected_repo_root);
+    assert_eq!(json["branch"], "main");
+    assert_eq!(json["commit"], "abc123");
+}
+
+#[test]
+#[serial]
 fn webhook_phase_event_includes_context_fields() {
     ensure_test_worker_initialized();
 

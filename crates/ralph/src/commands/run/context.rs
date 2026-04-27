@@ -70,7 +70,13 @@ pub(crate) fn mark_task_doing(resolved: &config::Resolved, task_id: &str) -> Res
     queue::save_queue(&resolved.queue_path, &queue_file)?;
 
     // Trigger webhook for task started
-    webhook::notify_task_started(task_id, &task_title, &resolved.config.agent.webhook, &now);
+    webhook::notify_task_started_with_context(
+        task_id,
+        &task_title,
+        &resolved.config.agent.webhook,
+        &now,
+        webhook::context_for_resolved_repo(resolved),
+    );
 
     Ok(())
 }

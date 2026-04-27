@@ -134,6 +134,109 @@ fn failure_store_retention_is_bounded_to_200_records() {
 }
 
 #[test]
+#[serial]
+fn failure_store_runtime_persistence_uses_payload_repo_root_not_cwd() -> Result<()> {
+    reset_webhook_test_state();
+    let repo_root = tempfile::tempdir().context("create payload repo root")?;
+    let other_cwd = tempfile::tempdir().context("create unrelated cwd")?;
+    let previous_cwd = std::env::current_dir().context("capture current directory")?;
+    std::env::set_current_dir(other_cwd.path()).context("switch to unrelated cwd")?;
+
+    let result = (|| {
+        let expected_repo_root = repo_root.path().display().to_string();
+        let msg = WebhookMessage {
+            payload: WebhookPayload {
+                event: "task_completed".to_string(),
+                timestamp: "2026-02-13T00:00:00Z".to_string(),
+                task_id: Some("RQ-0047".to_string()),
+                task_title: Some("Repo context propagation".to_string()),
+                previous_status: Some("doing".to_string()),
+                current_status: Some("done".to_string()),
+                note: None,
+                context: WebhookContext {
+                    repo_root: Some(expected_repo_root.clone()),
+                    branch: Some("main".to_string()),
+                    commit: Some("abc123".to_string()),
+                    ..Default::default()
+                },
+            },
+            config: ResolvedWebhookConfig::from_config(&webhook_test_config()),
+        };
+
+        crate::webhook::diagnostics::persist_failed_delivery_from_runtime_for_tests(
+            &msg,
+            &anyhow::anyhow!("simulated delivery failure"),
+            1,
+        )?;
+
+        let records = crate::webhook::diagnostics::load_failure_records_for_tests(repo_root.path())
+            .context("load payload-root failure records")?;
+        anyhow::ensure!(
+            records.len() == 1,
+            "expected one payload-root failure record"
+        );
+        anyhow::ensure!(
+            records[0].payload.context.repo_root.as_deref() == Some(expected_repo_root.as_str()),
+            "expected persisted payload to retain repo_root"
+        );
+        anyhow::ensure!(
+            !other_cwd
+                .path()
+                .join(".ralph/cache/webhooks/failures.json")
+                .exists(),
+            "cwd fallback should not create an unrelated failure store"
+        );
+        Ok(())
+    })();
+
+    let restore = std::env::set_current_dir(&previous_cwd).context("restore current directory");
+    result.and(restore)
+}
+
+#[test]
+#[serial]
+fn failure_store_runtime_persistence_skips_missing_repo_root_without_cwd_fallback() -> Result<()> {
+    reset_webhook_test_state();
+    let other_cwd = tempfile::tempdir().context("create unrelated cwd")?;
+    let previous_cwd = std::env::current_dir().context("capture current directory")?;
+    std::env::set_current_dir(other_cwd.path()).context("switch to unrelated cwd")?;
+
+    let result = (|| {
+        let msg = WebhookMessage {
+            payload: WebhookPayload {
+                event: "task_failed".to_string(),
+                timestamp: "2026-02-13T00:00:00Z".to_string(),
+                task_id: Some("RQ-0047".to_string()),
+                task_title: Some("Missing context".to_string()),
+                previous_status: Some("doing".to_string()),
+                current_status: Some("rejected".to_string()),
+                note: None,
+                context: WebhookContext::default(),
+            },
+            config: ResolvedWebhookConfig::from_config(&webhook_test_config()),
+        };
+
+        crate::webhook::diagnostics::persist_failed_delivery_from_runtime_for_tests(
+            &msg,
+            &anyhow::anyhow!("simulated delivery failure"),
+            1,
+        )?;
+
+        anyhow::ensure!(
+            !other_cwd
+                .path()
+                .join(".ralph/cache/webhooks/failures.json")
+                .exists(),
+            "missing repo_root should not create a failure store in cwd"
+        );
+        Ok(())
+    })();
+
+    let restore = std::env::set_current_dir(&previous_cwd).context("restore current directory");
+    result.and(restore)
+}
+
+#[test]
 fn replay_selector_filtering_and_cap_behavior() {
     let repo_root = tempfile::tempdir().expect("tempdir");
     let config = webhook_test_config();

@@ -34,6 +34,6 @@ pub(crate) use metrics::{
 #[cfg(test)]
 pub(crate) use tests::{
     load_failure_records_for_tests, persist_failed_delivery_for_tests,
-    reset_webhook_metrics_for_tests, update_replay_counts_for_tests,
-    write_failure_records_for_tests,
+    persist_failed_delivery_from_runtime_for_tests, reset_webhook_metrics_for_tests,
+    update_replay_counts_for_tests, write_failure_records_for_tests,
 };

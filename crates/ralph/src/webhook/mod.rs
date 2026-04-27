@@ -52,6 +52,7 @@ pub use types::{ResolvedWebhookConfig, WebhookContext, WebhookEventType, Webhook
 pub use worker::init_worker_for_parallel;
 
 // Internal re-exports for use within the crate
+pub(crate) use notifications::context_for_resolved_repo;
 pub(crate) use types::{WebhookMessage, resolve_webhook_config};
 pub(crate) use worker::enqueue_webhook_payload_for_replay;
 

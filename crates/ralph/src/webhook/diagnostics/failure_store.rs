@@ -214,19 +214,23 @@ fn acquire_failure_store_lock(path: &Path) -> Result<crate::lock::DirLock> {
 }
 
 fn resolve_repo_root_from_runtime(msg: &WebhookMessage) -> Option<PathBuf> {
-    if let Some(repo_root) = msg.payload.context.repo_root.as_deref() {
-        let repo_root = PathBuf::from(repo_root);
-        if repo_root.exists() {
-            return Some(crate::config::find_repo_root(&repo_root));
-        }
+    let Some(repo_root) = msg.payload.context.repo_root.as_deref() else {
         log::debug!(
-            "webhook payload repo_root does not exist; falling back to current directory: {}",
-            repo_root.display()
+            "webhook payload missing repo_root; skipping failure persistence instead of falling back to current directory"
         );
+        return None;
+    };
+
+    let repo_root = PathBuf::from(repo_root);
+    if repo_root.exists() {
+        return Some(crate::config::find_repo_root(&repo_root));
     }
 
-    let cwd = std::env::current_dir().ok()?;
-    Some(crate::config::find_repo_root(&cwd))
+    log::debug!(
+        "webhook payload repo_root does not exist; skipping failure persistence: {}",
+        repo_root.display()
+    );
+    None
 }
 
 fn next_failure_id() -> String {
