@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -194,9 +194,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
       }
     },
     {
@@ -760,9 +760,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "runner_used": "codex"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex"
       }
     },
     {
@@ -955,8 +955,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "runner_used": "pi",
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
         "model_used": "openai-codex/gpt-5.5",
-        "reported_command": "ralph run loop --parallel 2",
+        "runner_used": "pi",
         "severity_reason": "parallel-mode task state/data integrity loss",
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
+        "reported_command": "ralph run loop --parallel 2"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
       }
     },
     {
@@ -2580,6 +2580,56 @@
       "relates_to": [],
       "custom_fields": {
         "rust_feature": "if let guards on match arms"
+      }
+    },
+    {
+      "id": "RQ-0052",
+      "status": "done",
+      "title": "Apply Rust 1.95 library APIs where they reduce unsafe or mutation boilerplate",
+      "description": "Audit Ralph's Rust code for focused, value-positive adoption of Rust 1.95's newly stabilized library APIs. Prioritize APIs that simplify real code: `Vec::push_mut` / `insert_mut`, `VecDeque::*_mut`, atomic `update` / `try_update`, `cfg_select!`, `core::hint::cold_path`, `bool: TryFrom<{integer}>`, const `ControlFlow` helpers, and the `MaybeUninit`/`Cell` array conversion accessors. Replace older patterns only when the result is clearer, safer, or measurably better.",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "refactor",
+        "quality",
+        "clippy"
+      ],
+      "scope": [
+        "crates/ralph/src/lock/acquisition.rs",
+        "crates/ralph/src/webhook/",
+        "crates/ralph/src/runutil/",
+        "crates/ralph/src/runner/",
+        "crates/ralph/src/queue/",
+        "crates/ralph/tests/",
+        "cargo clippy --all-targets --all-features -- -D warnings",
+        "cargo test"
+      ],
+      "evidence": [
+        "Rust 1.95.0 stabilized `Vec::push_mut`, `Vec::insert_mut`, `VecDeque` mutating insertion helpers, atomic `update`/`try_update`, `cfg_select!`, `core::hint::cold_path`, multiple `MaybeUninit`/`Cell` array accessors, `bool: TryFrom<{integer}>`, and const `ControlFlow::{is_break,is_continue}`.",
+        "Repository search found atomic counters in lock and webhook-related tests and many push-after-construct patterns that may benefit from `push_mut` only if mutation immediately follows insertion.",
+        "Ralph's file-scope standards require clear, simple code; new APIs should be adopted only where they reduce boilerplate or safety risk."
+      ],
+      "plan": [
+        "Search for insert-then-mutate, push-then-last_mut, fetch_update/compare_exchange loops, cfg-heavy platform branches, and cold error-path helpers across `crates/ralph/src` and tests.",
+        "Convert only candidates where Rust 1.95 APIs improve clarity, remove duplicated atomic retry loops, or reduce unsafe/manual initialization surface.",
+        "Avoid introducing unchecked pointer APIs unless there is already proven unsafe code that becomes clearer and remains justified.",
+        "Add or update targeted regression tests for any behavior touched by refactors and run formatting, clippy, and tests."
+      ],
+      "notes": [
+        "Do not force `MaybeUninit`, `Cell`, or pointer APIs into safe code that does not need them.",
+        "If no strong candidates exist, record that result in the stack audit instead of making low-value churn."
+      ],
+      "request": "Rust has been updated on this system. Research new features and best practices for the new version and create tasks in the ralph queue.jsonc to have the project updated to use all best practices with the newest version.",
+      "created_at": "2026-04-27T13:56:36Z",
+      "updated_at": "2026-04-27T16:39:25.112846000Z",
+      "completed_at": "2026-04-27T16:39:25.112846000Z",
+      "depends_on": [
+        "RQ-0050"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "rust_feature": "Rust 1.95 stabilized std APIs"
       }
     }
   ]
