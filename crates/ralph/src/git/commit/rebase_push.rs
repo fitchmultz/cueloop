@@ -26,7 +26,7 @@ use crate::git::error::GitError;
 
 use super::upstream::{
     is_ahead_of_ref, is_ahead_of_upstream, push_upstream, push_upstream_allow_create, rebase_onto,
-    reference_exists, set_upstream_to, upstream_ref,
+    reference_exists, rev_list_left_right_counts, set_upstream_to, upstream_ref,
 };
 
 /// Push HEAD to upstream, rebasing on non-fast-forward rejections.
@@ -41,11 +41,22 @@ pub fn push_upstream_with_rebase(repo_root: &Path) -> Result<(), GitError> {
 
     let branch = current_branch(repo_root).map_err(GitError::Other)?;
     let fallback_upstream = format!("origin/{}", branch);
+    let mut missing_upstream = false;
     let ahead = match is_ahead_of_upstream(repo_root) {
         Ok(ahead) => ahead,
         Err(GitError::NoUpstream) | Err(GitError::NoUpstreamConfigured) => {
+            missing_upstream = true;
             if reference_exists(repo_root, &fallback_upstream)? {
-                is_ahead_of_ref(repo_root, &fallback_upstream)?
+                let (remote_only, local_only) =
+                    rev_list_left_right_counts(repo_root, &format!("{fallback_upstream}...HEAD"))?;
+                if remote_only > 0 {
+                    rebase_onto(repo_root, &fallback_upstream)?;
+                    set_upstream_to(repo_root, &fallback_upstream)?;
+                    missing_upstream = false;
+                    is_ahead_of_ref(repo_root, &fallback_upstream)?
+                } else {
+                    local_only > 0
+                }
             } else {
                 true
             }
@@ -54,7 +65,7 @@ pub fn push_upstream_with_rebase(repo_root: &Path) -> Result<(), GitError> {
     };
 
     if !ahead {
-        if upstream_ref(repo_root).is_err() && reference_exists(repo_root, &fallback_upstream)? {
+        if missing_upstream && reference_exists(repo_root, &fallback_upstream)? {
             set_upstream_to(repo_root, &fallback_upstream)?;
         }
         return Ok(());

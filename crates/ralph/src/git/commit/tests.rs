@@ -57,8 +57,7 @@ fn push_upstream_with_rebase_recovers_from_non_fast_forward() -> anyhow::Result<
 }
 
 #[test]
-fn push_upstream_with_rebase_sets_upstream_when_remote_branch_exists_and_local_is_behind()
--> anyhow::Result<()> {
+fn push_upstream_with_rebase_recovers_no_upstream_branch_behind_remote() -> anyhow::Result<()> {
     let remote = TempDir::new()?;
     git_test::init_bare_repo(remote.path())?;
 
@@ -86,6 +85,22 @@ fn push_upstream_with_rebase_sets_upstream_when_remote_branch_exists_and_local_i
             "origin/main",
         ],
     )?;
+    git_test::git_run(local.path(), &["fetch", "origin", "ralph/RQ-0940"])?;
+
+    assert!(git_test::git_run(local.path(), &["rev-parse", "--abbrev-ref", "@{u}"]).is_err());
+    let before_counts = git_test::git_output(
+        local.path(),
+        &[
+            "rev-list",
+            "--left-right",
+            "--count",
+            "origin/ralph/RQ-0940...HEAD",
+        ],
+    )?;
+    assert_eq!(
+        before_counts.split_whitespace().collect::<Vec<_>>(),
+        vec!["1", "0"]
+    );
 
     push_upstream_with_rebase(local.path())?;
 
@@ -94,6 +109,19 @@ fn push_upstream_with_rebase_sets_upstream_when_remote_branch_exists_and_local_i
         &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
     )?;
     assert_eq!(upstream, "origin/ralph/RQ-0940");
+
+    let after_counts = git_test::git_output(
+        local.path(),
+        &["rev-list", "--left-right", "--count", "@{u}...HEAD"],
+    )?;
+    assert_eq!(
+        after_counts.split_whitespace().collect::<Vec<_>>(),
+        vec!["0", "0"]
+    );
+    assert_eq!(
+        std::fs::read_to_string(local.path().join("task.txt"))?,
+        "remote-only\n"
+    );
 
     Ok(())
 }

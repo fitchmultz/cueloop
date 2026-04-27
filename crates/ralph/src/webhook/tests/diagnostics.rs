@@ -176,8 +176,9 @@ fn failure_store_runtime_persistence_uses_payload_repo_root_not_cwd() -> Result<
             "expected one payload-root failure record"
         );
         anyhow::ensure!(
-            records[0].payload.context.repo_root.as_deref() == Some(expected_repo_root.as_str()),
-            "expected persisted payload to retain repo_root"
+            records[0].payload.context.repo_root.as_deref()
+                == Some(crate::constants::defaults::REDACTED),
+            "expected persisted payload to redact repo_root"
         );
         anyhow::ensure!(
             !other_cwd
