@@ -49,42 +49,6 @@
       "custom_fields": {}
     },
     {
-      "id": "RQ-0038",
-      "status": "todo",
-      "title": "Split `docs/features/configuration.md` below soft file-size threshold",
-      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The feature configuration doc is above soft limits and overlaps broad configuration concerns. Why it matters: configuration guidance is a trust and safety surface; large overlapping docs increase mismatch risk across defaults, precedence, and trust policy updates. Minimal fix: break the feature-focused configuration narrative into concise sections with explicit links to canonical config reference pages.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "docs",
-        "configuration"
-      ],
-      "scope": [
-        "docs/features/configuration.md",
-        "make check-file-size-limits"
-      ],
-      "evidence": [
-        "workflow: make check-file-size-limits :: warns `911 docs/features/configuration.md` above soft threshold.",
-        "path: docs/features/configuration.md :: broad feature coverage overlaps canonical config guidance, increasing drift surface."
-      ],
-      "plan": [
-        "Separate feature-level operator guidance from raw configuration reference content.",
-        "Introduce smaller linked sections for trust gating, precedence, and runner/plugin configuration.",
-        "Cross-link to canonical config source-of-truth entries after split.",
-        "Verify by running `make check-file-size-limits` and confirming the file is no longer in soft offenders."
-      ],
-      "notes": [],
-      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
-      "created_at": "2026-04-27T00:18:10Z",
-      "updated_at": "2026-04-27T00:18:10Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0039",
       "status": "todo",
       "title": "Split top-level `docs/configuration.md` below soft file-size threshold",
