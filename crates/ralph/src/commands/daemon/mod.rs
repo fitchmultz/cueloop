@@ -32,7 +32,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::process::Child;
-use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
 pub use logs::logs;
@@ -66,42 +65,6 @@ pub(super) struct DaemonState {
     pub(super) repo_root: String,
     /// Full command line of the daemon process.
     pub(super) command: String,
-}
-
-struct DaemonCacheWatcher {
-    _watcher: notify::RecommendedWatcher,
-    rx: Receiver<notify::Result<notify::Event>>,
-}
-
-impl DaemonCacheWatcher {
-    fn new(cache_dir: &Path) -> Result<Self> {
-        use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
-
-        std::fs::create_dir_all(cache_dir).with_context(|| {
-            format!("Failed to create daemon cache dir {}", cache_dir.display())
-        })?;
-
-        let (tx, rx) = mpsc::channel();
-        let mut watcher = RecommendedWatcher::new(
-            move |res| {
-                let _ = tx.send(res);
-            },
-            Config::default(),
-        )
-        .context("Failed to create daemon cache watcher")?;
-        watcher
-            .watch(cache_dir, RecursiveMode::NonRecursive)
-            .with_context(|| format!("Failed to watch daemon cache dir {}", cache_dir.display()))?;
-
-        Ok(Self {
-            _watcher: watcher,
-            rx,
-        })
-    }
-
-    fn recv_timeout(&self, timeout: Duration) -> bool {
-        self.rx.recv_timeout(timeout).is_ok()
-    }
 }
 
 /// Read daemon state from disk.
@@ -217,7 +180,8 @@ pub(super) fn wait_for_daemon_ready(
     timeout: Duration,
     child: &mut Child,
 ) -> Result<bool> {
-    let watcher = DaemonCacheWatcher::new(cache_dir).ok();
+    std::fs::create_dir_all(cache_dir)
+        .with_context(|| format!("Failed to create daemon cache dir {}", cache_dir.display()))?;
     let deadline = Instant::now() + timeout;
     loop {
         if daemon_ready_matches_pid(cache_dir, pid)? {
@@ -230,6 +194,8 @@ pub(super) fn wait_for_daemon_ready(
         {
             return Ok(false);
         }
+        // Bounded polling keeps readiness deterministic and avoids native file-watcher
+        // startup stalls on macOS while preserving the same timeout semantics.
         if Instant::now() >= deadline {
             return Ok(false);
         }
@@ -237,11 +203,7 @@ pub(super) fn wait_for_daemon_ready(
             .saturating_duration_since(Instant::now())
             .min(Duration::from_millis(100))
             .max(Duration::from_millis(1));
-        if let Some(ref watcher) = watcher {
-            let _ = watcher.recv_timeout(wait_slice);
-        } else {
-            std::thread::park_timeout(wait_slice);
-        }
+        std::thread::park_timeout(wait_slice);
     }
 }
 
@@ -251,9 +213,12 @@ pub(super) fn wait_for_daemon_shutdown(
     pid: u32,
     timeout: Duration,
 ) -> Result<bool> {
-    let watcher = DaemonCacheWatcher::new(cache_dir).ok();
+    std::fs::create_dir_all(cache_dir)
+        .with_context(|| format!("Failed to create daemon cache dir {}", cache_dir.display()))?;
     let deadline = Instant::now() + timeout;
     loop {
+        // Bounded polling keeps shutdown deterministic and avoids native file-watcher
+        // startup stalls on macOS while preserving the same timeout semantics.
         if daemon_shutdown_complete(cache_dir, pid) {
             return Ok(true);
         }
@@ -264,11 +229,7 @@ pub(super) fn wait_for_daemon_shutdown(
             .saturating_duration_since(Instant::now())
             .min(Duration::from_millis(100))
             .max(Duration::from_millis(1));
-        if let Some(ref watcher) = watcher {
-            let _ = watcher.recv_timeout(wait_slice);
-        } else {
-            std::thread::park_timeout(wait_slice);
-        }
+        std::thread::park_timeout(wait_slice);
     }
 }
 

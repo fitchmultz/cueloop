@@ -90,6 +90,7 @@ pub fn build_notification_config(
     let notify_on_complete = overrides
         .notify_on_complete
         .or(config.notify_on_complete)
+        .or(config.enabled)
         .unwrap_or(true);
     let notify_on_fail = overrides
         .notify_on_fail
@@ -176,6 +177,27 @@ mod tests {
         assert!(!result.suppress_when_active);
         assert_eq!(result.timeout_ms, 5000);
         assert_eq!(result.sound_path, Some("/path/to/sound.wav".to_string()));
+    }
+
+    #[test]
+    fn build_notification_config_legacy_enabled_controls_completion_fallback() {
+        let config = crate::contracts::NotificationConfig {
+            enabled: Some(false),
+            ..Default::default()
+        };
+        let overrides = NotificationOverrides::default();
+        let result = build_notification_config(&config, &overrides);
+
+        assert!(!result.notify_on_complete);
+        assert!(result.notify_on_fail);
+
+        let config = crate::contracts::NotificationConfig {
+            enabled: Some(false),
+            notify_on_complete: Some(true),
+            ..Default::default()
+        };
+        let result = build_notification_config(&config, &overrides);
+        assert!(result.notify_on_complete);
     }
 
     #[test]

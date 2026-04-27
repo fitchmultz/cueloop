@@ -27,11 +27,10 @@ pub(crate) fn build_notification_config(
     notify_sound: Option<bool>,
 ) -> notification::NotificationConfig {
     // CLI overrides take precedence over config
-    let enabled = notify_on_complete
-        .or(resolved.config.agent.notification.enabled)
-        .unwrap_or(true);
+    let legacy_completion_enabled = resolved.config.agent.notification.enabled;
     let notify_on_complete = notify_on_complete
         .or(resolved.config.agent.notification.notify_on_complete)
+        .or(legacy_completion_enabled)
         .unwrap_or(true);
     let notify_on_fail = resolved
         .config
@@ -61,7 +60,10 @@ pub(crate) fn build_notification_config(
         .or(resolved.config.agent.notification.sound_enabled)
         .unwrap_or(false);
     notification::NotificationConfig {
-        enabled: enabled || notify_on_watch_new_tasks,
+        enabled: notify_on_complete
+            || notify_on_fail
+            || notify_on_loop_complete
+            || notify_on_watch_new_tasks,
         notify_on_complete,
         notify_on_fail,
         notify_on_loop_complete,
@@ -224,5 +226,29 @@ mod tests {
         assert!(config.sound_enabled);
         assert_eq!(config.sound_path, Some("/custom/sound.wav".to_string()));
         assert_eq!(config.timeout_ms, 10000);
+    }
+
+    #[test]
+    fn build_notification_config_legacy_enabled_controls_completion_fallback() {
+        let temp = TempDir::new().unwrap();
+        let notification = NotificationConfig {
+            enabled: Some(false),
+            ..Default::default()
+        };
+        let resolved = resolved_with_notification(temp.path(), notification);
+
+        let config = build_notification_config(&resolved, None, None);
+
+        assert!(!config.notify_on_complete);
+        assert!(config.notify_on_fail);
+
+        let notification = NotificationConfig {
+            enabled: Some(false),
+            notify_on_complete: Some(true),
+            ..Default::default()
+        };
+        let resolved = resolved_with_notification(temp.path(), notification);
+        let config = build_notification_config(&resolved, None, None);
+        assert!(config.notify_on_complete);
     }
 }
