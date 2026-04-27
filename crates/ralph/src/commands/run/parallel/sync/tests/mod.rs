@@ -47,6 +47,16 @@ pub(super) fn build_test_resolved(
     }
 }
 
+pub(super) fn build_test_resolved_with_ignored_allowlist(
+    repo_root: &Path,
+    entries: Vec<&str>,
+) -> crate::config::Resolved {
+    let mut resolved = build_test_resolved(repo_root, None, None);
+    resolved.config.parallel.ignored_file_allowlist =
+        Some(entries.into_iter().map(str::to_string).collect());
+    resolved
+}
+
 mod bookkeeping;
 mod gitignored;
 mod runtime;

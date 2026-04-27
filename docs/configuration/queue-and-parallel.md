@@ -17,6 +17,7 @@ Key fields:
 - `push_backoff_ms`: array of retry backoff intervals in milliseconds (default: `[500, 2000, 5000, 10000]`).
 - `workspace_retention_hours`: hours to retain worker workspaces after completion (default: `24`).
 - `workspace_root`: root directory for parallel workspaces (default: `<repo-parent>/.workspaces/<repo-name>/parallel`).
+- `ignored_file_allowlist`: optional trusted repo-relative file/glob allowlist for additional gitignored local files to copy into worker workspaces. Default: `null` (`.env` / `.env.*` only).
 
   **Git hygiene warning:** If you set `parallel.workspace_root` to a path **inside** the repository (for example `.ralph/workspaces`), you MUST gitignore it (or add it to `.git/info/exclude`). Otherwise Ralph will create workspace clone directories that appear as untracked files and the repo will look "dirty" across runs. Parallel mode will fail fast if the workspace root is inside the repo and not ignored.
 
@@ -39,6 +40,33 @@ Example:
   }
 }
 ```
+
+### Ignored local file sync
+
+Parallel worker workspaces receive tracked files through git and Ralph runtime files under `.ralph/` through Ralph's workspace seeding. By default, Ralph also copies ignored `.env` and `.env.*` files so workers inherit common local environment files.
+
+Ralph does **not** copy all ignored files automatically. Broad ignored-file copying can duplicate heavy build/cache trees (`target/`, `node_modules/`, `.venv/`), stale generated artifacts, nested worker workspaces, or nondeterministic local state.
+
+When a repository needs additional ignored local files for parallel workers, configure an explicit trusted allowlist:
+
+```jsonc
+{
+  "parallel": {
+    "ignored_file_allowlist": [
+      "local/tool-config.json",
+      "fixtures/local-*.json",
+      "config/**/*.local.toml"
+    ]
+  }
+}
+```
+
+Rules:
+- entries are repo-relative file paths or glob patterns
+- directories, absolute paths, and `..` components are rejected
+- denied runtime/build paths such as `target/`, `node_modules/`, `.venv/`, `.git/`, and `.ralph/{cache,workspaces,logs,lock}/` are rejected
+- configured entries must match existing gitignored files during parallel preflight
+- project config that sets this allowlist requires repo trust (`ralph config trust init`)
 
 ## Queue Configuration
 `queue` controls file locations, task ID formatting, and auto-archive behavior.

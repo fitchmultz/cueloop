@@ -174,7 +174,7 @@ Derived summary; `docs/configuration.md` is the configuration source of truth.
 ### Parallel Workspace Runtime Sync
 - Worker workspace setup mirrors repo-local `.ralph/` runtime files recursively, excluding only ephemeral paths `.ralph/{cache,workspaces,logs,lock}/`.
 - Worker workspace setup MUST seed queue/done from coordinator-resolved paths (including `.jsonc` and custom paths) so migrated-uncommitted and gitignored `.ralph` repos work in parallel mode.
-- Gitignored non-`.ralph` sync remains narrow by design (`.env*` only) to avoid copying heavy build/cache directories.
+- Gitignored non-`.ralph` sync remains narrow by default (`.env*` only). Additional ignored local files may be synced only through trusted `parallel.ignored_file_allowlist` repo-relative file/glob entries with shared denylist/preflight validation; never broaden to all ignored files.
 - Parallel worker post-run bookkeeping restore must always target workspace-local `.ralph/{queue.json,queue.jsonc,done.json,done.jsonc,cache/productivity.json}`.
 - Worker post-run supervision should fail fast if those bookkeeping paths remain dirty after restore (never proceed to commit/rebase with queue/done/productivity drift).
 - Worker post-run restore must purge generated runtime artifacts under `.ralph/cache/{plans,phase2_final,parallel}` plus `.ralph/{logs,cache/session.jsonc,cache/migrations.jsonc}` before deciding repo dirtiness.

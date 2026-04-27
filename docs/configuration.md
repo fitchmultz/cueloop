@@ -33,7 +33,7 @@ CLI flags override both for a single run. Defaults are defined by `schemas/confi
 - `version` (number): Config schema version. Default: `2`.
 - `project_type` (string or null): `code` or `docs`. Default: `code`.
 - `agent` (object): Runner defaults, CLI binaries, prompt enforcement, notifications, and webhook settings. See [Agent and runners](configuration/agent-and-runners.md) and [Notifications and webhooks](configuration/notifications-and-webhooks.md).
-- `parallel` (object): Parallel run-loop configuration. See [Queue and parallel](configuration/queue-and-parallel.md).
+- `parallel` (object): Parallel run-loop configuration, including trusted ignored local file sync policy. See [Queue and parallel](configuration/queue-and-parallel.md).
 - `queue` (object): Queue file locations, task ID formatting, archive policy, and aging thresholds. See [Queue and parallel](configuration/queue-and-parallel.md).
 - `plugins` (object): Plugin enablement and per-plugin settings. See [Plugins and profiles](configuration/plugins-and-profiles.md).
 - `profiles` (object, optional): Named agent configuration patches. See [Plugins and profiles](configuration/plugins-and-profiles.md).

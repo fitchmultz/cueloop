@@ -182,6 +182,50 @@ fn validate_project_execution_trust_allows_trusted_project_ci_gate() {
 }
 
 #[test]
+fn apply_layer_merges_parallel_ignored_file_allowlist() -> Result<()> {
+    let base = Config::default();
+    let mut layer = ConfigLayer::default();
+    layer.parallel.ignored_file_allowlist = Some(vec!["local/tool.json".to_string()]);
+
+    let merged = apply_layer(base, layer)?;
+    assert_eq!(
+        merged.parallel.ignored_file_allowlist,
+        Some(vec!["local/tool.json".to_string()])
+    );
+    Ok(())
+}
+
+#[test]
+fn validate_config_rejects_invalid_parallel_ignored_file_allowlist_entries() {
+    for entry in [
+        "/abs.json",
+        "../escape.json",
+        "config/./local.json",
+        "target/local.json",
+        ".ralph/cache/session.json",
+        "fixtures/",
+    ] {
+        let mut cfg = Config::default();
+        cfg.parallel.ignored_file_allowlist = Some(vec![entry.to_string()]);
+        let err = validate_config(&cfg).expect_err("expected invalid allowlist entry to fail");
+        assert!(
+            err.to_string().contains("parallel.ignored_file_allowlist"),
+            "unexpected error for {entry}: {err}"
+        );
+    }
+}
+
+#[test]
+fn validate_project_execution_trust_rejects_untrusted_project_parallel_ignored_file_allowlist() {
+    let mut layer = ConfigLayer::default();
+    layer.parallel.ignored_file_allowlist = Some(vec!["local/tool.json".to_string()]);
+
+    let err = validate_project_execution_trust(Some(&layer), &RepoTrust::default())
+        .expect_err("expected trust failure");
+    assert!(err.to_string().contains(ERR_PROJECT_EXECUTION_TRUST));
+}
+
+#[test]
 fn validate_project_execution_trust_rejects_untrusted_project_plugins() {
     let mut layer = ConfigLayer::default();
     layer.plugins.plugins.insert(

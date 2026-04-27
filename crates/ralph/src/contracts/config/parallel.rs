@@ -40,6 +40,11 @@ pub struct ParallelConfig {
     /// Hours to retain blocked workspaces before cleanup.
     #[schemars(range(min = 1))]
     pub workspace_retention_hours: Option<u32>,
+
+    /// Additional gitignored non-.ralph files/globs to sync into parallel worker workspaces.
+    /// Entries must be repo-relative file paths or glob patterns. Directories,
+    /// absolute paths, `..`, and known heavy/runtime paths are rejected.
+    pub ignored_file_allowlist: Option<Vec<String>>,
 }
 
 impl ParallelConfig {
@@ -58,6 +63,9 @@ impl ParallelConfig {
         }
         if other.workspace_retention_hours.is_some() {
             self.workspace_retention_hours = other.workspace_retention_hours;
+        }
+        if other.ignored_file_allowlist.is_some() {
+            self.ignored_file_allowlist = other.ignored_file_allowlist;
         }
     }
 }
@@ -80,6 +88,7 @@ mod tests {
             max_push_attempts: Some(3),
             push_backoff_ms: None,
             workspace_retention_hours: Some(12),
+            ignored_file_allowlist: Some(vec!["local/base.json".to_string()]),
         };
 
         let other = ParallelConfig {
@@ -88,6 +97,7 @@ mod tests {
             max_push_attempts: None,
             push_backoff_ms: Some(vec![1000, 2000]),
             workspace_retention_hours: None,
+            ignored_file_allowlist: Some(vec!["local/worker.json".to_string()]),
         };
 
         base.merge_from(other);
@@ -97,6 +107,10 @@ mod tests {
         assert_eq!(base.max_push_attempts, Some(3)); // unchanged
         assert_eq!(base.push_backoff_ms, Some(vec![1000, 2000]));
         assert_eq!(base.workspace_retention_hours, Some(12)); // unchanged
+        assert_eq!(
+            base.ignored_file_allowlist,
+            Some(vec!["local/worker.json".to_string()])
+        );
     }
 
     #[test]

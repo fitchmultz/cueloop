@@ -31,6 +31,9 @@ use anyhow::{Context, Result};
 use std::path::Path;
 
 use gitignored::sync_gitignored;
+pub(crate) use gitignored::{
+    preflight_parallel_ignored_file_allowlist, validate_parallel_ignored_file_allowlist_config,
+};
 use runtime::sync_ralph_runtime_tree;
 
 /// Sync ralph state files from repo root to workspace.
@@ -47,7 +50,7 @@ pub(crate) fn sync_ralph_state(resolved: &config::Resolved, workspace_path: &Pat
     let source = resolved.repo_root.join(".ralph");
     sync_ralph_runtime_tree(resolved, &source, &target)?;
     sync_worker_bookkeeping_files(resolved, workspace_path)?;
-    sync_gitignored(&resolved.repo_root, workspace_path)?;
+    sync_gitignored(resolved, workspace_path)?;
 
     Ok(())
 }

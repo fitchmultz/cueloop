@@ -40,7 +40,7 @@ mod settings;
 mod spawn;
 pub mod state;
 mod state_init;
-mod sync;
+pub(crate) mod sync;
 mod worker;
 mod workspace_cleanup;
 

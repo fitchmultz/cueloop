@@ -62,6 +62,112 @@ fn sync_ralph_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Res
 }
 
 #[test]
+fn sync_ralph_state_copies_allowlisted_ignored_file() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+
+    fs::write(
+        repo_root.join(".gitignore"),
+        "local-tool.json\nunlisted.json\n",
+    )?;
+    fs::write(repo_root.join("local-tool.json"), "tool config")?;
+    fs::write(repo_root.join("unlisted.json"), "skip me")?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["local-tool.json"]);
+    sync_ralph_state(&resolved, &workspace_root)?;
+
+    assert_eq!(
+        fs::read_to_string(workspace_root.join("local-tool.json"))?,
+        "tool config"
+    );
+    assert!(!workspace_root.join("unlisted.json").exists());
+    Ok(())
+}
+
+#[test]
+fn sync_ralph_state_copies_allowlisted_ignored_glob_matches() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+
+    fs::write(repo_root.join(".gitignore"), "fixtures/*.json\n")?;
+    fs::create_dir_all(repo_root.join("fixtures"))?;
+    fs::write(repo_root.join("fixtures/local-a.json"), "a")?;
+    fs::write(repo_root.join("fixtures/local-b.json"), "b")?;
+    fs::write(repo_root.join("fixtures/other.json"), "other")?;
+
+    let resolved =
+        build_test_resolved_with_ignored_allowlist(&repo_root, vec!["fixtures/local-*.json"]);
+    sync_ralph_state(&resolved, &workspace_root)?;
+
+    assert_eq!(
+        fs::read_to_string(workspace_root.join("fixtures/local-a.json"))?,
+        "a"
+    );
+    assert_eq!(
+        fs::read_to_string(workspace_root.join("fixtures/local-b.json"))?,
+        "b"
+    );
+    assert!(!workspace_root.join("fixtures/other.json").exists());
+    Ok(())
+}
+
+#[test]
+fn preflight_parallel_ignored_file_allowlist_reports_missing_matches() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+
+    let resolved =
+        build_test_resolved_with_ignored_allowlist(&repo_root, vec!["missing.local.json"]);
+    let err =
+        sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)
+            .expect_err("expected missing allowlist entry to fail");
+
+    assert!(
+        err.to_string()
+            .contains("matched no existing gitignored files")
+    );
+    Ok(())
+}
+
+#[test]
+fn preflight_parallel_ignored_file_allowlist_rejects_workspace_descendants() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = repo_root.join(".ralph/workspaces/RQ-0001");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::write(repo_root.join(".gitignore"), ".ralph/workspaces/\n")?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::write(workspace_root.join("local.json"), "workspace artifact")?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(
+        &repo_root,
+        vec![".ralph/workspaces/RQ-0001/local.json"],
+    );
+    let err =
+        sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)
+            .expect_err("expected workspace descendant to fail");
+
+    assert!(
+        err.to_string().contains("denied runtime/build path")
+            || err.to_string().contains("workspace root")
+    );
+    Ok(())
+}
+
+#[test]
 fn sync_ralph_state_skips_parent_of_workspace() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
@@ -188,6 +294,29 @@ fn should_sync_gitignored_entry_skips_never_copy_prefixes() {
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
         ".git/objects/abc"
     ));
+}
+
+#[test]
+fn should_sync_gitignored_entry_with_allowlist_allows_configured_files() -> Result<()> {
+    assert!(
+        sync_gitignored_impl::should_sync_gitignored_entry_with_allowlist(
+            "local/tool.json",
+            &["local/*.json".to_string()]
+        )?
+    );
+    assert!(
+        !sync_gitignored_impl::should_sync_gitignored_entry_with_allowlist(
+            "local/tool.toml",
+            &["local/*.json".to_string()]
+        )?
+    );
+    let err = sync_gitignored_impl::should_sync_gitignored_entry_with_allowlist(
+        "target/local.json",
+        &["target/*.json".to_string()],
+    )
+    .expect_err("denylisted allowlist entries should fail validation");
+    assert!(err.to_string().contains("denied runtime/build path"));
+    Ok(())
 }
 
 #[test]

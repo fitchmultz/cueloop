@@ -668,6 +668,7 @@
           "parallel": {
             "$ref": "#/$defs/ParallelConfig",
             "default": {
+              "ignored_file_allowlist": null,
               "max_push_attempts": 50,
               "push_backoff_ms": [
                 500,
@@ -1215,6 +1216,17 @@
         "additionalProperties": false,
         "description": "Parallel run-loop configuration.",
         "properties": {
+          "ignored_file_allowlist": {
+            "default": null,
+            "description": "Additional gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nEntries must be repo-relative file paths or glob patterns. Directories,\nabsolute paths, `..`, and known heavy/runtime paths are rejected.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "max_push_attempts": {
             "default": null,
             "description": "Maximum number of push attempts before giving up.",
@@ -8161,6 +8173,7 @@
           "parallel": {
             "$ref": "#/$defs/ParallelConfig",
             "default": {
+              "ignored_file_allowlist": null,
               "max_push_attempts": 50,
               "push_backoff_ms": [
                 500,
@@ -8782,6 +8795,17 @@
         "additionalProperties": false,
         "description": "Parallel run-loop configuration.",
         "properties": {
+          "ignored_file_allowlist": {
+            "default": null,
+            "description": "Additional gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nEntries must be repo-relative file paths or glob patterns. Directories,\nabsolute paths, `..`, and known heavy/runtime paths are rejected.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "max_push_attempts": {
             "default": null,
             "description": "Maximum number of push attempts before giving up.",

@@ -192,6 +192,7 @@ impl Default for Config {
                 max_push_attempts: Some(50),
                 push_backoff_ms: Some(default_push_backoff_ms()),
                 workspace_retention_hours: Some(24),
+                ignored_file_allowlist: None,
             },
             loop_field: LoopConfig {
                 wait_when_empty: Some(false),

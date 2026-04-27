@@ -109,6 +109,10 @@ pub(super) fn prepare_parallel_run(
 
     let settings = resolve_parallel_settings(resolved, opts)?;
     preflight_parallel_workspace_root_is_gitignored(&resolved.repo_root, &settings.workspace_root)?;
+    super::super::sync::preflight_parallel_ignored_file_allowlist(
+        resolved,
+        &settings.workspace_root,
+    )?;
     git::origin_urls(&resolved.repo_root).context(
         "Parallel preflight: origin remote check failed (parallel mode requires `origin`)",
     )?;

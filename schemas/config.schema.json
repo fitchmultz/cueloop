@@ -115,6 +115,7 @@
       "description": "Parallel run-loop configuration.",
       "$ref": "#/$defs/ParallelConfig",
       "default": {
+        "ignored_file_allowlist": null,
         "max_push_attempts": 50,
         "push_backoff_ms": [
           500,
@@ -726,6 +727,17 @@
       "description": "Parallel run-loop configuration.",
       "type": "object",
       "properties": {
+        "ignored_file_allowlist": {
+          "description": "Additional gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nEntries must be repo-relative file paths or glob patterns. Directories,\nabsolute paths, `..`, and known heavy/runtime paths are rejected.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "string"
+          }
+        },
         "max_push_attempts": {
           "description": "Maximum number of push attempts before giving up.",
           "type": [

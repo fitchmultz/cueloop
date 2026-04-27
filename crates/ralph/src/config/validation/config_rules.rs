@@ -92,6 +92,12 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         }
     }
 
+    if let Some(entries) = cfg.parallel.ignored_file_allowlist.as_ref() {
+        crate::commands::run::parallel::sync::validate_parallel_ignored_file_allowlist_config(
+            entries,
+        )?;
+    }
+
     if let Some(timeout) = cfg.agent.session_timeout_hours
         && timeout == 0
     {
