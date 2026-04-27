@@ -20,7 +20,7 @@
 //! - Contract assertions preserve the historical flat suite behavior exactly.
 
 use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo, trust_project_commands};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde_json::Value;
 
 const SENSITIVE_PROJECT_CONFIG: &str = r#"{
@@ -192,6 +192,52 @@ fn machine_config_resolve_succeeds_without_queue_file_and_omits_resume_preview()
         "machine config resolve must not recreate missing queue files"
     );
     Ok(())
+}
+
+#[test]
+fn machine_config_resolve_docs_example_matches_execution_controls_contract() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "config", "resolve"]);
+    assert!(
+        status.success(),
+        "machine config resolve failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let live: Value = serde_json::from_str(&stdout)?;
+    let docs = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join("docs/features/session-management.md"),
+    )?;
+    let example = session_management_config_preview_example(&docs)
+        .context("session-management config preview JSON example")?;
+
+    assert_eq!(
+        example["execution_controls"]["reasoning_efforts"],
+        live["execution_controls"]["reasoning_efforts"],
+        "session-management config preview reasoning efforts must match live machine config resolve output"
+    );
+    assert_eq!(
+        example["execution_controls"]["parallel_workers"],
+        live["execution_controls"]["parallel_workers"],
+        "session-management config preview parallel worker bounds must match live machine config resolve output"
+    );
+
+    Ok(())
+}
+
+fn session_management_config_preview_example(docs: &str) -> Result<Value> {
+    for block in docs.split("```json").skip(1) {
+        let Some((json, _after)) = block.split_once("```") else {
+            continue;
+        };
+        if json.contains("\"execution_controls\"") && json.contains("\"resume_preview\"") {
+            return serde_json::from_str(json)
+                .context("parse session-management config preview JSON");
+        }
+    }
+    anyhow::bail!("session-management config preview JSON block not found")
 }
 
 #[test]

@@ -181,11 +181,12 @@ This prevents headless automation from silently discarding or duplicating interr
     "reasoning_efforts": [
       "low",
       "medium",
-      "high"
+      "high",
+      "xhigh"
     ],
     "parallel_workers": {
       "min": 2,
-      "max": 32,
+      "max": 255,
       "default_missing_value": 2
     }
   },
