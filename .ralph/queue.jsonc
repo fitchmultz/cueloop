@@ -2,44 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0043",
-      "status": "todo",
-      "title": "Redact secret-bearing webhook payload fields before persisting failures",
-      "description": "Principles violated: I (security baseline), J (consistency/integrity), H (operational hygiene). Persisted webhook failure records sanitize `destination` and `error` but still clone `msg.payload` verbatim, so operator-supplied notes and other payload text leak into `.ralph/cache/webhooks/failures.json`. Why it matters: rejected-task notes and other webhook payload text can contain tokens, customer data, or raw error material, and the failure store keeps that content on disk for replay and local inspection. Minimal fix: sanitize or omit secret-bearing payload fields before writing `WebhookFailureRecord`, while keeping enough safe metadata for diagnostics and replay selection. Acceptance criteria: a failing-webhook regression proves persisted failure records no longer contain raw secret-bearing `payload.note` or equivalent unsanitized payload text, replay remains functional with the retained safe payload shape, and `cargo test -p ralph-agent-loop webhook` passes.",
-      "priority": "high",
-      "tags": [
-        "maintenance",
-        "webhook",
-        "security"
-      ],
-      "scope": [
-        "crates/ralph/src/webhook/diagnostics/failure_store.rs",
-        "crates/ralph/src/cli/task/status.rs",
-        "cargo test -p ralph-agent-loop webhook"
-      ],
-      "evidence": [
-        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:98-112 :: persist_failed_delivery_at_path stores payload: msg.payload.clone() after only sanitizing destination and error",
-        "path: crates/ralph/src/cli/task/status.rs:134-149 :: handle_reject forwards operator-supplied reject notes into notify_task_failed",
-        "workflow: temp path harness using ralph::webhook::send_webhook_payload with note=token=supersecret :: observed .ralph/cache/webhooks/failures.json persisted payload.note=token=supersecret while destination/error were redacted"
-      ],
-      "plan": [
-        "Sanitize or drop secret-bearing payload fields before persisting WebhookFailureRecord entries instead of cloning the raw payload verbatim.",
-        "Preserve only the safe payload metadata needed for replay selection and operator triage, or introduce a separately sanitized persisted payload shape.",
-        "Add focused tests covering reject notes and other payload text that contain secret-like substrings.",
-        "Verify by running `cargo test -p ralph-agent-loop webhook` and confirming persisted failure-store records no longer contain raw secret-bearing payload text."
-      ],
-      "notes": [],
-      "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
-      "created_at": "2026-04-27T03:11:26Z",
-      "updated_at": "2026-04-27T03:11:26Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0046",
       "status": "todo",
       "title": "Make push_upstream_with_rebase fail or recover when a no-upstream branch is behind remote",
