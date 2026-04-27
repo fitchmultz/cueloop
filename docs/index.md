@@ -24,7 +24,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 - [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path
 - [Advanced Usage Guide](guides/advanced.md): power-user workflows, profiles, plugins, automation, and optimization
 - [Advanced Troubleshooting and Reference](guides/advanced-troubleshooting.md): complex recovery patterns and quick references
-- [Stack Audit (2026-03)](guides/stack-audit-2026-03.md): current toolchain/dependency inventory and best-practice review
+- [Stack Audit (2026-04)](guides/stack-audit-2026-04.md): current toolchain/dependency inventory and Rust 1.95.0 baseline review
 
 ## Core Command Areas
 

@@ -76,7 +76,7 @@ pub(super) fn calc_velocity_breakdowns(tasks: &[&Task]) -> VelocityBreakdowns {
             last_30_days: *tag_counts_30.get(key).unwrap_or(&0),
         })
         .collect();
-    by_tag.sort_by(|left, right| right.last_30_days.cmp(&left.last_30_days));
+    by_tag.sort_by_key(|entry| std::cmp::Reverse(entry.last_30_days));
 
     let mut by_runner: Vec<VelocityBreakdownEntry> = runner_counts_30
         .keys()
@@ -86,7 +86,7 @@ pub(super) fn calc_velocity_breakdowns(tasks: &[&Task]) -> VelocityBreakdowns {
             last_30_days: *runner_counts_30.get(key).unwrap_or(&0),
         })
         .collect();
-    by_runner.sort_by(|left, right| right.last_30_days.cmp(&left.last_30_days));
+    by_runner.sort_by_key(|entry| std::cmp::Reverse(entry.last_30_days));
 
     VelocityBreakdowns { by_tag, by_runner }
 }
@@ -142,6 +142,6 @@ fn build_slow_group_entries(groups: HashMap<String, Vec<Duration>>) -> Vec<SlowG
             }
         })
         .collect();
-    entries.sort_by(|left, right| right.median_seconds.cmp(&left.median_seconds));
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.median_seconds));
     entries
 }

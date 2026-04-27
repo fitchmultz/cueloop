@@ -146,6 +146,6 @@ fn build_bucket_entries(entries: Vec<(&Task, Duration)>) -> Vec<AgingTaskEntry> 
             }
         })
         .collect();
-    entries.sort_by(|left, right| right.age_seconds.cmp(&left.age_seconds));
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.age_seconds));
     entries
 }

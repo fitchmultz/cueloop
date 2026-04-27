@@ -139,7 +139,7 @@ fn scan_for_large_files(root: &Path, threshold: usize) -> Result<Vec<(PathBuf, u
     scan_directory_recursive(root, root, threshold, &mut results)?;
 
     // Sort by LOC descending (largest first)
-    results.sort_by(|a, b| b.1.cmp(&a.1));
+    results.sort_by_key(|result| std::cmp::Reverse(result.1));
     Ok(results)
 }
 

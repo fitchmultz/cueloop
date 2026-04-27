@@ -78,7 +78,7 @@ pub fn fuzzy_search_tasks<'a>(
     }
 
     // Sort by score descending (highest first)
-    results.sort_by(|a, b| b.0.cmp(&a.0));
+    results.sort_by_key(|result| std::cmp::Reverse(result.0));
 
     Ok(results)
 }

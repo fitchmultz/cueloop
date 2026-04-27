@@ -87,6 +87,8 @@ The canonical version source is the top-level `VERSION` file. `scripts/versionin
 
 Treat any drift in those files as a release blocker.
 
+Rust baseline changes are owned by `rust-toolchain.toml` and the crate `rust-version`; `scripts/versioning.sh sync` only synchronizes release version metadata.
+
 ## Related Docs
 
 - [Release runbook](./guides/release-runbook.md)

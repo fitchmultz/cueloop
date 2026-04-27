@@ -3,9 +3,9 @@ Status: Archived
 Owner: Maintainers
 Source of truth: historical snapshot; current guidance lives in linked active docs
 Parent: [Ralph Documentation](../index.md)
+Related: [Current Stack Audit (2026-04)](stack-audit-2026-04.md)
 
-
-Purpose: record the current language/toolchain/dependency baseline, note the official best-practice guidance reviewed during the March 2026 audit, and document the cutover actions taken.
+Purpose: record the March 2026 language/toolchain/dependency baseline, note the official best-practice guidance reviewed during that audit, and document the historical cutover actions taken.
 
 ## Scope
 

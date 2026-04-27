@@ -36,6 +36,7 @@ Behavior:
 - Tier C **does not** run Xcode or Swift tests; it can miss Swift-side integration drift until a tier D run. Use `RALPH_AGENT_CI_MIN_TIER=macos-ci` or run `make macos-ci` before merge when that risk matters (see below).
 - On source snapshots without `.git/`, falls back to `make release-gate` so verification stays platform-aware instead of assuming macOS-only tooling.
 - The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.ralph/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/RalphMac/build/`.
+- Toolchain drift checks should compare the repo-local override with the global rustup stable toolchain when intentionally bumping Ralph's Rust baseline; the repo-local `rust-toolchain.toml` wins inside the workspace.
 
 Optional environment (see `make help`):
 

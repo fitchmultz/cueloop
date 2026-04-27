@@ -27,6 +27,28 @@ Follow-up actions:
 Review date, if any:
 ```
 
+## 2026-04-27: Align Ralph's source-build MSRV with the pinned Rust toolchain
+
+Decision: Treat the repo-local `rust-toolchain.toml` channel as Ralph's source-build Rust baseline and keep the CLI crate's `rust-version` aligned to the same minor Rust release.
+
+Date: 2026-04-27
+
+Owner: Maintainers
+
+Context: Ralph is a source-built CLI and macOS app project whose local development, release builds, schema generation, and app bundling all run through the pinned rustup toolchain. The system global stable toolchain moved to Rust `1.95.0`, but the repository still pinned `1.94.1`, which masked the global update and caused release-note research to start from the wrong baseline.
+
+Chosen option: Bump `rust-toolchain.toml` to Rust `1.95.0` and bump `crates/ralph/Cargo.toml` `rust-version` to `1.95` in the same cutover.
+
+Rejected options: Keep `rust-version = "1.94"` as a lower consumer MSRV while validating contributors and releases only on Rust `1.95.0`; remove the repo-local toolchain override and rely on each contributor's global stable; teach release-version sync scripts to also mutate Rust baseline metadata.
+
+Reason: Advertising a lower source-build MSRV than the validated pinned toolchain creates avoidable ambiguity for contributors, release automation, and app bundling. Keeping the MSRV and pinned baseline aligned makes the supported compiler floor explicit. Release semver sync remains a separate concern from Rust baseline ownership.
+
+Expected consequences: Contributors and release builds use Rust `1.95.0` for this baseline. Future Rust baseline bumps should update the repo-local toolchain, crate `rust-version`, active stack audit, and validation evidence together.
+
+Follow-up actions: Existing Rust 1.95.0 follow-up tasks RQ-0051 through RQ-0055 cover language/library adoption, compatibility audits, dependency/security/rustdoc refresh, and drift-check codification.
+
+Review date, if any: None.
+
 ## 2026-04-27: Accept current binary replacement behavior during Ralph self-development loops
 
 Decision: Keep Ralph's current long-running loop behavior when the installed

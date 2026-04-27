@@ -34,7 +34,7 @@ pub(super) fn build_tag_breakdown(tasks: &[&Task], total_tasks: usize) -> Vec<Ta
     }
 
     let mut sorted_tags: Vec<(String, usize)> = tag_counts.into_iter().collect();
-    sorted_tags.sort_by(|left, right| right.1.cmp(&left.1));
+    sorted_tags.sort_by_key(|tag| std::cmp::Reverse(tag.1));
 
     let total = total_tasks as f64;
     sorted_tags

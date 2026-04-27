@@ -47,10 +47,8 @@ pub(super) fn collect_lines(json: &JsonValue, lines: &mut Vec<String>) {
                 ));
             }
         }
-        "message" => {
-            if json.get("role").and_then(|r| r.as_str()) == Some("assistant") {
-                common::push_text(lines, json.get("content").and_then(|c| c.as_str()));
-            }
+        "message" if json.get("role").and_then(|r| r.as_str()) == Some("assistant") => {
+            common::push_text(lines, json.get("content").and_then(|c| c.as_str()));
         }
         _ => {}
     }

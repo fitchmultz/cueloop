@@ -150,8 +150,7 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueSearchArgs) -> Result<()> {
     };
 
     // Apply content search
-    let results =
-        queue::search_tasks_with_options(prefiltered.into_iter(), &args.query, &search_options)?;
+    let results = queue::search_tasks_with_options(prefiltered, &args.query, &search_options)?;
 
     let limit = resolve_list_limit(args.limit, args.all);
     let max = limit.unwrap_or(usize::MAX);
