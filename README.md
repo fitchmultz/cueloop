@@ -106,7 +106,8 @@ ralph run one --profile safe
 ralph queue list
 ```
 
-`ralph init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, and parallel execution kept opt-in.
+`ralph init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.ralph/trust.jsonc` (gitignored by init).
+Interactive init also lets you choose shared-vs-local queue tracking and opt into additional ignored local files for parallel worker sync; non-interactive init keeps the deterministic `.env*` sync default only.
 Use `--profile power-user` only when you explicitly want the higher-blast-radius behavior, including commit_and_push automation.
 On macOS, app-launched runs remain noninteractive: the app can supervise and disclose safety posture, but interactive approvals are still terminal-only.
 

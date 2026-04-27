@@ -72,10 +72,8 @@ fn resolve_interactive_mode(
 pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
     let resolved = if args.check {
         config::resolve_from_cwd()?
-    } else if args.trust_project_commands {
-        config::resolve_from_cwd_skipping_project_execution_trust()?
     } else {
-        config::resolve_from_cwd()?
+        config::resolve_from_cwd_skipping_project_execution_trust()?
     };
 
     // Handle --check mode: verify README is current and exit
@@ -127,9 +125,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
         },
     )?;
 
-    if args.trust_project_commands {
-        config::initialize_repo_trust_file(&resolved.repo_root)?;
-    }
+    let trust_status = config::initialize_repo_trust_file(&resolved.repo_root)?;
 
     fn report_status(label: &str, status: init_cmd::FileInitStatus, path: &std::path::Path) {
         match status {
@@ -186,13 +182,32 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
         }
     }
     report_status("config", report.config_status, &report.config_path);
+    match trust_status {
+        config::TrustFileInitStatus::Created => log::info!(
+            "trust: created ({})",
+            config::project_trust_path(&resolved.repo_root).display()
+        ),
+        config::TrustFileInitStatus::Updated => log::info!(
+            "trust: updated ({})",
+            config::project_trust_path(&resolved.repo_root).display()
+        ),
+        config::TrustFileInitStatus::Unchanged => log::info!(
+            "trust: exists (valid) ({})",
+            config::project_trust_path(&resolved.repo_root).display()
+        ),
+    }
+    if args.trust_project_commands {
+        log::info!(
+            "trust: --trust-project-commands is a compatibility alias; `ralph init` creates repo trust by default"
+        );
+    }
     Ok(())
 }
 
 #[derive(Args)]
 #[command(
     about = "Bootstrap Ralph files in the current repository",
-    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --trust-project-commands\n  ralph init --update-readme\n  ralph init --check"
+    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --update-readme\n  ralph init --check"
 )]
 pub struct InitArgs {
     /// Overwrite existing files if they already exist.
@@ -215,8 +230,8 @@ pub struct InitArgs {
     #[arg(long)]
     pub check: bool,
 
-    /// After initializing Ralph, create `.ralph/trust.jsonc` so execution-sensitive project settings apply.
-    #[arg(long = "trust-project-commands", visible_alias = "trust")]
+    /// Compatibility alias; `ralph init` now creates `.ralph/trust.jsonc` by default.
+    #[arg(long = "trust-project-commands", visible_alias = "trust", hide = true)]
     pub trust_project_commands: bool,
 }
 

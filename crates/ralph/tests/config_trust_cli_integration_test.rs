@@ -1,13 +1,14 @@
-//! Integration tests for repo execution trust CLI (`ralph config trust init`, `ralph init --trust-project-commands`).
+//! Integration tests for repo execution trust CLI (`ralph init`, `ralph config trust init`).
 //!
 //! Purpose:
-//! - Integration tests for repo execution trust CLI (`ralph config trust init`, `ralph init --trust-project-commands`).
+//! - Integration tests for repo execution trust CLI (`ralph init`, `ralph config trust init`).
 //!
 //! Responsibilities:
-//! - Provide focused implementation or regression coverage for this file's owning feature.
+//! - Prove `ralph init` is the canonical trust bootstrap.
+//! - Keep trust-only repair behavior covered for already-initialized repos.
 //!
 //! Scope:
-//! - Limited to this file's owning feature boundary.
+//! - Limited to CLI trust/bootstrap behavior and execution-sensitive project config resolution.
 //!
 //!
 //! Usage:
@@ -29,11 +30,18 @@ const SENSITIVE_CONFIG: &str = r#"{
 }"#;
 
 #[test]
-fn config_trust_init_unlocks_sensitive_project_config() -> Result<()> {
+fn config_trust_init_repairs_missing_trust_for_sensitive_project_config() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
-
+    std::fs::create_dir_all(dir.path().join(".ralph"))?;
+    std::fs::write(
+        dir.path().join(".ralph/queue.jsonc"),
+        r#"{"version":1,"tasks":[]}"#,
+    )?;
+    std::fs::write(
+        dir.path().join(".ralph/done.jsonc"),
+        r#"{"version":1,"tasks":[]}"#,
+    )?;
     std::fs::write(dir.path().join(".ralph/config.jsonc"), SENSITIVE_CONFIG)?;
 
     let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "show"]);
@@ -42,8 +50,8 @@ fn config_trust_init_unlocks_sensitive_project_config() -> Result<()> {
         "expected config show to fail without trust\nstderr:\n{stderr}"
     );
     assert!(
-        stderr.contains("not trusted"),
-        "expected trust error in stderr, got:\n{stderr}"
+        stderr.contains("not trusted") && stderr.contains("ralph init"),
+        "expected modern trust error in stderr, got:\n{stderr}"
     );
 
     let (status, _stdout, stderr) =
@@ -77,21 +85,42 @@ fn config_trust_init_unlocks_sensitive_project_config() -> Result<()> {
 }
 
 #[test]
-fn init_trust_project_commands_allows_later_sensitive_config() -> Result<()> {
+fn init_succeeds_with_existing_sensitive_config_before_trust_exists() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    let (status, _stdout, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &[
-            "init",
-            "--force",
-            "--non-interactive",
-            "--trust-project-commands",
-        ],
-    );
+    std::fs::create_dir_all(dir.path().join(".ralph"))?;
+    std::fs::write(dir.path().join(".ralph/config.jsonc"), SENSITIVE_CONFIG)?;
+
+    let (status, _stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--non-interactive"]);
     assert!(
         status.success(),
-        "ralph init --trust-project-commands failed\nstderr:\n{stderr}"
+        "ralph init should bootstrap trust before enforcing sensitive config\nstderr:\n{stderr}"
+    );
+    assert!(dir.path().join(".ralph/trust.jsonc").exists());
+
+    let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "show"]);
+    assert!(
+        status.success(),
+        "config show should succeed after init-created trust\nstderr:\n{stderr}"
+    );
+    Ok(())
+}
+
+#[test]
+fn init_creates_trust_and_allows_later_sensitive_config() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    let (status, _stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    assert!(status.success(), "ralph init failed\nstderr:\n{stderr}");
+
+    let trust_path = dir.path().join(".ralph/trust.jsonc");
+    assert!(trust_path.exists(), "ralph init should create repo trust");
+    let gitignore = std::fs::read_to_string(dir.path().join(".gitignore"))?;
+    assert!(
+        gitignore.contains(".ralph/trust.jsonc"),
+        "init should gitignore repo trust"
     );
 
     std::fs::write(dir.path().join(".ralph/config.jsonc"), SENSITIVE_CONFIG)?;

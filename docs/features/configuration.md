@@ -60,8 +60,8 @@ For exact behavior and edge cases, see:
 
 Project-local execution settings are applied only after explicit local trust opt-in.
 
-- Use `ralph config trust init` for an existing repo.
-- Use `ralph init --trust-project-commands` while bootstrapping.
+- Use `ralph init` while bootstrapping; it creates or updates `.ralph/trust.jsonc` by default.
+- Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
 - Do not commit `.ralph/trust.jsonc`.
 
 Execution-sensitive project settings include:

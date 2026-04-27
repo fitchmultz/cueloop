@@ -394,6 +394,8 @@ fn init_with_wizard_answers_creates_configured_files() -> anyhow::Result<()> {
         runner: crate::contracts::Runner::Codex,
         model: "gpt-5.4".to_string(),
         phases: 2,
+        queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
+        parallel_ignored_file_allowlist: Vec::new(),
         create_first_task: true,
         first_task_title: Some("Test task".to_string()),
         first_task_description: Some("Test description".to_string()),

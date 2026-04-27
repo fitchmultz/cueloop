@@ -226,6 +226,7 @@ mod tests {
             .detail
             .as_deref()
             .expect("trust failures should keep remediation detail");
+        assert!(detail.contains("ralph init"));
         assert!(detail.contains("ralph config trust init"));
         assert!(detail.contains("trust.jsonc"));
     }

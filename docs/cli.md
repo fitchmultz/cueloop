@@ -61,14 +61,9 @@ These are available on most commands:
 ```bash
 ralph init
 ralph init --non-interactive
-ralph init --trust-project-commands
 ```
 
-When project config includes execution-sensitive settings (`agent.*_bin`, plugin runners, `agent.ci_gate`, `plugins.*`), create `.ralph/trust.jsonc` explicitly:
-
-```bash
-ralph config trust init
-```
+`ralph init` creates or updates local repository trust (`.ralph/trust.jsonc`) by default and adds that file to `.gitignore`. Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
 
 ### Create and Run
 

@@ -5,7 +5,8 @@
 //!
 //! Responsibilities:
 //! - Display welcome screen and collect user preferences.
-//! - Guide users through runner, model, and phase selection.
+//! - Guide users through runner, model, phase, and queue-tracking selection.
+//! - Let users opt into explicit ignored-file sync entries for parallel workers.
 //! - Optionally create a first task during setup.
 //!
 //! Not handled here:
@@ -20,10 +21,20 @@
 //! - Wizard is only run in interactive TTY environments.
 //! - User inputs are validated before returning WizardAnswers.
 
+use crate::commands::init::parallel_sync;
 use crate::contracts::{Runner, TaskPriority};
 use anyhow::{Context, Result};
-use dialoguer::{Confirm, Input, Select};
+use dialoguer::{Confirm, Input, MultiSelect, Select};
 use std::path::Path;
+
+/// Queue/done tracking mode selected during interactive initialization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueueTrackingMode {
+    /// Keep queue/done files trackable for shared team task state.
+    TrackedShared,
+    /// Gitignore queue/done files for local-only task state.
+    LocalIgnored,
+}
 
 /// Answers collected from the interactive wizard.
 #[derive(Debug, Clone)]
@@ -34,6 +45,10 @@ pub struct WizardAnswers {
     pub model: String,
     /// Number of phases (1, 2, or 3).
     pub phases: u8,
+    /// Queue/done tracking choice.
+    pub queue_tracking_mode: QueueTrackingMode,
+    /// Explicit ignored local files selected for parallel worker sync.
+    pub parallel_ignored_file_allowlist: Vec<String>,
     /// Whether to create a first task.
     pub create_first_task: bool,
     /// Title for the first task (if created).
@@ -50,6 +65,8 @@ impl Default for WizardAnswers {
             runner: Runner::Claude,
             model: "sonnet".to_string(),
             phases: 3,
+            queue_tracking_mode: QueueTrackingMode::TrackedShared,
+            parallel_ignored_file_allowlist: Vec::new(),
             create_first_task: false,
             first_task_title: None,
             first_task_description: None,
@@ -59,7 +76,7 @@ impl Default for WizardAnswers {
 }
 
 /// Run the interactive onboarding wizard and collect user preferences.
-pub fn run_wizard() -> Result<WizardAnswers> {
+pub fn run_wizard(repo_root: &Path) -> Result<WizardAnswers> {
     // Welcome screen
     print_welcome();
 
@@ -109,6 +126,10 @@ pub fn run_wizard() -> Result<WizardAnswers> {
     // Phase selection
     let phases = select_phases()?;
 
+    // Queue and parallel-worker setup choices
+    let queue_tracking_mode = select_queue_tracking_mode()?;
+    let parallel_ignored_file_allowlist = select_parallel_sync_allowlist(repo_root)?;
+
     // First task creation
     let create_first_task = Confirm::new()
         .with_prompt("Would you like to create your first task now?")
@@ -155,6 +176,8 @@ pub fn run_wizard() -> Result<WizardAnswers> {
         runner,
         model,
         phases,
+        queue_tracking_mode,
+        parallel_ignored_file_allowlist,
         create_first_task,
         first_task_title,
         first_task_description,
@@ -319,6 +342,64 @@ fn select_phases() -> Result<u8> {
     })
 }
 
+/// Select how queue/done files should be tracked.
+fn select_queue_tracking_mode() -> Result<QueueTrackingMode> {
+    let options = [
+        (
+            "Tracked shared queue",
+            "Commit .ralph/queue.jsonc and .ralph/done.jsonc so the team shares task state [Recommended]",
+        ),
+        (
+            "Local private queue",
+            "Gitignore queue/done so task state stays local to this checkout",
+        ),
+    ];
+    let items = options
+        .iter()
+        .map(|(name, desc)| format!("{name} - {desc}"))
+        .collect::<Vec<_>>();
+    let idx = Select::new()
+        .with_prompt("How should Ralph queue files be tracked?")
+        .items(&items)
+        .default(0)
+        .interact()
+        .context("failed to get queue tracking selection")?;
+    Ok(if idx == 1 {
+        QueueTrackingMode::LocalIgnored
+    } else {
+        QueueTrackingMode::TrackedShared
+    })
+}
+
+/// Let the user select extra ignored local files for parallel-worker sync.
+fn select_parallel_sync_allowlist(repo_root: &Path) -> Result<Vec<String>> {
+    let candidates = parallel_sync::discover_parallel_sync_candidates(repo_root)
+        .context("discover parallel ignored-file sync candidates")?;
+    if candidates.is_empty() {
+        println!();
+        println!(
+            "Parallel sync: no extra ignored local files found. .env and .env.* are synced by default."
+        );
+        return Ok(Vec::new());
+    }
+
+    println!();
+    println!(
+        "Parallel sync: .env and .env.* are synced by default. Select any additional ignored files workers need."
+    );
+    let selections = MultiSelect::new()
+        .with_prompt("Additional ignored files to sync to parallel workers")
+        .items(&candidates)
+        .defaults(&vec![true; candidates.len()])
+        .interact()
+        .context("failed to get parallel ignored-file sync selection")?;
+
+    Ok(selections
+        .into_iter()
+        .filter_map(|idx| candidates.get(idx).cloned())
+        .collect())
+}
+
 /// Print a summary of the wizard answers.
 fn print_summary(answers: &WizardAnswers) {
     println!();
@@ -333,6 +414,27 @@ fn print_summary(answers: &WizardAnswers) {
         "Workflow: {}-phase",
         colored::Colorize::bright_green(format!("{}", answers.phases).as_str())
     );
+
+    println!(
+        "Queue mode: {}",
+        match answers.queue_tracking_mode {
+            QueueTrackingMode::TrackedShared => colored::Colorize::bright_green("tracked shared"),
+            QueueTrackingMode::LocalIgnored => colored::Colorize::bright_yellow("local ignored"),
+        }
+    );
+    if answers.parallel_ignored_file_allowlist.is_empty() {
+        println!(
+            "Parallel sync extras: {}",
+            colored::Colorize::bright_black("(none)")
+        );
+    } else {
+        println!(
+            "Parallel sync extras: {}",
+            colored::Colorize::bright_green(
+                answers.parallel_ignored_file_allowlist.join(", ").as_str()
+            )
+        );
+    }
 
     if answers.create_first_task {
         if let Some(ref title) = answers.first_task_title {
@@ -365,6 +467,7 @@ pub fn print_completion_message(answers: Option<&WizardAnswers>, _queue_path: &P
     println!("  1. Run 'ralph app open' to open the macOS app (optional)");
     println!("  2. Run 'ralph run one' to execute your first task");
     println!("  3. Edit .ralph/config.jsonc to customize settings");
+    println!("  4. Keep .ralph/trust.jsonc untracked; init adds it to .gitignore");
 
     if let Some(answers) = answers
         && answers.create_first_task
@@ -386,6 +489,11 @@ mod tests {
         assert_eq!(answers.runner, Runner::Claude);
         assert_eq!(answers.model, "sonnet");
         assert_eq!(answers.phases, 3);
+        assert_eq!(
+            answers.queue_tracking_mode,
+            QueueTrackingMode::TrackedShared
+        );
+        assert!(answers.parallel_ignored_file_allowlist.is_empty());
         assert!(!answers.create_first_task);
         assert!(answers.first_task_title.is_none());
         assert!(answers.first_task_description.is_none());

@@ -33,7 +33,7 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
     let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "init", opts.force_lock)?;
 
     let wizard_answers = if opts.interactive {
-        Some(wizard::run_wizard()?)
+        Some(wizard::run_wizard(&resolved.repo_root)?)
     } else {
         None
     };
@@ -63,6 +63,16 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
     )?;
     let config_status = writers::write_config(&config_path, opts.force, wizard_answers.as_ref())?;
 
+    if let Some(answers) = wizard_answers.as_ref()
+        && answers.queue_tracking_mode == wizard::QueueTrackingMode::LocalIgnored
+        && let Err(e) = gitignore::ensure_local_queue_gitignore_entries(&resolved.repo_root)
+    {
+        log::warn!(
+            "Failed to update .gitignore for local queue mode: {}. You may need to manually add '.ralph/queue.jsonc' and '.ralph/done.jsonc' to your .gitignore.",
+            e
+        );
+    }
+
     let mut readme_status = None;
     if crate::prompts::prompts_reference_readme(&resolved.repo_root)? {
         let readme_path = resolved.repo_root.join(".ralph/README.md");
@@ -72,7 +82,7 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
 
     if let Err(e) = gitignore::ensure_ralph_gitignore_entries(&resolved.repo_root) {
         log::warn!(
-            "Failed to update .gitignore: {}. You may need to manually add '.ralph/workspaces/' to your .gitignore.",
+            "Failed to update .gitignore: {}. You may need to manually add '.ralph/workspaces/', '.ralph/logs/', and '.ralph/trust.jsonc' to your .gitignore.",
             e
         );
     }

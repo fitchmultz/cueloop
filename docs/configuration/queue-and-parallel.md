@@ -66,7 +66,7 @@ Rules:
 - directories, absolute paths, and `..` components are rejected
 - denied runtime/build paths such as `target/`, `node_modules/`, `.venv/`, `.git/`, and `.ralph/{cache,workspaces,logs,lock}/` are rejected
 - configured entries must match existing gitignored files during parallel preflight
-- project config that sets this allowlist requires repo trust (`ralph config trust init`)
+- project config that sets this allowlist requires repo trust (`ralph init` creates trust during bootstrap; `ralph config trust init` is available for trust-only repair)
 
 ## Queue Configuration
 `queue` controls file locations, task ID formatting, and auto-archive behavior.

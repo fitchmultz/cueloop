@@ -19,8 +19,8 @@ Project `.ralph/config.jsonc` may define execution-sensitive settings (for examp
 
 **Supported ways to create the trust file (explicit opt-in):**
 
-- **`ralph config trust init`** — Preferred for existing repos. Creates `.ralph/` if needed, then creates or merges `.ralph/trust.jsonc` with `allow_project_commands: true` and a `trusted_at` RFC3339 UTC timestamp when the file is missing. If the file already marks the repo trusted (both flags set), the command leaves the file byte-for-byte unchanged. If `allow_project_commands` is true but `trusted_at` is absent, the file is updated to add a timestamp.
-- **`ralph init --trust-project-commands`** (alias **`--trust`**) — Runs the normal init scaffold, resolves configuration without enforcing trust until files exist, then writes the same trust file. Use when bootstrapping a new Ralph layout and you want trust created in the same step.
+- **`ralph init`** — Preferred repository bootstrap. Creates or updates `.ralph/trust.jsonc` by default, resolves initialization without enforcing trust before the file exists, and adds `.ralph/trust.jsonc` to `.gitignore`.
+- **`ralph config trust init`** — Trust-only repair for already-initialized repos. Creates `.ralph/` if needed, then creates or merges `.ralph/trust.jsonc` with `allow_project_commands: true` and a `trusted_at` RFC3339 UTC timestamp when the file is missing. If the file already marks the repo trusted (both flags set), the command leaves the file byte-for-byte unchanged. If `allow_project_commands` is true but `trusted_at` is absent, the file is updated to add a timestamp.
 
 Ralph prints a short warning before writing or changing the trust file. **Do not commit** `.ralph/trust.jsonc`; keep it untracked (see repository `AGENTS.md`).
 

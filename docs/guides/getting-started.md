@@ -88,7 +88,7 @@ cd your-project
 ralph init
 ```
 
-`ralph init` writes the `0.3` config contract with `"version": 2`, safe defaults, and no automatic publish side effects. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
+`ralph init` writes the `0.3` config contract with `"version": 2`, safe defaults, no automatic publish side effects, and local repo trust in `.ralph/trust.jsonc` (gitignored by init). If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
 
 ### Interactive Wizard
 
@@ -97,7 +97,9 @@ When you run `ralph init` in a terminal (TTY), it launches an interactive wizard
 1. **Choose Your AI Runner**: Select from Claude, Codex, OpenCode, Gemini, Cursor, Kimi, or Pi
 2. **Select a Model**: Pick the best model for your chosen runner
 3. **Configure Workflow Mode**: Choose between 1-phase (quick), 2-phase (standard), or 3-phase (full)
-4. **Create Your First Task** (optional): Add an initial task to get started
+4. **Choose Queue Tracking**: Keep queue/done shared through git (recommended) or gitignore them for local-only task state
+5. **Review Parallel Sync Extras**: Select additional ignored local files workers should receive; `.env` and `.env.*` are already synced by default
+6. **Create Your First Task** (optional): Add an initial task to get started
 
 ### Example Walkthrough
 

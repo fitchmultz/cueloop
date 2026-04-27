@@ -25,6 +25,7 @@ use super::*;
 #[test]
 fn doctor_blocks_untrusted_project_runner_override() -> Result<()> {
     let dir = setup_doctor_repo()?;
+    std::fs::remove_file(dir.path().join(".ralph/trust.jsonc"))?;
 
     write_repo_config(
         dir.path(),

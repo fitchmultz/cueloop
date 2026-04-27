@@ -365,6 +365,7 @@ fn machine_config_resolve_reports_plugin_runner_id_conflicts_as_diagnostics() ->
 #[test]
 fn machine_config_resolve_reports_untrusted_execution_settings_as_config_error() -> Result<()> {
     let dir = setup_ralph_repo()?;
+    std::fs::remove_file(dir.path().join(".ralph/trust.jsonc"))?;
     std::fs::write(
         dir.path().join(".ralph/config.jsonc"),
         SENSITIVE_PROJECT_CONFIG,
@@ -390,7 +391,9 @@ fn machine_config_resolve_reports_untrusted_execution_settings_as_config_error()
     assert_eq!(document["retryable"], false);
     let detail = document["detail"].as_str().unwrap_or_default();
     assert!(
-        detail.contains("repo is not trusted") && detail.contains("ralph config trust init"),
+        detail.contains("repo is not trusted")
+            && detail.contains("ralph init")
+            && detail.contains("ralph config trust init"),
         "detail should preserve trust remediation: {stderr}"
     );
     Ok(())

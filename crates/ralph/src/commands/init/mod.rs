@@ -19,6 +19,7 @@
 //! - README and writer helpers remain delegated to dedicated submodules.
 
 pub mod gitignore;
+pub mod parallel_sync;
 pub mod readme;
 pub mod wizard;
 pub mod writers;
@@ -35,6 +36,6 @@ pub use readme::{
     extract_readme_version,
 };
 pub use types::{FileInitStatus, InitOptions, InitReport};
-pub use wizard::{WizardAnswers, print_completion_message, run_wizard};
+pub use wizard::{QueueTrackingMode, WizardAnswers, print_completion_message, run_wizard};
 pub use workflow::run_init;
 pub use writers::{write_config, write_done, write_queue};

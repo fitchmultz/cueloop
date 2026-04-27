@@ -25,6 +25,7 @@ use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::fsutil;
 use crate::queue;
 use anyhow::{Context, Result};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -142,6 +143,14 @@ pub fn write_config(
                 path.display()
             )
         })?;
+        if let Some(answers) = wizard_answers
+            && !answers.parallel_ignored_file_allowlist.is_empty()
+        {
+            return merge_parallel_ignored_file_allowlist(
+                path,
+                &answers.parallel_ignored_file_allowlist,
+            );
+        }
         return Ok(FileInitStatus::Valid);
     }
     if let Some(parent) = path.parent() {
@@ -151,21 +160,22 @@ pub fn write_config(
     // Build config with wizard answers or defaults
     let config_json = if let Some(answers) = wizard_answers {
         let runner_str = format!("{:?}", answers.runner).to_lowercase();
-        let model_str = if answers.model.contains("/") || answers.model.len() > 20 {
-            // Custom model string
-            answers.model.clone()
-        } else {
-            answers.model.clone()
-        };
+        let model_str = answers.model.clone();
 
-        serde_json::json!({
+        let mut config_json = serde_json::json!({
             "version": 2,
             "agent": {
                 "runner": runner_str,
                 "model": model_str,
                 "phases": answers.phases
             }
-        })
+        });
+        if !answers.parallel_ignored_file_allowlist.is_empty() {
+            config_json["parallel"] = serde_json::json!({
+                "ignored_file_allowlist": answers.parallel_ignored_file_allowlist
+            });
+        }
+        config_json
     } else {
         serde_json::json!({ "version": 2 })
     };
@@ -174,6 +184,56 @@ pub fn write_config(
     fsutil::write_atomic(path, rendered.as_bytes())
         .with_context(|| format!("write config JSON {}", path.display()))?;
     Ok(FileInitStatus::Created)
+}
+
+fn merge_parallel_ignored_file_allowlist(
+    path: &Path,
+    selected_entries: &[String],
+) -> Result<FileInitStatus> {
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let mut value = crate::jsonc::parse_jsonc::<serde_json::Value>(
+        &raw,
+        &format!("config {}", path.display()),
+    )?;
+    if !value.is_object() {
+        anyhow::bail!("Config root must be a JSON object: {}", path.display());
+    }
+
+    let existing = value
+        .get("parallel")
+        .and_then(|parallel| parallel.get("ignored_file_allowlist"))
+        .and_then(|allowlist| allowlist.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|entry| entry.as_str().map(ToOwned::to_owned));
+    let merged = existing
+        .chain(selected_entries.iter().cloned())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    let object = value.as_object_mut().expect("object checked above");
+    let parallel = object
+        .entry("parallel")
+        .or_insert_with(|| serde_json::json!({}));
+    if !parallel.is_object() {
+        anyhow::bail!(
+            "Config `parallel` must be a JSON object: {}",
+            path.display()
+        );
+    }
+    parallel
+        .as_object_mut()
+        .expect("object checked above")
+        .insert(
+            "ignored_file_allowlist".to_string(),
+            serde_json::json!(merged),
+        );
+
+    let rendered = serde_json::to_string_pretty(&value).context("serialize config JSON")?;
+    fsutil::write_atomic(path, rendered.as_bytes())
+        .with_context(|| format!("write config JSON {}", path.display()))?;
+    Ok(FileInitStatus::Updated)
 }
 
 #[cfg(test)]

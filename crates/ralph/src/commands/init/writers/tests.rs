@@ -290,6 +290,8 @@ fn init_with_wizard_answers_creates_configured_files() -> Result<()> {
         runner: Runner::Codex,
         model: "gpt-5.4".to_string(),
         phases: 2,
+        queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
+        parallel_ignored_file_allowlist: vec!["local-tool.json".to_string()],
         create_first_task: true,
         first_task_title: Some("Test task".to_string()),
         first_task_description: Some("Test description".to_string()),
@@ -314,11 +316,57 @@ fn init_with_wizard_answers_creates_configured_files() -> Result<()> {
     let cfg: Config = serde_json::from_str(&cfg_raw)?;
     assert_eq!(cfg.agent.runner, Some(Runner::Codex));
     assert_eq!(cfg.agent.phases, Some(2));
+    assert_eq!(
+        cfg.parallel.ignored_file_allowlist,
+        Some(vec!["local-tool.json".to_string()])
+    );
 
     let queue = crate::queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue.tasks.len(), 1);
     assert_eq!(queue.tasks[0].title, "Test task");
     assert_eq!(queue.tasks[0].priority, TaskPriority::High);
 
+    Ok(())
+}
+
+#[test]
+fn write_config_merges_parallel_allowlist_into_existing_config() -> Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for(&dir);
+    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    let config_path = resolved.project_config_path.as_ref().unwrap();
+    std::fs::write(
+        config_path,
+        r#"{
+  "version": 2,
+  "parallel": {
+    "ignored_file_allowlist": ["local-a.json"]
+  }
+}"#,
+    )?;
+    let wizard_answers = WizardAnswers {
+        runner: Runner::Claude,
+        model: "sonnet".to_string(),
+        phases: 3,
+        queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
+        parallel_ignored_file_allowlist: vec![
+            "local-b.json".to_string(),
+            "local-a.json".to_string(),
+        ],
+        create_first_task: false,
+        first_task_title: None,
+        first_task_description: None,
+        first_task_priority: TaskPriority::Medium,
+    };
+
+    let status = write_config(config_path, false, Some(&wizard_answers))?;
+
+    assert_eq!(status, FileInitStatus::Updated);
+    let raw = std::fs::read_to_string(config_path)?;
+    let cfg: Config = serde_json::from_str(&raw)?;
+    assert_eq!(
+        cfg.parallel.ignored_file_allowlist,
+        Some(vec!["local-a.json".to_string(), "local-b.json".to_string()])
+    );
     Ok(())
 }

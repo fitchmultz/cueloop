@@ -19,7 +19,7 @@ Purpose: provide a deterministic install and verification path without requiring
 make install
 # macOS/Homebrew GNU Make users: gmake install
 
-# initialize repo-local runtime state (safe to rerun)
+# initialize repo-local runtime state and local trust (safe to rerun)
 ralph init
 
 # verify command surface
