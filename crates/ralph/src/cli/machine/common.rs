@@ -33,9 +33,11 @@ use crate::config;
 use crate::contracts::{
     BlockingState, GitPublishMode, GitRevertMode, MACHINE_CONFIG_RESOLVE_VERSION,
     MACHINE_WORKSPACE_OVERVIEW_VERSION, MachineConfigResolveDocument, MachineConfigSafetySummary,
-    MachineExecutionControls, MachineParallelWorkersControl, MachineQueuePaths,
-    MachineQueueReadDocument, MachineResumeDecision, MachineRunnerOption,
-    MachineWorkspaceOverviewDocument, QueueFile, TaskStatus,
+    MachineExecutionControlDiagnostic, MachineExecutionControlDiagnosticCode,
+    MachineExecutionControlDiagnosticSeverity, MachineExecutionControls,
+    MachineParallelWorkersControl, MachineQueuePaths, MachineQueueReadDocument,
+    MachineResumeDecision, MachineRunnerOption, MachineWorkspaceOverviewDocument, QueueFile,
+    TaskStatus,
 };
 use crate::plugins::discovery::PluginScope;
 use crate::plugins::registry::PluginRegistry;
@@ -197,6 +199,7 @@ fn build_execution_controls(resolved: &config::Resolved) -> Result<MachineExecut
             default_model: entry.default_model,
         })
         .collect();
+    let mut diagnostics: Vec<MachineExecutionControlDiagnostic> = Vec::new();
 
     match PluginRegistry::load(&resolved.repo_root, &resolved.config) {
         Ok(registry) => {
@@ -211,10 +214,19 @@ fn build_execution_controls(resolved: &config::Resolved) -> Result<MachineExecut
                     .iter()
                     .any(|existing| existing.id.eq_ignore_ascii_case(plugin_id))
                 {
-                    log::warn!(
-                        "Skipping plugin runner '{}' in machine execution controls because its id conflicts with an existing runner id",
-                        plugin_id
-                    );
+                    diagnostics.push(MachineExecutionControlDiagnostic {
+                        severity: MachineExecutionControlDiagnosticSeverity::Warning,
+                        code: MachineExecutionControlDiagnosticCode::PluginRunnerIdConflict,
+                        message: format!(
+                            "Plugin runner '{plugin_id}' was skipped because its id conflicts with an existing runner id."
+                        ),
+                        detail: Some(
+                            "Machine execution controls keep the existing runner and omit the conflicting plugin runner."
+                                .to_string(),
+                        ),
+                        plugin_id: Some(plugin_id.clone()),
+                        fallback: "skipped_plugin_runner".to_string(),
+                    });
                     continue;
                 }
                 runners.push(MachineRunnerOption {
@@ -229,9 +241,15 @@ fn build_execution_controls(resolved: &config::Resolved) -> Result<MachineExecut
             }
         }
         Err(err) => {
-            log::warn!(
-                "Failed to load plugin registry while building machine execution controls; falling back to built-in runners only: {err:#}"
-            );
+            diagnostics.push(MachineExecutionControlDiagnostic {
+                severity: MachineExecutionControlDiagnosticSeverity::Warning,
+                code: MachineExecutionControlDiagnosticCode::PluginRegistryLoadFailed,
+                message: "Plugin registry failed to load; machine execution controls are limited to built-in runners."
+                    .to_string(),
+                detail: Some(format!("{err:#}")),
+                plugin_id: None,
+                fallback: "built_in_runners_only".to_string(),
+            });
         }
     }
 
@@ -248,6 +266,7 @@ fn build_execution_controls(resolved: &config::Resolved) -> Result<MachineExecut
             max: u8::MAX,
             default_missing_value: MACHINE_PARALLEL_MIN_WORKERS,
         },
+        diagnostics,
     })
 }
 
@@ -456,7 +475,10 @@ pub(crate) fn machine_doctor_report_command() -> &'static str {
 mod tests {
     use super::{MACHINE_PARALLEL_MIN_WORKERS, build_execution_controls};
     use crate::config::Resolved;
-    use crate::contracts::{Config, PluginConfig};
+    use crate::contracts::{
+        Config, MachineExecutionControlDiagnosticCode, MachineExecutionControlDiagnosticSeverity,
+        PluginConfig,
+    };
     use tempfile::TempDir;
 
     fn resolved_for_repo(repo_root: &std::path::Path, config: Config) -> Resolved {
@@ -534,6 +556,7 @@ mod tests {
         assert_eq!(plugin.default_model.as_deref(), Some("plugin-default"));
         assert!(plugin.supports_arbitrary_model);
         assert!(!plugin.reasoning_effort_supported);
+        assert!(controls.diagnostics.is_empty());
     }
 
     #[test]
@@ -550,6 +573,7 @@ mod tests {
                 .iter()
                 .all(|runner| runner.id != "acme.runner")
         );
+        assert!(controls.diagnostics.is_empty());
     }
 
     #[test]
@@ -564,6 +588,7 @@ mod tests {
             MACHINE_PARALLEL_MIN_WORKERS
         );
         assert_eq!(controls.parallel_workers.max, u8::MAX);
+        assert!(controls.diagnostics.is_empty());
     }
 
     #[test]
@@ -584,6 +609,28 @@ mod tests {
                 .iter()
                 .all(|runner| runner.id != "broken.runner")
         );
+        let diagnostic = controls
+            .diagnostics
+            .first()
+            .expect("registry load failure should be diagnosed");
+        assert!(matches!(
+            diagnostic.severity,
+            MachineExecutionControlDiagnosticSeverity::Warning
+        ));
+        assert!(matches!(
+            diagnostic.code,
+            MachineExecutionControlDiagnosticCode::PluginRegistryLoadFailed
+        ));
+        assert_eq!(diagnostic.plugin_id, None);
+        assert_eq!(diagnostic.fallback, "built_in_runners_only");
+        assert!(
+            diagnostic
+                .detail
+                .as_deref()
+                .unwrap_or_default()
+                .contains("broken.runner")
+        );
+        assert_eq!(controls.diagnostics.len(), 1);
     }
 
     #[test]
@@ -607,5 +654,20 @@ mod tests {
                 .iter()
                 .all(|runner| runner.display_name != "Codex Shadow Plugin")
         );
+        let diagnostic = controls
+            .diagnostics
+            .first()
+            .expect("runner id conflict should be diagnosed");
+        assert!(matches!(
+            diagnostic.severity,
+            MachineExecutionControlDiagnosticSeverity::Warning
+        ));
+        assert!(matches!(
+            diagnostic.code,
+            MachineExecutionControlDiagnosticCode::PluginRunnerIdConflict
+        ));
+        assert_eq!(diagnostic.plugin_id.as_deref(), Some("CODEX"));
+        assert_eq!(diagnostic.fallback, "skipped_plugin_runner");
+        assert_eq!(controls.diagnostics.len(), 1);
     }
 }

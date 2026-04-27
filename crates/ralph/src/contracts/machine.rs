@@ -36,7 +36,7 @@ pub const MACHINE_QUEUE_READ_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_VALIDATE_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_REPAIR_VERSION: u32 = 1;
 pub const MACHINE_QUEUE_UNDO_VERSION: u32 = 1;
-pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 4;
+pub const MACHINE_CONFIG_RESOLVE_VERSION: u32 = 5;
 pub const MACHINE_WORKSPACE_OVERVIEW_VERSION: u32 = 1;
 pub const MACHINE_TASK_CREATE_VERSION: u32 = 1;
 pub const MACHINE_TASK_BUILD_VERSION: u32 = 1;
@@ -245,11 +245,39 @@ pub struct MachineConfigSafetySummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MachineExecutionControlDiagnosticSeverity {
+    Warning,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MachineExecutionControlDiagnosticCode {
+    PluginRegistryLoadFailed,
+    PluginRunnerIdConflict,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineExecutionControlDiagnostic {
+    pub severity: MachineExecutionControlDiagnosticSeverity,
+    pub code: MachineExecutionControlDiagnosticCode,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plugin_id: Option<String>,
+    pub fallback: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MachineExecutionControls {
     pub runners: Vec<MachineRunnerOption>,
     pub reasoning_efforts: Vec<String>,
     pub parallel_workers: MachineParallelWorkersControl,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<MachineExecutionControlDiagnostic>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

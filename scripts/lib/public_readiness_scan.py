@@ -95,10 +95,10 @@ STALE_DOC_SNIPPET_CONTRACTS = (
     DocSnippetContract(
         rel_path="docs/features/session-management.md",
         pattern=re.compile(
-            r'"version"\s*:\s*3[\s\S]*?"resume_preview"',
+            r'"version"\s*:\s*4[\s\S]*?"resume_preview"',
             re.MULTILINE,
         ),
-        message="machine config resolve examples must use version 4",
+        message="machine config resolve examples must use version 5",
         search_scope="json_blocks",
     ),
     DocSnippetContract(

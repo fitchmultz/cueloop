@@ -26,7 +26,7 @@ final class ConfigModelsTests: RalphCoreTestCase {
     func test_decode_machineConfigResolve_includesWebhookUrlPolicyFields() throws {
         let json = #"""
         {
-          "version": 4,
+          "version": 5,
           "paths": {
             "repo_root": "/tmp/ws",
             "queue_path": "/tmp/ws/.ralph/queue.jsonc",
@@ -86,14 +86,23 @@ final class ConfigModelsTests: RalphCoreTestCase {
               "min": 2,
               "max": 255,
               "default_missing_value": 2
-            }
+            },
+            "diagnostics": [
+              {
+                "severity": "warning",
+                "code": "plugin_registry_load_failed",
+                "message": "Plugin registry failed to load; machine execution controls are limited to built-in runners.",
+                "detail": "failed to parse .ralph/plugins/broken.runner/plugin.json",
+                "fallback": "built_in_runners_only"
+              }
+            ]
           },
           "resume_preview": null
         }
         """#
 
         let doc = try JSONDecoder().decode(MachineConfigResolveDocument.self, from: Data(json.utf8))
-        XCTAssertEqual(doc.version, 4)
+        XCTAssertEqual(doc.version, 5)
         let webhook = try XCTUnwrap(doc.config.agent?.webhook)
         XCTAssertEqual(webhook.enabled, true)
         XCTAssertEqual(webhook.url, "https://hooks.example.com/ralph")
@@ -104,6 +113,29 @@ final class ConfigModelsTests: RalphCoreTestCase {
         XCTAssertEqual(doc.executionControls.runners.map(\.id), ["codex", "acme.runner"])
         XCTAssertEqual(doc.executionControls.reasoningEfforts, ["low", "medium", "high", "xhigh"])
         XCTAssertEqual(doc.executionControls.parallelWorkers.max, 255)
+        let diagnostic = try XCTUnwrap(doc.executionControls.diagnostics.first)
+        XCTAssertEqual(diagnostic.severity, "warning")
+        XCTAssertEqual(diagnostic.code, "plugin_registry_load_failed")
+        XCTAssertEqual(diagnostic.fallback, "built_in_runners_only")
+        XCTAssertNil(diagnostic.pluginID)
+        XCTAssertTrue(diagnostic.detail?.contains("broken.runner") == true)
+    }
+
+    func test_decode_machineExecutionControls_defaultsDiagnosticsWhenMissing() throws {
+        let json = #"""
+        {
+          "runners": [],
+          "reasoning_efforts": ["low"],
+          "parallel_workers": {
+            "min": 2,
+            "max": 255,
+            "default_missing_value": 2
+          }
+        }
+        """#
+
+        let controls = try JSONDecoder().decode(MachineExecutionControls.self, from: Data(json.utf8))
+        XCTAssertEqual(controls.diagnostics, [])
     }
 
     func test_decode_ralphConfig_notification_includesWatchNewTasksField() throws {

@@ -19,7 +19,7 @@
 //! - Tests execute against disposable repos initialized through the public CLI.
 //! - Contract assertions preserve the historical flat suite behavior exactly.
 
-use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo};
+use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo, trust_project_commands};
 use anyhow::Result;
 use serde_json::Value;
 
@@ -149,7 +149,7 @@ fn machine_workspace_overview_returns_queue_and_config_in_one_document() -> Resu
     let document: Value = serde_json::from_str(&stdout)?;
     assert_eq!(document["version"], 1);
     assert_eq!(document["queue"]["version"], 1);
-    assert_eq!(document["config"]["version"], 4);
+    assert_eq!(document["config"]["version"], 5);
     assert!(document["queue"]["paths"]["queue_path"].is_string());
     assert!(document["queue"]["active"]["tasks"].is_array());
     assert!(document["config"]["paths"]["project_config_path"].is_string());
@@ -179,7 +179,7 @@ fn machine_config_resolve_succeeds_without_queue_file_and_omits_resume_preview()
     );
 
     let document: Value = serde_json::from_str(&stdout)?;
-    assert_eq!(document["version"], 4);
+    assert_eq!(document["version"], 5);
     assert!(document["paths"]["queue_path"].is_string());
     assert!(document["config"].is_object());
     assert!(document["execution_controls"]["runners"].is_array());
@@ -190,6 +190,128 @@ fn machine_config_resolve_succeeds_without_queue_file_and_omits_resume_preview()
     assert!(
         !queue_path.exists(),
         "machine config resolve must not recreate missing queue files"
+    );
+    Ok(())
+}
+
+#[test]
+fn machine_config_resolve_reports_plugin_registry_load_failures_as_diagnostics() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+    trust_project_commands(dir.path())?;
+    let plugin_dir = dir.path().join(".ralph/plugins/broken.runner");
+    std::fs::create_dir_all(&plugin_dir)?;
+    std::fs::write(plugin_dir.join("plugin.json"), "{not valid json")?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "config", "resolve"]);
+    assert!(
+        status.success(),
+        "machine config resolve should degrade successfully for malformed plugins\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stderr.trim().is_empty(),
+        "successful plugin-registry degradation should be stdout-structured, not stderr text: {stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["version"], 5);
+    assert!(
+        document["execution_controls"]["runners"]
+            .as_array()
+            .is_some_and(|runners| runners.iter().any(|runner| runner["id"] == "codex"))
+    );
+    assert_eq!(
+        document["execution_controls"]["diagnostics"][0]["severity"],
+        "warning"
+    );
+    assert_eq!(
+        document["execution_controls"]["diagnostics"][0]["code"],
+        "plugin_registry_load_failed"
+    );
+    assert_eq!(
+        document["execution_controls"]["diagnostics"][0]["fallback"],
+        "built_in_runners_only"
+    );
+    assert!(
+        document["execution_controls"]["diagnostics"][0]
+            .get("plugin_id")
+            .is_none(),
+        "whole-registry failures should not name one plugin id: {stdout}"
+    );
+    assert!(
+        document["execution_controls"]["diagnostics"][0]["detail"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("broken.runner"),
+        "diagnostic detail should explain the malformed manifest path: {stdout}"
+    );
+    Ok(())
+}
+
+#[test]
+fn machine_config_resolve_reports_plugin_runner_id_conflicts_as_diagnostics() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+    trust_project_commands(dir.path())?;
+    let plugin_dir = dir.path().join(".ralph/plugins/codex-shadow.runner");
+    std::fs::create_dir_all(&plugin_dir)?;
+    std::fs::write(
+        plugin_dir.join("plugin.json"),
+        r#"{
+  "api_version": 1,
+  "id": "CODEX",
+  "version": "1.0.0",
+  "name": "Codex Shadow Plugin",
+  "runner": {
+    "bin": "runner.sh"
+  }
+}"#,
+    )?;
+    std::fs::write(
+        dir.path().join(".ralph/config.jsonc"),
+        r#"{
+  "version": 2,
+  "plugins": {
+    "plugins": {
+      "CODEX": {
+        "enabled": true
+      }
+    }
+  }
+}"#,
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "config", "resolve"]);
+    assert!(
+        status.success(),
+        "machine config resolve should skip conflicting plugin runners without failing\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stderr.trim().is_empty(),
+        "successful plugin-runner conflict degradation should be stdout-structured, not stderr text: {stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(
+        document["execution_controls"]["diagnostics"][0]["code"],
+        "plugin_runner_id_conflict"
+    );
+    assert_eq!(
+        document["execution_controls"]["diagnostics"][0]["plugin_id"],
+        "CODEX"
+    );
+    assert_eq!(
+        document["execution_controls"]["diagnostics"][0]["fallback"],
+        "skipped_plugin_runner"
+    );
+    assert!(
+        document["execution_controls"]["runners"]
+            .as_array()
+            .is_some_and(|runners| runners
+                .iter()
+                .filter(|runner| runner["id"]
+                    .as_str()
+                    .is_some_and(|id| id.eq_ignore_ascii_case("codex")))
+                .count()
+                == 1)
     );
     Ok(())
 }

@@ -879,9 +879,64 @@
         ],
         "type": "object"
       },
+      "MachineExecutionControlDiagnostic": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/$defs/MachineExecutionControlDiagnosticCode"
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fallback": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "plugin_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "severity": {
+            "$ref": "#/$defs/MachineExecutionControlDiagnosticSeverity"
+          }
+        },
+        "required": [
+          "severity",
+          "code",
+          "message",
+          "fallback"
+        ],
+        "type": "object"
+      },
+      "MachineExecutionControlDiagnosticCode": {
+        "enum": [
+          "plugin_registry_load_failed",
+          "plugin_runner_id_conflict"
+        ],
+        "type": "string"
+      },
+      "MachineExecutionControlDiagnosticSeverity": {
+        "enum": [
+          "warning"
+        ],
+        "type": "string"
+      },
       "MachineExecutionControls": {
         "additionalProperties": false,
         "properties": {
+          "diagnostics": {
+            "items": {
+              "$ref": "#/$defs/MachineExecutionControlDiagnostic"
+            },
+            "type": "array"
+          },
           "parallel_workers": {
             "$ref": "#/$defs/MachineParallelWorkersControl"
           },
@@ -8357,9 +8412,64 @@
         ],
         "type": "object"
       },
+      "MachineExecutionControlDiagnostic": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/$defs/MachineExecutionControlDiagnosticCode"
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fallback": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "plugin_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "severity": {
+            "$ref": "#/$defs/MachineExecutionControlDiagnosticSeverity"
+          }
+        },
+        "required": [
+          "severity",
+          "code",
+          "message",
+          "fallback"
+        ],
+        "type": "object"
+      },
+      "MachineExecutionControlDiagnosticCode": {
+        "enum": [
+          "plugin_registry_load_failed",
+          "plugin_runner_id_conflict"
+        ],
+        "type": "string"
+      },
+      "MachineExecutionControlDiagnosticSeverity": {
+        "enum": [
+          "warning"
+        ],
+        "type": "string"
+      },
       "MachineExecutionControls": {
         "additionalProperties": false,
         "properties": {
+          "diagnostics": {
+            "items": {
+              "$ref": "#/$defs/MachineExecutionControlDiagnostic"
+            },
+            "type": "array"
+          },
           "parallel_workers": {
             "$ref": "#/$defs/MachineParallelWorkersControl"
           },

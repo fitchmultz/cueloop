@@ -318,15 +318,61 @@ public struct MachineResumeDecision: Codable, Sendable, Equatable {
     }
 }
 
+public struct MachineExecutionControlDiagnostic: Codable, Sendable, Equatable {
+    public let severity: String
+    public let code: String
+    public let message: String
+    public let detail: String?
+    public let pluginID: String?
+    public let fallback: String
+
+    private enum CodingKeys: String, CodingKey {
+        case severity
+        case code
+        case message
+        case detail
+        case pluginID = "plugin_id"
+        case fallback
+    }
+}
+
 public struct MachineExecutionControls: Codable, Sendable, Equatable {
     public let runners: [MachineRunnerOption]
     public let reasoningEfforts: [String]
     public let parallelWorkers: MachineParallelWorkersControl
+    public let diagnostics: [MachineExecutionControlDiagnostic]
 
     private enum CodingKeys: String, CodingKey {
         case runners
         case reasoningEfforts = "reasoning_efforts"
         case parallelWorkers = "parallel_workers"
+        case diagnostics
+    }
+
+    public init(
+        runners: [MachineRunnerOption],
+        reasoningEfforts: [String],
+        parallelWorkers: MachineParallelWorkersControl,
+        diagnostics: [MachineExecutionControlDiagnostic] = []
+    ) {
+        self.runners = runners
+        self.reasoningEfforts = reasoningEfforts
+        self.parallelWorkers = parallelWorkers
+        self.diagnostics = diagnostics
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        runners = try container.decode([MachineRunnerOption].self, forKey: .runners)
+        reasoningEfforts = try container.decode([String].self, forKey: .reasoningEfforts)
+        parallelWorkers = try container.decode(
+            MachineParallelWorkersControl.self,
+            forKey: .parallelWorkers
+        )
+        diagnostics = try container.decodeIfPresent(
+            [MachineExecutionControlDiagnostic].self,
+            forKey: .diagnostics
+        ) ?? []
     }
 }
 

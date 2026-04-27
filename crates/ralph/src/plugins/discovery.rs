@@ -20,6 +20,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use anyhow::Context;
+
 use crate::plugins::manifest::PluginManifest;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,8 +68,11 @@ pub(crate) fn discover_plugins(
         if !root.is_dir() {
             continue;
         }
-        for entry in std::fs::read_dir(&root)? {
-            let entry = entry?;
+        for entry in std::fs::read_dir(&root)
+            .with_context(|| format!("read plugin directory {}", root.display()))?
+        {
+            let entry =
+                entry.with_context(|| format!("read plugin entry in {}", root.display()))?;
             let plugin_dir = entry.path();
             if !plugin_dir.is_dir() {
                 continue;
@@ -76,9 +81,13 @@ pub(crate) fn discover_plugins(
             if !manifest_path.is_file() {
                 continue;
             }
-            let raw = std::fs::read_to_string(&manifest_path)?;
-            let manifest: PluginManifest = serde_json::from_str(&raw)?;
-            manifest.validate()?;
+            let raw = std::fs::read_to_string(&manifest_path)
+                .with_context(|| format!("read plugin manifest {}", manifest_path.display()))?;
+            let manifest: PluginManifest = serde_json::from_str(&raw)
+                .with_context(|| format!("parse plugin manifest {}", manifest_path.display()))?;
+            manifest
+                .validate()
+                .with_context(|| format!("validate plugin manifest {}", manifest_path.display()))?;
 
             let id = manifest.id.clone();
 

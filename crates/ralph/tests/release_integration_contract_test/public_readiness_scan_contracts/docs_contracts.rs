@@ -102,7 +102,7 @@ fn public_readiness_scan_docs_mode_rejects_stale_session_config_version() {
         &repo_root.join("docs/features/session-management.md"),
         r#"```json
 {
-  "version": 3,
+  "version": 4,
   "resume_preview": {
     "status": "refusing_to_resume"
   }
@@ -126,7 +126,7 @@ fn public_readiness_scan_docs_mode_rejects_stale_session_config_version() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         stdout.contains(
-            "docs/features/session-management.md: machine config resolve examples must use version 4"
+            "docs/features/session-management.md: machine config resolve examples must use version 5"
         ),
         "docs scan should explain the stale config resolve version failure\nstdout:\n{}",
         stdout
@@ -156,7 +156,7 @@ Valid config preview example:
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "resume_preview": {
     "status": "refusing_to_resume"
   }

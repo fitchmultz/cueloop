@@ -160,7 +160,7 @@ This prevents headless automation from silently discarding or duplicating interr
 
 ```json
 {
-  "version": 4,
+  "version": 5,
   "paths": {
     "repo_root": "/repo",
     "queue_path": "/repo/.ralph/queue.jsonc",

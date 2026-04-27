@@ -59,7 +59,7 @@ Machine clients should decode that document instead of scraping English stderr t
 `ralph machine run loop` accepts the same `--parallel <N>` worker override pattern as the human `ralph run loop` surface, including bare `--parallel` defaulting to `2`.
 
 
-### `machine config resolve` (`version: 4`)
+### `machine config resolve` (`version: 5`)
 
 Includes:
 - resolved queue/config paths
@@ -74,6 +74,19 @@ RalphMac and other machine clients should treat these resolved paths as the cano
 - runner options with stable ids, display names, source (`built_in`, `global_plugin`, `project_plugin`), reasoning-effort support, model-affordance metadata, and optional default model
 - reasoning-effort options
 - the numeric `parallel_workers` contract (`min`, `max`, `default_missing_value`)
+- optional `diagnostics` for non-fatal degradation that affected the catalog; successful machine consumers should read these structured stdout diagnostics instead of scraping stderr logs
+
+`execution_controls.diagnostics[]` entries include:
+- `severity` (`warning`)
+- `code`
+- `message`
+- optional `detail`
+- optional `plugin_id`
+- `fallback`
+
+Current diagnostic codes:
+- `plugin_registry_load_failed`: plugin discovery/manifest loading failed, so runner controls fall back to built-in runners only (`fallback: "built_in_runners_only"`).
+- `plugin_runner_id_conflict`: an enabled plugin runner id conflicts with an existing runner id, so that plugin runner is skipped (`fallback: "skipped_plugin_runner"`).
 
 `resume_preview` is the app/automation preflight signal for whether the next run would:
 - resume the same session

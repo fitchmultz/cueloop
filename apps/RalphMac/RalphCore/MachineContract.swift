@@ -26,7 +26,7 @@ import Foundation
 enum RalphMachineContract {
   public static let runEventVersion = 3
   public static let runSummaryVersion = 2
-  public static let configResolveVersion = 4
+  public static let configResolveVersion = 5
   public static let workspaceOverviewVersion = 1
   public static let queueValidateVersion = 1
   public static let queueRepairVersion = 1
