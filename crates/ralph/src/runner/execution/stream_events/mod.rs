@@ -124,17 +124,12 @@ fn classify_protocol(json: &JsonValue) -> StreamProtocol {
         Some("message_update" | "tool_execution_start") => StreamProtocol::Pi,
         Some("message_end") if is_pi_message_end(json) => StreamProtocol::Pi,
         Some("assistant" | "message_end" | "result") => StreamProtocol::Claude,
-        Some("message") if role == Some("assistant") => StreamProtocol::Gemini,
+        Some("message") if let Some("assistant") = role => StreamProtocol::Gemini,
         Some("tool_result") => StreamProtocol::Gemini,
-        Some("tool_use") => {
-            if json.get("part").is_some() {
-                StreamProtocol::Opencode
-            } else {
-                StreamProtocol::Gemini
-            }
-        }
+        Some("tool_use") if json.get("part").is_some() => StreamProtocol::Opencode,
+        Some("tool_use") => StreamProtocol::Gemini,
         Some("text" | "reasoning" | "error") => StreamProtocol::Opencode,
-        _ if role == Some("assistant") || role == Some("tool") => StreamProtocol::Kimi,
+        _ if let Some("assistant" | "tool") = role => StreamProtocol::Kimi,
         _ => StreamProtocol::Unknown,
     }
 }

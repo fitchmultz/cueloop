@@ -52,6 +52,11 @@ fn assistant_stream_chunk(content: &JsonValue) -> Option<String> {
     }
 }
 
+fn assistant_message(json: &JsonValue) -> Option<&JsonValue> {
+    json.get("message")
+        .filter(|message| message.get("role").and_then(|r| r.as_str()) == Some("assistant"))
+}
+
 /// Cursor plugin implementation.
 pub struct CursorPlugin;
 
@@ -122,12 +127,7 @@ impl CursorResponseParser {
     /// omitted, chunks still append so legacy Cursor streams without the flag keep working.
     pub(crate) fn parse_json(&self, json: &JsonValue, buffer: &mut String) -> Option<String> {
         match json.get("type").and_then(|t| t.as_str()) {
-            Some("assistant") => {
-                let message = json.get("message")?;
-                if message.get("role").and_then(|r| r.as_str()) != Some("assistant") {
-                    return None;
-                }
-
+            Some("assistant") if let Some(message) = assistant_message(json) => {
                 let content = message.get("content")?;
                 let delta_flag = json
                     .get("delta")
@@ -148,19 +148,16 @@ impl CursorResponseParser {
                     }
                 }
             }
+            Some("assistant") => None,
             // Legacy/alternate envelope used by some Cursor Agent builds.
-            Some("message_end") => {
-                let message = json.get("message")?;
-                if message.get("role").and_then(|r| r.as_str()) != Some("assistant") {
-                    return None;
-                }
-
+            Some("message_end") if let Some(message) = assistant_message(json) => {
                 let content = message.get("content")?;
                 let text = super::extract_text_content(content)?;
                 buffer.clear();
                 buffer.push_str(&text);
                 Some(buffer.clone())
             }
+            Some("message_end") => None,
             Some("result") => {
                 let result = json.get("result")?;
                 let text = super::extract_text_content(result)?;
