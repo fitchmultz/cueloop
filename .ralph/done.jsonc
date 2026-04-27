@@ -194,9 +194,9 @@
       "relates_to": [],
       "custom_fields": {
         "task_kind": "queue_shaping",
-        "skill": "comprehensive-codebase-audit",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "skill": "comprehensive-codebase-audit"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex"
       }
     },
     {
@@ -687,9 +687,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -761,9 +761,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -830,9 +830,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "reported_command": "ralph run loop --parallel 2",
-        "severity_reason": "parallel-mode task state/data integrity loss",
         "model_used": "openai-codex/gpt-5.5",
-        "runner_used": "pi"
+        "reported_command": "ralph run loop --parallel 2",
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
+        "runner_used": "pi",
+        "severity_reason": "parallel-mode task state/data integrity loss"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
       }
     },
     {
@@ -2769,6 +2769,62 @@
       "relates_to": [],
       "custom_fields": {
         "rust_feature": "Rust 1.95 compatibility notes"
+      }
+    },
+    {
+      "id": "RQ-0054",
+      "status": "done",
+      "title": "Refresh dependencies, Clippy, rustdoc, and security posture under Rust 1.95.0",
+      "description": "Re-run Ralph's dependency freshness, security, lint, and documentation checks under the Rust 1.95.0 toolchain. Include the compiler-side security context from the 1.95 release, rustdoc's new deprecated-item search behavior where relevant to generated documentation review, and LLVM 22/toolchain behavior changes. Make sure dependency updates and any lockfile drift are intentional and documented.",
+      "priority": "high",
+      "tags": [
+        "rust",
+        "dependencies",
+        "security",
+        "clippy",
+        "rustdoc",
+        "ci"
+      ],
+      "scope": [
+        "Cargo.toml",
+        "crates/ralph/Cargo.toml",
+        "Cargo.lock",
+        "Makefile",
+        "scripts/pre-public-check.sh",
+        "docs/guides/ci-strategy.md",
+        "docs/guides/public-readiness.md",
+        "docs/releasing.md",
+        "cargo update",
+        "cargo clippy --all-targets --all-features -- -D warnings",
+        "cargo doc --no-deps --all-features",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "Rust 1.95.0 compiler notes include patches for CVE-2026-6042 and CVE-2026-40200 in vendored musl and an LLVM 22 update.",
+        "Rust 1.95.0 rustdoc changes rank unstable items lower and add a hide-deprecated-items setting, which can affect documentation review workflows even if no code changes are needed.",
+        "The prior March stack audit listed dependency and verification commands for Rust 1.94; a 1.95 refresh should capture current dependency, Clippy, and docs status rather than relying on the archived snapshot."
+      ],
+      "plan": [
+        "Run dependency freshness and vulnerability checks using existing repository tools; add or document a missing local security-audit command only if it fits the local CI model.",
+        "Review direct dependency updates for compatibility, lockfile drift, feature changes, and minimum-supported-Rust impacts.",
+        "Run Clippy on all targets/features with warnings denied and remediate real diagnostics without blanket allows.",
+        "Run rustdoc/doc generation checks and update documentation guidance if rustdoc behavior changes matter to maintainers."
+      ],
+      "notes": [
+        "Prefer maintained dependencies and existing Makefile entrypoints; do not add remote CI workflows for this gate.",
+        "If cargo-audit/cargo-deny is introduced, document installation and ensure local execution is reliable on supported platforms."
+      ],
+      "request": "Rust has been updated on this system. Research new features and best practices for the new version and create tasks in the ralph queue.jsonc to have the project updated to use all best practices with the newest version.",
+      "created_at": "2026-04-27T13:56:36Z",
+      "updated_at": "2026-04-27T16:53:27.623816000Z",
+      "completed_at": "2026-04-27T16:53:27.623816000Z",
+      "depends_on": [
+        "RQ-0050"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "rust_feature": "Rust 1.95 compiler/security, rustdoc, and LLVM updates"
       }
     }
   ]

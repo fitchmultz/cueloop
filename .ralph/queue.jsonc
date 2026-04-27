@@ -2,61 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0054",
-      "status": "todo",
-      "title": "Refresh dependencies, Clippy, rustdoc, and security posture under Rust 1.95.0",
-      "description": "Re-run Ralph's dependency freshness, security, lint, and documentation checks under the Rust 1.95.0 toolchain. Include the compiler-side security context from the 1.95 release, rustdoc's new deprecated-item search behavior where relevant to generated documentation review, and LLVM 22/toolchain behavior changes. Make sure dependency updates and any lockfile drift are intentional and documented.",
-      "priority": "high",
-      "tags": [
-        "rust",
-        "dependencies",
-        "security",
-        "clippy",
-        "rustdoc",
-        "ci"
-      ],
-      "scope": [
-        "Cargo.toml",
-        "crates/ralph/Cargo.toml",
-        "Cargo.lock",
-        "Makefile",
-        "scripts/pre-public-check.sh",
-        "docs/guides/ci-strategy.md",
-        "docs/guides/public-readiness.md",
-        "docs/releasing.md",
-        "cargo update",
-        "cargo clippy --all-targets --all-features -- -D warnings",
-        "cargo doc --no-deps --all-features",
-        "make agent-ci"
-      ],
-      "evidence": [
-        "Rust 1.95.0 compiler notes include patches for CVE-2026-6042 and CVE-2026-40200 in vendored musl and an LLVM 22 update.",
-        "Rust 1.95.0 rustdoc changes rank unstable items lower and add a hide-deprecated-items setting, which can affect documentation review workflows even if no code changes are needed.",
-        "The prior March stack audit listed dependency and verification commands for Rust 1.94; a 1.95 refresh should capture current dependency, Clippy, and docs status rather than relying on the archived snapshot."
-      ],
-      "plan": [
-        "Run dependency freshness and vulnerability checks using existing repository tools; add or document a missing local security-audit command only if it fits the local CI model.",
-        "Review direct dependency updates for compatibility, lockfile drift, feature changes, and minimum-supported-Rust impacts.",
-        "Run Clippy on all targets/features with warnings denied and remediate real diagnostics without blanket allows.",
-        "Run rustdoc/doc generation checks and update documentation guidance if rustdoc behavior changes matter to maintainers."
-      ],
-      "notes": [
-        "Prefer maintained dependencies and existing Makefile entrypoints; do not add remote CI workflows for this gate.",
-        "If cargo-audit/cargo-deny is introduced, document installation and ensure local execution is reliable on supported platforms."
-      ],
-      "request": "Rust has been updated on this system. Research new features and best practices for the new version and create tasks in the ralph queue.jsonc to have the project updated to use all best practices with the newest version.",
-      "created_at": "2026-04-27T13:56:36Z",
-      "updated_at": "2026-04-27T13:59:11Z",
-      "depends_on": [
-        "RQ-0050"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "rust_feature": "Rust 1.95 compiler/security, rustdoc, and LLVM updates"
-      }
-    },
-    {
       "id": "RQ-0055",
       "status": "todo",
       "title": "Codify Rust 1.95.0 best-practice verification in local gates",
