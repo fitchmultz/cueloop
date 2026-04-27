@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "task_kind": "queue_shaping",
-        "skill": "comprehensive-codebase-audit"
+        "skill": "comprehensive-codebase-audit",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,9 +539,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
         "model_used": "gpt-5.4"
       }
     },
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex"
       }
     },
     {
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4"
       }
     },
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -956,9 +956,9 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "codex",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     },
     {
@@ -1011,7 +1011,7 @@
       "id": "RQ-0017",
       "status": "done",
       "title": "Version-gate `machine system info` in RalphMac compatibility checks",
-      "description": "Principles violated: E (make bugs hard to write), F (fail fast), J (consistency/integrity). `WorkspaceManager+Versioning.executeVersionCheck` decodes `MachineSystemInfoDocument` directly without validating the machine document version, even though Ralph\u2019s machine contract is explicitly versioned. This allows incompatible payload shapes to flow into compatibility logic without a clear contract error. Why it matters: a future CLI/document version bump can cause false compatibility outcomes or ambiguous errors during app startup/version checks. Minimal fix: make `MachineSystemInfoDocument` conform to `VersionedMachineDocument`, add a `systemInfoVersion` constant in `RalphMachineContract`, and decode through `RalphMachineContract.decode(...)`. Acceptance criteria: mismatched system-info version produces `.versionMismatch` recovery messaging; matched version still validates normally.",
+      "description": "Principles violated: E (make bugs hard to write), F (fail fast), J (consistency/integrity). `WorkspaceManager+Versioning.executeVersionCheck` decodes `MachineSystemInfoDocument` directly without validating the machine document version, even though Ralph’s machine contract is explicitly versioned. This allows incompatible payload shapes to flow into compatibility logic without a clear contract error. Why it matters: a future CLI/document version bump can cause false compatibility outcomes or ambiguous errors during app startup/version checks. Minimal fix: make `MachineSystemInfoDocument` conform to `VersionedMachineDocument`, add a `systemInfoVersion` constant in `RalphMachineContract`, and decode through `RalphMachineContract.decode(...)`. Acceptance criteria: mismatched system-info version produces `.versionMismatch` recovery messaging; matched version still validates normally.",
       "priority": "high",
       "tags": [
         "maintenance",
@@ -2088,8 +2088,8 @@
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
       "created_at": "2026-04-27T03:11:26Z",
-      "updated_at": "2026-04-27T03:28:57.278228000Z",
-      "completed_at": "2026-04-27T03:28:57.278228000Z",
+      "updated_at": "2026-04-27T03:30:55.585519000Z",
+      "completed_at": "2026-04-27T03:30:55.585519000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
