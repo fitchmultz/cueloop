@@ -193,9 +193,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "skill": "comprehensive-codebase-audit",
         "task_kind": "queue_shaping"
       }
     },
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
+        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex"
       }
     },
     {
@@ -761,8 +761,8 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -956,8 +956,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex"
       }
     },
@@ -1902,6 +1902,43 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {}
+    },
+    {
+      "id": "RQ-0039",
+      "status": "done",
+      "title": "Split top-level `docs/configuration.md` below soft file-size threshold",
+      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The top-level configuration reference exceeds soft limits and carries high-churn policy details. Why it matters: this is a source-of-truth document for safety-critical config behavior; oversized structure makes targeted edits riskier and review harder. Minimal fix: partition into linked reference chapters (trust, precedence, runner controls, webhooks, migration notes) while keeping `docs/configuration.md` as canonical entry hub.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "docs",
+        "configuration"
+      ],
+      "scope": [
+        "docs/configuration.md",
+        "make check-file-size-limits"
+      ],
+      "evidence": [
+        "workflow: make check-file-size-limits :: warns `849 docs/configuration.md` above soft threshold.",
+        "path: docs/configuration.md :: single large reference currently spans trust model, runner controls, policies, and migration details."
+      ],
+      "plan": [
+        "Define chapter-level split boundaries around configuration domains with minimal overlap.",
+        "Move content into dedicated reference docs and keep `docs/configuration.md` as navigable entrypoint.",
+        "Update intra-doc links and references from feature docs.",
+        "Verify by running `make check-file-size-limits` and confirming `docs/configuration.md` is not flagged."
+      ],
+      "notes": [],
+      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
+      "created_at": "2026-04-27T00:18:10Z",
+      "updated_at": "2026-04-27T02:25:27.432348000Z",
+      "completed_at": "2026-04-27T02:25:27.432348000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
     }
   ]
 }

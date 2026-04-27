@@ -2,42 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0039",
-      "status": "todo",
-      "title": "Split top-level `docs/configuration.md` below soft file-size threshold",
-      "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The top-level configuration reference exceeds soft limits and carries high-churn policy details. Why it matters: this is a source-of-truth document for safety-critical config behavior; oversized structure makes targeted edits riskier and review harder. Minimal fix: partition into linked reference chapters (trust, precedence, runner controls, webhooks, migration notes) while keeping `docs/configuration.md` as canonical entry hub.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "docs",
-        "configuration"
-      ],
-      "scope": [
-        "docs/configuration.md",
-        "make check-file-size-limits"
-      ],
-      "evidence": [
-        "workflow: make check-file-size-limits :: warns `849 docs/configuration.md` above soft threshold.",
-        "path: docs/configuration.md :: single large reference currently spans trust model, runner controls, policies, and migration details."
-      ],
-      "plan": [
-        "Define chapter-level split boundaries around configuration domains with minimal overlap.",
-        "Move content into dedicated reference docs and keep `docs/configuration.md` as navigable entrypoint.",
-        "Update intra-doc links and references from feature docs.",
-        "Verify by running `make check-file-size-limits` and confirming `docs/configuration.md` is not flagged."
-      ],
-      "notes": [],
-      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
-      "created_at": "2026-04-27T00:18:10Z",
-      "updated_at": "2026-04-27T00:18:10Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0040",
       "status": "todo",
       "title": "Reduce `docs/features/daemon-and-watch.md` and `Makefile` soft-limit warnings",
