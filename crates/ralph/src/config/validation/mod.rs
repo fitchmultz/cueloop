@@ -42,6 +42,5 @@ pub use queue::{
     validate_queue_done_file_override, validate_queue_file_override,
     validate_queue_id_prefix_override, validate_queue_id_width_override, validate_queue_overrides,
 };
-#[cfg(test)]
-pub use trust::ERR_PROJECT_EXECUTION_TRUST;
+pub(crate) use trust::ERR_PROJECT_EXECUTION_TRUST;
 pub use trust::validate_project_execution_trust;

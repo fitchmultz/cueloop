@@ -23,6 +23,15 @@ use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo};
 use anyhow::Result;
 use serde_json::Value;
 
+const SENSITIVE_PROJECT_CONFIG: &str = r#"{
+  "version": 2,
+  "agent": {
+    "runner": "codex",
+    "model": "gpt-5.3-codex",
+    "codex_bin": "codex"
+  }
+}"#;
+
 #[test]
 fn machine_queue_read_returns_versioned_snapshot() -> Result<()> {
     let dir = setup_ralph_repo()?;
@@ -123,6 +132,40 @@ fn machine_config_resolve_succeeds_without_queue_file_and_omits_resume_preview()
     assert!(
         !queue_path.exists(),
         "machine config resolve must not recreate missing queue files"
+    );
+    Ok(())
+}
+
+#[test]
+fn machine_config_resolve_reports_untrusted_execution_settings_as_config_error() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+    std::fs::write(
+        dir.path().join(".ralph/config.jsonc"),
+        SENSITIVE_PROJECT_CONFIG,
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "config", "resolve"]);
+    assert!(
+        !status.success(),
+        "machine config resolve should fail for untrusted execution-sensitive project config\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.trim().is_empty(),
+        "failure stdout should stay empty: {stdout}"
+    );
+
+    let document: Value = serde_json::from_str(&stderr)?;
+    assert_eq!(document["version"], 1);
+    assert_eq!(document["code"], "config_incompatible");
+    assert_eq!(
+        document["message"],
+        "Project config defines execution-sensitive settings, but this repo is not trusted."
+    );
+    assert_eq!(document["retryable"], false);
+    let detail = document["detail"].as_str().unwrap_or_default();
+    assert!(
+        detail.contains("repo is not trusted") && detail.contains("ralph config trust init"),
+        "detail should preserve trust remediation: {stderr}"
     );
     Ok(())
 }

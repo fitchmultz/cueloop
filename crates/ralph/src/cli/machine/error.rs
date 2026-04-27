@@ -24,6 +24,7 @@
 
 use anyhow::Result;
 
+use crate::config::ERR_PROJECT_EXECUTION_TRUST;
 use crate::contracts::{MACHINE_ERROR_VERSION, MachineErrorCode, MachineErrorDocument};
 
 pub fn print_machine_error(err: &anyhow::Error) -> Result<()> {
@@ -66,6 +67,12 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
         (
             MachineErrorCode::QueueCorrupted,
             "Queue data appears corrupted.",
+            false,
+        )
+    } else if is_project_execution_trust_error(&normalized) {
+        (
+            MachineErrorCode::ConfigIncompatible,
+            "Project config defines execution-sensitive settings, but this repo is not trusted.",
             false,
         )
     } else if normalized.contains("load project config")
@@ -144,6 +151,13 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
     }
 }
 
+fn is_project_execution_trust_error(normalized: &str) -> bool {
+    let canonical = ERR_PROJECT_EXECUTION_TRUST.to_ascii_lowercase();
+    normalized.contains(&canonical)
+        || (normalized.contains("project config defines execution-sensitive settings")
+            && normalized.contains("repo is not trusted"))
+}
+
 fn sanitized_detail(err: &anyhow::Error) -> String {
     let redacted = crate::redaction::redact_text(&format!("{:#}", err));
     let trimmed = redacted.trim();
@@ -195,6 +209,25 @@ mod tests {
             "Task changed on disk before Ralph could apply the mutation."
         );
         assert!(!document.retryable);
+    }
+
+    #[test]
+    fn build_machine_error_document_classifies_project_execution_trust_failure() {
+        let err = anyhow::anyhow!("load project config: {ERR_PROJECT_EXECUTION_TRUST}");
+
+        let document = build_machine_error_document(&err);
+        assert_eq!(document.code, MachineErrorCode::ConfigIncompatible);
+        assert_eq!(
+            document.message,
+            "Project config defines execution-sensitive settings, but this repo is not trusted."
+        );
+        assert!(!document.retryable);
+        let detail = document
+            .detail
+            .as_deref()
+            .expect("trust failures should keep remediation detail");
+        assert!(detail.contains("ralph config trust init"));
+        assert!(detail.contains("trust.jsonc"));
     }
 
     #[test]

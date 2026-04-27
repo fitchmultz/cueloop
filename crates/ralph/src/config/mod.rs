@@ -50,7 +50,9 @@ pub use resolution::{
 pub use trust::{
     RepoTrust, TrustFileInitStatus, initialize_repo_trust_file, load_repo_trust, project_trust_path,
 };
-pub(crate) use validation::{CiGateArgvIssue, detect_ci_gate_argv_issue};
+pub(crate) use validation::{
+    CiGateArgvIssue, ERR_PROJECT_EXECUTION_TRUST, detect_ci_gate_argv_issue,
+};
 pub use validation::{
     git_ref_invalid_reason, validate_agent_binary_paths, validate_agent_patch, validate_config,
     validate_project_execution_trust, validate_queue_done_file_override,
