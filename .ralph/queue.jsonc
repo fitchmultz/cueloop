@@ -83,56 +83,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
-      }
-    },
-    {
-      "id": "RQ-0051",
-      "status": "todo",
-      "title": "Adopt Rust 1.95 match ergonomics and if-let guard best practices",
-      "description": "Audit Ralph's match-heavy control flow for places where Rust 1.95's stabilized `if let` guards on match arms make branching clearer without changing semantics. Also run a compatibility pass for 1.95 pattern-matching changes, including stricter import checking, non-exhaustive enum discriminant reads, accidental `mut ref` shorthand gating, and lifetime/visibility diagnostics.",
-      "priority": "medium",
-      "tags": [
-        "rust",
-        "language",
-        "refactor",
-        "compatibility"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/run/",
-        "crates/ralph/src/queue/",
-        "crates/ralph/src/runner/",
-        "crates/ralph/src/runutil/",
-        "crates/ralph/tests/",
-        "cargo check --all-targets --all-features",
-        "cargo test"
-      ],
-      "evidence": [
-        "Rust 1.95.0 stabilizes `if let` guards on match arms.",
-        "Rust 1.95.0 compatibility notes call out stricter `$crate` self-import checking, future-incompatibility warnings for ambiguous glob-imported traits, additional visibility-related ambiguous import errors, lifetime-bound checks, and pattern-matching operational semantic changes.",
-        "Ralph has many router/orchestration modules and tests that use dense match/control-flow patterns where a targeted clarity pass may be valuable."
-      ],
-      "plan": [
-        "Search for nested `match` plus `if let` or guard-like conditions that can be simplified with stable `if let` guards while preserving readability.",
-        "Run a compatibility scan for ambiguous glob imports, `$crate` self imports, manual `Eq::assert_receiver_is_total_eq`, non-exhaustive enum assumptions, and match ergonomics edge cases.",
-        "Refactor only high-signal candidates and add or update tests around touched behavior.",
-        "Run `cargo check --all-targets --all-features` and targeted tests, then fold into `make agent-ci` when completing the toolchain bump."
-      ],
-      "notes": [
-        "Avoid style churn in simple matches where `if let` guards make code harder to read.",
-        "Treat new future-incompatibility warnings as real migration work, not as warnings to suppress."
-      ],
-      "request": "Rust has been updated on this system. Research new features and best practices for the new version and create tasks in the ralph queue.jsonc to have the project updated to use all best practices with the newest version.",
-      "created_at": "2026-04-27T13:56:36Z",
-      "updated_at": "2026-04-27T13:59:11Z",
-      "depends_on": [
-        "RQ-0050"
-      ],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "rust_feature": "if let guards on match arms"
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
       }
     },
     {

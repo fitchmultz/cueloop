@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping",
-        "runner_used": "codex"
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
+        "runner_used": "codex"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -955,9 +955,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     },
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "model_used": "openai-codex/gpt-5.5",
         "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5",
+        "reported_command": "ralph run loop --parallel 2",
         "severity_reason": "parallel-mode task state/data integrity loss",
-        "reported_command": "ralph run loop --parallel 2"
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
       }
     },
     {
@@ -2529,8 +2529,57 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
+      }
+    },
+    {
+      "id": "RQ-0051",
+      "status": "done",
+      "title": "Adopt Rust 1.95 match ergonomics and if-let guard best practices",
+      "description": "Audit Ralph's match-heavy control flow for places where Rust 1.95's stabilized `if let` guards on match arms make branching clearer without changing semantics. Also run a compatibility pass for 1.95 pattern-matching changes, including stricter import checking, non-exhaustive enum discriminant reads, accidental `mut ref` shorthand gating, and lifetime/visibility diagnostics.",
+      "priority": "medium",
+      "tags": [
+        "rust",
+        "language",
+        "refactor",
+        "compatibility"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/",
+        "crates/ralph/src/queue/",
+        "crates/ralph/src/runner/",
+        "crates/ralph/src/runutil/",
+        "crates/ralph/tests/",
+        "cargo check --all-targets --all-features",
+        "cargo test"
+      ],
+      "evidence": [
+        "Rust 1.95.0 stabilizes `if let` guards on match arms.",
+        "Rust 1.95.0 compatibility notes call out stricter `$crate` self-import checking, future-incompatibility warnings for ambiguous glob-imported traits, additional visibility-related ambiguous import errors, lifetime-bound checks, and pattern-matching operational semantic changes.",
+        "Ralph has many router/orchestration modules and tests that use dense match/control-flow patterns where a targeted clarity pass may be valuable."
+      ],
+      "plan": [
+        "Search for nested `match` plus `if let` or guard-like conditions that can be simplified with stable `if let` guards while preserving readability.",
+        "Run a compatibility scan for ambiguous glob imports, `$crate` self imports, manual `Eq::assert_receiver_is_total_eq`, non-exhaustive enum assumptions, and match ergonomics edge cases.",
+        "Refactor only high-signal candidates and add or update tests around touched behavior.",
+        "Run `cargo check --all-targets --all-features` and targeted tests, then fold into `make agent-ci` when completing the toolchain bump."
+      ],
+      "notes": [
+        "Avoid style churn in simple matches where `if let` guards make code harder to read.",
+        "Treat new future-incompatibility warnings as real migration work, not as warnings to suppress."
+      ],
+      "request": "Rust has been updated on this system. Research new features and best practices for the new version and create tasks in the ralph queue.jsonc to have the project updated to use all best practices with the newest version.",
+      "created_at": "2026-04-27T13:56:36Z",
+      "updated_at": "2026-04-27T16:27:11.770331000Z",
+      "completed_at": "2026-04-27T16:27:11.770331000Z",
+      "depends_on": [
+        "RQ-0050"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "rust_feature": "if let guards on match arms"
       }
     }
   ]
