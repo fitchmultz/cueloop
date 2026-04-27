@@ -242,7 +242,8 @@ final class SettingsSmokeContractRunner {
         RalphURLRouter.handle(workspaceOpenURL(for: configuration.workspaceBURL))
         try await waitForWorkspaceRetarget(path: configuration.workspaceBPath)
 
-        RalphURLRouter.handle(URL(string: "ralph://settings")!)
+        let settingsURL = try settingsRouteURL()
+        RalphURLRouter.handle(settingsURL)
         let urlSnapshot = try await waitForSnapshot(
             stepName: "url-scheme",
             expectedSequence: 3,
@@ -263,6 +264,13 @@ final class SettingsSmokeContractRunner {
             steps: steps,
             failureMessage: nil
         )
+    }
+
+    private func settingsRouteURL() throws -> URL {
+        guard let url = URL(string: "ralph://settings") else {
+            throw SettingsSmokeContractFailure(message: "Invalid settings route URL")
+        }
+        return url
     }
 
     private func waitForInitialWorkspace(path expectedPath: String) async throws {

@@ -39,8 +39,10 @@ pub fn prune_old_undo_snapshots(undo_dir: &Path, max_count: usize) -> Result<usi
             continue;
         }
 
-        let filename = path.file_name().unwrap().to_string_lossy();
-        if filename.starts_with(UNDO_SNAPSHOT_PREFIX) {
+        let Some(filename) = path.file_name() else {
+            continue;
+        };
+        if filename.to_string_lossy().starts_with(UNDO_SNAPSHOT_PREFIX) {
             snapshot_paths.push(path);
         }
     }

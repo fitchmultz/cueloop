@@ -111,8 +111,10 @@ pub fn list_undo_snapshots(repo_root: &Path) -> Result<SnapshotList> {
             continue;
         }
 
-        let filename = path.file_name().unwrap().to_string_lossy();
-        if !filename.starts_with(UNDO_SNAPSHOT_PREFIX) {
+        let Some(filename) = path.file_name() else {
+            continue;
+        };
+        if !filename.to_string_lossy().starts_with(UNDO_SNAPSHOT_PREFIX) {
             continue;
         }
 

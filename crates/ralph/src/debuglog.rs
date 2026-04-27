@@ -1,24 +1,22 @@
 //! Debug logging for raw, unredacted supervisor and runner output.
 //!
 //! Purpose:
-//! - Debug logging for raw, unredacted supervisor and runner output.
+//! - Provide an opt-in sink for raw diagnostic output that must not appear in normal logs.
 //!
 //! Responsibilities:
-//! - Provide focused implementation or regression coverage for this file's owning feature.
+//! - Initialize `.ralph/logs/debug.log` when debug logging is enabled.
+//! - Rotate oversized debug logs with a bounded backup count.
+//! - Serialize concurrent writes through a shared mutex-protected file handle.
 //!
 //! Scope:
-//! - Limited to this file's owning feature boundary.
-//!
-//! Features:
-//! - Automatic log rotation when file size exceeds 10MB
-//! - Keeps 3 backup files (debug.log.1, debug.log.2, debug.log.3)
-//! - Thread-safe writes via Mutex
+//! - Debug-file lifecycle and writes only; redacted operator logging and runner execution live elsewhere.
 //!
 //! Usage:
-//! - Used through the crate module tree or integration test harness.
+//! - Call `enable` once for a repo root, then `write_line`/`write_section` for diagnostic output.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Debug logs may contain secrets and must remain local-only.
+//! - Rotation keeps at most `MAX_BACKUP_FILES` backups next to `debug.log`.
 
 use anyhow::{Context, Result, anyhow, bail};
 use std::fs::{self, OpenOptions};
@@ -90,7 +88,9 @@ impl DebugLog {
         }
 
         // Perform rotation: delete oldest, shift others, move current to .1
-        let parent = log_path.parent().expect("log path has parent");
+        let parent = log_path
+            .parent()
+            .ok_or_else(|| anyhow!("debug log path has no parent: {}", log_path.display()))?;
 
         // Delete oldest backup if it exists (debug.log.3)
         let oldest_backup = parent.join(format!("{}.{}", LOG_FILE_NAME, MAX_BACKUP_FILES));
