@@ -78,6 +78,6 @@ ralph plugin uninstall my.plugin --scope global
 
 ## Related Docs
 
-- [Configuration](../../configuration.md#plugin-configuration)
+- [Configuration](../../configuration/plugins-and-profiles.md#plugin-configuration)
 - [CLI Reference](../../cli.md)
 - [Plugin Security](security.md)

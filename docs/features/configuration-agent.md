@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for feature-level agent/runner configuration guidance
 Parent: [Configuration Feature Guide](configuration.md)
 
-Use this guide when choosing how Ralph invokes AI runners. For exact field names, defaults, and validation rules, use [Agent Configuration](../configuration.md#agent-configuration).
+Use this guide when choosing how Ralph invokes AI runners. For exact field names, defaults, and validation rules, use [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
 
 ---
 
@@ -54,8 +54,8 @@ Operational rule: project-level binary overrides are execution-sensitive setting
 
 Canonical details:
 
-- [Repo execution trust](../configuration.md#repo-execution-trust)
-- [Agent Configuration](../configuration.md#agent-configuration)
+- [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust)
+- [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration)
 
 ---
 
@@ -81,7 +81,7 @@ Treat permissive modes (`yolo`, bypass-style approvals, publish-on-run) as high-
 - Keep `enabled: true` unless you have a documented temporary exception.
 - `ci_gate.argv` is argv-only (no shell-string launchers like `sh -c`).
 
-Canonical details: [Agent Configuration](../configuration.md#agent-configuration).
+Canonical details: [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
 
 ---
 
@@ -101,7 +101,7 @@ Typical controls:
 - `plan_mode`
 - `unsupported_option_policy`
 
-Canonical reference: [agent.runner_cli](../configuration.md#agentrunner_cli).
+Canonical reference: [agent.runner_cli](../configuration/agent-and-runners.md#agentrunner_cli).
 
 ---
 
@@ -128,8 +128,8 @@ Use `agent.runner_retry` for bounded transient-failure retries (attempt/backoff/
 
 Canonical references:
 
-- [agent.phase_overrides](../configuration.md#agentphase_overrides)
-- [agent.runner_retry](../configuration.md#agentrunner_retry)
+- [agent.phase_overrides](../configuration/agent-and-runners.md#agentphase_overrides)
+- [agent.runner_retry](../configuration/agent-and-runners.md#agentrunner_retry)
 
 ---
 

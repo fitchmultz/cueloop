@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for feature-level queue and parallel configuration guidance
 Parent: [Configuration Feature Guide](configuration.md)
 
-Use this guide when configuring Ralph queue files, task aging, archive behavior, and parallel worker workspaces. Exact fields and defaults live in [Queue Configuration](../configuration.md#queue-configuration) and [Parallel Configuration](../configuration.md#parallel-configuration).
+Use this guide when configuring Ralph queue files, task aging, archive behavior, and parallel worker workspaces. Exact fields and defaults live in [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration) and [Parallel Configuration](../configuration/queue-and-parallel.md#parallel-configuration).
 
 ---
 
@@ -23,7 +23,7 @@ Notes:
 
 Canonical details:
 
-- [Queue Configuration](../configuration.md#queue-configuration)
+- [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration)
 - [Queue and Tasks](../queue-and-tasks.md)
 
 ---

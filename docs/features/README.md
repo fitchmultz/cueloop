@@ -146,7 +146,7 @@ Ralph uses JSON schemas for validation:
 
 **Set up parallel execution**
 - [Parallel](./parallel.md) — Parallel mode
-- [Configuration](../configuration.md#parallel-configuration) — Parallel settings
+- [Configuration](../configuration/queue-and-parallel.md#parallel-configuration) — Parallel settings
 
 **Integrate with Slack/Discord**
 - [Webhooks](./webhooks.md) — Webhook setup

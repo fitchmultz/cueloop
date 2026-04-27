@@ -17,10 +17,10 @@ Use this page to decide where a setting belongs. Use the main reference when you
 
 | Need | Start here | Canonical reference |
 |------|------------|---------------------|
-| Trust a repo for project commands | [Trust and safety](#trust-and-safety) | [Repo execution trust](../configuration.md#repo-execution-trust) |
-| Choose a runner/model/phases | [Agent and runner settings](configuration-agent.md) | [Agent Configuration](../configuration.md#agent-configuration) |
-| Configure queue paths/aging/parallel workers | [Queue and parallel settings](configuration-operations.md) | [Queue Configuration](../configuration.md#queue-configuration) |
-| Configure plugins/webhooks/notifications/profiles | [Integrations and profiles](configuration-integrations.md) | [Plugin Configuration](../configuration.md#plugin-configuration) |
+| Trust a repo for project commands | [Trust and safety](#trust-and-safety) | [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust) |
+| Choose a runner/model/phases | [Agent and runner settings](configuration-agent.md) | [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration) |
+| Configure queue paths/aging/parallel workers | [Queue and parallel settings](configuration-operations.md) | [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration) |
+| Configure plugins/webhooks/notifications/profiles | [Integrations and profiles](configuration-integrations.md) | [Plugin Configuration](../configuration/plugins-and-profiles.md#plugin-configuration) |
 | Keep a complete example nearby | [Complete Configuration Example](configuration-example.md) | [Config Schema](../../schemas/config.schema.json) |
 
 ---
@@ -51,8 +51,8 @@ For ordinary resolved config, the canonical order is CLI flags, project config, 
 
 For exact behavior and edge cases, see:
 
-- [Precedence](../configuration.md#precedence)
-- [Profiles](../configuration.md#profiles)
+- [Precedence](../configuration/trust-and-precedence.md#precedence)
+- [Profiles](../configuration/plugins-and-profiles.md#profiles)
 
 ---
 
@@ -73,7 +73,7 @@ Execution-sensitive project settings include:
 
 In untrusted repos, keep these settings in global config or trust the repo locally before expecting project values to apply.
 
-Canonical details: [Repo execution trust](../configuration.md#repo-execution-trust).
+Canonical details: [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust).
 
 ---
 

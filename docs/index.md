@@ -18,7 +18,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 - [Project Operating Constitution](guides/project-operating-constitution.md): canonical project rules for source of truth, cutover, docs, UX, validation, and drift control
 - [Decisions](decisions.md): project-level decision log
 - [Roadmap](roadmap.md): canonical near-term execution order for active follow-up work
-- [Configuration](configuration.md): config schema, precedence, and defaults
+- [Configuration](configuration.md): hub for config schema, precedence, trust, runners, queues, webhooks, plugins, and profiles
 - [PRD Specs](prd/ralph-task-decompose.md): feature-level product requirements
 - [Queue and Tasks](queue-and-tasks.md): task model and queue semantics
 - [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path

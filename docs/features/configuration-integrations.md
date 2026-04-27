@@ -15,7 +15,7 @@ Use this guide when configuring notifications, webhooks, plugins, profiles, and 
 Start with:
 
 - [Notifications feature guide](./notifications.md)
-- [Notification configuration reference](../configuration.md#notification-configuration)
+- [Notification configuration reference](../configuration/notifications-and-webhooks.md#notification-configuration)
 
 ---
 
@@ -38,7 +38,7 @@ For signing and retries:
 References:
 
 - [Webhooks feature guide](./webhooks.md)
-- [Webhook configuration reference](../configuration.md#webhook-configuration)
+- [Webhook configuration reference](../configuration/notifications-and-webhooks.md#webhook-configuration)
 
 ---
 
@@ -53,8 +53,8 @@ Plugins are powerful and not sandboxed.
 References:
 
 - [Plugins feature guide](./plugins.md)
-- [Plugin configuration reference](../configuration.md#plugin-configuration)
-- [Repo execution trust](../configuration.md#repo-execution-trust)
+- [Plugin configuration reference](../configuration/plugins-and-profiles.md#plugin-configuration)
+- [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust)
 
 ---
 
@@ -65,7 +65,7 @@ Profiles are named `AgentConfig`-shaped patches for fast workflow switching.
 References:
 
 - [Profiles feature guide](./profiles.md)
-- [Profiles configuration reference](../configuration.md#profiles)
+- [Profiles configuration reference](../configuration/plugins-and-profiles.md#profiles)
 
 ---
 

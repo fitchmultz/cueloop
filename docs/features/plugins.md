@@ -59,6 +59,6 @@ Plugins are discovered but disabled by default. Enable a plugin explicitly in co
 ## See Also
 
 - [Plugin Development Guide](../plugin-development.md)
-- [Configuration](../configuration.md#plugin-configuration)
+- [Configuration](../configuration/plugins-and-profiles.md#plugin-configuration)
 - [CLI Reference](../cli.md)
 - [Security Features](security.md)
