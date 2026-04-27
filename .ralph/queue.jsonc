@@ -41,44 +41,6 @@
       }
     },
     {
-      "id": "RQ-0032",
-      "status": "todo",
-      "title": "Classify untrusted execution-settings failures as config errors in machine stderr",
-      "description": "Principles violated: F (fail fast appropriately), G (least astonishment), J (consistency/integrity). Untrusted-repo trust violations are currently emitted as machine error code `parse_error`, even though the underlying failure is project-config trust incompatibility. Why it matters: automation that branches on machine error codes can take the wrong remediation path (parse handling instead of trust/config handling). Minimal fix: add explicit trust/config-incompatibility matching before parse fallbacks and return `config_incompatible` with trust-focused message.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "machine-contract",
-        "trust",
-        "error-handling"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/machine/error.rs",
-        "crates/ralph/src/config/validation/trust.rs"
-      ],
-      "evidence": [
-        "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve in an untrusted repo with project `agent.codex_bin` override :: observed machine stderr JSON `code: parse_error` while detail is trust-policy message (`Project config defines execution-sensitive settings ... repo is not trusted`).",
-        "path: crates/ralph/src/cli/machine/error.rs:118-126 :: parse/decode/json catch-all classification executes for trust message text that includes JSON snippet.",
-        "path: crates/ralph/src/config/validation/trust.rs:26 :: canonical trust violation message identifies project config incompatibility, not parse failure"
-      ],
-      "plan": [
-        "Add trust-specific and config-trust pattern classification ahead of generic parse/decode/json buckets.",
-        "Return `MachineErrorCode::ConfigIncompatible` with stable trust-oriented message for this path.",
-        "Add regression tests for trust-error classification through `build_machine_error_document`.",
-        "Verify by rerunning the untrusted `machine config resolve` repro and confirming `code: config_incompatible`."
-      ],
-      "notes": [],
-      "request": "scan: queue/load/save correctness, runner subprocess boundaries, macOS app <-> CLI parity, and trust/untrusted-repo safety",
-      "created_at": "2026-04-27T00:18:10Z",
-      "updated_at": "2026-04-27T00:18:10Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0033",
       "status": "todo",
       "title": "Expose plugin-registry load failures as structured machine diagnostics",
