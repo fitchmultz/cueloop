@@ -5,7 +5,7 @@ Source of truth: current language/toolchain/dependency baseline and Rust 1.95.0 
 Parent: [Ralph Documentation](../index.md)
 Related: [CI and Test Strategy](ci-strategy.md), [Decisions](../decisions.md), [Archived March Stack Audit](stack-audit-2026-03.md)
 
-Purpose: record Ralph's current source-build toolchain baseline, explain the Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, and capture the release-note compatibility checklist that drives follow-up Rust modernization tasks.
+Purpose: record Ralph's current source-build toolchain baseline, explain the Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, capture the release-note compatibility checklist that drives follow-up Rust modernization tasks, and preserve the dependency/security/lint/rustdoc evidence for the current audited baseline.
 
 ## Scope
 
@@ -61,19 +61,59 @@ High-level checklist:
 
 Existing queue follow-ups RQ-0051 through RQ-0055 cover the modernization and compatibility work that should happen after this baseline cutover.
 
+## Rust 1.95.0 Dependency, Security, Clippy, and Rustdoc Refresh
+
+Audit date: `2026-04-27`
+
+Commands run for the dependency/security/docs refresh:
+
+```bash
+rustc --version
+cargo --version
+rustup show active-toolchain
+cargo audit --version
+cargo outdated --root-deps-only --depth 1
+make update
+cargo outdated --root-deps-only --depth 1
+make security-audit
+make lint
+make docs
+make agent-ci
+```
+
+Observed toolchain and helper versions:
+
+- `rustc 1.95.0 (59807616e 2026-04-14)`
+- `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`
+- active toolchain: `1.95.0-aarch64-apple-darwin` from `rust-toolchain.toml`
+- `cargo-audit-audit 0.22.1`
+
+Outcome:
+
+- Dependency drift: `make update` bumped direct dependency `clap_complete` from `4.6.2` to `4.6.3`, refreshed `zbus`/`zvariant` transitive dependencies in `Cargo.lock`, and deduplicated the old `winnow 0.7.x` lockfile entry. Phase 3 also removed the direct `atty 0.2` dependency after `cargo audit --deny warnings` reported `RUSTSEC-2024-0375` and `RUSTSEC-2021-0145`; Ralph now uses the standard-library `std::io::IsTerminal` APIs already required by the Rust 1.95 baseline. After the refresh, `cargo outdated --root-deps-only --depth 1` reported: `All dependencies are up to date, yay!`.
+- Security posture: `make security-audit` is the local RustSec advisory gate (`cargo audit --deny warnings`) and passed after the `atty` removal. The compiler-side Rust 1.95.0 context also includes vendored musl patches for CVE-2026-6042 and CVE-2026-40200; Ralph inherits those through the pinned toolchain rather than a crate-level dependency update.
+- Clippy: `make lint` passed with all targets/features and warnings denied.
+- Rustdoc: `make docs` passed for workspace docs with all features and no dependencies. Rust 1.95 rustdoc search now ranks unstable items lower and provides a hide-deprecated-items setting; no Ralph API changes were required, but generated documentation review should account for deprecated-item visibility settings when comparing screenshots/search results across toolchain versions.
+- Full local gate: `make agent-ci` passed after the dependency, audit-target, code, and documentation changes.
+
 ## Verification
 
 Required commands for this cutover:
 
 ```bash
 make version-check
+make security-audit
+make lint
+make docs
 make agent-ci
 ```
 
-Because `rust-toolchain.toml` is in the Tier D routing set, expect `make agent-ci` to route to `make macos-ci` on macOS unless the classifier behavior changes.
+Because `rust-toolchain.toml` is in the Tier D routing set, expect `make agent-ci` to route to `make macos-ci` on macOS unless the classifier behavior changes. `make security-audit` is intentionally separate from the default day-to-day gate so RustSec advisory database/network/tool availability does not make every local edit depend on external advisory freshness.
 
 ## Sources
 
-- Rust `1.95.0` release notes: <https://github.com/rust-lang/rust/releases/tag/1.95.0>
+- Rust `1.95.0` announcement: <https://blog.rust-lang.org/2026/04/16/Rust-1.95.0/>
+- Rust `1.95.0` detailed release notes: <https://doc.rust-lang.org/stable/releases.html#version-1950-2026-04-16>
+- Rust `1.95.0` release tag: <https://github.com/rust-lang/rust/releases/tag/1.95.0>
 - CI and Test Strategy: [ci-strategy.md](ci-strategy.md)
 - Archived March stack audit: [stack-audit-2026-03.md](stack-audit-2026-03.md)

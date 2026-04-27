@@ -51,7 +51,15 @@ That ordering is intentional: crates.io publication no longer happens before the
 
 ## Preflight
 
-`make release-verify VERSION=<x.y.z>` is the canonical preflight because it now prepares the exact local release snapshot that `make release` will publish:
+Run the dependency advisory audit before entering the release transaction:
+
+```bash
+make security-audit
+```
+
+`make security-audit` requires `cargo-audit` (`cargo install cargo-audit --locked`) and fails on RustSec advisory warnings for the committed `Cargo.lock`. Keep it separate from the release transaction so advisory database/tool availability issues are resolved before release metadata is dirtied.
+
+`make release-verify VERSION=<x.y.z>` is the canonical release preflight because it now prepares the exact local release snapshot that `make release` will publish:
 
 1. `scripts/release.sh verify <x.y.z>`
 

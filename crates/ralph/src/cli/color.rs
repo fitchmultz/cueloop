@@ -20,6 +20,7 @@
 //! - Color initialization happens early in main() before any colored output.
 
 use clap::ValueEnum;
+use std::io::IsTerminal;
 
 /// Color output control options for CLI arguments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
@@ -45,7 +46,7 @@ impl ColorArg {
                     false
                 } else {
                     // Auto-detect: use color if stdout is a tty
-                    atty::is(atty::Stream::Stdout)
+                    std::io::stdout().is_terminal()
                 }
             }
             ColorArg::Always => true,

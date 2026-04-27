@@ -19,19 +19,20 @@ Purpose: clarify supported platforms/tooling and what maintainers can realistica
 - GNU Make >= 4 required for project targets
 - Optional tools:
   - `cargo-nextest` (faster non-doc test runs)
+  - `cargo-audit` (`make security-audit` dependency advisory checks)
   - `cargo-llvm-cov` (coverage)
   - Xcode (macOS app build/test)
 
 ## Current Audited Baseline
 
-As of 2026-03-06:
+As of 2026-04-27:
 
-- Rust `1.94.0` (stable), pinned via `rust-toolchain.toml`
+- Rust `1.95.0` (stable), pinned via `rust-toolchain.toml`
 - Xcode `26.3`
 - Swift language mode `6.2`
 - macOS deployment target `15.0`
 
-Best-practice checks live in `docs/guides/stack-audit-2026-03.md`.
+Best-practice checks live in `docs/guides/stack-audit-2026-04.md`.
 
 ## Support Windows
 

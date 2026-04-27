@@ -23,6 +23,7 @@
 
 use anyhow::{Context, Result};
 use clap::Args;
+use std::io::IsTerminal;
 
 use crate::{commands::init as init_cmd, config};
 
@@ -30,7 +31,7 @@ use crate::{commands::init as init_cmd, config};
 ///
 /// Both streams must be TTYs for interactive prompting to work correctly.
 fn is_tty() -> bool {
-    atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stdout)
+    std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
 }
 
 /// Resolve interactive mode based on explicit flags and TTY detection.

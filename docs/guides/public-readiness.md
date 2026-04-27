@@ -28,10 +28,13 @@ In source-snapshot mode, the check still rejects local/runtime artifacts such as
 Before the real release mutation:
 
 ```bash
+make security-audit
 make pre-public-check
 ```
 
-This runs:
+`make security-audit` requires `cargo-audit` (`cargo install cargo-audit --locked`) and checks `Cargo.lock` against RustSec advisories with warnings denied. It is listed separately because `make pre-public-check` focuses on repository safety, links, secrets, and local ship gates rather than fetching the advisory database on every run.
+
+`make pre-public-check` runs:
 
 - required public-file checks
 - tracked runtime/build artifact checks
@@ -55,9 +58,10 @@ scripts/pre-public-check.sh --skip-ci --release-context
 ## Suggested Sequence
 
 1. `make agent-ci`
-2. `make pre-public-check`
-3. `make release-verify VERSION=<x.y.z>`
-4. `make release VERSION=<x.y.z>`
+2. `make security-audit`
+3. `make pre-public-check`
+4. `make release-verify VERSION=<x.y.z>`
+5. `make release VERSION=<x.y.z>`
 
 For validation gate definitions and macOS-specific verification behavior, use [ci-strategy.md](ci-strategy.md).
 

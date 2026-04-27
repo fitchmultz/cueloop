@@ -20,12 +20,13 @@
 
 use anyhow::Result;
 use clap::Args;
+use std::io::IsTerminal;
 
 use crate::commands::tutorial as tutorial_cmd;
 
 /// Determine if both stdin and stdout are TTYs (interactive terminal).
 fn is_tty() -> bool {
-    atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stdout)
+    std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
 }
 
 /// Resolve interactive mode based on explicit flags and TTY detection.

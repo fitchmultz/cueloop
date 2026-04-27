@@ -139,11 +139,14 @@ Behavior:
 Run only when needed (manual or scheduled in your own automation):
 
 ```bash
+make security-audit
 make macos-test-ui
 make macos-test-ui-artifacts
 make macos-test-window-shortcuts
 make coverage
 ```
+
+`make security-audit` runs `cargo audit --deny warnings` against `Cargo.lock` and requires `cargo-audit` (`cargo install cargo-audit --locked`). Use it during dependency refreshes, Rust baseline audits, and release/public-readiness preparation. It is intentionally not part of the default day-to-day `make agent-ci` tiers so advisory database/network/tool availability does not make every local edit depend on external RustSec freshness.
 
 Use `make macos-ui-retest` for interactive iteration. Use `make macos-test-ui-artifacts` when you need a preserved `.xcresult` bundle plus `summary.txt` under a timestamped artifact directory.
 

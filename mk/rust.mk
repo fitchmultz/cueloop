@@ -46,6 +46,15 @@ update:
 	@echo "  ℹ Swift/Xcode has no external package manifest here; use make macos-ci to verify the app against the current toolchain"
 	@echo "  ✓ Dependency update complete"
 
+security-audit:
+	@echo "→ Auditing Rust dependency advisories..."
+	@if ! cargo audit --version >/dev/null 2>&1; then \
+		echo "security-audit: cargo-audit is required; install with: cargo install cargo-audit --locked" >&2; \
+		exit 1; \
+	fi
+	@$(RALPH_ENV_RESET); cargo audit --deny warnings
+	@echo "  ✓ Rust dependency advisory audit passed"
+
 format:
 	@echo "→ Formatting code..."
 	@$(RALPH_ENV_RESET); cargo fmt --all

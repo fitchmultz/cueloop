@@ -38,7 +38,7 @@ use crate::config::Resolved;
 use crate::migration::MigrationContext;
 use crate::outpututil;
 use anyhow::{Context, Result};
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 
 // Re-export submodule functions for internal use
 pub(crate) use migrations::check_and_handle_migrations;
@@ -285,7 +285,7 @@ fn prompt_yes_no(message: &str, default_yes: bool) -> Result<bool> {
 
 /// Check if both stdin and stdout are TTYs (interactive terminal).
 fn is_tty() -> bool {
-    atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stdout)
+    io::stdin().is_terminal() && io::stdout().is_terminal()
 }
 
 /// Resolve startup sanity mode for a given command.
