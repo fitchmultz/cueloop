@@ -60,6 +60,52 @@ fn init_parallel_worker_repo(
     ))
 }
 
+fn init_parallel_worker_repo_with_custom_bookkeeping(
+    repo_root: &Path,
+) -> anyhow::Result<(crate::config::Resolved, PathBuf, String, String, String)> {
+    git_test::init_repo(repo_root)?;
+
+    let cache_dir = repo_root.join(".ralph/cache");
+    std::fs::create_dir_all(&cache_dir)?;
+    std::fs::create_dir_all(repo_root.join("queue"))?;
+    std::fs::create_dir_all(repo_root.join("archive"))?;
+
+    let queue_path = repo_root.join("queue/active.jsonc");
+    let done_path = repo_root.join("archive/done.jsonc");
+    queue::save_queue(
+        &queue_path,
+        &QueueFile {
+            version: 1,
+            tasks: vec![],
+        },
+    )?;
+    queue::save_queue(
+        &done_path,
+        &QueueFile {
+            version: 1,
+            tasks: vec![],
+        },
+    )?;
+    let productivity_path = cache_dir.join("productivity.json");
+    std::fs::write(&productivity_path, r#"{"stats":[]}"#)?;
+    git_test::commit_all(repo_root, "init custom queue/done/productivity")?;
+
+    let mut resolved = resolved_for_repo(repo_root);
+    resolved.queue_path = queue_path;
+    resolved.done_path = done_path;
+    let queue_before = std::fs::read_to_string(&resolved.queue_path)?;
+    let done_before = std::fs::read_to_string(&resolved.done_path)?;
+    let productivity_before = std::fs::read_to_string(&productivity_path)?;
+
+    Ok((
+        resolved,
+        productivity_path,
+        queue_before,
+        done_before,
+        productivity_before,
+    ))
+}
+
 fn configure_tracking_remote(repo_root: &Path) -> anyhow::Result<TempDir> {
     let remote = TempDir::new()?;
     git_test::git_run(remote.path(), &["init", "--bare"])?;
@@ -155,6 +201,54 @@ fn post_run_parallel_worker_restores_bookkeeping_without_signals() -> anyhow::Re
     assert!(
         !status_paths.contains(&productivity_rel),
         "productivity.json should be restored to HEAD"
+    );
+    Ok(())
+}
+
+#[test]
+fn post_run_parallel_worker_restores_custom_queue_done_bookkeeping() -> anyhow::Result<()> {
+    let temp_dir = TempDir::new()?;
+    let repo_root = temp_dir.path();
+    let (resolved, productivity_path, queue_before, done_before, productivity_before) =
+        init_parallel_worker_repo_with_custom_bookkeeping(repo_root)?;
+
+    std::fs::write(
+        &resolved.queue_path,
+        r#"{"version":1,"tasks":[{"id":"dirty-q"}]}"#,
+    )?;
+    std::fs::write(
+        &resolved.done_path,
+        r#"{"version":1,"tasks":[{"id":"dirty-d"}]}"#,
+    )?;
+    std::fs::write(&productivity_path, r#"{"stats":["changed"]}"#)?;
+
+    post_run_supervise_parallel_worker(
+        &resolved,
+        "RQ-0001",
+        GitRevertMode::Disabled,
+        GitPublishMode::Off,
+        PushPolicy::RequireUpstream,
+        None,
+        None,
+        false,
+        None,
+    )?;
+
+    assert_eq!(std::fs::read_to_string(&resolved.queue_path)?, queue_before);
+    assert_eq!(std::fs::read_to_string(&resolved.done_path)?, done_before);
+    assert_eq!(
+        std::fs::read_to_string(&productivity_path)?,
+        productivity_before
+    );
+
+    let status_paths = crate::git::status_paths(repo_root)?;
+    assert!(
+        !status_paths.contains(&"queue/active.jsonc".to_string()),
+        "custom queue path should be clean: {status_paths:?}"
+    );
+    assert!(
+        !status_paths.contains(&"archive/done.jsonc".to_string()),
+        "custom done path should be clean: {status_paths:?}"
     );
     Ok(())
 }

@@ -22,16 +22,12 @@ use anyhow::{Context, Result};
 
 use crate::{git, promptflow};
 
-const RESTORED_BOOKKEEPING_FILES: [&str; 4] = [
-    ".ralph/queue.jsonc",
-    ".ralph/done.jsonc",
+const PRODUCTIVITY_BOOKKEEPING_FILES: [&str; 2] = [
     ".ralph/cache/productivity.json",
     ".ralph/cache/productivity.jsonc",
 ];
 
-const PARALLEL_BOOKKEEPING_PATHS: [&str; 10] = [
-    ".ralph/queue.jsonc",
-    ".ralph/done.jsonc",
+const GENERATED_BOOKKEEPING_STATUS_FRAGMENTS: [&str; 8] = [
     ".ralph/cache/productivity.json",
     ".ralph/cache/productivity.jsonc",
     ".ralph/cache/plans/",
@@ -57,7 +53,7 @@ pub(super) fn restore_parallel_worker_bookkeeping_and_check_clean(
     for attempt in 0..2 {
         restore_parallel_worker_bookkeeping(resolved, task_id)?;
         let status = git::status_porcelain(&resolved.repo_root)?;
-        let bookkeeping_lines = collect_bookkeeping_status_lines(&status);
+        let bookkeeping_lines = collect_bookkeeping_status_lines(resolved, &status);
         if bookkeeping_lines.is_empty() {
             return Ok(status);
         }
@@ -75,23 +71,57 @@ pub(super) fn restore_parallel_worker_bookkeeping(
     resolved: &crate::config::Resolved,
     task_id: &str,
 ) -> Result<()> {
-    let paths = repo_paths(&resolved.repo_root, &RESTORED_BOOKKEEPING_FILES);
+    let mut paths = vec![resolved.queue_path.clone(), resolved.done_path.clone()];
+    paths.extend(repo_paths(
+        &resolved.repo_root,
+        &PRODUCTIVITY_BOOKKEEPING_FILES,
+    ));
     git::restore_tracked_paths_to_head(&resolved.repo_root, &paths)
         .context("restore queue/done/productivity to HEAD")?;
     remove_parallel_worker_generated_artifacts(&resolved.repo_root, task_id)?;
     Ok(())
 }
 
-pub(super) fn collect_bookkeeping_status_lines(status: &str) -> Vec<String> {
+pub(super) fn collect_bookkeeping_status_lines(
+    resolved: &crate::config::Resolved,
+    status: &str,
+) -> Vec<String> {
+    let path_fragments = parallel_bookkeeping_status_fragments(resolved);
     status
-        .lines()
+        .split_terminator(['\0', '\n'])
         .filter(|line| {
-            PARALLEL_BOOKKEEPING_PATHS
+            path_fragments
                 .iter()
-                .any(|path| line.contains(path))
+                .any(|path| !path.is_empty() && line.contains(path))
         })
         .map(std::string::ToString::to_string)
         .collect()
+}
+
+fn parallel_bookkeeping_status_fragments(resolved: &crate::config::Resolved) -> Vec<String> {
+    let mut fragments = Vec::new();
+    push_repo_relative_status_fragment(&mut fragments, &resolved.repo_root, &resolved.queue_path);
+    push_repo_relative_status_fragment(&mut fragments, &resolved.repo_root, &resolved.done_path);
+    fragments.extend(
+        GENERATED_BOOKKEEPING_STATUS_FRAGMENTS
+            .iter()
+            .map(std::string::ToString::to_string),
+    );
+    fragments
+}
+
+fn push_repo_relative_status_fragment(
+    fragments: &mut Vec<String>,
+    repo_root: &std::path::Path,
+    path: &std::path::Path,
+) {
+    let Ok(relative) = path.strip_prefix(repo_root) else {
+        return;
+    };
+    if relative.as_os_str().is_empty() {
+        return;
+    }
+    fragments.push(relative.to_string_lossy().replace('\\', "/"));
 }
 
 fn remove_parallel_worker_generated_artifacts(
