@@ -2,72 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0057",
-      "status": "todo",
-      "title": "Investigate and design trusted ignored-file sync for parallel workers",
-      "description": "Investigate Ralph's current parallel-worker behavior for gitignored non-`.ralph` files beyond `.env*`, decide which ignored local runtime inputs workers should receive, and design a safe explicit policy instead of leaving the concern implicit. The current implementation intentionally copies only ignored `.env` / `.env.*` basenames into worker workspaces. That is not a security concern by itself because files remain local, but repos may depend on other ignored local inputs (tool config, credentials stubs, local data fixtures, model/provider config, or generated-but-required runtime files), and parallel workers may fail or behave differently if those files are absent. Produce a concrete direction and task-ready remediation plan with tests.",
-      "priority": "high",
-      "tags": [
-        "parallel-mode",
-        "gitignored-files",
-        "configuration",
-        "developer-experience",
-        "investigation"
-      ],
-      "scope": [
-        "AGENTS.md",
-        "docs/configuration.md",
-        "docs/guides/advanced.md",
-        "docs/guides/ci-strategy.md",
-        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/orchestration/preflight.rs",
-        "crates/ralph/src/config/",
-        "schemas/config.schema.json",
-        "crates/ralph/tests/run_parallel_test.rs",
-        "ralph run loop --parallel 2",
-        "cargo test run_parallel",
-        "make agent-ci"
-      ],
-      "evidence": [
-        "Current implementation: `crates/ralph/src/commands/run/parallel/sync/gitignored.rs` filters ignored paths down to files whose basename is `.env` or starts with `.env.`; directories, caches, `.ralph/cache`, `.ralph/workspaces`, `.ralph/logs`, `.ralph/lock`, `.git`, `target`, `node_modules`, `.venv`, and similar heavy paths are excluded.",
-        "Current tests: `sync/tests/gitignored.rs` verifies `.env*` copy behavior, nested `.env*` allowance, skipped ignored directories, skipped workspace-parent paths, and skipped cache/build prefixes.",
-        "Repository guidance currently says gitignored non-`.ralph` sync remains narrow by design (`.env*` only) to avoid copying heavy build/cache directories.",
-        "User direction on 2026-04-27: do not ignore this concern; create a task, investigate it, and agree on direction. User also clarified that copying env files is not a security concern since it remains local.",
-        "Potential product gap: a repository may require additional ignored local runtime files for parallel workers to behave like the coordinator checkout, but broad automatic copying of all ignored files would risk huge workspaces, stale generated artifacts, and nondeterministic local state."
-      ],
-      "plan": [
-        "Survey likely ignored local runtime inputs in Ralph's supported workflows and adjacent agent workflows: provider config, model credentials/config, local tool config, test fixtures, generated schemas/artifacts required at runtime, and app/CLI state files.",
-        "Define a policy that preserves the current safe default (`.env*` only) while offering an explicit trusted allowlist for additional ignored files when a repo needs them.",
-        "Recommended direction to confirm: add a repo-trusted parallel ignored-file allowlist in Ralph config, with repo-relative file/glob entries only, denylisted heavy/runtime directories, no absolute paths or `..`, no default broad copy, and clear preflight diagnostics for missing allowlisted files.",
-        "Decide whether allowlist entries should support files only or narrowly support directories with size/file-count caps; default recommendation is files/globs only until a real directory use case is proven.",
-        "Define operator-visible diagnostics: show which ignored allowlisted files were copied, which configured entries were missing, and which were rejected by safety rules.",
-        "Add tests for default `.env*` behavior remaining unchanged, explicit allowlist copying an additional ignored file, rejection of absolute/escaping/heavy paths, workspaces under repo root not recursively copied, and missing-file diagnostics.",
-        "Update docs and AGENTS guidance with the agreed policy and examples."
-      ],
-      "notes": [
-        "Direction to lock in unless maintainers object: do not broaden automatic ignored-file sync beyond `.env*`; add an explicit trusted allowlist for additional local ignored files needed by parallel workers.",
-        "This task is related to RQ-0056 but should remain separate so queue/done data-integrity remediation does not become entangled with general ignored-file policy.",
-        "Keep env-file copying framed as local runtime propagation, not as a security concern. The hygiene concern is stale local workspace cleanup, not remote exposure.",
-        "Any allowlist that can execute or influence commands must respect Ralph's repo trust model; untrusted repos should not be able to expand local ignored-file propagation through project config without explicit trust.",
-        "Full-cutover directive: do not leave ignored-file sync policy as tribal knowledge. The final direction must be encoded in config schema, docs, tests, and operator diagnostics, with outdated `.env* only` wording updated to mention the explicit trusted allowlist if implemented.",
-        "Full-cutover directive: do not keep parallel/conflicting ignored-file sync mechanisms. The default `.env*` path and any explicit allowlist must flow through one canonical filter/copy implementation with shared denylist and diagnostics.",
-        "Full-cutover directive: if an allowlist is implemented, it must include validation/preflight failures for unsafe entries rather than best-effort silent skipping."
-      ],
-      "request": "Do an investigation into gitignored files beyond queue/done in parallel mode, create a task, and agree on direction instead of deferring to the implementing agent.",
-      "created_at": "2026-04-27T14:04:31Z",
-      "updated_at": "2026-04-27T14:12:35Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [
-        "RQ-0056"
-      ],
-      "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
-      }
-    },
-    {
       "id": "RQ-0058",
       "status": "todo",
       "title": "Audit and modernize `ralph init` UX, trust creation, and parallel-sync setup",
@@ -149,8 +83,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
       }
     },
     {
