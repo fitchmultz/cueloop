@@ -3,7 +3,7 @@
   "tasks": [
     {
       "id": "RQ-0056",
-      "status": "todo",
+      "status": "doing",
       "title": "Deeply investigate and fix parallel-mode queue/done sync for gitignored JSONC queues",
       "description": "Perform a thorough root-cause investigation and remediation for `ralph run loop --parallel 2` when a target repository keeps `.ralph/queue.jsonc` and `.ralph/done.jsonc` gitignored. Prior attempted fixes are not sufficient: after parallel workspace agents finish, commit, and push, the source/root repository's queue and done JSONC files can remain stale instead of reflecting completed worker bookkeeping. The outcome must be a durable, tested parallel-mode synchronization contract that updates coordinator-resolved queue/done paths for gitignored JSONC files without relying on git-tracked propagation.",
       "priority": "critical",
@@ -89,7 +89,8 @@
       ],
       "request": "add a top priority task to do a thorough deep investigation and remediation for handling of done.jsonc and queue.jsonc in parallel mode where repos have both of those files gitignored. we had made some attempted fixes to this previously but i am still seeing situations where i run `ralph run loop --parallel 2` in a repo where the done and queue jsonc files are gitignored and the source/root repo directory done and queue files do not get updated after the workspace agents finish and commit and push.",
       "created_at": "2026-04-27T14:04:31Z",
-      "updated_at": "2026-04-27T14:12:35Z",
+      "updated_at": "2026-04-27T14:40:26.722873000Z",
+      "started_at": "2026-04-27T14:40:26.722873000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [
@@ -97,8 +98,8 @@
       ],
       "custom_fields": {
         "reported_command": "ralph run loop --parallel 2",
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "severity_reason": "parallel-mode task state/data integrity loss"
+        "severity_reason": "parallel-mode task state/data integrity loss",
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
       }
     },
     {
