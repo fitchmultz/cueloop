@@ -65,13 +65,13 @@ pub(super) fn retry_scheduler_loop(
                 let timeout_receiver = crossbeam_channel::after(duration);
                 select! {
                     recv(shutdown_receiver) -> _ => {
-                        flush_pending_retries(&mut pending, &ready_sender);
+                        cancel_pending_retries(&mut pending, "shutdown");
                         break;
                     }
                     recv(retry_receiver) -> msg => match msg {
                         Ok(task) => Some(task),
                         Err(_) => {
-                            flush_pending_retries(&mut pending, &ready_sender);
+                            cancel_pending_retries(&mut pending, "retry channel disconnect");
                             break;
                         }
                     },
@@ -81,13 +81,13 @@ pub(super) fn retry_scheduler_loop(
             None => {
                 select! {
                     recv(shutdown_receiver) -> _ => {
-                        flush_pending_retries(&mut pending, &ready_sender);
+                        cancel_pending_retries(&mut pending, "shutdown");
                         break;
                     }
                     recv(retry_receiver) -> msg => match msg {
                         Ok(task) => Some(task),
                         Err(_) => {
-                            flush_pending_retries(&mut pending, &ready_sender);
+                            cancel_pending_retries(&mut pending, "retry channel disconnect");
                             break;
                         }
                     }
@@ -108,66 +108,58 @@ pub(super) fn retry_scheduler_loop(
             let Some(RetryQueueEntry(scheduled)) = pending.pop() else {
                 break;
             };
-            let Some(ready_sender) = ready_sender.upgrade() else {
-                let error = anyhow::anyhow!(
-                    "webhook dispatcher shut down before retry enqueue: ready queue unavailable"
-                );
-                diagnostics::note_delivery_failure(
-                    &scheduled.task.msg,
-                    &error,
-                    scheduled.task.attempt.saturating_add(1),
-                );
-                log::warn!("{error:#}");
-                return;
-            };
 
-            match ready_sender.send(scheduled.task.clone()) {
-                Ok(()) => diagnostics::note_retry_requeue(),
-                Err(send_err) => {
-                    let error = anyhow::anyhow!(
-                        "webhook dispatcher shut down before retry enqueue: {send_err}"
-                    );
-                    diagnostics::note_delivery_failure(
-                        &scheduled.task.msg,
-                        &error,
-                        scheduled.task.attempt.saturating_add(1),
-                    );
-                    log::warn!("{error:#}");
-                    return;
+            match enqueue_due_retry(scheduled, &ready_sender, &shutdown_receiver) {
+                RetryEnqueueOutcome::Enqueued => {}
+                RetryEnqueueOutcome::Shutdown => {
+                    cancel_pending_retries(&mut pending, "shutdown");
+                    break;
                 }
+                RetryEnqueueOutcome::ReadyQueueUnavailable => return,
             }
         }
 
         if super::types::shutdown_requested(&shutdown_receiver) {
-            flush_pending_retries(&mut pending, &ready_sender);
+            cancel_pending_retries(&mut pending, "shutdown");
             break;
         }
     }
 }
 
-fn flush_pending_retries(
-    pending: &mut BinaryHeap<RetryQueueEntry>,
-    ready_sender: &Weak<Sender<DeliveryTask>>,
-) {
-    while let Some(RetryQueueEntry(scheduled)) = pending.pop() {
-        let Some(ready_sender) = ready_sender.upgrade() else {
-            let error = anyhow::anyhow!(
-                "webhook dispatcher shut down before retry requeue drain: ready queue unavailable"
-            );
-            diagnostics::note_delivery_failure(
-                &scheduled.task.msg,
-                &error,
-                scheduled.task.attempt.saturating_add(1),
-            );
-            log::warn!("{error:#}");
-            return;
-        };
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RetryEnqueueOutcome {
+    Enqueued,
+    Shutdown,
+    ReadyQueueUnavailable,
+}
 
-        match ready_sender.send(scheduled.task.clone()) {
-            Ok(()) => diagnostics::note_retry_requeue(),
+fn enqueue_due_retry(
+    scheduled: ScheduledRetry,
+    ready_sender: &Weak<Sender<DeliveryTask>>,
+    shutdown_receiver: &Receiver<()>,
+) -> RetryEnqueueOutcome {
+    let Some(ready_sender) = ready_sender.upgrade() else {
+        let error = anyhow::anyhow!(
+            "webhook dispatcher shut down before retry enqueue: ready queue unavailable"
+        );
+        diagnostics::note_delivery_failure(
+            &scheduled.task.msg,
+            &error,
+            scheduled.task.attempt.saturating_add(1),
+        );
+        log::warn!("{error:#}");
+        return RetryEnqueueOutcome::ReadyQueueUnavailable;
+    };
+
+    select! {
+        send(ready_sender.as_ref(), scheduled.task.clone()) -> result => match result {
+            Ok(()) => {
+                diagnostics::note_retry_requeue();
+                RetryEnqueueOutcome::Enqueued
+            }
             Err(send_err) => {
                 let error = anyhow::anyhow!(
-                    "webhook dispatcher shut down before retry requeue drain: {send_err}"
+                    "webhook dispatcher shut down before retry enqueue: {send_err}"
                 );
                 diagnostics::note_delivery_failure(
                     &scheduled.task.msg,
@@ -175,16 +167,28 @@ fn flush_pending_retries(
                     scheduled.task.attempt.saturating_add(1),
                 );
                 log::warn!("{error:#}");
-                return;
+                RetryEnqueueOutcome::ReadyQueueUnavailable
             }
-        }
+        },
+        recv(shutdown_receiver) -> _ => RetryEnqueueOutcome::Shutdown,
+    }
+}
+
+fn cancel_pending_retries(pending: &mut BinaryHeap<RetryQueueEntry>, reason: &str) {
+    let cancelled = pending.len();
+    pending.clear();
+
+    if cancelled > 0 {
+        log::debug!(
+            "Webhook retry scheduler cancelled {cancelled} pending retries during {reason}"
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crossbeam_channel::unbounded;
+    use crossbeam_channel::{bounded, unbounded};
     use std::sync::Arc;
     use std::time::Duration;
 
@@ -227,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn scheduler_drains_pending_retries_when_shutdown_begins() {
+    fn scheduler_cancels_pending_retries_when_shutdown_begins() {
         let (ready_sender, ready_receiver) = unbounded::<DeliveryTask>();
         let (retry_sender, retry_receiver) = unbounded::<ScheduledRetry>();
         let (shutdown_sender, shutdown_receiver) = unbounded::<()>();
@@ -247,11 +251,42 @@ mod tests {
 
         drop(shutdown_sender);
 
-        let drained = ready_receiver
-            .recv_timeout(Duration::from_secs(1))
-            .expect("pending retry should drain immediately");
-        assert_eq!(drained.attempt, 2);
+        scheduler.join().expect("scheduler should exit cleanly");
+        assert!(
+            ready_receiver
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "pending retry must not drain immediately during shutdown"
+        );
+    }
+
+    #[test]
+    fn scheduler_send_wait_is_interrupted_by_shutdown() {
+        let (ready_sender, ready_receiver) = bounded::<DeliveryTask>(0);
+        let (retry_sender, retry_receiver) = unbounded::<ScheduledRetry>();
+        let (shutdown_sender, shutdown_receiver) = unbounded::<()>();
+        let ready_sender = Arc::new(ready_sender);
+
+        let scheduler = std::thread::spawn({
+            let ready_sender = Arc::downgrade(&ready_sender);
+            move || retry_scheduler_loop(retry_receiver, ready_sender, shutdown_receiver)
+        });
+
+        retry_sender
+            .send(ScheduledRetry {
+                ready_at: Instant::now(),
+                task: minimal_task(3),
+            })
+            .expect("schedule due retry");
+
+        drop(shutdown_sender);
 
         scheduler.join().expect("scheduler should exit cleanly");
+        assert!(
+            ready_receiver
+                .recv_timeout(Duration::from_millis(100))
+                .is_err(),
+            "due retry must not enqueue after shutdown interrupts a blocked send"
+        );
     }
 }
