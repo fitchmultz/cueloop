@@ -36,8 +36,8 @@ Overrides must preserve required placeholders (for example `{{USER_REQUEST}}` in
 Default execution uses three phases:
 1. Phase 1 (Planning): plan is cached at `.ralph/cache/plans/<TASK_ID>.md`.
    - Plan-only violations prompt for action when `git_revert_mode=ask`; you can keep+proceed (explicit override), revert changes, or continue planning with a message.
-2. Phase 2 (Implementation + CI): apply changes, run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when enabled, then stop.
-3. Phase 3 (Review + Completion): review diff, resolve any flagged risks or suspicious leads before completion, re-run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when enabled, complete task, and (when auto git commit/push is enabled) commit and push.
+2. Phase 2 (Implementation + CI): apply changes, run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when `agent.ci_gate.enabled=true`, then stop. When `agent.ci_gate.enabled=false`, only the CI command/requirement is skipped; implementation and Phase 2 handoff still continue.
+3. Phase 3 (Review + Completion): review diff, resolve any flagged risks or suspicious leads before completion, re-run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when `agent.ci_gate.enabled=true`, complete task, and (when auto git commit/push is enabled) commit and push. When `agent.ci_gate.enabled=false`, Phase 3 still runs and reports configured CI validation as skipped by configuration.
    - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, allowed dirty files include `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/` (Ralph bookkeeping/state).
 
 Phases can be set via `--phases` or `agent.phases` in config.

@@ -25,11 +25,12 @@ Follow this checklist. Items marked REQUIRED are machine-enforced or integration
    - if `RUN_MODE=normal`, do not manually edit queue/done files; use `ralph task followups apply` for approved queue growth
    - if `RUN_MODE=parallel-worker`, do not manually rewrite queue/done files unless resolving conflict markers during rebase
 6. REQUIRED: ensure `{{config.queue.file}}` remains valid queue JSON/JSONC and respects the queue contract.
-7. CI Gate:
-   - if you made no changes, you may skip the CI gate
-   - REQUIRED: if you made changes and the CI gate is enabled, run `{{config.agent.ci_gate_display}}` and fix all failures before ending your turn
-   - REQUIRED: if the CI gate is disabled, do not invent a CI requirement; state that validation was skipped by configuration
+7. CI Gate (configured validation only; never a run toggle):
+   - `agent.ci_gate.enabled=false` skips Ralph-managed CI validation only. It does NOT disable this run, task execution, queue bookkeeping, or git publish behavior.
+   - if you made no changes, you may skip the CI gate and state that validation was unnecessary because there were no changes
+   - REQUIRED: if you made changes and `agent.ci_gate.enabled` is true (`{{config.agent.ci_gate_enabled}}`), run `{{config.agent.ci_gate_display}}` and fix all failures before ending your turn
+   - REQUIRED: if you made changes and `agent.ci_gate.enabled` is false, do not invent a CI requirement; state that configured CI validation was skipped because `agent.ci_gate.enabled=false`, and report any other verification you performed
 8. Git hygiene:
    - REQUIRED: if `{{config.agent.git_publish_mode}}` is `commit_and_push`, do not run `git commit` or `git push` manually; Ralph handles publish.
-   - REQUIRED: if `RUN_MODE=parallel-worker`, leave the workspace rebased, conflict-free, committed, and CI-clean only when the CI gate is enabled; Ralph will validate bookkeeping and push.
+   - REQUIRED: if `RUN_MODE=parallel-worker`, leave the workspace rebased, conflict-free, and committed; when `agent.ci_gate.enabled` is true, also leave configured CI validation passing; when it is false, report that configured CI validation was skipped by configuration. Ralph will validate bookkeeping and push.
    - PREFERRED: report the final repo state clearly when manual follow-up is still required.

@@ -28,7 +28,8 @@ Phase 3 is a code review phase. You have two modes of operation:
 **CI Gate Rule**:
 - Use `git status` or `git diff` to check if YOU made any changes during Phase 3.
 - If you made NO changes: You MAY skip running the CI gate even if enabled.
-- If you made ANY modifications: You MUST honor the CI gate configuration (`{{config.agent.ci_gate_enabled}}`) and run `{{config.agent.ci_gate_display}}` if enabled.
+- If you made ANY modifications and `agent.ci_gate.enabled` is true (`{{config.agent.ci_gate_enabled}}`): You MUST run `{{config.agent.ci_gate_display}}` and keep it green.
+- If you made ANY modifications and `agent.ci_gate.enabled=false`: skip only the configured CI command/requirement, continue Phase 3 review/completion work, and report that configured CI validation was skipped by configuration.
 
 {{CODE_REVIEW_BODY}}
 

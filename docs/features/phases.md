@@ -160,8 +160,10 @@ make ci
 # Configurable via:
 # - CLI: (no direct flag, use config)
 # - Config: agent.ci_gate.argv
-# - Config: agent.ci_gate.enabled (set to false to disable)
+# - Config: agent.ci_gate.enabled (set to false to disable Ralph-managed CI command execution)
 ```
+
+`agent.ci_gate.enabled=false` disables Ralph-managed execution of the configured CI command only. It is not a run-disable switch: task execution, phase progression, review/completion work, queue bookkeeping, and configured publish behavior still proceed.
 
 **CI Auto-Retry Behavior**:
 - When the CI gate is enabled, Ralph automatically retries up to **2 times** on CI failure

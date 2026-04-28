@@ -25,7 +25,7 @@ Supported fields:
 - `session_timeout_hours`: session timeout in hours for crash recovery (default: `24`). Sessions older than this threshold are considered stale and require explicit user confirmation to resume. Set to a higher value if you want to allow resuming sessions after longer periods.
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
-  **Safety warning:** Disabling the CI gate skips validation before commit/push, which may allow broken code to be pushed.
+  **Safety warning:** Disabling the CI gate skips Ralph-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `cursor_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name (Cursor uses the `agent` binary).
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
@@ -109,7 +109,7 @@ Example:
 }
 ```
 
-To disable CI gating entirely (skip running any command), set:
+To disable CI gating entirely (skip Ralph-managed execution of the configured CI command), set:
 
 ```json
 {
@@ -120,6 +120,8 @@ To disable CI gating entirely (skip running any command), set:
   }
 }
 ```
+
+When `agent.ci_gate.enabled=false`, Ralph still runs all task phases; prompts should report that configured CI validation was skipped by configuration and summarize any other verification performed.
 
 To configure a longer session timeout for crash recovery (e.g., 72 hours for weekend-long tasks):
 

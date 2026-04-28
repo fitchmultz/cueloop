@@ -77,6 +77,10 @@ fn load_worker_phase3_prompt_falls_back_to_embedded_default_when_missing() -> Re
     let dir = TempDir::new()?;
     let prompt = load_worker_phase3_prompt(dir.path())?;
     assert!(prompt.contains("# CODE REVIEW MODE"));
+    assert!(prompt.contains("agent.ci_gate.enabled=false"));
+    assert!(prompt.contains("skip only the configured CI command/requirement"));
+    assert!(prompt.contains("continue Phase 3 review/completion work"));
+    assert!(prompt.contains("configured CI validation was skipped by configuration"));
     Ok(())
 }
 

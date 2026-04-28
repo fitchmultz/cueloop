@@ -229,7 +229,7 @@ Wraps the base worker for implementation (2-phase workflow):
 
 3-phase workflow variant that stops after implementation:
 - Same implementation focus as worker_phase2
-- Stops after configured Phase 2 validation is satisfied; if the CI gate is disabled, no CI pass is required
+- Stops after configured Phase 2 validation is satisfied; `agent.ci_gate.enabled=false` skips only the configured CI command/requirement (not the Phase 2 run or Phase 3 handoff)
 - Leaves dirty working tree for Phase 3 review
 
 ### Phase 3: Review (`worker_phase3.md`)
@@ -238,6 +238,7 @@ Code review and finalization phase:
 - Reviews Phase 2 changes against standards
 - Makes refinements if needed
 - Handles final completion
+- Treats `agent.ci_gate.enabled=false` as skipping only configured CI validation, not Phase 3 review/completion work
 
 **Key Placeholders:**
 - `{{CODE_REVIEW_BODY}}` - The code_review.md content
@@ -300,9 +301,9 @@ Review body injected in Phase 3:
 
 ### Checklists
 
-**completion_checklist.md**: Steps for finishing implementation
-**phase2_handoff_checklist.md**: Steps for 3-phase handoff
-**iteration_checklist.md**: Steps for refinement iterations
+**completion_checklist.md**: Steps for finishing implementation, including the explicit contract that `agent.ci_gate.enabled=false` skips only Ralph-managed CI validation and never disables run/task execution.
+**phase2_handoff_checklist.md**: Steps for 3-phase handoff; when `agent.ci_gate.enabled=false`, Phase 2 implementation and handoff still continue.
+**iteration_checklist.md**: Steps for refinement iterations; disabled CI gate configuration skips only the configured CI command/requirement, and iteration work continues.
 
 ---
 

@@ -48,6 +48,20 @@ fn render_code_review_prompt_fails_missing_task_id() -> Result<()> {
 }
 
 #[test]
+fn load_code_review_prompt_clarifies_disabled_ci_gate_is_not_review_disabled() -> Result<()> {
+    let dir = TempDir::new()?;
+    let prompt = load_code_review_prompt(dir.path())?;
+    assert!(prompt.contains(
+        "If you make ANY modifications during Phase 3 and `agent.ci_gate.enabled=false`"
+    ));
+    assert!(prompt.contains("skip only the configured CI command/requirement"));
+    assert!(prompt.contains("continue review/completion work"));
+    assert!(prompt.contains("configured CI validation was skipped by configuration"));
+    assert!(!prompt.contains("before completion if enabled"));
+    Ok(())
+}
+
+#[test]
 fn load_completion_checklist_falls_back_to_embedded_default_when_missing() -> Result<()> {
     let dir = TempDir::new()?;
     let checklist = load_completion_checklist(dir.path())?;
@@ -64,8 +78,18 @@ fn default_completion_checklist_includes_followup_proposal_flow() -> Result<()> 
     assert!(checklist.contains("ralph task followups apply --task {{TASK_ID}}"));
     assert!(checklist.contains("do not apply the proposal"));
     assert!(checklist.contains("RUN_MODE=parallel-worker"));
-    assert!(checklist.contains("if the CI gate is disabled"));
-    assert!(checklist.contains("CI-clean only when the CI gate is enabled"));
+    assert!(checklist.contains("CI Gate (configured validation only; never a run toggle)"));
+    assert!(
+        checklist.contains("`agent.ci_gate.enabled=false` skips Ralph-managed CI validation only")
+    );
+    assert!(checklist.contains("It does NOT disable this run"));
+    assert!(checklist.contains("task execution, queue bookkeeping, or git publish behavior"));
+    assert!(
+        checklist
+            .contains("configured CI validation was skipped because `agent.ci_gate.enabled=false`")
+    );
+    assert!(!checklist.contains("if the CI gate is disabled"));
+    assert!(!checklist.contains("CI-clean only when the CI gate is enabled"));
     Ok(())
 }
 
@@ -74,6 +98,10 @@ fn load_iteration_checklist_falls_back_to_embedded_default_when_missing() -> Res
     let dir = TempDir::new()?;
     let checklist = load_iteration_checklist(dir.path())?;
     assert!(checklist.contains("ITERATION CHECKLIST"));
+    assert!(checklist.contains("agent.ci_gate.enabled=false"));
+    assert!(checklist.contains("skip only the configured CI command/requirement"));
+    assert!(checklist.contains("continue the iteration"));
+    assert!(checklist.contains("configured CI validation was skipped by configuration"));
     Ok(())
 }
 
@@ -85,6 +113,10 @@ fn load_phase2_handoff_checklist_falls_back_to_embedded_default_when_missing() -
     assert!(!checklist.contains("follow-ups Phase 3 must close"));
     assert!(!checklist.contains("stop after CI passes"));
     assert!(checklist.contains("configured Phase 2 validation"));
+    assert!(checklist.contains("agent.ci_gate.enabled=false"));
+    assert!(checklist.contains("only the configured CI command is skipped; Phase 2 implementation and handoff still continue"));
+    assert!(checklist.contains("configured CI validation was skipped by configuration"));
+    assert!(!checklist.contains("CI gate is disabled or no changes were made"));
     assert!(checklist.contains("If you are truly blocked"));
     Ok(())
 }
