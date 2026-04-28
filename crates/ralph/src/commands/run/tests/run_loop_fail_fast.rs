@@ -57,6 +57,12 @@ fn resolved_with_missing_runner(repo_root: std::path::PathBuf) -> crate::config:
             agent: AgentConfig {
                 runner: Some(Runner::Opencode),
                 model: Some(crate::contracts::Model::Gpt53),
+                opencode_bin: Some("__ralph_missing_runner_for_fail_fast_test__".to_string()),
+                git_revert_mode: Some(crate::contracts::GitRevertMode::Disabled),
+                runner_retry: crate::contracts::RunnerRetryConfig {
+                    max_attempts: Some(1),
+                    ..crate::contracts::RunnerRetryConfig::default()
+                },
                 notification: crate::contracts::NotificationConfig {
                     enabled: Some(false),
                     ..crate::contracts::NotificationConfig::default()
@@ -131,6 +137,7 @@ fn sequential_run_loop_aborts_after_single_task_failure() -> anyhow::Result<()> 
     assert!(
         err_text.contains("Plan cache not found")
             || err_text.contains("runner executable not found")
+            || err_text.contains("runner binary not found")
             || err_text.contains("No such file or directory"),
         "expected deterministic task failure, got: {err_text}"
     );

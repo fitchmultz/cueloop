@@ -114,11 +114,29 @@ test:
 	exit_code=0; \
 	if cargo nextest --version >/dev/null 2>&1; then \
 		echo "  → Using cargo-nextest for non-doc tests"; \
-		if cargo nextest run --workspace --all-targets --locked $(NEXTEST_JOBS_FLAG) -- --include-ignored >"$$unit_log" 2>&1; then \
+		echo "  → Running doc tests concurrently with nextest"; \
+		cargo nextest run --workspace --all-targets --locked $(NEXTEST_JOBS_FLAG) -- --include-ignored >"$$unit_log" 2>&1 & \
+		unit_pid="$$!"; \
+		cargo test --workspace --doc --locked $(CARGO_JOBS_FLAG) -- --include-ignored $(CARGO_TEST_THREADS_FLAG) >"$$doc_log" 2>&1 & \
+		doc_pid="$$!"; \
+		set +e; \
+		wait "$$unit_pid"; \
+		unit_status="$$?"; \
+		wait "$$doc_pid"; \
+		doc_status="$$?"; \
+		set -e; \
+		if [ "$$unit_status" -eq 0 ]; then \
 			grep -E "^(test result:|running|     Running|Summary|PASS|FAIL)" "$$unit_log" | tail -5 || true; \
 		else \
 			unit_log_content="$$(cat "$$unit_log" 2>/dev/null || true)"; \
 			echo "  ✗ Workspace tests failed!"; echo ""; echo "=== Full test output ==="; echo "$$unit_log_content"; \
+			exit_code=1; \
+		fi; \
+		if [ "$$doc_status" -eq 0 ]; then \
+			grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
+		else \
+			doc_log_content="$$(cat "$$doc_log" 2>/dev/null || true)"; \
+			echo "  ✗ Doc tests failed!"; echo ""; echo "=== Full test output ==="; echo "$$doc_log_content"; \
 			exit_code=1; \
 		fi; \
 	else \
@@ -131,14 +149,14 @@ test:
 			echo "  ✗ Workspace tests failed!"; echo ""; echo "=== Full test output ==="; echo "$$unit_log_content"; \
 			exit_code=1; \
 		fi; \
-	fi; \
-	if [ "$$exit_code" -eq 0 ]; then \
-		if cargo test --workspace --doc --locked $(CARGO_JOBS_FLAG) -- --include-ignored $(CARGO_TEST_THREADS_FLAG) >"$$doc_log" 2>&1; then \
-			grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
-		else \
-			doc_log_content="$$(cat "$$doc_log" 2>/dev/null || true)"; \
-			echo "  ✗ Doc tests failed!"; echo ""; echo "=== Full test output ==="; echo "$$doc_log_content"; \
-			exit_code=1; \
+		if [ "$$exit_code" -eq 0 ]; then \
+			if cargo test --workspace --doc --locked $(CARGO_JOBS_FLAG) -- --include-ignored $(CARGO_TEST_THREADS_FLAG) >"$$doc_log" 2>&1; then \
+				grep -E "^(test result:|running|     Running)" "$$doc_log" || true; \
+			else \
+				doc_log_content="$$(cat "$$doc_log" 2>/dev/null || true)"; \
+				echo "  ✗ Doc tests failed!"; echo ""; echo "=== Full test output ==="; echo "$$doc_log_content"; \
+				exit_code=1; \
+			fi; \
 		fi; \
 	fi; \
 	if [ "$$exit_code" -eq 0 ]; then \

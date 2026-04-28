@@ -140,19 +140,46 @@ fn failure_store_retention_is_bounded_to_200_records() {
         config: ResolvedWebhookConfig::from_config(&webhook_test_config()),
     };
 
-    for _ in 0..205 {
-        crate::webhook::diagnostics::persist_failed_delivery_for_tests(
-            repo_root.path(),
-            &msg,
-            &anyhow::anyhow!("simulated failure"),
-            1,
-        )
-        .expect("persist failed delivery");
-    }
+    let seeded_records = (0..200)
+        .map(|index| {
+            sample_failure_record(
+                &format!("wf-seeded-{index:03}"),
+                "task_failed",
+                Some("RQ-0814"),
+                0,
+            )
+        })
+        .collect::<Vec<_>>();
+    crate::webhook::diagnostics::write_failure_records_for_tests(repo_root.path(), &seeded_records)
+        .expect("seed full failure store");
+
+    crate::webhook::diagnostics::persist_failed_delivery_for_tests(
+        repo_root.path(),
+        &msg,
+        &anyhow::anyhow!("simulated failure"),
+        1,
+    )
+    .expect("persist failed delivery");
 
     let records = crate::webhook::diagnostics::load_failure_records_for_tests(repo_root.path())
         .expect("load failure records");
     assert_eq!(records.len(), 200);
+    assert!(
+        !records.iter().any(|record| record.id == "wf-seeded-000"),
+        "oldest seeded record should be pruned after overflow"
+    );
+    assert!(
+        records.iter().any(|record| record.id == "wf-seeded-001"),
+        "retention should preserve non-overflowed seeded records"
+    );
+    assert_eq!(
+        records
+            .iter()
+            .filter(|record| record.id.starts_with("wf-"))
+            .count(),
+        200,
+        "store should contain only bounded failure records"
+    );
 }
 
 #[test]

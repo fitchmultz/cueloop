@@ -82,6 +82,7 @@ fn timeout_applies_git_revert_mode_and_saves_safeguard_dump_when_stdout_is_avail
 
     let mut invocation = base_invocation(dir.path());
     invocation.settings.timeout = Some(Duration::from_millis(10));
+    invocation.retry.policy.max_attempts = 1;
     invocation.failure.revert_on_error = true;
     invocation.failure.git_revert_mode = GitRevertMode::Enabled;
 
