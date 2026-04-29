@@ -1,46 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": "RQ-0073",
-      "status": "todo",
-      "title": "Align Mac RetryConfiguration semantics with actual attempts",
-      "description": "RetryConfiguration is named and documented as maxRetries, but RetryHelper interprets it as total attempts. This can lead maintainers to believe users get more self-healing attempts than they actually do. Goal: make the type/API documentation and tests unambiguous.",
-      "priority": "low",
-      "tags": [
-        "scan",
-        "macos",
-        "typing",
-        "retry"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/RetryHelper.swift",
-        "apps/RalphMac/RalphCoreTests/RetryHelperTests.swift",
-        "apps/RalphMac/RalphCoreTests/RetryIntegrationTests.swift",
-        "make macos-test-contracts"
-      ],
-      "evidence": [
-        "apps/RalphMac/RalphCore/RetryHelper.swift:26-41 defines public let maxRetries and comments 'Default configuration: 3 retries'.",
-        "apps/RalphMac/RalphCore/RetryHelper.swift:151-172 loops for attempt in 1...configuration.maxRetries and reports maxAttempts=configuration.maxRetries, so the value is total attempts, not retries after the first failure.",
-        "apps/RalphMac/RalphCoreTests/RetryHelperTests.swift:60-80 uses maxRetries: 3 and succeeds on the third total attempt, confirming current behavior.",
-        "Command run: make agent-ci -> passed docs-only gate; no baseline CI blocker reproduced."
-      ],
-      "plan": [
-        "Choose one canonical semantic: rename/document the property as maxAttempts, or change implementation to perform initial attempt plus maxRetries retry attempts.",
-        "Update comments, call sites, and tests so progress labels and attempt counts match the chosen semantic.",
-        "If API compatibility requires retaining maxRetries, add an explicit deprecation/comment shim with a cleanup path.",
-        "Verify by running RetryHelperTests/RetryIntegrationTests or make macos-test-contracts, then make agent-ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-04-29T03:24:54Z",
-      "updated_at": "2026-04-29T03:24:54Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    }
-  ]
+  "tasks": []
 }

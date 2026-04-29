@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "task_kind": "queue_shaping",
+        "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "runner_used": "codex"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -760,9 +760,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex"
       }
     },
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -956,8 +956,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "runner_used": "codex",
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "runner_used": "pi",
+        "reported_command": "ralph run loop --parallel 2",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
+        "runner_used": "pi",
         "severity_reason": "parallel-mode task state/data integrity loss",
-        "model_used": "openai-codex/gpt-5.5",
-        "reported_command": "ralph run loop --parallel 2"
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
       }
     },
     {
@@ -2945,8 +2945,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -3004,8 +3004,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi"
       }
     },
     {
@@ -3063,9 +3063,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3122,9 +3122,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3249,8 +3249,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general"
       }
     },
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3449,8 +3449,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi"
       }
     },
@@ -3512,9 +3512,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3702,8 +3702,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi",
         "scan_agent": "scan-general"
       }
     },
@@ -3773,6 +3773,68 @@
         "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
         "runner_used": "pi"
+      }
+    },
+    {
+      "id": "RQ-0073",
+      "status": "done",
+      "title": "Align Mac RetryConfiguration semantics with actual attempts",
+      "description": "RetryConfiguration is named and documented as maxRetries, but RetryHelper interprets it as total attempts. This can lead maintainers to believe users get more self-healing attempts than they actually do. Goal: make the type/API documentation and tests unambiguous.",
+      "priority": "low",
+      "tags": [
+        "scan",
+        "macos",
+        "typing",
+        "retry"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/RetryHelper.swift",
+        "apps/RalphMac/RalphCore/RalphCLIClient+Retry.swift",
+        "apps/RalphMac/RalphCore/RalphCLIHealthChecker.swift",
+        "apps/RalphMac/RalphCore/Workspace.swift",
+        "apps/RalphMac/RalphCoreTests/RetryHelperTests.swift",
+        "apps/RalphMac/RalphCoreTests/RetryIntegrationTests.swift",
+        "apps/RalphMac/RalphCoreTests/CLIHealthCheckerTests.swift",
+        "related Swift call sites found by rg \"RetryConfiguration\\(|maxRetries|RetryHelperError.maxRetriesExceeded\" under apps/RalphMac",
+        "make macos-test-contracts",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "apps/RalphMac/RalphCore/RetryHelper.swift:27-52 names the configuration field and initializer parameter maxRetries, while preset comments say \"3 retries\", \"5 retries\", and \"1 retry\".",
+        "apps/RalphMac/RalphCore/RetryHelper.swift:151-172 executes for attempt in 1...configuration.maxRetries, guards attempt < configuration.maxRetries before sleeping, and reports maxAttempts=configuration.maxRetries; the stored value is total attempts, not retries after the first failure.",
+        "apps/RalphMac/RalphCore/RetryHelper.swift:196 returns .failure(error, attempts: configuration.maxRetries), reinforcing that the value is an attempt count.",
+        "apps/RalphMac/RalphCore/Workspace.swift:478 passes retryConfiguration.maxRetries into user-facing terminal retry copy, and RetryIntegrationTests assert messages such as \"after 2 attempts\".",
+        "apps/RalphMac/RalphCore/RalphCLIHealthChecker.swift:393-403 normalizes maxRetries with max(1, maxRetries), so the current health-check meaning is also total attempts.",
+        "apps/RalphMac/RalphCoreTests/RetryHelperTests.swift:60-80 uses maxRetries: 3 and succeeds on the third total attempt, confirming implementation behavior.",
+        "rg under apps/RalphMac found additional maxRetries constructor/property use in RetryIntegrationTests and CLIHealthCheckerTests; Phase 2 should update all Swift call sites, not only the original three files."
+      ],
+      "plan": [
+        "Adopt the existing behavior as canonical: RetryConfiguration should expose maxAttempts, meaning the total number of operation invocations including the initial try. Do not change runtime attempt counts.",
+        "Rename RetryConfiguration.maxRetries and its initializer parameter to maxAttempts, update presets/comments to say attempts, and update RetryHelper loop/progress/failure reporting to use maxAttempts.",
+        "Because backwards compatibility is not requested for this internal app task, plan a direct cutover rather than keeping a maxRetries shim. If Phase 2 finds an external public API constraint, add a deprecated compatibility initializer/property only with a clear cleanup note.",
+        "Rename misleading tests and assertions from maxRetries language to maxAttempts language, and add/keep explicit regression coverage that maxAttempts: 3 means exactly three total invocations and two progress callbacks/delays.",
+        "Update all Swift call sites found under apps/RalphMac, including RalphCLIHealthChecker normalization, Workspace terminal-attempt messaging, RetryIntegrationTests, CLIHealthCheckerTests, and any other maxRetries references discovered during Phase 2.",
+        "Run focused macOS contract tests for RetryHelper/RetryIntegration/CLIHealthChecker where available, then run make macos-test-contracts and make agent-ci before reporting completion."
+      ],
+      "notes": [
+        "Planning chose rename/documentation over behavior change because current tests and user-facing messages already treat the value as total attempts; changing to initial attempt plus retries would silently increase delays/work across app retry paths.",
+        "The symbol is public in RalphCore, but the task does not require source compatibility. Prefer one clear API unless Phase 2 finds non-test consumers that cannot be changed.",
+        "Phase 3 reviewed the Phase 2 diff and accepted the direct maxAttempts cutover for RetryConfiguration semantics.",
+        "Verified no stale maxRetries/maxRetriesExceeded Swift references remain under apps/RalphMac; only historical Ralph queue/done text still mentions the old name.",
+        "Validation passed: git diff --check and make macos-test-contracts."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-29T03:24:54Z",
+      "updated_at": "2026-04-29T08:16:12.126352000Z",
+      "completed_at": "2026-04-29T08:16:12.126352000Z",
+      "started_at": "2026-04-29T08:02:51.873466000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general"
       }
     }
   ]

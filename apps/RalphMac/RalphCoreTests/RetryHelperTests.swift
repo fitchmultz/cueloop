@@ -6,7 +6,7 @@
 
  Responsibilities:
  - Validate RetryHelper retry logic, backoff calculation, and error classification.
- - Cover success on first attempt, success after retries, and max retries exceeded.
+ - Cover success on first attempt, success after transient failures, and max attempts exceeded.
 
  Does not handle:
  - Integration with actual CLI operations (see RetryIntegrationTests).
@@ -56,8 +56,8 @@ final class RetryHelperTests: RalphCoreTestCase {
         XCTAssertEqual(result, "success")
     }
     
-    func test_successAfterRetries() async throws {
-        let config = RetryConfiguration(maxRetries: 3, baseDelay: 0.01, jitterRange: 0...0)
+    func test_maxAttemptsCountsInitialAttempt() async throws {
+        let config = RetryConfiguration(maxAttempts: 3, baseDelay: 0.01, jitterRange: 0...0)
         let helper = RetryHelper(configuration: config)
         
         // Use an actor to safely track attempts
@@ -83,8 +83,8 @@ final class RetryHelperTests: RalphCoreTestCase {
         XCTAssertEqual(finalCount, 3)
     }
     
-    func test_maxRetriesExceeded_throwsError() async {
-        let config = RetryConfiguration(maxRetries: 2, baseDelay: 0.01, jitterRange: 0...0)
+    func test_maxAttemptsExceeded_throwsError() async {
+        let config = RetryConfiguration(maxAttempts: 2, baseDelay: 0.01, jitterRange: 0...0)
         let helper = RetryHelper(configuration: config)
         
         do {
@@ -118,7 +118,7 @@ final class RetryHelperTests: RalphCoreTestCase {
     // MARK: - Progress Callback Tests
     
     func test_progressCallbackCalledOnRetry() async throws {
-        let config = RetryConfiguration(maxRetries: 3, baseDelay: 0.01, jitterRange: 0...0)
+        let config = RetryConfiguration(maxAttempts: 3, baseDelay: 0.01, jitterRange: 0...0)
         let helper = RetryHelper(configuration: config)
         
         actor ProgressTracker {
@@ -152,7 +152,7 @@ final class RetryHelperTests: RalphCoreTestCase {
         )
         
         let calls = await tracker.calls
-        XCTAssertEqual(calls.count, 2) // Called for attempts 1 and 2
+        XCTAssertEqual(calls.count, 2) // 3 total attempts means progress before attempts 2 and 3.
         XCTAssertEqual(calls[0].attempt, 1)
         XCTAssertEqual(calls[0].maxAttempts, 3)
         XCTAssertEqual(calls[1].attempt, 2)
@@ -421,7 +421,7 @@ final class RetryHelperTests: RalphCoreTestCase {
     
     func test_defaultConfiguration() {
         let config = RetryConfiguration.default
-        XCTAssertEqual(config.maxRetries, 3)
+        XCTAssertEqual(config.maxAttempts, 3)
         XCTAssertEqual(config.baseDelay, 0.1)
         XCTAssertEqual(config.maxDelay, 1.6)
         XCTAssertEqual(config.jitterRange, 0.01...0.03)
@@ -429,12 +429,12 @@ final class RetryHelperTests: RalphCoreTestCase {
     
     func test_aggressiveConfiguration() {
         let config = RetryConfiguration.aggressive
-        XCTAssertEqual(config.maxRetries, 5)
+        XCTAssertEqual(config.maxAttempts, 5)
     }
     
     func test_minimalConfiguration() {
         let config = RetryConfiguration.minimal
-        XCTAssertEqual(config.maxRetries, 1)
+        XCTAssertEqual(config.maxAttempts, 1)
     }
     
     // MARK: - RetryResult Tests
@@ -455,7 +455,7 @@ final class RetryHelperTests: RalphCoreTestCase {
     }
     
     func test_executeWithResult_returnsFailure() async {
-        let config = RetryConfiguration(maxRetries: 2, baseDelay: 0.01, jitterRange: 0...0)
+        let config = RetryConfiguration(maxAttempts: 2, baseDelay: 0.01, jitterRange: 0...0)
         let helper = RetryHelper(configuration: config)
         
         struct TestError: Error {}
@@ -475,7 +475,7 @@ final class RetryHelperTests: RalphCoreTestCase {
     // MARK: - Delay Calculation Tests
     
     func test_delayCalculation_withBackoff() async throws {
-        let config = RetryConfiguration(maxRetries: 4, baseDelay: 0.1, maxDelay: 1.0, jitterRange: 0...0)
+        let config = RetryConfiguration(maxAttempts: 4, baseDelay: 0.1, maxDelay: 1.0, jitterRange: 0...0)
         let helper = RetryHelper(configuration: config)
         
         actor DelayTracker {
@@ -496,7 +496,7 @@ final class RetryHelperTests: RalphCoreTestCase {
         )
         
         let delays = await tracker.delays
-        // Should have 3 delays for 4 retries (no delay after last attempt)
+        // Should have 3 delays for 4 total attempts (no delay after last attempt)
         XCTAssertEqual(delays.count, 3)
         // First delay should be ~0.1s (base)
         XCTAssertEqual(delays[0], 0.1, accuracy: 0.01)
@@ -507,7 +507,7 @@ final class RetryHelperTests: RalphCoreTestCase {
     }
     
     func test_delayCalculation_respectsMaxDelay() async throws {
-        let config = RetryConfiguration(maxRetries: 5, baseDelay: 0.1, maxDelay: 0.3, jitterRange: 0...0)
+        let config = RetryConfiguration(maxAttempts: 5, baseDelay: 0.1, maxDelay: 0.3, jitterRange: 0...0)
         let helper = RetryHelper(configuration: config)
         
         actor DelayTracker {

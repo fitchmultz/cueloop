@@ -63,7 +63,7 @@ final class RetryIntegrationTests: RalphCoreTestCase {
         let client = try RalphCLIClient(executableURL: scriptURL)
         let result = try await client.runAndCollectWithRetry(
             arguments: ["queue", "list"],
-            retryConfiguration: RetryConfiguration(maxRetries: 3, baseDelay: 0.01, jitterRange: 0...0)
+            retryConfiguration: RetryConfiguration(maxAttempts: 3, baseDelay: 0.01, jitterRange: 0...0)
         )
         
         XCTAssertEqual(result.status.code, 0)
@@ -84,7 +84,7 @@ final class RetryIntegrationTests: RalphCoreTestCase {
         do {
             _ = try await client.runAndCollectWithRetry(
                 arguments: ["queue", "list"],
-                retryConfiguration: RetryConfiguration(maxRetries: 3, baseDelay: 0.01, jitterRange: 0...0)
+                retryConfiguration: RetryConfiguration(maxAttempts: 3, baseDelay: 0.01, jitterRange: 0...0)
             )
             XCTFail("Expected error to be thrown")
         } catch {
@@ -126,7 +126,7 @@ final class RetryIntegrationTests: RalphCoreTestCase {
         
         _ = try await client.runAndCollectWithRetry(
             arguments: ["queue", "list"],
-            retryConfiguration: RetryConfiguration(maxRetries: 3, baseDelay: 0.01, jitterRange: 0...0),
+            retryConfiguration: RetryConfiguration(maxAttempts: 3, baseDelay: 0.01, jitterRange: 0...0),
             onRetry: { attempt, maxAttempts, delay in
                 await tracker.increment()
                 XCTAssertGreaterThanOrEqual(attempt, 1)
@@ -169,7 +169,7 @@ final class RetryIntegrationTests: RalphCoreTestCase {
         let client = try RalphCLIClient(executableURL: scriptURL)
         let result = try await client.runAndCollectWithRetry(
             arguments: ["queue", "list"],
-            retryConfiguration: RetryConfiguration(maxRetries: 3, baseDelay: 0.01, jitterRange: 0...0)
+            retryConfiguration: RetryConfiguration(maxAttempts: 3, baseDelay: 0.01, jitterRange: 0...0)
         )
 
         XCTAssertEqual(result.status.code, 0)
@@ -180,14 +180,14 @@ final class RetryIntegrationTests: RalphCoreTestCase {
     func test_retryConfiguration_presets() {
         // Verify all preset configurations are valid
         let defaultConfig = RetryConfiguration.default
-        XCTAssertEqual(defaultConfig.maxRetries, 3)
+        XCTAssertEqual(defaultConfig.maxAttempts, 3)
         XCTAssertEqual(defaultConfig.baseDelay, 0.1)
         
         let minimalConfig = RetryConfiguration.minimal
-        XCTAssertEqual(minimalConfig.maxRetries, 1)
+        XCTAssertEqual(minimalConfig.maxAttempts, 1)
         
         let aggressiveConfig = RetryConfiguration.aggressive
-        XCTAssertEqual(aggressiveConfig.maxRetries, 5)
+        XCTAssertEqual(aggressiveConfig.maxAttempts, 5)
     }
     
     func test_workspaceRetryConfiguration_appliedCorrectly() async {
@@ -196,15 +196,15 @@ final class RetryIntegrationTests: RalphCoreTestCase {
         
         // Verify loadTasks uses default configuration
         let defaultConfig = RetryConfiguration.default
-        XCTAssertEqual(defaultConfig.maxRetries, 3)
+        XCTAssertEqual(defaultConfig.maxAttempts, 3)
         
         // Verify loadCLISpec uses minimal configuration
         let minimalConfig = RetryConfiguration.minimal
-        XCTAssertEqual(minimalConfig.maxRetries, 1)
+        XCTAssertEqual(minimalConfig.maxAttempts, 1)
         
         // Analytics loaders use minimal configuration
         let analyticsConfig = RetryConfiguration.minimal
-        XCTAssertEqual(analyticsConfig.maxRetries, 1)
+        XCTAssertEqual(analyticsConfig.maxAttempts, 1)
     }
     
     func test_collectedOutput_toError_usesCanonicalRetryHelperClassification() {
@@ -425,11 +425,11 @@ final class RetryIntegrationTests: RalphCoreTestCase {
     }
 
     private var transientRetryConfiguration: RetryConfiguration {
-        RetryConfiguration(maxRetries: 2, baseDelay: 0.2, maxDelay: 0.2, jitterRange: 0...0)
+        RetryConfiguration(maxAttempts: 2, baseDelay: 0.2, maxDelay: 0.2, jitterRange: 0...0)
     }
 
     private var terminalRetryConfiguration: RetryConfiguration {
-        RetryConfiguration(maxRetries: 2, baseDelay: 0.01, maxDelay: 0.01, jitterRange: 0...0)
+        RetryConfiguration(maxAttempts: 2, baseDelay: 0.01, maxDelay: 0.01, jitterRange: 0...0)
     }
 
     private struct RepositoryRetryFixture {

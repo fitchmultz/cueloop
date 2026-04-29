@@ -23,33 +23,34 @@
 
 public import Foundation
 
-/// Configuration for retry behavior
+/// Configuration for retry behavior.
+/// `maxAttempts` is the total operation invocation count, including the initial attempt.
 public struct RetryConfiguration: Sendable {
-    public let maxRetries: Int
+    public let maxAttempts: Int
     public let baseDelay: TimeInterval
     public let maxDelay: TimeInterval
     public let jitterRange: ClosedRange<TimeInterval>
     
     public init(
-        maxRetries: Int = 3,
+        maxAttempts: Int = 3,
         baseDelay: TimeInterval = 0.1,
         maxDelay: TimeInterval = 1.6,
         jitterRange: ClosedRange<TimeInterval> = 0.01...0.03
     ) {
-        self.maxRetries = maxRetries
+        self.maxAttempts = maxAttempts
         self.baseDelay = baseDelay
         self.maxDelay = maxDelay
         self.jitterRange = jitterRange
     }
     
-    /// Default configuration: 3 retries, 100ms base, 1600ms max, 10-30ms jitter
+    /// Default configuration: 3 total attempts, 100ms base, 1600ms max, 10-30ms jitter.
     public static let `default` = RetryConfiguration()
     
-    /// Aggressive configuration for critical operations: 5 retries
-    public static let aggressive = RetryConfiguration(maxRetries: 5)
+    /// Aggressive configuration for critical operations: 5 total attempts.
+    public static let aggressive = RetryConfiguration(maxAttempts: 5)
     
-    /// Minimal configuration for fast operations: 1 retry
-    public static let minimal = RetryConfiguration(maxRetries: 1)
+    /// Minimal configuration for fast operations: 1 total attempt.
+    public static let minimal = RetryConfiguration(maxAttempts: 1)
 }
 
 /// Errors that can trigger a retry
@@ -148,7 +149,7 @@ public final class RetryHelper: Sendable {
         let effectiveShouldRetry = shouldRetry ?? Self.defaultShouldRetry
         var lastError: (any Error)?
         
-        for attempt in 1...configuration.maxRetries {
+        for attempt in 1...configuration.maxAttempts {
             do {
                 let result = try await operation()
                 return result
@@ -161,7 +162,7 @@ public final class RetryHelper: Sendable {
                 }
                 
                 // Don't delay after the last attempt
-                guard attempt < configuration.maxRetries else {
+                guard attempt < configuration.maxAttempts else {
                     break
                 }
                 
@@ -169,14 +170,14 @@ public final class RetryHelper: Sendable {
                 let delay = calculateDelay(attempt: attempt)
                 
                 // Report progress
-                await onProgress?(attempt, configuration.maxRetries, delay)
+                await onProgress?(attempt, configuration.maxAttempts, delay)
                 
                 // Wait before retrying
                 try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
         }
         
-        throw lastError ?? RetryHelperError.maxRetriesExceeded
+        throw lastError ?? RetryHelperError.maxAttemptsExceeded
     }
     
     /// Execute an operation returning a RetryResult (non-throwing variant)
@@ -193,7 +194,7 @@ public final class RetryHelper: Sendable {
             )
             return .success(result)
         } catch {
-            return .failure(error, attempts: configuration.maxRetries)
+            return .failure(error, attempts: configuration.maxAttempts)
         }
     }
     
@@ -244,12 +245,12 @@ public final class RetryHelper: Sendable {
 }
 
 public enum RetryHelperError: Error, LocalizedError {
-    case maxRetriesExceeded
+    case maxAttemptsExceeded
     
     public var errorDescription: String? {
         switch self {
-        case .maxRetriesExceeded:
-            return "Operation failed after maximum retry attempts"
+        case .maxAttemptsExceeded:
+            return "Operation failed after maximum attempts"
         }
     }
 }

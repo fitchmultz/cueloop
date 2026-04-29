@@ -96,7 +96,7 @@ public actor CLIHealthChecker {
 
     public static let defaultTimeout: TimeInterval = 30
     public static let defaultHealthRetryConfiguration = RetryConfiguration(
-        maxRetries: 3,
+        maxAttempts: 3,
         baseDelay: 0.2,
         maxDelay: 1.0,
         jitterRange: 0.02...0.05
@@ -392,12 +392,12 @@ private enum CLIHealthProbeError: Error, Sendable {
 
 private extension RetryConfiguration {
     var normalizedHealthAttemptCount: Int {
-        max(1, maxRetries)
+        max(1, maxAttempts)
     }
 
     func normalizedForHealthChecks() -> RetryConfiguration {
         RetryConfiguration(
-            maxRetries: normalizedHealthAttemptCount,
+            maxAttempts: normalizedHealthAttemptCount,
             baseDelay: baseDelay,
             maxDelay: maxDelay,
             jitterRange: jitterRange

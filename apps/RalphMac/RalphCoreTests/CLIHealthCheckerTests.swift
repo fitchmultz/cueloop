@@ -155,7 +155,7 @@ final class CLIHealthCheckerTests: RalphCoreTestCase {
             timeout: 0.2,
             executableURL: URL(fileURLWithPath: "/definitely/not/a/real/ralph-binary"),
             retryConfiguration: RetryConfiguration(
-                maxRetries: 3,
+                maxAttempts: 3,
                 baseDelay: 0.01,
                 maxDelay: 0.01,
                 jitterRange: 0...0
@@ -200,7 +200,7 @@ final class CLIHealthCheckerTests: RalphCoreTestCase {
             timeout: 1,
             executableURL: scriptURL,
             retryConfiguration: RetryConfiguration(
-                maxRetries: 2,
+                maxAttempts: 2,
                 baseDelay: 0.01,
                 maxDelay: 0.01,
                 jitterRange: 0...0
@@ -238,7 +238,7 @@ final class CLIHealthCheckerTests: RalphCoreTestCase {
             timeout: 1,
             executableURL: scriptURL,
             retryConfiguration: RetryConfiguration(
-                maxRetries: 2,
+                maxAttempts: 2,
                 baseDelay: 0.01,
                 maxDelay: 0.01,
                 jitterRange: 0...0
@@ -282,7 +282,7 @@ final class CLIHealthCheckerTests: RalphCoreTestCase {
             timeout: 2,
             executableURL: scriptURL,
             retryConfiguration: RetryConfiguration(
-                maxRetries: 2,
+                maxAttempts: 2,
                 baseDelay: 0.01,
                 maxDelay: 0.01,
                 jitterRange: 0...0
@@ -319,7 +319,7 @@ final class CLIHealthCheckerTests: RalphCoreTestCase {
                 timeout: 3,
                 executableURL: scriptURL,
                 retryConfiguration: RetryConfiguration(
-                    maxRetries: 1,
+                    maxAttempts: 1,
                     baseDelay: 0.01,
                     maxDelay: 0.01,
                     jitterRange: 0...0

@@ -475,7 +475,7 @@ extension Workspace {
             let recoveryError = Self.repositoryRecoveryError(
                 classifiedError,
                 afterTerminalError: error,
-                attempts: retryConfiguration.maxRetries
+                attempts: retryConfiguration.maxAttempts
             )
             diagnosticsState.lastRecoveryError = recoveryError
             diagnosticsState.showErrorRecovery = true
