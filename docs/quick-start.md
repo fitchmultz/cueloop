@@ -38,7 +38,7 @@ Non-interactive setup (CI/scripts):
 ralph init --non-interactive
 ```
 
-`ralph init` creates/updates `.ralph/trust.jsonc` by default and gitignores it so project-local execution settings can work immediately without committing machine-local trust. Interactive init also asks whether queue/done should be shared through git or kept local, and lets you select extra ignored local files for parallel-worker sync. Non-interactive init keeps queue/done tracked and only relies on the default `.env*` parallel sync.
+`ralph init` creates/updates `.ralph/trust.jsonc` by default and gitignores it so project-local execution settings can work immediately without committing machine-local trust. Interactive init also asks whether queue/done should be shared through git or kept local, and lets you select extra ignored local files for parallel-worker sync. Manual additions use trusted `parallel.ignored_file_allowlist` and the small-file contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync). Non-interactive init keeps queue/done tracked and only relies on the default `.env` / `.env.*` parallel sync.
 
 ## 3) Create Tasks
 

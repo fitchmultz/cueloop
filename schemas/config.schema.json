@@ -728,7 +728,7 @@
       "type": "object",
       "properties": {
         "ignored_file_allowlist": {
-          "description": "Additional gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nEntries must be repo-relative file paths or glob patterns. Directories,\nabsolute paths, `..`, and known heavy/runtime paths are rejected.",
+          "description": "Additional small gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nProject config that sets this key requires repo trust. Entries must be repo-relative\nfile paths or file glob patterns such as `local/tool-config.json`,\n`fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe\npaths are rejected, including `node_modules/*`, `target/**`, `dir/`, absolute\npaths, `..`, and known heavy/runtime paths.",
           "type": [
             "array",
             "null"

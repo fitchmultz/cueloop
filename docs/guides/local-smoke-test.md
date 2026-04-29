@@ -22,6 +22,10 @@ make install
 # initialize repo-local runtime state and local trust (safe to rerun)
 ralph init
 
+# optional: if parallel workers need additional small ignored files, configure
+# trusted parallel.ignored_file_allowlist; do not allowlist ignored directory
+# trees such as node_modules/*.
+
 # verify command surface
 ralph --help
 ralph run one --help

@@ -41,9 +41,12 @@ pub struct ParallelConfig {
     #[schemars(range(min = 1))]
     pub workspace_retention_hours: Option<u32>,
 
-    /// Additional gitignored non-.ralph files/globs to sync into parallel worker workspaces.
-    /// Entries must be repo-relative file paths or glob patterns. Directories,
-    /// absolute paths, `..`, and known heavy/runtime paths are rejected.
+    /// Additional small gitignored non-.ralph files/globs to sync into parallel worker workspaces.
+    /// Project config that sets this key requires repo trust. Entries must be repo-relative
+    /// file paths or file glob patterns such as `local/tool-config.json`,
+    /// `fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe
+    /// paths are rejected, including `node_modules/*`, `target/**`, `dir/`, absolute
+    /// paths, `..`, and known heavy/runtime paths.
     pub ignored_file_allowlist: Option<Vec<String>>,
 }
 

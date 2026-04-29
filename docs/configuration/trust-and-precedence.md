@@ -15,7 +15,7 @@ CLI flags override both for a single run. Defaults are defined by `schemas/confi
 
 ## Repo execution trust
 
-Project `.ralph/config.jsonc` may define execution-sensitive settings (for example `agent.*_bin`, plugin runner IDs, `agent.ci_gate`, and `plugins.*`). Ralph applies those project-layer values only when the repository is explicitly marked trusted via a **local-only** `.ralph/trust.jsonc` file. Legacy `.ralph/trust.json` is ignored. `trusted_at` is optional in the file; `allow_project_commands: true` is what marks the repo trusted.
+Project `.ralph/config.jsonc` may define execution-sensitive settings (for example `agent.*_bin`, plugin runner IDs, `agent.ci_gate`, `plugins.*`, and `parallel.ignored_file_allowlist`). Ralph applies those project-layer values only when the repository is explicitly marked trusted via a **local-only** `.ralph/trust.jsonc` file. Legacy `.ralph/trust.json` is ignored. `trusted_at` is optional in the file; `allow_project_commands: true` is what marks the repo trusted.
 
 **Supported ways to create the trust file (explicit opt-in):**
 

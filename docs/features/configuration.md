@@ -70,8 +70,11 @@ Execution-sensitive project settings include:
 - `agent.ci_gate`
 - Plugin runner selections
 - `plugins.*`
+- `parallel.ignored_file_allowlist` for additional ignored local files copied to parallel worker workspaces
 
 In untrusted repos, keep these settings in global config or trust the repo locally before expecting project values to apply.
+
+For the allowed file/glob contract and invalid examples such as `node_modules/*` and `dir/`, see [Ignored local file sync](../configuration/queue-and-parallel.md#ignored-local-file-sync).
 
 Canonical details: [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust).
 

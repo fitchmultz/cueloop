@@ -380,12 +380,18 @@ fn select_parallel_sync_allowlist(repo_root: &Path) -> Result<Vec<String>> {
         println!(
             "Parallel sync: no extra ignored local files found. .env and .env.* are synced by default."
         );
+        println!(
+            "To sync another small ignored file later, set trusted parallel.ignored_file_allowlist in .ralph/config.jsonc (for example \"local/tool-config.json\"). Directory trees such as \"node_modules/*\" or entries ending in \"/\" are rejected. See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
+        );
         return Ok(Vec::new());
     }
 
     println!();
     println!(
-        "Parallel sync: .env and .env.* are synced by default. Select any additional ignored files workers need."
+        "Parallel sync: .env and .env.* are synced by default. Select any additional small ignored files workers need."
+    );
+    println!(
+        "Manual trusted config key: parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\" or \"dir/\"). See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
     );
     let selections = MultiSelect::new()
         .with_prompt("Additional ignored files to sync to parallel workers")
@@ -467,6 +473,9 @@ pub fn print_completion_message(answers: Option<&WizardAnswers>, _queue_path: &P
     println!("  1. Run 'ralph app open' to open the macOS app (optional)");
     println!("  2. Run 'ralph run one' to execute your first task");
     println!("  3. Edit .ralph/config.jsonc to customize settings");
+    println!(
+        "     - Parallel sync extras use trusted parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\"); see docs/configuration/queue-and-parallel.md#ignored-local-file-sync"
+    );
     println!("  4. Keep .ralph/trust.jsonc untracked; init adds it to .gitignore");
 
     if let Some(answers) = answers

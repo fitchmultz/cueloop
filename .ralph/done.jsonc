@@ -195,8 +195,8 @@
       "custom_fields": {
         "task_kind": "queue_shaping",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
-        "skill": "comprehensive-codebase-audit"
+        "skill": "comprehensive-codebase-audit",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex"
       }
     },
     {
@@ -687,8 +687,8 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex"
       }
     },
@@ -761,9 +761,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "runner_used": "codex"
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     },
     {
@@ -2400,10 +2400,10 @@
       ],
       "custom_fields": {
         "reported_command": "ralph run loop --parallel 2",
-        "severity_reason": "parallel-mode task state/data integrity loss",
-        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5",
+        "severity_reason": "parallel-mode task state/data integrity loss"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
       }
     },
     {
@@ -3063,8 +3063,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi"
       }
     },
@@ -3122,9 +3122,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3180,9 +3180,78 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi"
+      }
+    },
+    {
+      "id": "RQ-0064",
+      "status": "done",
+      "title": "Document the real allowlist contract in trust docs and init UX",
+      "description": "The operator-facing docs and init flow do not explain the allowlist contract as concretely as the runtime enforces it. Why it matters: feedback already points to confusion around natural entries like `node_modules/*`, and today users only learn some important rules from runtime failures. Minimal fix: update the canonical configuration/trust docs, schema description, and init/help messaging so they explicitly call out trust gating, valid file/glob examples, invalid examples such as `node_modules/*` and `dir/`, and the fact that this feature is for small ignored files rather than ignored directory trees.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "parallel",
+        "sync",
+        "gitignored",
+        "docs",
+        "trust",
+        "init"
+      ],
+      "scope": [
+        "docs/configuration/queue-and-parallel.md",
+        "docs/configuration/trust-and-precedence.md",
+        "docs/features/configuration.md",
+        "docs/cli.md",
+        "docs/guides/local-smoke-test.md",
+        "docs/guides/getting-started.md",
+        "docs/quick-start.md",
+        "crates/ralph/src/contracts/config/parallel.rs",
+        "schemas/config.schema.json",
+        "schemas/machine.schema.json",
+        "crates/ralph/src/commands/init/wizard.rs",
+        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/ralph/src/config/validation/trust.rs"
+      ],
+      "evidence": [
+        "path: docs/configuration/queue-and-parallel.md:16-70 :: the canonical `parallel.*` section names `ignored_file_allowlist` and has valid examples/rules, but it does not clearly say this is a small ignored-file feature (not ignored directory trees) or show concrete invalid examples like `node_modules/*`, `target/**`, `dir/`, absolute paths, and `../...`.",
+        "path: docs/configuration/trust-and-precedence.md:16-25 and docs/features/configuration.md:61-76 :: trust docs enumerate execution-sensitive project settings but omit `parallel.ignored_file_allowlist`, while runtime trust validation treats it as trust-gated.",
+        "path: crates/ralph/src/config/validation/trust.rs:26-46 :: the runtime trust error explicitly includes `parallel.ignored_file_allowlist`; docs and onboarding must align with this real contract.",
+        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:35-46 and 308-333 :: validation rejects denied prefixes (`target/`, `node_modules/`, `.venv/`, `.git/`, `.ralph/cache/`, `.ralph/workspaces/`, `.ralph/logs/`, `.ralph/lock/`, caches), trailing slash directory entries, absolute paths, `..`, and `.` components; preflight also rejects unsafe matches and workspace-root overlap.",
+        "path: crates/ralph/src/contracts/config/parallel.rs:35-39 and schemas/config.schema.json:730-739 :: schema text is generated from Rust doc comments and currently mentions only general directory/absolute/`..`/heavy-runtime rejection; it should name trust gating plus valid and invalid examples so generated schemas surface the contract.",
+        "path: crates/ralph/src/commands/init/wizard.rs:375-400 and 466-470 :: interactive init offers discovered-file multiselect and generic `Edit .ralph/config.jsonc` next-step guidance without teaching the exact `parallel.ignored_file_allowlist` key, small-file intent, or valid/invalid examples for manual configuration.",
+        "path: docs/cli.md:59-67, docs/guides/local-smoke-test.md:22-39, docs/guides/getting-started.md:95-102, and docs/quick-start.md:41 :: bootstrap/onboarding flows mention init/trust/parallel sync extras but do not point readers to the manual allowlist contract when discovery is insufficient."
+      ],
+      "plan": [
+        "Update canonical configuration/trust docs to explicitly name `parallel.ignored_file_allowlist` as repo-trust-gated, explain it is for small gitignored files only, document default `.env`/`.env.*` sync, and show valid examples plus invalid examples (`node_modules/*`, `target/**`, `dir/`, absolute paths, `../...`).",
+        "Update init/onboarding messaging so interactive init and completion/next-step guidance show the exact config key, one valid example, one invalid example, and a pointer to the canonical queue/parallel documentation for manual sync extras.",
+        "Update the Rust schema source doc comment for `ParallelConfig::ignored_file_allowlist`, regenerate committed schemas instead of manually editing generated schema JSON, and verify config and machine schemas include the clearer trust/examples wording.",
+        "Audit adjacent CLI/smoke/getting-started/quick-start docs for short cross-links rather than duplicating long rules everywhere; keep `docs/configuration/queue-and-parallel.md` as the detailed source of truth.",
+        "Verify in Phase 2 with focused content checks for the new trust/valid/invalid examples, run schema generation/checks as needed, then run `make agent-ci` before completion."
+      ],
+      "notes": [
+        "Do not hand-edit generated schema JSON if the repo generator can produce it; update `crates/ralph/src/contracts/config/parallel.rs` doc comments and regenerate schemas so `schemas/config.schema.json` and `schemas/machine.schema.json` stay consistent.",
+        "This is documentation/UX text alignment with existing runtime behavior; no runtime allowlist semantics are expected to change.",
+        "Documented trust-gated parallel.ignored_file_allowlist contract across canonical docs, schema, and onboarding.",
+        "Refined init UX to name the trusted config key, valid/invalid examples, and canonical docs.",
+        "Verification: cargo fmt --all --check, git diff --check, focused content rg, and make agent-ci passed."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-29T00:48:35Z",
+      "updated_at": "2026-04-29T02:36:50.684549000Z",
+      "completed_at": "2026-04-29T02:36:50.684549000Z",
+      "started_at": "2026-04-29T01:56:39.039265000Z",
+      "depends_on": [
+        "RQ-0063"
+      ],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     }
   ]
