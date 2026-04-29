@@ -32,24 +32,17 @@ public extension Workspace {
             handleMissingClient: { [insightsState] in
                 insightsState.graphDataErrorMessage = "CLI client not available."
             },
-            retryMessage: { attempt, maxAttempts in
-                "Retrying load graph (attempt \(attempt)/\(maxAttempts))..."
-            },
-            load: { [self] client, workingDirectoryURL, retryConfiguration, onRetry in
+            load: { [self] client, workingDirectoryURL, retryConfiguration in
                 try await self.decodeMachineRepositoryJSON(
                     MachineGraphReadDocument.self,
                     client: client,
                     machineArguments: ["queue", "graph"],
                     currentDirectoryURL: workingDirectoryURL,
-                    retryConfiguration: retryConfiguration,
-                    onRetry: onRetry
+                    retryConfiguration: retryConfiguration
                 )
             },
             apply: { [insightsState] document in
                 insightsState.graphData = document.graph
-            },
-            handleRetryMessage: { [insightsState] in
-                insightsState.graphDataErrorMessage = $0
             },
             handleFailure: { [insightsState] recoveryError in
                 insightsState.graphDataErrorMessage = recoveryError.message

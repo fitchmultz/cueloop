@@ -434,10 +434,8 @@ extension Workspace {
         setLoading: @escaping @MainActor (Bool) -> Void,
         clearFailure: @escaping @MainActor () -> Void,
         handleMissingClient: @escaping @MainActor () -> Void,
-        retryMessage: (@Sendable (Int, Int) -> String)? = nil,
-        load: @escaping @Sendable (RalphCLIClient, URL, RetryConfiguration, RetryProgressHandler?) async throws -> Value,
+        load: @escaping @Sendable (RalphCLIClient, URL, RetryConfiguration) async throws -> Value,
         apply: @escaping @MainActor (Value) -> Void,
-        handleRetryMessage: (@MainActor (String) -> Void)? = nil,
         handleFailure: @escaping @MainActor (RecoveryError) -> Void
     ) async {
         guard !isShutDown, !Task.isCancelled else { return }
@@ -457,27 +455,11 @@ extension Workspace {
             }
         }
 
-        let progress: RetryProgressHandler?
-        if let retryMessage {
-            progress = { [weak self] attempt, maxAttempts, _ in
-                await MainActor.run { [weak self] in
-                    guard
-                        let self,
-                        self.isCurrentRepositoryContext(repositoryContext)
-                    else { return }
-                    handleRetryMessage?(retryMessage(attempt, maxAttempts))
-                }
-            }
-        } else {
-            progress = nil
-        }
-
         do {
             let value = try await load(
                 client,
                 identityState.workingDirectoryURL,
-                retryConfiguration,
-                progress
+                retryConfiguration
             )
             guard !isShutDown, !Task.isCancelled, isCurrentRepositoryContext(repositoryContext) else { return }
             apply(value)
@@ -485,15 +467,49 @@ extension Workspace {
             return
         } catch {
             guard !isShutDown, !Task.isCancelled, isCurrentRepositoryContext(repositoryContext) else { return }
-            let recoveryError = RecoveryError.classify(
+            let classifiedError = RecoveryError.classify(
                 error: error,
                 operation: operation,
                 workspaceURL: identityState.workingDirectoryURL
+            )
+            let recoveryError = Self.repositoryRecoveryError(
+                classifiedError,
+                afterTerminalError: error,
+                attempts: retryConfiguration.maxRetries
             )
             diagnosticsState.lastRecoveryError = recoveryError
             diagnosticsState.showErrorRecovery = true
             handleFailure(recoveryError)
         }
+    }
+
+    private static func repositoryRecoveryError(
+        _ recoveryError: RecoveryError,
+        afterTerminalError error: any Error,
+        attempts: Int
+    ) -> RecoveryError {
+        guard attempts > 1, RetryHelper.defaultShouldRetry(error) else {
+            return recoveryError
+        }
+
+        let attemptLabel = attempts == 1 ? "1 attempt" : "\(attempts) attempts"
+        let detail = recoveryError.underlyingError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let retryMessage = "\(recoveryError.message) after \(attemptLabel)."
+        let message: String
+        if let detail, !detail.isEmpty, !retryMessage.localizedCaseInsensitiveContains(detail) {
+            message = "\(retryMessage) Last error: \(detail)"
+        } else {
+            message = retryMessage
+        }
+
+        return RecoveryError(
+            category: recoveryError.category,
+            message: message,
+            underlyingError: recoveryError.underlyingError,
+            operation: recoveryError.operation,
+            suggestions: recoveryError.suggestions,
+            workspaceURL: recoveryError.workspaceURL
+        )
     }
 
     func decodeRepositoryJSON<T: Decodable>(

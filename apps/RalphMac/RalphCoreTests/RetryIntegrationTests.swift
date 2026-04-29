@@ -272,4 +272,232 @@ final class RetryIntegrationTests: RalphCoreTestCase {
             XCTFail("Expected processError")
         }
     }
+
+    @MainActor
+    func test_loadTasks_doesNotSurfaceRetryProgressAsErrorMessage() async throws {
+        var workspace: Workspace!
+        let fixture = try makeRepositoryRetryFixture(prefix: "retry-load-tasks")
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let task = RalphMockCLITestSupport.task(
+            id: "RQ-RETRY-SUCCESS",
+            status: .todo,
+            title: "Retry success",
+            priority: .medium,
+            createdAt: "2026-04-29T00:00:00Z",
+            updatedAt: "2026-04-29T00:00:00Z"
+        )
+        try RalphMockCLITestSupport.writeQueueFile(in: fixture.workspaceURL, tasks: [task])
+        let queueReadURL = try WorkspaceRunnerConfigurationTestSupport.writeQueueReadDocument(
+            in: fixture.rootURL,
+            name: "queue-read.json",
+            workspaceURL: fixture.workspaceURL,
+            activeTasks: [task],
+            nextRunnableTaskID: task.id
+        )
+        let configResolveURL = try WorkspaceRunnerConfigurationTestSupport.writeConfigResolveDocument(
+            in: fixture.rootURL,
+            name: "config-resolve.json",
+            workspaceURL: fixture.workspaceURL,
+            model: "retry-model"
+        )
+        let attemptFile = fixture.rootURL.appendingPathComponent("queue-read-attempts")
+        let scriptURL = try makeRetryingRepositoryScript(
+            in: fixture.rootURL,
+            name: "mock-ralph-load-tasks",
+            commandPattern: "--no-color machine queue read",
+            attemptFile: attemptFile,
+            successOutputURL: queueReadURL,
+            configResolveURL: configResolveURL,
+            failAlways: false
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+
+        let loadTask = Task {
+            await workspace.loadTasks(retryConfiguration: transientRetryConfiguration)
+        }
+        let retryAttemptObserved = await waitForAttempt(attemptFile, minimum: 2)
+        XCTAssertTrue(retryAttemptObserved)
+        XCTAssertNil(workspace.taskState.tasksErrorMessage)
+        XCTAssertFalse(workspace.diagnosticsState.showErrorRecovery)
+
+        await loadTask.value
+        XCTAssertNil(workspace.taskState.tasksErrorMessage)
+        XCTAssertFalse(workspace.diagnosticsState.showErrorRecovery)
+        XCTAssertEqual(workspace.taskState.tasks.map(\.id), ["RQ-RETRY-SUCCESS"])
+    }
+
+    @MainActor
+    func test_loadGraphData_doesNotSurfaceRetryProgressAsErrorMessage() async throws {
+        var workspace: Workspace!
+        let fixture = try makeRepositoryRetryFixture(prefix: "retry-load-graph")
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        let graphReadURL = try WorkspaceRunnerConfigurationTestSupport.writeGraphDocument(
+            in: fixture.rootURL,
+            name: "graph-read.json",
+            tasks: [RalphMockCLITestSupport.graphNode(id: "RQ-GRAPH-SUCCESS", title: "Graph success")]
+        )
+        let configResolveURL = try WorkspaceRunnerConfigurationTestSupport.writeConfigResolveDocument(
+            in: fixture.rootURL,
+            name: "config-resolve.json",
+            workspaceURL: fixture.workspaceURL,
+            model: "retry-model"
+        )
+        let attemptFile = fixture.rootURL.appendingPathComponent("graph-read-attempts")
+        let scriptURL = try makeRetryingRepositoryScript(
+            in: fixture.rootURL,
+            name: "mock-ralph-load-graph",
+            commandPattern: "--no-color machine queue graph",
+            attemptFile: attemptFile,
+            successOutputURL: graphReadURL,
+            configResolveURL: configResolveURL,
+            failAlways: false
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+
+        let loadTask = Task {
+            await workspace.loadGraphData(retryConfiguration: transientRetryConfiguration)
+        }
+        let retryAttemptObserved = await waitForAttempt(attemptFile, minimum: 2)
+        XCTAssertTrue(retryAttemptObserved)
+        XCTAssertNil(workspace.insightsState.graphDataErrorMessage)
+        XCTAssertFalse(workspace.diagnosticsState.showErrorRecovery)
+
+        await loadTask.value
+        XCTAssertNil(workspace.insightsState.graphDataErrorMessage)
+        XCTAssertNotNil(workspace.insightsState.graphData)
+    }
+
+    @MainActor
+    func test_exhaustedLoadTasksRetrySurfacesOnlyTerminalErrorState() async throws {
+        var workspace: Workspace!
+        let fixture = try makeRepositoryRetryFixture(prefix: "retry-load-tasks-exhausted")
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        try RalphMockCLITestSupport.writeQueueFile(in: fixture.workspaceURL, tasks: [])
+        let queueReadURL = try WorkspaceRunnerConfigurationTestSupport.writeQueueReadDocument(
+            in: fixture.rootURL,
+            name: "queue-read-unused.json",
+            workspaceURL: fixture.workspaceURL,
+            activeTasks: []
+        )
+        let configResolveURL = try WorkspaceRunnerConfigurationTestSupport.writeConfigResolveDocument(
+            in: fixture.rootURL,
+            name: "config-resolve.json",
+            workspaceURL: fixture.workspaceURL,
+            model: "retry-model"
+        )
+        let attemptFile = fixture.rootURL.appendingPathComponent("queue-read-attempts")
+        let scriptURL = try makeRetryingRepositoryScript(
+            in: fixture.rootURL,
+            name: "mock-ralph-load-tasks-exhausted",
+            commandPattern: "--no-color machine queue read",
+            attemptFile: attemptFile,
+            successOutputURL: queueReadURL,
+            configResolveURL: configResolveURL,
+            failAlways: true
+        )
+        let client = try RalphCLIClient(executableURL: scriptURL)
+        workspace = RalphMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+
+        await workspace.loadTasks(retryConfiguration: terminalRetryConfiguration)
+
+        let errorMessage = try XCTUnwrap(workspace.taskState.tasksErrorMessage)
+        XCTAssertFalse(errorMessage.isEmpty)
+        XCTAssertFalse(errorMessage.contains("Retrying load tasks"))
+        XCTAssertTrue(errorMessage.contains("after 2 attempts"))
+        XCTAssertTrue(errorMessage.lowercased().contains("resource temporarily unavailable"))
+        XCTAssertTrue(workspace.diagnosticsState.showErrorRecovery)
+        XCTAssertNotNil(workspace.diagnosticsState.lastRecoveryError)
+        XCTAssertTrue(workspace.taskState.tasks.isEmpty)
+    }
+
+    private var transientRetryConfiguration: RetryConfiguration {
+        RetryConfiguration(maxRetries: 2, baseDelay: 0.2, maxDelay: 0.2, jitterRange: 0...0)
+    }
+
+    private var terminalRetryConfiguration: RetryConfiguration {
+        RetryConfiguration(maxRetries: 2, baseDelay: 0.01, maxDelay: 0.01, jitterRange: 0...0)
+    }
+
+    private struct RepositoryRetryFixture {
+        let rootURL: URL
+        let workspaceURL: URL
+    }
+
+    private func makeRepositoryRetryFixture(prefix: String) throws -> RepositoryRetryFixture {
+        let rootURL = tempDir.appendingPathComponent(prefix, isDirectory: true)
+        let workspaceURL = rootURL.appendingPathComponent("workspace", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: workspaceURL.appendingPathComponent(".ralph", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        return RepositoryRetryFixture(rootURL: rootURL, workspaceURL: workspaceURL)
+    }
+
+    private func makeRetryingRepositoryScript(
+        in directory: URL,
+        name: String,
+        commandPattern: String,
+        attemptFile: URL,
+        successOutputURL: URL,
+        configResolveURL: URL,
+        failAlways: Bool
+    ) throws -> URL {
+        let failureCondition = failAlways ? "true" : "[ \"$ATTEMPT\" -lt 2 ]"
+        let script = """
+            #!/bin/sh
+            case "$*" in
+            *"--no-color machine config resolve"*)
+              cat "\(configResolveURL.path)"
+              exit 0
+              ;;
+            *"\(commandPattern)"*)
+              ATTEMPT_FILE="\(attemptFile.path)"
+              if [ -f "$ATTEMPT_FILE" ]; then
+                ATTEMPT=$(cat "$ATTEMPT_FILE")
+              else
+                ATTEMPT=0
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+              echo "$ATTEMPT" > "$ATTEMPT_FILE"
+              if \(failureCondition); then
+                echo "resource temporarily unavailable" 1>&2
+                exit 1
+              fi
+              cat "\(successOutputURL.path)"
+              exit 0
+              ;;
+            esac
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        return try RalphMockCLITestSupport.makeExecutableScript(in: directory, name: name, body: script)
+    }
+
+    @MainActor
+    private func waitForAttempt(_ attemptFile: URL, minimum: Int) async -> Bool {
+        await WorkspacePerformanceTestSupport.waitFor(timeout: 1.0, pollInterval: .milliseconds(10)) {
+            guard
+                let raw = try? String(contentsOf: attemptFile, encoding: .utf8),
+                let attempts = Int(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+            else {
+                return false
+            }
+            return attempts >= minimum
+        }
+    }
 }

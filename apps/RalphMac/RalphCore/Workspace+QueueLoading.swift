@@ -227,25 +227,18 @@ public extension Workspace {
                 taskState.tasksErrorMessage = "CLI client not available."
                 taskState.nextRunnableTaskID = nil
             },
-            retryMessage: { attempt, maxAttempts in
-                "Retrying load tasks (attempt \(attempt)/\(maxAttempts))..."
-            },
-            load: { client, workingDirectoryURL, _, onRetry in
+            load: { client, workingDirectoryURL, retryConfiguration in
                 try await self.decodeMachineRepositoryJSON(
                     MachineQueueReadDocument.self,
                     client: client,
                     machineArguments: ["queue", "read"],
                     currentDirectoryURL: workingDirectoryURL,
-                    retryConfiguration: retryConfiguration,
-                    onRetry: onRetry
+                    retryConfiguration: retryConfiguration
                 )
             },
             apply: { [self] snapshot in
                 self.applyQueueReadDocument(snapshot)
                 self.startFileWatching()
-            },
-            handleRetryMessage: { [taskState] in
-                taskState.tasksErrorMessage = $0
             },
             handleFailure: { [taskState, runState = self.runState] recoveryError in
                 taskState.tasksErrorMessage = recoveryError.message

@@ -94,14 +94,13 @@ final class WorkspaceRunnerController {
             handleMissingClient: { [runState = workspace.runState] in
                 runState.parallelStatusErrorMessage = "CLI client not available."
             },
-            load: { client, workingDirectoryURL, retryConfiguration, onRetry in
+            load: { client, workingDirectoryURL, retryConfiguration in
                 try await workspace.decodeMachineRepositoryJSON(
                     MachineParallelStatusDocument.self,
                     client: client,
                     machineArguments: ["run", "parallel-status"],
                     currentDirectoryURL: workingDirectoryURL,
-                    retryConfiguration: retryConfiguration,
-                    onRetry: onRetry
+                    retryConfiguration: retryConfiguration
                 )
             },
             apply: { [runState = workspace.runState] decoded in
@@ -131,14 +130,13 @@ final class WorkspaceRunnerController {
                 clearRunnerConfigState(runState)
                 runState.runnerConfigErrorMessage = "CLI client not available."
             },
-            load: { client, workingDirectoryURL, retryConfiguration, onRetry in
+            load: { client, workingDirectoryURL, retryConfiguration in
                 try await workspace.decodeMachineRepositoryJSON(
                     MachineConfigResolveDocument.self,
                     client: client,
                     machineArguments: ["config", "resolve"],
                     currentDirectoryURL: workingDirectoryURL,
-                    retryConfiguration: retryConfiguration,
-                    onRetry: onRetry
+                    retryConfiguration: retryConfiguration
                 )
             },
             apply: { [self, workspace] decoded in

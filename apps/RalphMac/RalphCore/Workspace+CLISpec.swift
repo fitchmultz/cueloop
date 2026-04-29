@@ -55,14 +55,13 @@ public extension Workspace {
                 commandState.cliSpec = nil
                 commandState.cliSpecErrorMessage = "CLI client not available."
             },
-            load: { [self] client, workingDirectoryURL, retryConfiguration, onRetry in
+            load: { [self] client, workingDirectoryURL, retryConfiguration in
                 let document = try await self.decodeMachineRepositoryJSON(
                     MachineCLISpecDocument.self,
                     client: client,
                     machineArguments: ["cli-spec"],
                     currentDirectoryURL: workingDirectoryURL,
-                    retryConfiguration: retryConfiguration,
-                    onRetry: onRetry
+                    retryConfiguration: retryConfiguration
                 )
                 try Self.validateMachineCLISpecVersion(document)
                 return document

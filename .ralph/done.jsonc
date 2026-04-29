@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -194,9 +194,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "task_kind": "queue_shaping",
+        "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "runner_used": "codex"
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "model_used": "gpt-5.4"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
@@ -686,9 +686,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4"
       }
     },
@@ -760,9 +760,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
         "runner_used": "codex"
       }
     },
@@ -829,9 +829,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
       }
     },
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "runner_used": "pi",
+        "severity_reason": "parallel-mode task state/data integrity loss",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "reported_command": "ralph run loop --parallel 2",
         "model_used": "openai-codex/gpt-5.5",
-        "severity_reason": "parallel-mode task state/data integrity loss"
+        "runner_used": "pi",
+        "reported_command": "ralph run loop --parallel 2"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
       }
     },
     {
@@ -3004,8 +3004,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -3063,8 +3063,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general"
       }
     },
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3249,9 +3249,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3450,8 +3450,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3512,9 +3512,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3571,6 +3571,74 @@
       "updated_at": "2026-04-29T06:40:44.863005000Z",
       "completed_at": "2026-04-29T06:40:44.863005000Z",
       "started_at": "2026-04-29T05:55:27.435831000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "runner_used": "pi",
+        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high"
+      }
+    },
+    {
+      "id": "RQ-0070",
+      "status": "done",
+      "title": "Stop showing retry progress as Mac error messages",
+      "description": "Mac workspace repository loads write retry progress into the same error-message fields used for terminal failures. Goal: keep retry progress non-alarming while self-healing continues, then show a recovery sheet/error only after all attempts are exhausted.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "macos",
+        "ux",
+        "retry",
+        "recovery"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/Workspace.swift",
+        "apps/RalphMac/RalphCore/Workspace+QueueLoading.swift",
+        "apps/RalphMac/RalphCore/Workspace+GraphData.swift",
+        "apps/RalphMac/RalphCore/WorkspaceRunnerController.swift",
+        "apps/RalphMac/RalphCore/Workspace+CLISpec.swift",
+        "apps/RalphMac/RalphCore/Workspace+Analytics.swift",
+        "apps/RalphMac/RalphCore/AnalyticsModels.swift",
+        "apps/RalphMac/RalphCoreTests/RetryIntegrationTests.swift",
+        "apps/RalphMac/RalphCoreTests/Workspace+TestAccessors.swift",
+        "make macos-test-contracts",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "apps/RalphMac/RalphCore/Workspace.swift:431-495 centralizes repository load retries; retry progress currently calls an optional handleRetryMessage during each retry, while terminal RecoveryError classification and showErrorRecovery updates happen only in the final catch path.",
+        "apps/RalphMac/RalphCore/Workspace+QueueLoading.swift:217-249 passes retryMessage for loadTasks and writes retry progress into taskState.tasksErrorMessage through handleRetryMessage, the same field used for final RecoveryError.message in handleFailure.",
+        "apps/RalphMac/RalphCore/Workspace+GraphData.swift:25-55 passes retryMessage for loadGraphData and writes retry progress into insightsState.graphDataErrorMessage through handleRetryMessage, the same field used for final RecoveryError.message in handleFailure.",
+        "apps/RalphMac/RalphCore/WorkspaceRunnerController.swift:123-150 loads runner configuration through performRepositoryLoad without retryMessage/handleRetryMessage; it already leaves runnerConfigErrorMessage for terminal failures only.",
+        "apps/RalphMac/RalphCore/Workspace+CLISpec.swift:47-75 loads CLI spec through performRepositoryLoad without retryMessage/handleRetryMessage; it already leaves cliSpecErrorMessage for terminal failures only.",
+        "apps/RalphMac/RalphCore/Workspace+Analytics.swift:32-66 represents in-flight analytics as AnalyticsSectionLoadState.loading and only writes .failed messages in catch; it does not currently pass retry progress into error-state fields.",
+        "apps/RalphMac/RalphCore/RetryHelper.swift:128-179 reports retry progress before sleeping and throws the last error only after retry attempts are exhausted; final failure attempt count is not currently embedded in thrown errors, so this task should not broaden into retry-core API changes unless needed by tests.",
+        "apps/RalphMac/RalphCoreTests/RetryIntegrationTests.swift currently covers RetryHelper/RalphCLIClient retry mechanics but does not cover Workspace repository load error-field behavior during transient retry progress."
+      ],
+      "plan": [
+        "Remove repository-load retry progress writes from error-message fields; specifically stop loadTasks and loadGraphData from passing retryMessage/handleRetryMessage into performRepositoryLoad unless a neutral, non-error status surface is intentionally added in the same source files.",
+        "Prefer the minimal cutover: keep RetryProgressHandler plumbing in performRepositoryLoad for future neutral progress consumers, but do not use it for repository read surfaces that only have terminal error fields.",
+        "Keep final failure behavior unchanged: after all retry attempts are exhausted, RecoveryError.classify should still set diagnosticsState.lastRecoveryError, diagnosticsState.showErrorRecovery, and the relevant terminal *ErrorMessage field.",
+        "Verify adjacent repository loads remain aligned: runner configuration, CLI spec, and analytics should continue to use loading states during retries and only publish error/failure messages after terminal catch paths.",
+        "Add RalphCore regression tests that drive loadTasks and loadGraphData through a mock CLI that fails once with retryable stderr and then succeeds, asserting the corresponding error-message property stays nil during the retry window and after success.",
+        "Add or extend a terminal-failure test that drives an exhausted retryable repository load and asserts the final error-message property is populated and diagnosticsState.showErrorRecovery/lastRecoveryError are set only after exhaustion.",
+        "Run focused RalphCore retry/repository-load tests if practical, then run make macos-test-contracts, then make agent-ci in Phase 2 only."
+      ],
+      "notes": [
+        "Phase 1 discovery found the original scope path Workspace+TaskLoading.swift is stale; the active task-loading implementation is apps/RalphMac/RalphCore/Workspace+QueueLoading.swift.",
+        "Do not change task status manually. The current status may be doing because Ralph supervision refreshed it before Phase 1.",
+        "Do not treat task creation/mutation runState.errorMessage retry copy as part of this repository-load task unless implementation discovers the same recovery-sheet/error-field problem in repository load paths; those flows are command/mutation progress surfaces, not initial repository read surfaces.",
+        "Removed repository-load retry progress from Mac error-message surfaces.",
+        "Kept terminal retry exhaustion visible with attempt count and last error detail.",
+        "Added RalphCore regression coverage for task and graph retry behavior.",
+        "Validation passed: focused RetryIntegrationTests, make macos-test-contracts, and make agent-ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-29T03:24:54Z",
+      "updated_at": "2026-04-29T07:14:11.770964000Z",
+      "completed_at": "2026-04-29T07:14:11.770964000Z",
+      "started_at": "2026-04-29T06:41:55.611443000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

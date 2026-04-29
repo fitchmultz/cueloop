@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0070",
-      "status": "todo",
-      "title": "Stop showing retry progress as Mac error messages",
-      "description": "Mac workspace repository loads write retry progress into the same error-message fields used for terminal failures. Goal: keep retry progress non-alarming while self-healing continues, then show a recovery sheet/error only after all attempts are exhausted.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "macos",
-        "ux",
-        "retry"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/Workspace.swift",
-        "apps/RalphMac/RalphCore/Workspace+GraphData.swift",
-        "apps/RalphMac/RalphCore/Workspace+TaskLoading.swift",
-        "apps/RalphMac/RalphCoreTests/RetryIntegrationTests.swift",
-        "make macos-test-contracts"
-      ],
-      "evidence": [
-        "apps/RalphMac/RalphCore/Workspace.swift:460-469 wires RetryProgressHandler to handleRetryMessage during retry attempts.",
-        "apps/RalphMac/RalphCore/Workspace.swift:486-495 only classifies RecoveryError and shows the recovery sheet after the final thrown error, which is correct terminal behavior.",
-        "apps/RalphMac/RalphCore/Workspace+GraphData.swift:35-37 builds 'Retrying load graph...' copy and apps/RalphMac/RalphCore/Workspace+GraphData.swift:51-55 writes it into graphDataErrorMessage, the same field used for terminal failures.",
-        "Command run: make agent-ci -> passed docs-only gate; no baseline CI blocker reproduced."
-      ],
-      "plan": [
-        "Introduce separate non-error retry/progress state for repository loads, or keep progress internal unless the view has an explicit neutral status surface.",
-        "Update graph/task/config/analytics load call sites so retry progress does not populate *ErrorMessage fields.",
-        "Keep terminal failure classification unchanged and ensure final failure includes retry attempt count and last redacted error detail.",
-        "Add RalphCore tests asserting transient retry progress does not set error-message properties and terminal failure still does.",
-        "Verify by running the focused RalphCore retry tests or make macos-test-contracts, then make agent-ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-04-29T03:24:54Z",
-      "updated_at": "2026-04-29T03:24:54Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0071",
       "status": "todo",
       "title": "Suppress Mac watcher degraded warnings during active retry",
