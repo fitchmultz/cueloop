@@ -22,6 +22,9 @@
 
 use super::*;
 
+#[cfg(unix)]
+use std::os::unix::fs as unix_fs;
+
 #[test]
 fn sync_ralph_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Result<()> {
     let temp = TempDir::new()?;
@@ -177,6 +180,165 @@ fn sync_ralph_state_copies_allowlisted_glob_under_ignored_directory_root() -> Re
         "b"
     );
     assert!(!workspace_root.join("config/other.json").exists());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn preflight_parallel_ignored_file_allowlist_rejects_external_symlink() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    let outside = temp.path().join("outside-secret.txt");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::write(&outside, "do not copy")?;
+    fs::write(repo_root.join(".gitignore"), "secret-link\n")?;
+    unix_fs::symlink(&outside, repo_root.join("secret-link"))?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["secret-link"]);
+    let err =
+        sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)
+            .expect_err("expected external symlink to be rejected");
+
+    let msg = err.to_string();
+    assert!(msg.contains("resolves outside repo root"), "{msg}");
+    assert!(msg.contains("secret-link"), "{msg}");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_ralph_state_rejects_external_ignored_symlink_without_copying() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    let outside = temp.path().join("outside-secret.txt");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::write(&outside, "do not copy")?;
+    fs::write(repo_root.join(".gitignore"), "secret-link\n")?;
+    unix_fs::symlink(&outside, repo_root.join("secret-link"))?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["secret-link"]);
+    let err = sync_ralph_state(&resolved, &workspace_root)
+        .expect_err("expected runtime sync to reject external symlink");
+
+    let msg = err.to_string();
+    assert!(msg.contains("resolves outside repo root"), "{msg}");
+    assert!(msg.contains("secret-link"), "{msg}");
+    assert!(!workspace_root.join("secret-link").exists());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_ralph_state_allows_ignored_symlink_resolving_inside_repo() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::create_dir_all(repo_root.join("private"))?;
+    fs::write(repo_root.join("private/source.txt"), "repo local")?;
+    fs::write(repo_root.join(".gitignore"), "safe-link\n")?;
+    unix_fs::symlink(
+        repo_root.join("private/source.txt"),
+        repo_root.join("safe-link"),
+    )?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["safe-link"]);
+    sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)?;
+    sync_ralph_state(&resolved, &workspace_root)?;
+
+    assert_eq!(
+        fs::read_to_string(workspace_root.join("safe-link"))?,
+        "repo local"
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn preflight_parallel_ignored_file_allowlist_rejects_symlink_resolving_to_denied_tree() -> Result<()>
+{
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::create_dir_all(repo_root.join("target"))?;
+    fs::write(repo_root.join("target/source.txt"), "build artifact")?;
+    fs::write(repo_root.join(".gitignore"), "safe-link\n")?;
+    unix_fs::symlink(
+        repo_root.join("target/source.txt"),
+        repo_root.join("safe-link"),
+    )?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["safe-link"]);
+    let err =
+        sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)
+            .expect_err("expected symlink resolving to denied tree to be rejected");
+
+    let msg = err.to_string();
+    assert!(msg.contains("denied runtime/build path"), "{msg}");
+    assert!(msg.contains("safe-link"), "{msg}");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_ralph_state_rejects_symlink_resolving_inside_workspace_root() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = repo_root.join("workers/RQ-0001");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::write(workspace_root.join("local.json"), "workspace artifact")?;
+    fs::write(repo_root.join(".gitignore"), "safe-link\nworkers/\n")?;
+    unix_fs::symlink(
+        workspace_root.join("local.json"),
+        repo_root.join("safe-link"),
+    )?;
+
+    let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["safe-link"]);
+    let err = sync_ralph_state(&resolved, &workspace_root)
+        .expect_err("expected symlink resolving into workspace root to be rejected");
+
+    let msg = err.to_string();
+    assert!(msg.contains("parallel workspace root"), "{msg}");
+    assert!(msg.contains("safe-link"), "{msg}");
+    assert!(!workspace_root.join("safe-link").exists());
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_ralph_state_rejects_default_env_symlink_resolving_outside_repo() -> Result<()> {
+    let temp = TempDir::new()?;
+    let repo_root = temp.path().join("repo");
+    let workspace_root = temp.path().join("workspace");
+    let outside = temp.path().join("outside-env.txt");
+    fs::create_dir_all(&repo_root)?;
+    git_test::init_repo(&repo_root)?;
+    fs::create_dir_all(&workspace_root)?;
+    fs::write(&outside, "outside env")?;
+    fs::write(repo_root.join(".gitignore"), ".env\n")?;
+    unix_fs::symlink(&outside, repo_root.join(".env"))?;
+
+    let resolved = build_test_resolved(&repo_root, None, None);
+    let err = sync_ralph_state(&resolved, &workspace_root)
+        .expect_err("expected default env symlink to be rejected");
+
+    let msg = err.to_string();
+    assert!(msg.contains("resolves outside repo root"), "{msg}");
+    assert!(msg.contains(".env"), "{msg}");
+    assert!(!workspace_root.join(".env").exists());
     Ok(())
 }
 

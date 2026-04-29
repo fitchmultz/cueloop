@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "skill": "comprehensive-codebase-audit",
         "task_kind": "queue_shaping",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -687,9 +687,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex"
       }
     },
     {
@@ -761,9 +761,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -830,9 +830,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,9 +890,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
         "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -957,8 +957,8 @@
       "custom_fields": {
         "runner_used": "codex",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5",
+        "severity_reason": "parallel-mode task state/data integrity loss",
         "reported_command": "ralph run loop --parallel 2",
-        "severity_reason": "parallel-mode task state/data integrity loss"
+        "runner_used": "pi"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
       }
     },
     {
@@ -3063,9 +3063,68 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high"
+      }
+    },
+    {
+      "id": "RQ-0062",
+      "status": "done",
+      "title": "Block ignored-file sync from following repo-escaping symlinks",
+      "description": "Parallel ignored-file sync currently treats gitignored symlinks as regular files and copies their resolved content into worker workspaces without checking whether the target stays inside the repository. Why it matters: a trusted allowlist or default ignored-file sync entry can exfiltrate arbitrary local machine files into worker clones and downstream runner prompts. Minimal fix: canonicalize matched ignored files during preflight and sync, reject symlinks whose resolved target escapes the repo root, and add regression coverage for both escaping and safe in-repo cases.",
+      "priority": "high",
+      "tags": [
+        "scan",
+        "parallel",
+        "sync",
+        "gitignored",
+        "security"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/ralph/src/commands/run/parallel/sync/common.rs",
+        "crates/ralph/src/commands/run/parallel/sync/mod.rs",
+        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
+        "crates/ralph/src/commands/run/parallel/sync/tests/mod.rs",
+        "cargo test -p ralph-agent-loop sync::tests::gitignored",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:65-124 :: preflight enumerates `git::ignored_paths`, matches allowlist patterns, then accepts a match when `source.is_file()` is true; Rust follows symlinks for `is_file`, so an ignored symlink to an external regular file is counted as a safe match.",
+        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:144-177 :: runtime sync repeats the `source.is_file()` gate before `sync_file_if_exists`, so it can copy the resolved contents of an ignored symlink into the worker workspace without checking that the target remains under `repo_root`.",
+        "path: crates/ralph/src/commands/run/parallel/sync/common.rs:24-33 :: `sync_file_if_exists` blindly calls `fs::copy(source, target)` after an existence check; for gitignored sync callers this must only be reached after symlink/canonical-path policy has accepted the source.",
+        "path: crates/ralph/src/commands/run/parallel/sync/mod.rs:47-54 and 96-106 :: ignored-file sync is one of the normal parallel workspace state sync phases, while bookkeeping sync also uses the common copy helper and should not inherit gitignored-only allowlist policy accidentally.",
+        "path: crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs:25-394 :: existing coverage verifies env files, explicit allowlist files/globs, ignored directory roots, workspace exclusions, and path filtering, but it does not cover symlinked ignored entries or repo-escape rejection.",
+        "command: tmp=$(mktemp -d) && outside=$(mktemp) && printf 'secret' > \"$outside\" && cd \"$tmp\" && git init -q && printf 'secret-link\\n' > .gitignore && ln -s \"$outside\" secret-link && git ls-files -i -o --exclude-standard -z --directory ... :: reproduced that Git reports `[secret-link]` and shell tests report `islink=yes isfile=yes`, matching the vulnerable classification path."
+      ],
+      "plan": [
+        "Add a gitignored-sync-only helper that canonicalizes `repo_root` and each candidate source, follows symlinks, and bails with an explicit safety error when the resolved path is outside the canonical repo root.",
+        "Use the helper in both `preflight_parallel_ignored_file_allowlist` and `sync_gitignored` before considering a match valid or copying it; keep directory/unsupported-file handling and workspace-root exclusions intact, and avoid changing bookkeeping/runtime `.ralph` copy semantics through the shared `sync_file_if_exists` helper unless a call-site-specific parameter is clearly needed.",
+        "Add regression tests for an ignored symlink/allowlist entry resolving outside the repo (preflight must fail and runtime sync must not copy the external contents) and an ignored symlink resolving to a file inside the repo (preflight and sync should succeed and copy expected contents).",
+        "Verify in Phase 2 with the focused gitignored sync tests first, then run `make agent-ci`; no tests or CI are run in this Phase 1 planning pass."
+      ],
+      "notes": [
+        "Planning-only pass completed; source files were inspected but not modified.",
+        "Prefer enforcing the canonical-path policy inside gitignored sync rather than globally inside `sync_file_if_exists`, because queue/done bookkeeping and `.ralph` runtime sync reuse the common helper under different contracts.",
+        "If symlink creation is not portable on all supported platforms, guard symlink regression tests with the existing project portability pattern (likely `#[cfg(unix)]`) while keeping production canonicalization platform-neutral.",
+        "Blocked ignored-file sync from copying symlinks resolving outside the repo root.",
+        "Phase 3 tightened review finding: resolved symlink targets must also avoid denied runtime/build trees and workspace roots.",
+        "Added Unix regressions for external symlinks, safe in-repo symlinks, denied-tree targets, workspace-root targets, and default .env symlink escape.",
+        "Verified with cargo test -p ralph-agent-loop sync::tests::gitignored and make agent-ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-29T00:48:35Z",
+      "updated_at": "2026-04-29T01:30:06.465852000Z",
+      "completed_at": "2026-04-29T01:30:06.465852000Z",
+      "started_at": "2026-04-29T01:06:20.136742000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general",
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     }
   ]

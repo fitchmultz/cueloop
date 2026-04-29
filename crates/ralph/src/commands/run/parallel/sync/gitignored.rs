@@ -26,7 +26,9 @@ use crate::config;
 use crate::git;
 use anyhow::{Context, Result, bail};
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
-use std::path::Path;
+use std::fs;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 
 use super::common::sync_file_if_exists;
 
@@ -74,6 +76,7 @@ pub(crate) fn preflight_parallel_ignored_file_allowlist(
     }
 
     let patterns = compile_allowlist_patterns(entries)?;
+    let canonical_root = canonical_repo_root(&resolved.repo_root)?;
     let ignored = git::ignored_paths(&resolved.repo_root).with_context(|| {
         format!(
             "Parallel preflight: list ignored paths in {}",
@@ -100,16 +103,19 @@ pub(crate) fn preflight_parallel_ignored_file_allowlist(
                     rel
                 );
             }
-            let source = resolved.repo_root.join(&rel);
-            if source.is_dir() {
-                bail!(
-                    "Parallel preflight: parallel.ignored_file_allowlist[{}] `{}` matched directory `{}`. Directories are not supported; use file paths or file globs.",
-                    pattern.index,
-                    pattern.raw,
-                    rel
-                );
-            }
-            if source.is_file() {
+            let context = format!(
+                "Parallel preflight: parallel.ignored_file_allowlist[{}] `{}`",
+                pattern.index, pattern.raw
+            );
+            if safe_ignored_file_source(
+                &resolved.repo_root,
+                &canonical_root,
+                &rel,
+                &context,
+                workspace_rel.as_deref(),
+            )?
+            .is_some()
+            {
                 matches.push(rel);
             }
         }
@@ -152,6 +158,7 @@ pub(super) fn sync_gitignored(resolved: &config::Resolved, workspace_path: &Path
     let allowlist = resolved.config.parallel.ignored_file_allowlist.as_deref();
     let compiled = allowlist.map(compile_allowlist).transpose()?;
     let workspace_rel = workspace_relative(repo_root, workspace_path);
+    let canonical_root = canonical_repo_root(repo_root)?;
 
     for raw_rel in ignored {
         let rel = normalize_git_entry_for_matching(&raw_rel);
@@ -162,11 +169,17 @@ pub(super) fn sync_gitignored(resolved: &config::Resolved, workspace_path: &Path
             continue;
         }
 
-        let source = repo_root.join(&rel);
-        let target = workspace_path.join(&rel);
-        if !source.is_file() {
+        let Some(source) = safe_ignored_file_source(
+            repo_root,
+            &canonical_root,
+            &rel,
+            "Parallel ignored-file sync",
+            workspace_rel.as_deref(),
+        )?
+        else {
             continue;
-        }
+        };
+        let target = workspace_path.join(&rel);
 
         sync_file_if_exists(&source, &target)?;
         log::debug!(
@@ -177,6 +190,73 @@ pub(super) fn sync_gitignored(resolved: &config::Resolved, workspace_path: &Path
     }
 
     Ok(())
+}
+
+fn canonical_repo_root(repo_root: &Path) -> Result<PathBuf> {
+    repo_root
+        .canonicalize()
+        .with_context(|| format!("canonicalize repo root {}", repo_root.display()))
+}
+
+fn safe_ignored_file_source(
+    repo_root: &Path,
+    canonical_root: &Path,
+    rel: &str,
+    context: &str,
+    workspace_rel: Option<&str>,
+) -> Result<Option<PathBuf>> {
+    let source = repo_root.join(rel);
+    let canonical_source = match source.canonicalize() {
+        Ok(path) => path,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => {
+            return Err(err).with_context(|| {
+                format!(
+                    "{context}: resolve ignored file `{rel}` at {}",
+                    source.display()
+                )
+            });
+        }
+    };
+
+    if !canonical_source.starts_with(canonical_root) {
+        bail!(
+            "{context}: ignored file `{rel}` resolves outside repo root (resolved: {}, repo: {}). Refusing to sync gitignored symlink or path.",
+            canonical_source.display(),
+            canonical_root.display()
+        );
+    }
+    let canonical_rel = canonical_source
+        .strip_prefix(canonical_root)
+        .with_context(|| format!("{context}: relativize resolved ignored file `{rel}`"))?;
+    let canonical_rel = canonical_rel
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    if let Some(prefix) = denied_prefix(&canonical_rel) {
+        bail!(
+            "{context}: ignored file `{rel}` resolves under denied runtime/build path `{prefix}` (resolved: {}). Refusing to sync gitignored symlink or path.",
+            canonical_source.display()
+        );
+    }
+    if workspace_rel_excludes(&canonical_rel, workspace_rel) {
+        bail!(
+            "{context}: ignored file `{rel}` resolves inside the parallel workspace root (resolved: {}). Refusing to sync gitignored symlink or path.",
+            canonical_source.display()
+        );
+    }
+
+    let metadata = fs::metadata(&source)
+        .with_context(|| format!("{context}: inspect ignored file `{rel}`"))?;
+    if metadata.is_dir() {
+        bail!(
+            "{context}: matched directory `{rel}`. Directories are not supported; use file paths or file globs."
+        );
+    }
+    if metadata.is_file() {
+        return Ok(Some(canonical_source));
+    }
+
+    Ok(None)
 }
 
 fn compile_allowlist(entries: &[String]) -> Result<GlobSet> {
