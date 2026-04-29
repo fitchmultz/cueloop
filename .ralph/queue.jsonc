@@ -2,48 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0071",
-      "status": "todo",
-      "title": "Suppress Mac watcher degraded warnings during active retry",
-      "description": "Queue watcher health reports a warning for degraded state while the watcher still has a scheduled retry. Goal: render active self-healing as neutral/informational status and reserve warning/error severity for exhausted or operator-action states.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "macos",
-        "watcher",
-        "ux"
-      ],
-      "scope": [
-        "apps/RalphMac/RalphCore/WorkspaceOperationalHealth.swift",
-        "apps/RalphMac/RalphCore/QueueFileWatcherRuntime.swift",
-        "apps/RalphMac/RalphCoreTests/WorkspaceRunControlWatcherHealthTests.swift",
-        "make macos-test-contracts"
-      ],
-      "evidence": [
-        "apps/RalphMac/RalphCore/WorkspaceOperationalHealth.swift:274-288 treats idle/watching/stopped as no issue and starting as info.",
-        "apps/RalphMac/RalphCore/WorkspaceOperationalHealth.swift:288-304 maps QueueWatcherHealth.State.degraded to severity .warning even when nextRetryAt is present and recovery is still scheduled.",
-        "apps/RalphMac/RalphCore/WorkspaceOperationalHealth.swift:305-314 maps exhausted failed state to severity .error, which is the appropriate operator-visible terminal state.",
-        "Command run: make agent-ci -> passed docs-only gate; no baseline CI blocker reproduced."
-      ],
-      "plan": [
-        "Change degraded watcher health with a future nextRetryAt to info or neutral status rather than warning.",
-        "Keep warning/error severity for degraded-without-retry or failed states that need operator attention.",
-        "Ensure the operational summary and quick actions use the new severity consistently and include retry schedule details only in diagnostics/logs.",
-        "Add watcher-health tests for starting, degraded-with-retry, degraded-without-retry, and failed summaries.",
-        "Verify by running the focused watcher health tests or make macos-test-contracts, then make agent-ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-04-29T03:24:54Z",
-      "updated_at": "2026-04-29T03:24:54Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0072",
       "status": "todo",
       "title": "Retry Mac CLI health timeouts before warning users",

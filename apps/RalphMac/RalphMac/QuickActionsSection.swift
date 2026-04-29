@@ -183,7 +183,7 @@ struct QuickActionsDetailColumn: View {
             if !workspace.diagnosticsState.operationalSummary.isHealthy {
                 Text(workspace.diagnosticsState.operationalSummary.title)
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(queueOperationalSummaryColor)
             }
         }
         .padding(12)
@@ -220,6 +220,19 @@ struct QuickActionsDetailColumn: View {
         return workspace.taskState.tasks.isEmpty ? .secondary : .primary
     }
 
+    private var queueOperationalSummaryColor: Color {
+        switch workspace.diagnosticsState.operationalSummary.severity {
+        case .error:
+            return .red
+        case .warning:
+            return .orange
+        case .info:
+            return .blue
+        case nil:
+            return .secondary
+        }
+    }
+
     private var queueStatusDetail: String {
         let todoCount = workspace.taskState.tasks.filter { $0.status == .todo }.count
         let doingCount = workspace.taskState.tasks.filter { $0.status == .doing }.count
@@ -241,7 +254,10 @@ struct QuickActionsDetailColumn: View {
             return "starting"
         case .watching:
             return "watching"
-        case .degraded:
+        case .degraded(_, let retryCount, let nextRetryAt):
+            if nextRetryAt != nil {
+                return "retrying (\(retryCount))"
+            }
             return "degraded"
         case .failed:
             return "failed"

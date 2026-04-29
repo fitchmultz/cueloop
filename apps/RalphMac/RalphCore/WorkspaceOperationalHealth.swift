@@ -286,6 +286,7 @@ public extension WorkspaceOperationalIssue {
                 timestamp: health.timestamp
             )
         case .degraded(let reason, let retryCount, let nextRetryAt):
+            let hasScheduledRetry = nextRetryAt != nil
             let retryMessage: String
             if let nextRetryAt {
                 retryMessage = " Next retry at \(nextRetryAt.formatted(date: .omitted, time: .standard))."
@@ -296,10 +297,12 @@ public extension WorkspaceOperationalIssue {
             return WorkspaceOperationalIssue(
                 id: "watcher.degraded.\(health.workingDirectoryURL.path)",
                 source: .watcher,
-                severity: .warning,
-                title: "Queue watcher degraded",
+                severity: hasScheduledRetry ? .info : .warning,
+                title: hasScheduledRetry ? "Queue watcher retrying" : "Queue watcher degraded",
                 message: "Queue watching hit \(retryCount) retry \(retryCount == 1 ? "attempt" : "attempts"): \(reason).\(retryMessage)",
-                recoverySuggestion: "Keep the workspace open while the watcher retries, or manually refresh if changes seem stale.",
+                recoverySuggestion: hasScheduledRetry
+                    ? "Ralph is retrying queue-file observation automatically."
+                    : "Manually refresh if changes seem stale, or reload the workspace to restart queue watching.",
                 timestamp: health.timestamp
             )
         case .failed(let reason, let attempts):

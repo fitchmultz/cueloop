@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -761,9 +761,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "runner_used": "codex"
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "runner_used": "codex"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "severity_reason": "parallel-mode task state/data integrity loss",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "model_used": "openai-codex/gpt-5.5",
+        "reported_command": "ralph run loop --parallel 2",
         "runner_used": "pi",
-        "reported_command": "ralph run loop --parallel 2"
+        "model_used": "openai-codex/gpt-5.5",
+        "severity_reason": "parallel-mode task state/data integrity loss"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
       }
     },
     {
@@ -3122,9 +3122,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3249,9 +3249,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3449,8 +3449,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general"
       }
     },
@@ -3512,9 +3512,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "runner_used": "pi"
       }
     },
     {
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3639,6 +3639,65 @@
       "updated_at": "2026-04-29T07:14:11.770964000Z",
       "completed_at": "2026-04-29T07:14:11.770964000Z",
       "started_at": "2026-04-29T06:41:55.611443000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
+      }
+    },
+    {
+      "id": "RQ-0071",
+      "status": "done",
+      "title": "Suppress Mac watcher degraded warnings during active retry",
+      "description": "Queue watcher health reports a warning for degraded state while the watcher still has a scheduled retry. Goal: render active self-healing as neutral/informational status and reserve warning/error severity for exhausted or operator-action states.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "macos",
+        "watcher",
+        "ux"
+      ],
+      "scope": [
+        "apps/RalphMac/RalphCore/WorkspaceOperationalHealth.swift",
+        "apps/RalphMac/RalphCore/QueueFileWatcherRuntime.swift",
+        "apps/RalphMac/RalphMac/ConnectionStatusViews.swift",
+        "apps/RalphMac/RalphMac/QuickActionsSection.swift",
+        "apps/RalphMac/RalphCore/Workspace+HealthAndCaching.swift",
+        "apps/RalphMac/RalphCoreTests/WorkspaceRunControlWatcherHealthTests.swift",
+        "make macos-test-contracts",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "apps/RalphMac/RalphCore/WorkspaceOperationalHealth.swift:274-314 is the canonical QueueWatcherHealth-to-WorkspaceOperationalIssue mapping: idle/watching/stopped produce no issue, starting is .info, degraded is currently always .warning, and failed is .error.",
+        "apps/RalphMac/RalphCore/QueueFileWatcherRuntime.swift:217-241 emits QueueWatcherHealth.State.degraded with a non-nil nextRetryAt when startup failed but retryTask is scheduled, and emits .failed only after maxStartAttempts is exhausted.",
+        "apps/RalphMac/RalphCore/QueueFileWatcherRuntime.swift:363-377 can emit degraded with nextRetryAt: nil for timer failure, which represents degraded-without-active-retry and should remain operator-visible warning behavior.",
+        "apps/RalphMac/RalphCore/Workspace+HealthAndCaching.swift:165-227 recomputes operationalIssues/operationalSummary from watcher health; changing WorkspaceOperationalIssue.fromWatcherHealth is enough for summary ordering and issue severity consumers.",
+        "apps/RalphMac/RalphMac/ConnectionStatusViews.swift:133-172 renders severity colors/labels; .info currently displays as blue/Starting even for any informational issue, so Phase 2 should decide whether watcher retry text needs a neutral generic label or whether core issue title/message is sufficient.",
+        "apps/RalphMac/RalphMac/QuickActionsSection.swift:183-187 displays any non-healthy operational summary title in orange, so an .info retry issue may still look warning-colored unless this view is adjusted to honor severity.",
+        "apps/RalphMac/RalphCoreTests/WorkspaceRunControlWatcherHealthTests.swift currently only covers failed watcher health; it needs coverage for starting, degraded with retry, degraded without retry, and failed summaries."
+      ],
+      "plan": [
+        "Update WorkspaceOperationalIssue.fromWatcherHealth so degraded watcher health with a non-nil nextRetryAt is informational/self-healing rather than warning, while degraded with nil nextRetryAt remains warning and failed remains error.",
+        "Preserve retry schedule detail in the operational issue message for informational retry state, but phrase the title/recoverySuggestion as active retry/self-healing rather than operator action required.",
+        "Audit UI consumers of WorkspaceOperationalSummary, especially ConnectionStatusIndicator and QuickActionsSection, so informational watcher retry does not render as an orange warning or misleading 'Starting' label.",
+        "Add/expand WorkspaceRunControlWatcherHealthTests for starting=.info, degraded-with-future-retry=.info, degraded-without-retry=.warning, failed=.error, and summary ordering if needed.",
+        "Run focused macOS contract validation for watcher health (prefer the specific XCTest if available, otherwise make macos-test-contracts) and then run make agent-ci."
+      ],
+      "notes": [
+        "Phase 1 only inspected code and updated planning metadata; no source/tests were changed.",
+        "Backwards compatibility is not a priority for the UX severity mapping; replace the incorrect warning semantics rather than adding parallel behavior.",
+        "Changed watcher degraded-with-retry health to informational while preserving warning/error states for no-retry and failed watcher states.",
+        "Refined Mac status labels/colors so retrying watcher states read as self-healing and degraded-without-retry no longer appears as retrying.",
+        "Validated with make macos-test-contracts and make agent-ci."
+      ],
+      "request": "scan finding",
+      "created_at": "2026-04-29T03:24:54Z",
+      "updated_at": "2026-04-29T07:35:12.988673000Z",
+      "completed_at": "2026-04-29T07:35:12.988673000Z",
+      "started_at": "2026-04-29T07:16:42.175320000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

@@ -173,9 +173,19 @@ struct ConnectionStatusIndicator: View {
         case .error:
             return "Degraded"
         case .warning:
-            return "Watching"
+            return "Warning"
         case .info:
-            return "Starting"
+            if summary.primaryIssue?.source == .watcher {
+                switch summary.primaryIssue?.title {
+                case "Queue watcher retrying":
+                    return "Retrying"
+                case "Queue watcher starting":
+                    return "Starting"
+                default:
+                    return "Info"
+                }
+            }
+            return "Info"
         case nil:
             return "Healthy"
         }
@@ -245,8 +255,11 @@ struct OperationalHealthSheet: View {
             return "Starting (attempt \(attempt))"
         case .watching:
             return "Watching"
-        case .degraded(_, let retryCount, _):
-            return "Retrying (\(retryCount))"
+        case .degraded(_, let retryCount, let nextRetryAt):
+            if nextRetryAt != nil {
+                return "Retrying (\(retryCount))"
+            }
+            return "Degraded"
         case .failed(_, let attempts):
             return "Failed after \(attempts)"
         case .stopped:
