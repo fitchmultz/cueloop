@@ -222,7 +222,7 @@ Policies:
 ## Repository Runtime State
 
 This repository intentionally keeps a small sanitized `.ralph/` state for reproducible examples and documentation.
-In most consumer repositories, `.ralph/` is project-local runtime state managed by `ralph init`.
+In most consumer repositories, `.ralph/` is project-local runtime state managed by `ralph init`, including the generated `.ralph/README.md` guidance file that Ralph refreshes when its embedded template changes.
 
 ## Development
 

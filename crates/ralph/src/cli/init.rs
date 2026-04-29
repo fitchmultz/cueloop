@@ -95,7 +95,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
                     current_version,
                     embedded_version
                 );
-                log::info!("Run 'ralph init --update-readme' to update");
+                log::info!("Run 'ralph init' to update");
                 std::process::exit(1);
             }
             init_cmd::ReadmeCheckResult::Missing => {
@@ -122,7 +122,6 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
             force: args.force,
             force_lock,
             interactive,
-            update_readme: args.update_readme,
         },
     )?;
 
@@ -208,7 +207,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Bootstrap Ralph files in the current repository",
-    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --update-readme\n  ralph init --check"
+    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --check"
 )]
 pub struct InitArgs {
     /// Overwrite existing files if they already exist.
@@ -222,10 +221,6 @@ pub struct InitArgs {
     /// Skip interactive prompts even if running in a TTY.
     #[arg(long, conflicts_with = "interactive")]
     pub non_interactive: bool,
-
-    /// Update README if it exists (force overwrite with latest template).
-    #[arg(long)]
-    pub update_readme: bool,
 
     /// Check if README is current and exit (exit 0 if current, 1 if outdated/missing).
     #[arg(long)]

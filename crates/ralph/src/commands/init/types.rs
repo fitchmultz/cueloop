@@ -26,8 +26,6 @@ pub struct InitOptions {
     pub force_lock: bool,
     /// Run interactive onboarding wizard.
     pub interactive: bool,
-    /// Update README if it exists (force overwrite with latest template).
-    pub update_readme: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

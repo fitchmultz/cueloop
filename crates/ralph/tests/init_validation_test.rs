@@ -58,7 +58,6 @@ fn init_fails_on_invalid_config_json() -> Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     );
 
@@ -97,7 +96,6 @@ fn init_fails_on_structurally_invalid_queue() -> Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     );
 

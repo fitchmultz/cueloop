@@ -196,7 +196,7 @@ fn apply_readme_update(ctx: &MigrationContext) -> Result<()> {
         anyhow::bail!("README.md does not exist at {}", readme_path.display());
     }
 
-    let (status, _) = crate::commands::init::readme::write_readme(&readme_path, false, true)
+    let (status, _) = crate::commands::init::readme::write_readme(&readme_path, false)
         .context("write updated README")?;
 
     match status {

@@ -63,7 +63,7 @@ ralph init
 ralph init --non-interactive
 ```
 
-`ralph init` creates or updates local repository trust (`.ralph/trust.jsonc`) by default and adds that file to `.gitignore`. Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
+`ralph init` creates or updates local repository trust (`.ralph/trust.jsonc`) by default, refreshes the generated `.ralph/README.md` when Ralph ships a newer template, and adds the trust file to `.gitignore`. Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
 
 Interactive init can select extra ignored files for parallel workers; manual additions belong in trusted `parallel.ignored_file_allowlist` and follow the small-file allowlist contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync).
 

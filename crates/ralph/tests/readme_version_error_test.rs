@@ -146,15 +146,13 @@ fn init_fails_on_malformed_readme_version() -> Result<()> {
         malformed_readme,
     )?;
 
-    // Init with update_readme=true should fail with an error about the malformed marker
-    // because it triggers the version check path that validates the version marker
+    // Init should fail because README refresh validates malformed version markers.
     let result = run_init(
         &resolved,
         InitOptions {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: true, // This triggers the version check
         },
     );
 
@@ -205,7 +203,6 @@ fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     );
 

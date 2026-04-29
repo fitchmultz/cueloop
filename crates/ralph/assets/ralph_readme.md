@@ -1,7 +1,9 @@
-<!-- RALPH_README_VERSION: 7 -->
+<!-- RALPH_README_VERSION: 8 -->
 # Ralph runtime files
 
 This repo is using Ralph. The `.ralph/` directory holds repo-local state.
+
+> This file is generated and owned by Ralph. `ralph init` and agent-facing write-enabled commands may refresh it when Ralph ships a newer template; avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
 ## Files
 

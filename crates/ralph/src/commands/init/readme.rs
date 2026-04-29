@@ -140,32 +140,10 @@ pub fn check_readme_current_from_root(repo_root: &std::path::Path) -> Result<Rea
     }
 }
 
-/// Write README file, handling version checks and updates.
+/// Write README file, creating it when missing and refreshing it when outdated.
 /// Returns (status, version) tuple - version is Some if README was read/created.
-pub fn write_readme(
-    path: &Path,
-    force: bool,
-    update: bool,
-) -> Result<(super::FileInitStatus, Option<u32>)> {
-    if path.exists() && !force && !update {
-        // Check version for reporting purposes
-        let content =
-            fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-        let version = match extract_readme_version(&content) {
-            Ok(v) => Some(v),
-            Err(ReadmeVersionError::NoMarker) => None,
-            Err(e) => {
-                return Err(anyhow::anyhow!(e).context(format!(
-                    "README version marker in {} is malformed",
-                    path.display()
-                )));
-            }
-        };
-        return Ok((super::FileInitStatus::Valid, version));
-    }
-
-    // Check if we need to update (version mismatch)
-    let should_update = if update && path.exists() && !force {
+pub fn write_readme(path: &Path, force: bool) -> Result<(super::FileInitStatus, Option<u32>)> {
+    let should_update = if path.exists() && !force {
         let content =
             fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
         let current_version = match extract_readme_version(&content) {
@@ -180,11 +158,10 @@ pub fn write_readme(
         };
         current_version < README_VERSION
     } else {
-        true // Create new or force overwrite
+        true // Create new or force overwrite.
     };
 
     if !should_update {
-        // Version is current, no update needed
         let content =
             fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
         let version = match extract_readme_version(&content) {
@@ -298,7 +275,7 @@ mod tests {
         let dir = TempDir::new()?;
         let readme_path = dir.path().join("README.md");
 
-        let (status, version) = write_readme(&readme_path, false, false)?;
+        let (status, version) = write_readme(&readme_path, false)?;
 
         assert_eq!(status, super::super::FileInitStatus::Created);
         assert_eq!(version, Some(README_VERSION));
@@ -306,26 +283,6 @@ mod tests {
 
         let content = std::fs::read_to_string(&readme_path)?;
         assert!(content.contains("RALPH_README_VERSION"));
-        Ok(())
-    }
-
-    #[test]
-    fn write_readme_preserves_existing_when_no_update() -> Result<()> {
-        let dir = TempDir::new()?;
-        let readme_path = dir.path().join("README.md");
-
-        // Create an existing README with old version
-        let old_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
-        std::fs::write(&readme_path, old_content)?;
-
-        let (status, version) = write_readme(&readme_path, false, false)?;
-
-        assert_eq!(status, super::super::FileInitStatus::Valid);
-        assert_eq!(version, Some(1));
-
-        // Content should be preserved
-        let content = std::fs::read_to_string(&readme_path)?;
-        assert!(content.contains("Old content"));
         Ok(())
     }
 
@@ -338,7 +295,7 @@ mod tests {
         let old_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
         std::fs::write(&readme_path, old_content)?;
 
-        let (status, version) = write_readme(&readme_path, false, true)?;
+        let (status, version) = write_readme(&readme_path, false)?;
 
         assert_eq!(status, super::super::FileInitStatus::Updated);
         assert_eq!(version, Some(README_VERSION));
@@ -362,7 +319,7 @@ mod tests {
         );
         std::fs::write(&readme_path, &current_content)?;
 
-        let (status, version) = write_readme(&readme_path, false, true)?;
+        let (status, version) = write_readme(&readme_path, false)?;
 
         // Should be Valid since version is current
         assert_eq!(status, super::super::FileInitStatus::Valid);
@@ -382,7 +339,7 @@ mod tests {
         // Create an existing README
         std::fs::write(&readme_path, "<!-- RALPH_README_VERSION: 99 -->\n# Custom")?;
 
-        let (status, version) = write_readme(&readme_path, true, false)?;
+        let (status, version) = write_readme(&readme_path, true)?;
 
         // When force-overwriting an existing file, status is Updated
         assert_eq!(status, super::super::FileInitStatus::Updated);

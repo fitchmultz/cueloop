@@ -51,7 +51,6 @@ fn init_creates_missing_files() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
     assert_eq!(report.queue_status, FileInitStatus::Created);
@@ -85,7 +84,6 @@ fn init_generates_readme_with_correct_archive_command() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
     let readme_path = resolved.repo_root.join(".ralph/README.md");
@@ -156,7 +154,6 @@ fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
     assert_eq!(report.queue_status, FileInitStatus::Valid);
@@ -190,7 +187,6 @@ fn init_overwrites_when_forced() -> anyhow::Result<()> {
             force: true,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
     assert_eq!(report.queue_status, FileInitStatus::Created);
@@ -235,7 +231,6 @@ fn init_creates_json_for_new_install() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
     assert_eq!(report.queue_status, FileInitStatus::Created);
@@ -283,7 +278,6 @@ fn init_skips_readme_when_not_referenced() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
     assert_eq!(report.readme_status, None);
@@ -328,7 +322,6 @@ fn init_fails_on_invalid_existing_queue() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     );
 
@@ -375,7 +368,6 @@ fn init_fails_on_invalid_existing_done() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     );
 
@@ -408,7 +400,6 @@ fn init_with_wizard_answers_creates_configured_files() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
 
@@ -445,7 +436,7 @@ fn init_with_wizard_answers_creates_configured_files() -> anyhow::Result<()> {
 }
 
 #[test]
-fn init_update_readme_flag_updates_outdated() -> anyhow::Result<()> {
+fn init_updates_outdated_readme_by_default() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
 
@@ -465,7 +456,6 @@ fn init_update_readme_flag_updates_outdated() -> anyhow::Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: true,
         },
     )?;
 

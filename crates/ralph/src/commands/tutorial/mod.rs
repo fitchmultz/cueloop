@@ -95,7 +95,6 @@ fn run_tutorial_non_interactive(keep_sandbox: bool) -> Result<()> {
             force: false,
             force_lock: false,
             interactive: false,
-            update_readme: false,
         },
     )?;
 

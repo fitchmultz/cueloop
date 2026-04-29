@@ -88,7 +88,7 @@ cd your-project
 ralph init
 ```
 
-`ralph init` writes the `0.3` config contract with `"version": 2`, safe defaults, no automatic publish side effects, and local repo trust in `.ralph/trust.jsonc` (gitignored by init). If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
+`ralph init` writes the `0.3` config contract with `"version": 2`, safe defaults, no automatic publish side effects, local repo trust in `.ralph/trust.jsonc` (gitignored by init), and the current generated `.ralph/README.md` guidance. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
 
 ### Interactive Wizard
 

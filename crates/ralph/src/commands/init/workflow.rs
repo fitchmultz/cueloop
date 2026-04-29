@@ -76,7 +76,7 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
     let mut readme_status = None;
     if crate::prompts::prompts_reference_readme(&resolved.repo_root)? {
         let readme_path = resolved.repo_root.join(".ralph/README.md");
-        let (status, version) = readme::write_readme(&readme_path, opts.force, opts.update_readme)?;
+        let (status, version) = readme::write_readme(&readme_path, opts.force)?;
         readme_status = Some((status, version));
     }
 

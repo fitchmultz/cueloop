@@ -47,7 +47,7 @@ pub(crate) fn check_and_update_readme(resolved: &Resolved) -> Result<Option<Stri
             );
 
             let (status, _) =
-                readme::write_readme(&readme_path, false, true).context("write updated README")?;
+                readme::write_readme(&readme_path, false).context("write updated README")?;
 
             if status == crate::commands::init::FileInitStatus::Updated {
                 let msg = format!(
@@ -65,7 +65,7 @@ pub(crate) fn check_and_update_readme(resolved: &Resolved) -> Result<Option<Stri
             let readme_path = resolved.repo_root.join(".ralph/README.md");
             log::info!("README is missing, creating {}", readme_path.display());
             let (status, version) =
-                readme::write_readme(&readme_path, false, true).context("create missing README")?;
+                readme::write_readme(&readme_path, false).context("create missing README")?;
             if matches!(status, crate::commands::init::FileInitStatus::Created) {
                 let version_display = version
                     .map(|v| v.to_string())
@@ -102,14 +102,14 @@ pub(crate) fn check_readme_without_update(resolved: &Resolved) -> Result<Option<
             embedded_version,
         } => {
             let msg = format!(
-                ".ralph/README.md is outdated (version {} < {}). Run `ralph init --update-readme --non-interactive` or another write-enabled command to refresh it.",
+                ".ralph/README.md is outdated (version {} < {}). Run `ralph init --non-interactive` or another write-enabled command to refresh it.",
                 current_version, embedded_version
             );
             log::warn!("{}", msg);
             Ok(Some(msg))
         }
         readme::ReadmeCheckResult::Missing => {
-            let msg = ".ralph/README.md is missing. Run `ralph init --update-readme --non-interactive` or another write-enabled command to create it.".to_string();
+            let msg = ".ralph/README.md is missing. Run `ralph init --non-interactive` or another write-enabled command to create it.".to_string();
             log::warn!("{}", msg);
             Ok(Some(msg))
         }

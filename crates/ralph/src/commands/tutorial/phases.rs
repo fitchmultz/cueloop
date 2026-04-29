@@ -86,7 +86,6 @@ pub fn phase_init(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) ->
                 force: false,
                 force_lock: false,
                 interactive: false,
-                update_readme: false,
             },
         )?;
         Ok(())

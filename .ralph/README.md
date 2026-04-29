@@ -1,9 +1,9 @@
-<!-- RALPH_README_VERSION: 7 -->
+<!-- RALPH_README_VERSION: 8 -->
 # Ralph runtime files
 
 This repo is using Ralph. The `.ralph/` directory holds repo-local state.
 
-This repository keeps a deliberately small, sanitized sample queue archive so the file format is easy to inspect without wading through maintainer-specific history. In a normal project, these files are your own working state.
+> This file is generated and owned by Ralph. `ralph init` and agent-facing write-enabled commands may refresh it when Ralph ships a newer template; avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
 ## Files
 
@@ -149,8 +149,8 @@ Prompt templates support variable interpolation for environment variables and co
 ### Config Values
 - `{{config.section.key}}` — expand from config (supports nested paths)
 - Supported paths:
-  - `{{config.agent.runner}}` — current runner (e.g., `Codex`)
-  - `{{config.agent.model}}` — current model (e.g., `gpt-5.4`)
+  - `{{config.agent.runner}}` — current runner (e.g., `Claude`)
+  - `{{config.agent.model}}` — current model (e.g., `gpt-5.3-codex`)
   - `{{config.queue.file}}` — queue file path (e.g., `.ralph/queue.jsonc`)
   - `{{config.queue.done_file}}` — done archive path (e.g., `.ralph/done.jsonc`)
   - `{{config.queue.id_prefix}}` — task ID prefix (e.g., `RQ`)
@@ -219,14 +219,14 @@ Defaults via config (`.ralph/config.jsonc` or `~/.config/ralph/config.jsonc`):
 {
   "version": 1,
   "agent": {
-    "runner": "codex",
-    "model": "gpt-5.4",
+    "runner": "claude",
+    "model": "sonnet",
     "phases": 3,
     "iterations": 1,
     "repoprompt_plan_required": false,
     "repoprompt_tool_injection": false,
     "git_revert_mode": "ask",
-    "git_commit_push_enabled": true,
+    "git_publish_mode": "commit_and_push",
     "ci_gate": {
       "enabled": true,
       "argv": ["make", "ci"]
@@ -236,7 +236,7 @@ Defaults via config (`.ralph/config.jsonc` or `~/.config/ralph/config.jsonc`):
 ```
 
 **Allowed models by runner:**
-- **Codex**: `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` (restricted list)
+- **Codex**: `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3`, `gpt-5.2-codex`, `gpt-5.2` (restricted list)
 - **OpenCode**: arbitrary model IDs (e.g., `zai-coding-plan/glm-4.7`)
 - **Gemini**: `gemini-3-pro-preview`, `gemini-3-flash-preview`, or arbitrary IDs
 - **Claude**: `sonnet` (default), `opus`, or arbitrary model IDs
@@ -273,8 +273,9 @@ Ralph can control whether uncommitted changes are reverted when runner/supervisi
 - `disabled`: never revert automatically.
 
 Ralph can also toggle automatic git commit/push after successful runs:
-- `agent.git_commit_push_enabled: true` (default): commit and push after completion.
-- `agent.git_commit_push_enabled: false`: skip automatic commit/push (repo may remain dirty).
+- `agent.git_publish_mode: "commit_and_push"`: commit and push after completion.
+- `agent.git_publish_mode: "commit"`: create a local commit only.
+- `agent.git_publish_mode: "off"` (default): skip automatic publish (repo may remain dirty).
 
 Examples:
 - `ralph run one --git-revert-mode disabled`

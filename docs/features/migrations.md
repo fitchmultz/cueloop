@@ -36,8 +36,9 @@ Migrations are automated transformations that update your project's configuratio
 | Config key renamed | `ConfigKeyRename` |
 | Legacy config contract (`version: 1`, `agent.git_commit_push_enabled`) | `ConfigLegacyContractUpgrade` |
 | File moved or renamed | `FileRename` |
-| README template updated | `ReadmeUpdate` |
 | Queue format changes | `FileRename` (JSON → JSONC) |
+
+README template updates are handled by `ralph init` and agent-facing write-enabled commands, not by the active migration registry.
 
 ### Key Features
 
@@ -142,7 +143,7 @@ MigrationType::FileRename {
 
 ### ReadmeUpdate
 
-Updates the project README to the latest template version.
+Legacy migration type for updating the generated `.ralph/README.md` to the latest template version. Current releases refresh this file through `ralph init` and agent-facing write-enabled commands instead of relying on a registered README migration.
 
 **Structure:**
 ```rust
@@ -154,7 +155,7 @@ MigrationType::ReadmeUpdate {
 
 **Behavior:**
 - Regenerates `.ralph/README.md` with the latest template
-- Preserves custom content (merge-based update)
+- Replaces local README drift because the file is Ralph-owned/generated
 - Only applicable if current README version < target version
 
 ---
@@ -186,7 +187,7 @@ Format: `<type>_<description>_<YYYY>_<MM>`
 Examples:
 - `config_key_rename_parallel_worktree_root_2026_02`
 - `file_rename_queue_json_2026_01`
-- `readme_update_v2_2026_03`
+- `config_legacy_contract_upgrade_2026_03`
 
 ### Adding New Migrations
 
