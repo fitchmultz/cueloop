@@ -3,3 +3,16 @@ resolver = "2"
 members = [
   "crates/ralph",
 ]
+
+[profile.dev]
+debug = "line-tables-only"
+codegen-units = 256
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
