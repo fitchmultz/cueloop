@@ -8,27 +8,9 @@
       "enabled": true
     },
     "git_publish_mode": "commit_and_push",
-    "runner": "codex",
-    "model": "gpt-5.5",
-    "reasoning_effort": "high",
-    "phases": 3,
-    "phase_overrides": {
-      "phase1": {
-        "runner": "pi",
-        "model": "openai-codex/gpt-5.5",
-        "reasoning_effort": "high"
-      },
-      "phase2": {
-        "runner": "pi",
-        "model": "openai-codex/gpt-5.3-codex",
-        "reasoning_effort": "xhigh"
-      },
-      "phase3": {
-        "runner": "pi",
-        "model": "openai-codex/gpt-5.5",
-        "reasoning_effort": "high"
-      }
-    }
+    "runner": "pi",
+    "model": "openai-codex/gpt-5.5:high",
+    "phases": 3
   },
   "version": 2
 }
