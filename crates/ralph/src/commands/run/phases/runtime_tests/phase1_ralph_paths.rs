@@ -51,7 +51,7 @@ state="{root}/.ralph/state/worker.json"
 echo '{{"v":2}}' > "$state"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );

@@ -670,6 +670,10 @@ fn assert_known_invalid_resume_falls_back(
     resume_error: runner::RunnerError,
 ) {
     let temp_dir = tempfile::tempdir().expect("tempdir");
+    let invocation_session_id = match runner_kind {
+        Runner::Opencode => "ses-resume-session",
+        _ => "resume-session",
+    };
     let invocation = test_invocation(
         temp_dir.path(),
         runner_kind,
@@ -677,7 +681,7 @@ fn assert_known_invalid_resume_falls_back(
         "resume task",
         None,
         false,
-        Some("resume-session".to_string()),
+        Some(invocation_session_id.to_string()),
     );
 
     let messages = RunnerErrorMessages {

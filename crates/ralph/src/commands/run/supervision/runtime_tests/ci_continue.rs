@@ -47,7 +47,7 @@ fn post_run_supervise_ci_gate_continue_resumes_session() -> anyhow::Result<()> {
 set -e
 echo "$@" > "{resume_args}"
 echo '{{"type":"text","part":{{"text":"resume"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         resume_args = resume_args.display()
     );

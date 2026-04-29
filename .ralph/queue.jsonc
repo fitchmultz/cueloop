@@ -2,49 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0069",
-      "status": "todo",
-      "title": "Validate runner session IDs before persisting them",
-      "description": "Session-id recovery accepts broad JSON keys and scans all stdout, which can persist unrelated IDs from runner chatter. Goal: only store IDs from runner-specific session-start/resume events and preserve last known-good state when output is ambiguous.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "session",
-        "typing",
-        "reliability"
-      ],
-      "scope": [
-        "crates/ralph/src/runner/execution/json.rs",
-        "crates/ralph/src/runner/execution/process/mod.rs",
-        "crates/ralph/src/runutil/execution/continue_session.rs",
-        "make agent-ci"
-      ],
-      "evidence": [
-        "crates/ralph/src/runner/execution/json.rs:21-39 parses the first JSON object starting at the first '{' in any line as a compatibility fallback.",
-        "crates/ralph/src/runner/execution/json.rs:42-58 accepts type=session id plus generic thread_id, session_id, or sessionID without runner/event-shape validation.",
-        "crates/ralph/src/runner/execution/process/mod.rs:260-265 falls back to scanning full stdout for a session id if the streaming reader did not capture one.",
-        "A wrong stored session id can make future continue paths retry invalid state before falling back, adding user-visible recovery noise.",
-        "Command run: make agent-ci -> passed docs-only gate; no baseline CI blocker reproduced."
-      ],
-      "plan": [
-        "Define runner-specific accepted session event shapes and ID validation rules for each supported runner.",
-        "Use the structured stream-captured session id as authoritative; make full-stdout fallback opt-in and shape-validated.",
-        "Preserve the previous known-good session id when output contains ambiguous JSON but no confirmed session event.",
-        "Add tests with log lines containing unrelated thread_id/session_id fields and confirmed session-start events.",
-        "Verify by running cargo test -p ralph runner::execution and make agent-ci."
-      ],
-      "notes": [],
-      "request": "scan finding",
-      "created_at": "2026-04-29T03:24:54Z",
-      "updated_at": "2026-04-29T03:24:54Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0070",
       "status": "todo",
       "title": "Stop showing retry progress as Mac error messages",

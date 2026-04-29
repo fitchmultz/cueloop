@@ -221,6 +221,7 @@ fn run_with_streaming_json_inner(
         output_handler.clone(),
         output_stream,
         Arc::clone(&session_id_buf),
+        runner.clone(),
     );
     let stderr_handle = spawn_reader(
         stderr,
@@ -262,7 +263,7 @@ fn run_with_streaming_json_inner(
         .inspect_err(|e| log::debug!("Failed to lock session_id_buf: {}", e))
         .ok()
         .and_then(|guard| guard.clone())
-        .or_else(|| extract_session_id_from_text(&stdout));
+        .or_else(|| extract_session_id_from_text(&runner, &stdout));
 
     Ok(RunnerOutput {
         status,

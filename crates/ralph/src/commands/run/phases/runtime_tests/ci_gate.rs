@@ -34,7 +34,7 @@ fi
 n=$((n+1))
 echo "$n" > "$count"
 echo '{{"type":"text","part":{{"text":"resume"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -149,7 +149,7 @@ fn phase2_final_three_phase_iteration_skips_duplicate_ci_gate() -> Result<()> {
     let script = r#"#!/bin/sh
 set -e
 echo '{"type":"text","part":{"text":"phase2 complete"}}'
-echo '{"sessionID":"sess-phase2"}'
+echo '{"type":"session","sessionID":"sess-phase2"}'
 "#;
     let runner_path = create_fake_runner(temp.path(), "opencode", script)?;
 

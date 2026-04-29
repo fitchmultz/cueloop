@@ -58,6 +58,7 @@ mod stream;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use json::is_valid_runner_session_id;
 pub(super) use response::extract_final_assistant_response;
 
 pub(crate) use builtin_plugins::BuiltInRunnerPlugin;

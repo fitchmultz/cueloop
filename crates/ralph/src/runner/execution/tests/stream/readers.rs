@@ -87,6 +87,7 @@ fn spawn_json_reader_handles_normal_lines() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -112,6 +113,7 @@ fn spawn_json_reader_enforces_line_length_limit() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -143,6 +145,7 @@ fn spawn_json_reader_handles_multiple_lines_within_limit() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -179,6 +182,7 @@ fn spawn_json_reader_enforces_buffer_limit_and_preserves_latest_tail() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -221,6 +225,32 @@ fn spawn_reader_enforces_buffer_limit_and_preserves_latest_tail() {
     let handled = handled.lock().unwrap().concat();
     assert_eq!(handled.len(), oversized_data.len());
     assert!(handled.ends_with(tail_marker));
+}
+
+#[test]
+fn spawn_json_reader_ignores_generic_session_chatter_before_confirmed_event() {
+    let input = concat!(
+        r#"{"type":"assistant","session_id":"wrong"}"#,
+        "\n",
+        r#"{"type":"session","id":"pi-good"}"#,
+        "\n",
+    );
+    let reader = Cursor::new(input.as_bytes());
+    let buffer: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    let session_id_buf: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+
+    let handle = spawn_json_reader(
+        reader,
+        StreamSink::Stdout,
+        Arc::clone(&buffer),
+        None,
+        OutputStream::HandlerOnly,
+        Arc::clone(&session_id_buf),
+        Runner::Pi,
+    );
+
+    handle.join().unwrap().unwrap();
+    assert_eq!(session_id_buf.lock().unwrap().as_deref(), Some("pi-good"));
 }
 
 #[test]
@@ -286,6 +316,7 @@ fn spawn_json_reader_handles_empty_input() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -346,6 +377,7 @@ fn spawn_json_reader_propagates_read_errors() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -371,6 +403,7 @@ fn spawn_json_reader_handles_line_exactly_at_limit() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -396,6 +429,7 @@ fn spawn_json_reader_handles_partial_line_at_eof() {
         None,
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();
@@ -424,6 +458,7 @@ fn spawn_json_reader_preserves_utf8_split_across_reads() {
         Some(handler),
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     handle.join().unwrap().unwrap();
@@ -455,6 +490,7 @@ fn spawn_json_reader_plain_line_calls_output_handler_with_newline() {
         Some(handler),
         OutputStream::HandlerOnly,
         session_id_buf,
+        Runner::Pi,
     );
 
     let result = handle.join().unwrap();

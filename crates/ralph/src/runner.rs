@@ -36,6 +36,7 @@ pub(crate) use error::{
 
 pub(crate) use execution::{
     BuiltInRunnerPlugin, CtrlCState, ResolvedRunnerCliOptions, RunnerPlugin, ctrlc_state,
+    is_valid_runner_session_id,
 };
 
 pub(crate) use model::{

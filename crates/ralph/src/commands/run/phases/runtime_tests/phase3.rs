@@ -171,7 +171,7 @@ fn phase3_review_non_final_skips_completion_enforcement() -> Result<()> {
 
     let temp = TempDir::new()?;
     let script = r#"#!/bin/sh
-echo '{"sessionID":"sess-123"}'
+echo '{"type":"session","sessionID":"sess-123"}'
 "#;
     let runner_path = create_fake_runner(temp.path(), "opencode", script)?;
 
@@ -244,7 +244,7 @@ fn phase3_review_non_final_runs_ci_gate_when_enabled() -> Result<()> {
 
     let temp = TempDir::new()?;
     let script = r#"#!/bin/sh
-echo '{"sessionID":"sess-123"}'
+echo '{"type":"session","sessionID":"sess-123"}'
 "#;
     let runner_path = create_fake_runner(temp.path(), "opencode", script)?;
 

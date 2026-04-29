@@ -56,7 +56,8 @@ echo "$@" >> {args_file}
 # Consume resume payload so the caller does not race a closed stdin pipe.
 cat >/dev/null
 # Output JSON with session_id so resume can work
-echo '{{"session_id":"test-session-123","stdout":"runner output","status":"success"}}'
+echo '{{"type":"thread.started","thread_id":"test-session-123"}}'
+echo '{{"stdout":"runner output","status":"success"}}'
 exit 0
 "#,
         args_file = resume_args_file.display()
@@ -141,7 +142,8 @@ exit 1
         r#"#!/bin/sh
 echo "$@" >> {args_file}
 cat >/dev/null
-echo '{{"session_id":"test-session-custom-123","stdout":"runner output","status":"success"}}'
+echo '{{"type":"thread.started","thread_id":"test-session-custom-123"}}'
+echo '{{"stdout":"runner output","status":"success"}}'
 exit 0
 "#,
         args_file = resume_args_file.display()
@@ -214,7 +216,8 @@ echo "1" >> {count_file}
 # Consume resume payload so repeated Continue retries cannot hit a closed stdin pipe.
 cat >/dev/null
 # Output JSON with session_id so resume can work
-echo '{{"session_id":"escalation-test-session","stdout":"runner output","status":"success"}}'
+echo '{{"type":"thread.started","thread_id":"escalation-test-session"}}'
+echo '{{"stdout":"runner output","status":"success"}}'
 exit 0
 "#,
         count_file = resume_count_file.display()

@@ -76,18 +76,20 @@ pub(crate) fn should_fallback_to_fresh_continue(
     }
 }
 
+fn validated_session_id_for_runner<'a>(
+    runner_kind: &Runner,
+    session_id: Option<&'a str>,
+) -> Option<&'a str> {
+    session_id.filter(|id| crate::runner::is_valid_runner_session_id(runner_kind, id))
+}
+
 fn choose_continue_session_id<'a>(
+    runner_kind: &Runner,
     error_session_id: Option<&'a str>,
     invocation_session_id: Option<&'a str>,
 ) -> Option<&'a str> {
-    error_session_id
-        .map(str::trim)
-        .filter(|id| !id.is_empty())
-        .or_else(|| {
-            invocation_session_id
-                .map(str::trim)
-                .filter(|id| !id.is_empty())
-        })
+    validated_session_id_for_runner(runner_kind, error_session_id)
+        .or_else(|| validated_session_id_for_runner(runner_kind, invocation_session_id))
 }
 
 pub(super) fn continue_or_rerun(
@@ -98,7 +100,8 @@ pub(super) fn continue_or_rerun(
     invocation_session_id: Option<&str>,
     error_session_id: Option<&str>,
 ) -> Result<runner::RunnerOutput, runner::RunnerError> {
-    let continue_session_id = choose_continue_session_id(error_session_id, invocation_session_id);
+    let continue_session_id =
+        choose_continue_session_id(attempt.runner_kind, error_session_id, invocation_session_id);
     if let Some(session_id) = continue_session_id {
         match backend.resume_session(attempt.resume_session_request(session_id, continue_message)) {
             Ok(output) => {
@@ -119,9 +122,10 @@ pub(super) fn continue_or_rerun(
         log::debug!("resume: no runner session id was available; starting a fresh invocation");
     }
 
-    backend.run_prompt(
-        attempt.run_prompt_request(fresh_prompt, invocation_session_id.map(str::to_string)),
-    )
+    let fresh_session_id =
+        validated_session_id_for_runner(attempt.runner_kind, invocation_session_id)
+            .map(str::to_string);
+    backend.run_prompt(attempt.run_prompt_request(fresh_prompt, fresh_session_id))
 }
 
 #[cfg(test)]
@@ -129,7 +133,10 @@ mod tests {
     use crate::contracts::Runner;
     use crate::runner::RunnerError;
 
-    use super::should_fallback_to_fresh_continue;
+    use super::{
+        choose_continue_session_id, should_fallback_to_fresh_continue,
+        validated_session_id_for_runner,
+    };
 
     #[test]
     fn cursor_resume_unknown_session_falls_back_to_fresh() {
@@ -140,6 +147,58 @@ mod tests {
             session_id: None,
         };
         assert!(should_fallback_to_fresh_continue(&Runner::Cursor, &err));
+    }
+
+    #[test]
+    fn choose_continue_session_id_prefers_valid_error_id() {
+        assert_eq!(
+            choose_continue_session_id(
+                &Runner::Claude,
+                Some("claude-error-session"),
+                Some("claude-invocation-session"),
+            ),
+            Some("claude-error-session")
+        );
+    }
+
+    #[test]
+    fn choose_continue_session_id_preserves_invocation_when_error_id_invalid() {
+        assert_eq!(
+            choose_continue_session_id(
+                &Runner::Claude,
+                Some("ambiguous error session"),
+                Some("claude-invocation-session"),
+            ),
+            Some("claude-invocation-session")
+        );
+    }
+
+    #[test]
+    fn choose_continue_session_id_rejects_invalid_opencode_error_id() {
+        assert_eq!(
+            choose_continue_session_id(&Runner::Opencode, Some("open-789"), Some("ses_previous"),),
+            Some("ses_previous")
+        );
+    }
+
+    #[test]
+    fn choose_continue_session_id_returns_none_when_candidates_are_ambiguous() {
+        assert_eq!(
+            choose_continue_session_id(&Runner::Pi, Some(" "), Some("bad id")),
+            None
+        );
+    }
+
+    #[test]
+    fn fresh_fallback_session_id_reuses_only_valid_invocation_id() {
+        assert_eq!(
+            validated_session_id_for_runner(&Runner::Pi, Some("bad id")),
+            None
+        );
+        assert_eq!(
+            validated_session_id_for_runner(&Runner::Pi, Some("known-good")),
+            Some("known-good")
+        );
     }
 
     #[test]

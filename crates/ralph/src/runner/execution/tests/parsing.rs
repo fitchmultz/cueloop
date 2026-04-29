@@ -20,7 +20,7 @@ use super::super::command::{effort_as_str, permission_mode_to_arg};
 use super::super::json::{
     extract_session_id_from_json, extract_session_id_from_text, parse_json_line,
 };
-use crate::contracts::{ClaudePermissionMode, ReasoningEffort};
+use crate::contracts::{ClaudePermissionMode, ReasoningEffort, Runner};
 use serde_json::json;
 
 #[test]
@@ -59,141 +59,160 @@ fn parse_json_line_parses_json_with_prefix_noise() {
 }
 
 #[test]
-fn extract_session_id_from_json_codex_thread_id() {
-    let payload = json!({
-        "thread_id": "thread-123"
-    });
-    assert_eq!(extract_session_id_from_json(&payload), Some("thread-123"));
+fn generic_session_fields_are_not_persisted_without_lifecycle_shape() {
+    for (runner, payload) in [
+        (Runner::Codex, json!({ "thread_id": "thread-123" })),
+        (Runner::Claude, json!({ "session_id": "session-abc" })),
+        (
+            Runner::Gemini,
+            json!({ "type": "message", "session_id": "gemini-xyz" }),
+        ),
+        (Runner::Opencode, json!({ "sessionID": "ses_123" })),
+        (
+            Runner::Cursor,
+            json!({ "type": "tool_call", "session_id": "cursor-123" }),
+        ),
+    ] {
+        assert_eq!(
+            extract_session_id_from_json(&runner, &payload),
+            None,
+            "{runner:?}"
+        );
+    }
 }
 
 #[test]
-fn extract_session_id_from_json_claude_session_id() {
-    let payload = json!({
-        "session_id": "session-abc"
-    });
-    assert_eq!(extract_session_id_from_json(&payload), Some("session-abc"));
+fn confirmed_lifecycle_events_are_persisted_by_runner() {
+    for (runner, payload, expected) in [
+        (
+            Runner::Pi,
+            json!({ "type": "session", "id": "pi-123" }),
+            "pi-123",
+        ),
+        (
+            Runner::Claude,
+            json!({ "type": "system", "subtype": "init", "session_id": "claude-123" }),
+            "claude-123",
+        ),
+        (
+            Runner::Gemini,
+            json!({ "type": "session_started", "session_id": "gemini-123" }),
+            "gemini-123",
+        ),
+        (
+            Runner::Codex,
+            json!({ "type": "thread.started", "thread_id": "thread-123" }),
+            "thread-123",
+        ),
+        (
+            Runner::Opencode,
+            json!({ "type": "session", "sessionID": "ses_123" }),
+            "ses_123",
+        ),
+        (
+            Runner::Cursor,
+            json!({ "type": "system", "subtype": "init", "session_id": "cursor-123" }),
+            "cursor-123",
+        ),
+    ] {
+        assert_eq!(
+            extract_session_id_from_json(&runner, &payload),
+            Some(expected),
+            "{runner:?}"
+        );
+    }
 }
 
 #[test]
-fn extract_session_id_from_json_gemini_session_id() {
-    let payload = json!({
-        "session_id": "gemini-xyz"
-    });
-    assert_eq!(extract_session_id_from_json(&payload), Some("gemini-xyz"));
+fn malformed_session_ids_are_rejected() {
+    for id in ["", " pi-123", "pi 123", "pi-123\n"] {
+        let payload = json!({ "type": "session", "id": id });
+        assert_eq!(extract_session_id_from_json(&Runner::Pi, &payload), None);
+    }
+
+    let oversized = "x".repeat(513);
+    let payload = json!({ "type": "session", "id": oversized });
+    assert_eq!(extract_session_id_from_json(&Runner::Pi, &payload), None);
 }
 
 #[test]
-fn extract_session_id_from_json_opencode_session_id() {
-    let payload = json!({
-        "sessionID": "open-789"
-    });
-    assert_eq!(extract_session_id_from_json(&payload), Some("open-789"));
-}
-
-#[test]
-fn extract_session_id_from_json_pi_session_event() {
-    let payload = json!({
-        "type": "session",
-        "id": "pi-123"
-    });
-    assert_eq!(extract_session_id_from_json(&payload), Some("pi-123"));
-}
-
-#[test]
-fn extract_session_id_from_text_reads_json_lines() {
-    let stdout = "{\"session_id\":\"sess-001\"}\n{\"result\":\"ok\"}\n";
+fn opencode_session_ids_must_use_runner_prefix() {
+    let payload = json!({ "type": "session", "sessionID": "open-789" });
     assert_eq!(
-        extract_session_id_from_text(stdout),
-        Some("sess-001".to_string())
+        extract_session_id_from_json(&Runner::Opencode, &payload),
+        None
     );
 }
 
 #[test]
-fn extract_session_id_with_prefix() {
-    let stdout = "[INFO] {\"session_id\":\"sess-with-prefix\"}\n";
+fn extract_session_id_from_text_ignores_chatter_and_accepts_lifecycle_event() {
+    let stdout = concat!(
+        r#"{"type":"assistant","session_id":"wrong"}"#,
+        "\n",
+        r#"{"type":"session","id":"pi-good"}"#,
+        "\n",
+    );
     assert_eq!(
-        extract_session_id_from_text(stdout),
-        Some("sess-with-prefix".to_string())
+        extract_session_id_from_text(&Runner::Pi, stdout),
+        Some("pi-good".to_string())
     );
 }
 
 #[test]
-fn extract_session_id_with_suffix() {
-    let stdout = "{\"session_id\":\"sess-with-suffix\"} [OK]\n";
+fn extract_session_id_from_text_keeps_prefix_suffix_json_compatibility() {
+    let stdout = "[INFO] {\"type\":\"session\",\"id\":\"pi-with-prefix\"} [OK]\n";
     assert_eq!(
-        extract_session_id_from_text(stdout),
-        Some("sess-with-suffix".to_string())
-    );
-}
-
-#[test]
-fn extract_session_id_interleaved_garbage() {
-    let stdout = "Starting runner...\n[DEBUG] init\n{\"session_id\":\"sess-interleaved\"}\nDone.\n";
-    assert_eq!(
-        extract_session_id_from_text(stdout),
-        Some("sess-interleaved".to_string())
+        extract_session_id_from_text(&Runner::Pi, stdout),
+        Some("pi-with-prefix".to_string())
     );
 }
 
 #[test]
 fn extract_session_id_non_string_values() {
-    // Should skip numeric ID if strict string is expected, or just fail gracefully (return None)
-    // The current implementation checks .as_str(), so it should return None for this line,
-    // and if there's no other valid line, return None overall.
-    let stdout = "{\"session_id\":12345}\n";
-    assert_eq!(extract_session_id_from_text(stdout), None);
+    let stdout = "{\"type\":\"session\",\"id\":12345}\n";
+    assert_eq!(extract_session_id_from_text(&Runner::Pi, stdout), None);
 }
 
 #[test]
 fn extract_session_id_nested_fields_ignored() {
-    // Ensure we don't pick up nested session_ids if we only look at top level (current impl uses from_str -> Value, checks top level)
-    let stdout = "{\"data\": {\"session_id\":\"nested-id\"}}\n";
-    assert_eq!(extract_session_id_from_text(stdout), None);
+    let stdout = "{\"type\":\"session\",\"data\": {\"id\":\"nested-id\"}}\n";
+    assert_eq!(extract_session_id_from_text(&Runner::Pi, stdout), None);
 }
 
 #[test]
-fn extract_session_id_from_json_kimi_tool_calls() {
+fn kimi_outputs_never_persist_session_ids_from_stdout() {
     let payload = json!({
+        "type": "session",
+        "id": "kimi-123",
         "role": "assistant",
         "content": [{"type": "text", "text": "Hello"}],
         "tool_calls": [
             {"type": "function", "id": "tool_bUJW2GCXzg65VTa72XV9YhNn", "function": {"name": "test"}}
         ]
     });
-    assert_eq!(extract_session_id_from_json(&payload), None);
+    assert_eq!(extract_session_id_from_json(&Runner::Kimi, &payload), None);
 }
 
 #[test]
-fn extract_session_id_from_json_kimi_no_tool_calls() {
-    let payload = json!({
-        "role": "assistant",
-        "content": [{"type": "text", "text": "Hello"}]
-    });
-    assert_eq!(extract_session_id_from_json(&payload), None);
+fn plugin_finish_event_persists_external_plugin_session_id() {
+    let payload = json!({ "type": "finish", "session_id": "plugin-session-123" });
+    assert_eq!(
+        extract_session_id_from_json(&Runner::Plugin("custom".into()), &payload),
+        Some("plugin-session-123")
+    );
 }
 
 #[test]
-fn extract_session_id_from_json_kimi_empty_tool_calls() {
-    let payload = json!({
-        "role": "assistant",
-        "tool_calls": []
-    });
-    assert_eq!(extract_session_id_from_json(&payload), None);
-}
-
-#[test]
-fn extract_session_id_from_json_kimi_tool_without_id() {
-    let payload = json!({
-        "role": "assistant",
-        "tool_calls": [
-            {"type": "function", "function": {"name": "test"}}
-        ]
-    });
-    assert_eq!(extract_session_id_from_json(&payload), None);
+fn plugin_generic_session_fields_are_not_persisted_without_finish_event() {
+    let payload = json!({ "session_id": "plugin-session-123" });
+    assert_eq!(
+        extract_session_id_from_json(&Runner::Plugin("custom".into()), &payload),
+        None
+    );
 }
 
 #[test]
 fn extract_session_id_from_text_kimi_format() {
     let stdout = r#"{"role":"assistant","content":[{"type":"text","text":"Hello"}],"tool_calls":[{"id":"tool_xyz789","type":"function"}]}"#;
-    assert_eq!(extract_session_id_from_text(stdout), None);
+    assert_eq!(extract_session_id_from_text(&Runner::Kimi, stdout), None);
 }

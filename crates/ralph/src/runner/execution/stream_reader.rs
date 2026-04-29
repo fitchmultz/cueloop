@@ -30,6 +30,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::constants::buffers::MAX_LINE_LENGTH;
+use crate::contracts::Runner;
 use crate::debuglog::{self, DebugStream};
 use crate::runner::{OutputHandler, OutputStream};
 
@@ -72,6 +73,7 @@ pub(crate) fn spawn_json_reader<R: Read + Send + 'static>(
     output_handler: Option<OutputHandler>,
     output_stream: OutputStream,
     session_id_buf: Arc<Mutex<Option<String>>>,
+    runner: Runner,
 ) -> thread::JoinHandle<anyhow::Result<()>> {
     thread::spawn(move || {
         let mut buf = [0u8; 8192];
@@ -85,27 +87,27 @@ pub(crate) fn spawn_json_reader<R: Read + Send + 'static>(
             }
 
             let text = decoder.decode(&buf[..read]);
-            handle_json_text(
-                &text,
-                &sink,
-                output_handler.as_ref(),
+            let context = JsonReaderContext {
+                sink: &sink,
+                output_handler: output_handler.as_ref(),
                 output_stream,
-                &session_id_buf,
-                &buffer,
-                &mut state,
-            )?;
+                session_id_buf: &session_id_buf,
+                buffer: &buffer,
+                runner: &runner,
+            };
+            handle_json_text(&text, &context, &mut state)?;
         }
 
         let text = decoder.finish();
-        handle_json_text(
-            &text,
-            &sink,
-            output_handler.as_ref(),
+        let context = JsonReaderContext {
+            sink: &sink,
+            output_handler: output_handler.as_ref(),
             output_stream,
-            &session_id_buf,
-            &buffer,
-            &mut state,
-        )?;
+            session_id_buf: &session_id_buf,
+            buffer: &buffer,
+            runner: &runner,
+        };
+        handle_json_text(&text, &context, &mut state)?;
 
         if !state.line_buf.trim().is_empty() {
             if state.line_length_exceeded {
@@ -135,6 +137,15 @@ struct JsonReaderState {
     line_buf: String,
     line_length_exceeded: bool,
     tool_tracker: ToolCallTracker,
+}
+
+struct JsonReaderContext<'a> {
+    sink: &'a StreamSink,
+    output_handler: Option<&'a OutputHandler>,
+    output_stream: OutputStream,
+    session_id_buf: &'a Arc<Mutex<Option<String>>>,
+    buffer: &'a Arc<Mutex<String>>,
+    runner: &'a Runner,
 }
 
 impl Utf8ChunkDecoder {
@@ -210,11 +221,7 @@ fn handle_raw_text(
 
 fn handle_json_text(
     text: &str,
-    sink: &StreamSink,
-    output_handler: Option<&OutputHandler>,
-    output_stream: OutputStream,
-    session_id_buf: &Arc<Mutex<Option<String>>>,
-    buffer: &Arc<Mutex<String>>,
+    context: &JsonReaderContext<'_>,
     state: &mut JsonReaderState,
 ) -> anyhow::Result<()> {
     if text.is_empty() {
@@ -233,11 +240,12 @@ fn handle_json_text(
             }
             handle_completed_line(
                 &state.line_buf,
-                sink,
-                output_handler,
-                output_stream,
-                session_id_buf,
+                context.sink,
+                context.output_handler,
+                context.output_stream,
+                context.session_id_buf,
                 &mut state.tool_tracker,
+                context.runner,
             )?;
             state.line_buf.clear();
         } else if state.line_buf.len() >= MAX_LINE_LENGTH {
@@ -247,7 +255,8 @@ fn handle_json_text(
         }
     }
 
-    let mut guard = buffer
+    let mut guard = context
+        .buffer
         .lock()
         .map_err(|_| anyhow::anyhow!("lock output buffer"))?;
     append_to_buffer(&mut guard, text);
@@ -262,10 +271,11 @@ fn handle_completed_line(
     output_stream: OutputStream,
     session_id_buf: &Arc<Mutex<Option<String>>>,
     tool_tracker: &mut ToolCallTracker,
+    runner: &Runner,
 ) -> anyhow::Result<()> {
     if let Some(mut json) = parse_json_line(line_buf) {
         tool_tracker.correlate(&mut json);
-        if let Some(id) = extract_session_id_from_json(&json)
+        if let Some(id) = extract_session_id_from_json(runner, &json)
             && let Ok(mut guard) = session_id_buf.lock()
         {
             *guard = Some(id.to_owned());

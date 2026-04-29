@@ -35,7 +35,7 @@ set -e
 plan="{root}/.ralph/cache/plans/RQ-0001.md"
 echo "plan content iteration 2" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -151,7 +151,7 @@ cat > "$queue" <<'EOF'
 EOF
 echo "plan content iteration 2" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -257,7 +257,7 @@ state="{root}/.ralph/state/worker.json"
 echo '{{"v":2}}' > "$state"
 echo "plan content iteration 2" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -355,7 +355,7 @@ mkdir -p "$(dirname "$disallowed")"
 echo "disallowed" > "$disallowed"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );

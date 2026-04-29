@@ -43,7 +43,7 @@ else
 fi
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -152,7 +152,7 @@ dirty="{root}/dirty-file.txt"
 echo "dirty" > "$dirty"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -251,7 +251,7 @@ baseline="{root}/baseline.txt"
 echo "changed" > "$baseline"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );
@@ -357,7 +357,7 @@ set -e
 plan="{root}/.ralph/cache/plans/RQ-0001.md"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
-echo '{{"sessionID":"sess-123"}}'
+echo '{{"type":"session","sessionID":"sess-123"}}'
 "#,
         root = temp.path().display()
     );

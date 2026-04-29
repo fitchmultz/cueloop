@@ -51,7 +51,7 @@ for arg in "$@"; do
 done
 echo "$@" > "{args_path}"
 echo '{{"type":"text","part":{{"text":"fresh"}}}}'
-echo '{{"sessionID":"sess-fresh"}}'
+echo '{{"type":"session","sessionID":"sess-fresh"}}'
 "#,
         args_path = args_path.display()
     );
@@ -111,7 +111,7 @@ fn resume_continue_session_falls_back_to_fresh_invocation_without_session_id() -
 set -e
 echo "$@" > "{args_path}"
 echo '{{"type":"text","part":{{"text":"fresh"}}}}'
-echo '{{"sessionID":"sess-fresh"}}'
+echo '{{"type":"session","sessionID":"sess-fresh"}}'
 "#,
         args_path = args_path.display()
     );
@@ -151,7 +151,7 @@ fn resume_continue_session_pi_falls_back_to_fresh_when_resume_lookup_fails() -> 
 set -e
 echo "$@" > "{args_path}"
 echo '{{"type":"result","result":"fresh"}}'
-echo '{{"sessionID":"sess-pi-fresh"}}'
+echo '{{"type":"session","id":"sess-pi-fresh"}}'
 "#,
         args_path = args_path.display()
     );
@@ -206,7 +206,7 @@ if printf '%s' "$*" | grep -q -- '--resume'; then
 fi
 echo "$*" > "{args_path}"
 echo '{{"type":"message","role":"assistant","content":"fresh"}}'
-echo '{{"session_id":"sess-gemini-fresh"}}'
+echo '{{"type":"session","session_id":"sess-gemini-fresh"}}'
 "#,
         args_path = args_path.display()
     );
@@ -247,7 +247,8 @@ if printf '%s' "$*" | grep -q -- '--resume'; then
   exit 1
 fi
 echo "$*" > "{args_path}"
-echo '{{"type":"assistant","session_id":"sess-claude-fresh","message":{{"content":[{{"type":"text","text":"fresh"}}]}}}}'
+echo '{{"type":"system","subtype":"init","session_id":"sess-claude-fresh"}}'
+echo '{{"type":"assistant","message":{{"content":[{{"type":"text","text":"fresh"}}]}}}}'
 "#,
         args_path = args_path.display()
     );
@@ -293,7 +294,7 @@ for arg in "$@"; do
 done
 echo "$*" > "{args_path}"
 echo '{{"type":"text","part":{{"text":"fresh"}}}}'
-echo '{{"sessionID":"sess-opencode-fresh"}}'
+echo '{{"type":"session","sessionID":"sess-opencode-fresh"}}'
 "#,
         args_path = args_path.display()
     );
