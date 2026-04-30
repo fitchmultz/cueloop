@@ -127,6 +127,89 @@ fn validate_warns_on_blocked_dependency_chain() {
 }
 
 #[test]
+fn validate_draft_only_dependency_tree_suppresses_blocked_chain_noise() {
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![
+            task_with_deps("RQ-0001", TaskStatus::Draft, vec!["RQ-0002".to_string()]),
+            task_with_deps("RQ-0002", TaskStatus::Draft, vec!["RQ-0003".to_string()]),
+            task_with_deps("RQ-0003", TaskStatus::Draft, vec![]),
+        ],
+    };
+
+    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+        .expect("draft-only dependency tree should remain structurally valid");
+
+    assert!(
+        !warnings
+            .iter()
+            .any(|warning| warning.message.contains("all dependency paths")),
+        "draft-only tree should not emit blocked-chain noise: {:?}",
+        warnings
+    );
+}
+
+#[test]
+fn validate_todo_blocked_by_draft_dependency_still_warns() {
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![
+            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
+            task_with_deps("RQ-0002", TaskStatus::Draft, vec![]),
+        ],
+    };
+
+    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+        .expect("mixed todo/draft blocked dependency should warn, not error");
+
+    assert!(
+        warnings.iter().any(|warning| warning.task_id == "RQ-0001"
+            && warning.message.contains("all dependency paths")),
+        "todo blocked by draft dependency should still warn: {:?}",
+        warnings
+    );
+}
+
+#[test]
+fn validate_draft_missing_dependency_still_errors() {
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![task_with_deps(
+            "RQ-0001",
+            TaskStatus::Draft,
+            vec!["RQ-9999".to_string()],
+        )],
+    };
+
+    let error = validate_queue_set(&active, None, "RQ", 4, 10)
+        .expect_err("missing draft dependency should remain a structural error");
+
+    assert!(
+        error.to_string().contains("non-existent task RQ-9999"),
+        "unexpected error: {error:?}"
+    );
+}
+
+#[test]
+fn validate_draft_dependency_cycle_still_errors() {
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![
+            task_with_deps("RQ-0001", TaskStatus::Draft, vec!["RQ-0002".to_string()]),
+            task_with_deps("RQ-0002", TaskStatus::Draft, vec!["RQ-0001".to_string()]),
+        ],
+    };
+
+    let error = validate_queue_set(&active, None, "RQ", 4, 10)
+        .expect_err("draft dependency cycles should remain structural errors");
+
+    assert!(
+        error.to_string().contains("Circular dependency detected"),
+        "unexpected error: {error:?}"
+    );
+}
+
+#[test]
 fn validate_allows_unblocked_chain_with_done_task() {
     let mut done_task = task_with("RQ-0003", TaskStatus::Done, vec![]);
     done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());

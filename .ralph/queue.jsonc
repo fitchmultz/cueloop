@@ -2,59 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0080",
-      "status": "todo",
-      "title": "Calm validation messaging for normal all-draft decompositions",
-      "description": "Reduce scary validation noise when a freshly written decomposition is intentionally all draft. Dependency-blocked diagnostics for draft-only trees should be informational and should summarize the actionable cause: no runnable tasks exist because every generated task is draft, so promote a leaf or use an activation mode.",
-      "priority": "medium",
-      "tags": [
-        "queue-validate",
-        "runnability",
-        "draft",
-        "diagnostics",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/queue/validation/dependency_graph.rs",
-        "crates/ralph/src/queue/validation/relationships.rs",
-        "crates/ralph/src/queue/operations/runnability/analysis.rs",
-        "crates/ralph/src/queue/operations/runnability/report.rs",
-        "crates/ralph/src/cli/queue/validate.rs",
-        "crates/ralph/src/cli/queue/explain.rs",
-        "crates/ralph/src/cli/machine/queue.rs",
-        "docs/queue-and-tasks.md",
-        "docs/machine-contract.md"
-      ],
-      "evidence": [
-        "Warden feedback: `ralph queue validate` printed many warnings like `Task RQ-0004 is blocked: all dependency paths lead to incomplete or rejected tasks` for a freshly decomposed all-draft tree.",
-        "For normal draft decomposition output, dependency blocking is expected and should not read like a structural failure.",
-        "Current runnability output can say there are no runnable todo candidates, but it does not collapse all-draft decomposition noise into one clear continuation."
-      ],
-      "plan": [
-        "Classify dependency-blocked findings for draft-only decomposition trees as informational or summarize them instead of emitting one warning per blocked draft task.",
-        "Teach queue validation/runnability summaries to detect the all-draft/no-runnable case and print `No runnable tasks because all tasks are draft. Promote a leaf task to todo.` with a concrete command when available.",
-        "Keep human CLI, machine queue documents, and RalphMac operator blocking state semantically aligned.",
-        "Add tests covering all-draft decomposition trees, mixed draft/todo trees, real dependency mistakes, and missing/cyclic dependency errors so true warnings/errors remain visible."
-      ],
-      "notes": [
-        "Depends on RQ-0079 so validation can reuse the same first-leaf activation guidance.",
-        "Do not suppress real dependency integrity errors; only demote expected draft-only runnability noise."
-      ],
-      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
-      "created_at": "2026-04-30T19:41:18Z",
-      "updated_at": "2026-04-30T19:41:18Z",
-      "depends_on": [
-        "RQ-0079"
-      ],
-      "blocks": [],
-      "relates_to": [
-        "RQ-0079"
-      ],
-      "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback"
-      }
-    },
-    {
       "id": "RQ-0081",
       "status": "todo",
       "title": "Make decompose preview continuations exact and copy-pasteable",

@@ -124,6 +124,34 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
     }
     println!();
 
+    if let Some(blocking) = report.summary.blocking.as_ref() {
+        let status = match blocking.status {
+            crate::contracts::BlockingStatus::Waiting => "waiting",
+            crate::contracts::BlockingStatus::Blocked => "blocked",
+            crate::contracts::BlockingStatus::Stalled => "stalled",
+        };
+        println!("Operator state: {}", status);
+        println!("{}", blocking.message);
+        println!("{}", blocking.detail);
+        println!();
+
+        if blocking.is_all_draft_queue() {
+            println!("Hints:");
+            if let Some(task_id) = blocking.task_id.as_deref() {
+                println!(
+                    "  - Run 'ralph task ready {}' to promote the first actionable leaf",
+                    task_id
+                );
+            } else {
+                println!("  - Promote a leaf draft task to todo");
+            }
+            println!(
+                "  - For future decompositions, use 'ralph task decompose --write --parent-status draft --leaf-status todo ...'"
+            );
+            println!();
+        }
+    }
+
     // If no runnable tasks, show first few blockers
     if report.selection.selected_task_id.is_none() && report.summary.candidates_total > 0 {
         println!("Blocking reasons (first 10 candidates):");

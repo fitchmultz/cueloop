@@ -20,7 +20,7 @@
 //! - Report output is deterministic for the provided `now` timestamp.
 
 use super::{QueueFile, Task, TaskKind, TaskStatus};
-use crate::contracts::BlockingReason;
+use crate::contracts::{BlockingReason, BlockingStatus};
 use crate::queue::operations::{
     NotRunnableReason, RunnableSelectionOptions, queue_runnability_report_at,
 };
@@ -216,6 +216,71 @@ fn test_runnability_report_draft_excluded() {
         report.tasks[0].reasons[0],
         NotRunnableReason::DraftExcluded
     ));
+}
+
+#[test]
+fn runnability_all_draft_queue_reports_activation_guidance() {
+    let mut group = make_task_with_deps("RQ-0001", TaskStatus::Draft, None, vec![]);
+    group.kind = TaskKind::Group;
+    let mut leaf = make_task_with_deps("RQ-0002", TaskStatus::Draft, None, vec![]);
+    leaf.parent_id = Some("RQ-0001".to_string());
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![group, leaf],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, false),
+    )
+    .unwrap();
+
+    assert_eq!(report.summary.candidates_total, 0);
+    assert_eq!(report.summary.runnable_candidates, 0);
+    let blocking = report.summary.blocking.as_ref().expect("blocking state");
+    assert_eq!(blocking.status, BlockingStatus::Waiting);
+    assert!(matches!(
+        blocking.reason,
+        BlockingReason::Idle {
+            include_draft: false
+        }
+    ));
+    assert_eq!(
+        blocking.message,
+        "No runnable tasks because all tasks are draft."
+    );
+    assert_eq!(blocking.task_id.as_deref(), Some("RQ-0002"));
+    assert_eq!(blocking.observed_at.as_deref(), Some(report.now.as_str()));
+}
+
+#[test]
+fn runnability_include_draft_selects_draft_leaf_without_all_draft_blocking() {
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![make_task_with_deps(
+            "RQ-0001",
+            TaskStatus::Draft,
+            None,
+            vec![],
+        )],
+    };
+
+    let report = queue_runnability_report_at(
+        "2026-01-18T12:00:00Z",
+        &active,
+        None,
+        RunnableSelectionOptions::new(true, false),
+    )
+    .unwrap();
+
+    assert_eq!(
+        report.selection.selected_task_id.as_deref(),
+        Some("RQ-0001")
+    );
+    assert!(report.summary.blocking.is_none());
 }
 
 #[test]

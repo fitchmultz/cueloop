@@ -21,6 +21,7 @@
 //! - Prefer-doing selection intentionally wins only for executable Doing tasks.
 
 use anyhow::Result;
+use std::collections::HashSet;
 
 use crate::contracts::{BlockingState, QueueFile, Task, TaskStatus};
 use crate::queue::operations::RunnableSelectionOptions;
@@ -57,7 +58,7 @@ pub fn queue_runnability_report_at(
 
     let mut summary = summarize_rows(active.tasks.len(), &tasks, options);
     summary.blocking =
-        derive_queue_blocking_state(&tasks, &summary, options.include_draft, now_rfc3339);
+        derive_queue_blocking_state(active, &tasks, &summary, options.include_draft, now_rfc3339);
     let selection = build_selection(active, &tasks, options);
 
     Ok(QueueRunnabilityReport {
@@ -125,6 +126,7 @@ fn summarize_rows(
 }
 
 fn derive_queue_blocking_state(
+    active: &QueueFile,
     rows: &[super::model::TaskRunnabilityRow],
     summary: &QueueRunnabilitySummary,
     include_draft: bool,
@@ -137,6 +139,10 @@ fn derive_queue_blocking_state(
     }
 
     if summary.candidates_total == 0 {
+        if !include_draft && let Some(first_leaf_id) = first_actionable_draft_leaf_id(active) {
+            return Some(stamp(BlockingState::all_draft_queue(Some(first_leaf_id))));
+        }
+
         return Some(stamp(BlockingState::idle(include_draft)));
     }
 
@@ -172,6 +178,34 @@ fn derive_queue_blocking_state(
         ))),
         (false, false) => Some(stamp(BlockingState::idle(include_draft))),
     }
+}
+
+fn first_actionable_draft_leaf_id(active: &QueueFile) -> Option<String> {
+    let executable_work = active
+        .tasks
+        .iter()
+        .filter(|task| task.is_executable_work_item())
+        .collect::<Vec<_>>();
+    if executable_work.is_empty()
+        || executable_work
+            .iter()
+            .any(|task| task.status != TaskStatus::Draft)
+    {
+        return None;
+    }
+
+    let parent_ids = active
+        .tasks
+        .iter()
+        .filter_map(|task| task.parent_id.as_deref())
+        .collect::<HashSet<_>>();
+
+    executable_work
+        .iter()
+        .find(|task| !parent_ids.contains(task.id.as_str()))
+        .copied()
+        .or_else(|| executable_work.first().copied())
+        .map(|task| task.id.clone())
 }
 
 fn build_selection(

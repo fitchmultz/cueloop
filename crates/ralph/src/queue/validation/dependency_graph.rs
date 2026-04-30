@@ -131,6 +131,10 @@ fn warn_on_blocked_chains(
     let mut visiting = HashSet::new();
 
     for task in catalog.active_tasks() {
+        if task.status == TaskStatus::Draft {
+            continue;
+        }
+
         let task_id = task.id.trim();
         if is_task_blocked(
             task_id,

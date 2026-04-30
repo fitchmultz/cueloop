@@ -224,7 +224,9 @@ App and automation clients should decode this document on stdout for successful 
 
 ### `machine queue read`
 
-`runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, mixed, or structurally invalid.
+`runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, mixed, draft-activation waiting, or structurally invalid.
+
+Draft-only active queues are valid but not runnable by default. They use a waiting `idle` blocking payload with message `No runnable tasks because all tasks are draft.` and may set `task_id` to the first actionable draft leaf for `ralph task ready <ID>` guidance.
 
 Task payloads include `kind` (`work_item` or `group`) with backward-compatible default `work_item`. Runnability report `version: 2` also includes `kind` on each row. `group` rows remain visible with `runnable: false` and a `non_executable_kind` reason, but they do not count as runnable candidates or blockers. `next_runnable_task_id` and `runnability.selection.selected_task_id` select executable `work_item` tasks only.
 
@@ -238,7 +240,7 @@ Queue validation is now a continuation-oriented document instead of a bare valid
 - `warnings`
 - `continuation` with a headline, detail, optional blocking payload, and explicit next-step commands.
 
-When the queue is structurally valid but not immediately runnable, `blocking` may still be populated from queue runnability so app and automation surfaces can explain whether Ralph is waiting or blocked.
+When the queue is structurally valid but not immediately runnable, `blocking` may still be populated from queue runnability so app and automation surfaces can explain whether Ralph is waiting or blocked. All-draft queues remain `valid: true`; their continuation next steps may begin with `ralph task ready <ID>` to activate the first actionable draft leaf.
 
 ### `machine queue repair` (`version: 1`)
 

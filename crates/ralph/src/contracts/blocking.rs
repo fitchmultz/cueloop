@@ -137,6 +137,36 @@ impl BlockingState {
         )
     }
 
+    pub fn all_draft_queue(first_leaf_id: Option<String>) -> Self {
+        let suggested_command = first_leaf_id
+            .as_deref()
+            .map(|id| format!("ralph task ready {id}"));
+        let detail = match suggested_command {
+            Some(command) => format!(
+                "Promote a leaf task to todo, for example: {command}. For future decompositions, use ralph task decompose --write --parent-status draft --leaf-status todo ... to write runnable leaves."
+            ),
+            None => "Promote a leaf task to todo. For future decompositions, use ralph task decompose --write --parent-status draft --leaf-status todo ... to write runnable leaves.".to_string(),
+        };
+        Self::new(
+            BlockingStatus::Waiting,
+            BlockingReason::Idle {
+                include_draft: false,
+            },
+            first_leaf_id,
+            "No runnable tasks because all tasks are draft.",
+            detail,
+        )
+    }
+
+    pub fn is_all_draft_queue(&self) -> bool {
+        matches!(
+            self.reason,
+            BlockingReason::Idle {
+                include_draft: false
+            }
+        ) && self.message == "No runnable tasks because all tasks are draft."
+    }
+
     pub fn dependency_blocked(blocked_tasks: usize) -> Self {
         Self::new(
             BlockingStatus::Blocked,

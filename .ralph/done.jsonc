@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.4:xhigh"
+        "model_used": "openai-codex/gpt-5.4:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "skill": "comprehensive-codebase-audit",
         "task_kind": "queue_shaping",
-        "model_used": "gpt-5.4"
+        "skill": "comprehensive-codebase-audit",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "model_used": "gpt-5.4",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md"
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -891,9 +891,9 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
+        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "runner_used": "codex"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "reported_command": "ralph run loop --parallel 2",
+        "model_used": "openai-codex/gpt-5.5",
         "runner_used": "pi",
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
         "severity_reason": "parallel-mode task state/data integrity loss",
-        "model_used": "openai-codex/gpt-5.5"
+        "reported_command": "ralph run loop --parallel 2",
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
       }
     },
     {
@@ -2945,8 +2945,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi"
       }
     },
     {
@@ -3004,8 +3004,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -3122,9 +3122,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3386,8 +3386,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high"
       }
     },
@@ -3449,9 +3449,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3512,9 +3512,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "pi"
       }
     },
     {
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3643,9 +3643,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3703,8 +3703,8 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3770,9 +3770,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3832,9 +3832,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3887,9 +3887,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3995,9 +3995,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
     {
@@ -4062,9 +4062,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback",
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "source_feedback": "warden_task_decompose_feedback"
       }
     },
     {
@@ -4121,9 +4121,9 @@
         "RQ-0077"
       ],
       "custom_fields": {
-        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "runner_used": "pi"
       }
     },
     {
@@ -4185,9 +4185,85 @@
         "RQ-0078"
       ],
       "custom_fields": {
+        "runner_used": "pi",
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:xhigh"
+      }
+    },
+    {
+      "id": "RQ-0080",
+      "status": "done",
+      "title": "Calm validation messaging for normal all-draft decompositions",
+      "description": "Reduce scary validation noise when a freshly written decomposition is intentionally all draft. Dependency-blocked diagnostics for draft-only trees should be informational and should summarize the actionable cause: no runnable tasks exist because every generated task is draft, so promote a leaf or use an activation mode.",
+      "priority": "medium",
+      "tags": [
+        "queue-validate",
+        "runnability",
+        "draft",
+        "diagnostics",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/queue/validation/dependency_graph.rs",
+        "crates/ralph/src/queue/validation/relationships.rs",
+        "crates/ralph/src/queue/operations/runnability/analysis.rs",
+        "crates/ralph/src/queue/operations/runnability/report.rs",
+        "crates/ralph/src/cli/queue/validate.rs",
+        "crates/ralph/src/cli/queue/explain.rs",
+        "crates/ralph/src/cli/machine/queue.rs",
+        "docs/queue-and-tasks.md",
+        "docs/machine-contract.md",
+        "crates/ralph/src/cli/machine/queue_docs.rs",
+        "crates/ralph/src/cli/machine/queue_docs/support.rs",
+        "crates/ralph/src/contracts/blocking.rs",
+        "crates/ralph/src/queue/operations/runnability/model.rs",
+        "crates/ralph/src/queue/validation_runtime_tests/dependencies.rs",
+        "crates/ralph/src/queue/operations/tests/runnability.rs",
+        "crates/ralph/src/cli/machine/queue_docs/tests.rs",
+        "crates/ralph/tests/machine_contract_test/machine_contract_test_recovery.rs",
+        "crates/ralph/tests/machine_contract_test/machine_contract_test_queue.rs"
+      ],
+      "evidence": [
+        "Warden feedback: `ralph queue validate` printed many warnings like `Task RQ-0004 is blocked: all dependency paths lead to incomplete or rejected tasks` for a freshly decomposed all-draft tree.",
+        "For normal draft decomposition output, dependency blocking is expected and should not read like a structural failure.",
+        "Current runnability output can say there are no runnable todo candidates, but it does not collapse all-draft decomposition noise into one clear continuation.",
+        "RQ-0079 is complete in the current queue and added decompose parent/leaf status controls plus exact `ralph task ready <ID>` first-leaf guidance.",
+        "Repo inspection: `warn_on_blocked_chains` in queue validation currently iterates all active tasks, including draft tasks, which explains one warning per all-draft dependency node.",
+        "Repo inspection: runnability currently treats default draft exclusion as zero candidates/idle when all active executable work is draft, so queue explain/validate do not show the new first-leaf activation guidance.",
+        "Repo inspection: machine queue validate is built in `cli/machine/queue_docs.rs` and human `queue validate` prints that same document, so continuation text should be centralized there."
+      ],
+      "plan": [
+        "Classify dependency-blocked findings for draft-only decomposition trees as informational or summarize them instead of emitting one warning per blocked draft task.",
+        "Teach queue validation/runnability summaries to detect the all-draft/no-runnable case and print `No runnable tasks because all tasks are draft. Promote a leaf task to todo.` with a concrete command when available.",
+        "Keep human CLI, machine queue documents, and RalphMac operator blocking state semantically aligned.",
+        "Add tests covering all-draft decomposition trees, mixed draft/todo trees, real dependency mistakes, and missing/cyclic dependency errors so true warnings/errors remain visible.",
+        "Add a shared runnability helper to detect the all-draft/no-runnable active queue case and identify the first actionable draft leaf/work item for `ralph task ready <ID>` guidance.",
+        "Adjust blocked dependency-chain validation so draft-only decomposition paths do not emit one warning per draft task while todo/mixed dependency blockers and hard dependency errors remain visible.",
+        "Update `queue explain`, human `queue validate`, machine queue validate/read documents, and docs to use the same calm all-draft message and first-leaf activation command."
+      ],
+      "notes": [
+        "Depends on RQ-0079 so validation can reuse the same first-leaf activation guidance.",
+        "Do not suppress real dependency integrity errors; only demote expected draft-only runnability noise.",
+        "Planning refresh 2026-04-30: RQ-0079 is done, so Phase 2 can reuse `TaskDecomposeWriteResult.first_actionable_leaf_task_id` behavior and documented `ralph task ready <ID>` guidance as precedent.",
+        "Prefer preserving the existing machine schema if possible: use the existing `BlockingState`/`MachineContinuationSummary` fields rather than adding a new warning severity unless implementation evidence shows schema expansion is necessary.",
+        "Phase 3 reviewed all-draft validation messaging, reran targeted validation, and found no further refinements needed."
+      ],
+      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
+      "created_at": "2026-04-30T19:41:18Z",
+      "updated_at": "2026-04-30T22:58:27.987116000Z",
+      "completed_at": "2026-04-30T22:58:27.987116000Z",
+      "started_at": "2026-04-30T22:44:27.357680000Z",
+      "depends_on": [
+        "RQ-0079"
+      ],
+      "blocks": [],
+      "relates_to": [
+        "RQ-0079"
+      ],
+      "custom_fields": {
+        "runner_used": "pi",
+        "source_feedback": "warden_task_decompose_feedback",
+        "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     }
   ]

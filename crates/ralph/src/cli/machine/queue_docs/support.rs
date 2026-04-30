@@ -90,6 +90,43 @@ pub(super) fn continuation_for_valid_queue(
     warnings: &[MachineValidationWarning],
 ) -> MachineContinuationSummary {
     if let Some(blocking) = blocking {
+        if blocking.is_all_draft_queue() {
+            let mut next_steps = Vec::new();
+            if let Some(task_id) = blocking.task_id.as_deref() {
+                next_steps.push(step(
+                    "Promote first draft leaf",
+                    &format!("ralph task ready {task_id}"),
+                    "Promote the first actionable draft leaf to todo.",
+                ));
+            }
+            next_steps.push(step(
+                "Inspect runnability",
+                "ralph queue explain",
+                "Review queue runnability and draft activation guidance.",
+            ));
+            if !warnings.is_empty() {
+                next_steps.push(step(
+                    "Review warnings",
+                    machine_queue_validate_command(),
+                    "Inspect validation warnings before larger follow-up changes.",
+                ));
+            }
+            next_steps.push(step(
+                "Continue when ready",
+                machine_run_one_resume_command(),
+                "Resume once a leaf is todo.",
+            ));
+
+            return MachineContinuationSummary {
+                headline: "Queue is waiting for draft activation.".to_string(),
+                detail:
+                    "No runnable tasks because all tasks are draft. Promote a leaf task to todo."
+                        .to_string(),
+                blocking: Some(blocking),
+                next_steps,
+            };
+        }
+
         return MachineContinuationSummary {
             headline: match blocking.status {
                 BlockingStatus::Waiting => "Queue continuation is waiting.".to_string(),

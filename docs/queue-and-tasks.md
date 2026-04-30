@@ -114,6 +114,7 @@ Notes:
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
 - Decomposed leaves written as `draft` are intentionally skipped until activated. Use `ralph task ready <TASK_ID>` to promote a reviewed leaf to runnable `todo` work; `ralph task decompose --write` prints the exact first-leaf command when all generated work remains draft.
+- `ralph queue validate` and `ralph queue explain` treat a normal all-draft decomposition as waiting for activation, not queue corruption: `No runnable tasks because all tasks are draft. Promote a leaf task to todo.`
 - To avoid an all-draft decomposition by intent, write parent/group nodes as draft while making generated leaf work runnable with `ralph task decompose --write --parent-status draft --leaf-status todo "<request>"`.
 
 ## Discovery Follow-Ups
@@ -285,7 +286,7 @@ These issues are reported but do not prevent queue operations:
 
 - **Dependency on rejected task**: Task depends on a rejected task that will never complete. The dependency will never be satisfied.
 - **Deep dependency chain**: Dependency chain exceeds `queue.max_dependency_depth` (default: 10). This may indicate overly complex dependencies.
-- **Blocked execution path**: All dependency paths from this task lead to incomplete or rejected tasks. The task cannot make progress until blocking dependencies are resolved.
+- **Blocked execution path**: All dependency paths from a runnable active task lead to incomplete or rejected tasks. The task cannot make progress until blocking dependencies are resolved. Draft-only decomposition trees are summarized as activation guidance instead of one warning per draft task.
 - **Duplicate of done/rejected task**: Task marked as duplicate of a completed or rejected task. Consider if the duplicate is still needed.
 
 ### Configuration

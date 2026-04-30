@@ -146,6 +146,50 @@ fn build_validate_document_ready_queue_offers_resume_and_mutation_preview() {
 }
 
 #[test]
+fn build_validate_document_all_draft_queue_offers_activation_guidance() {
+    let temp_dir = TempDir::new().expect("temp dir");
+    let resolved = create_test_resolved(&temp_dir);
+    let mut group = test_task("RQ-0001", "Draft group");
+    group.status = TaskStatus::Draft;
+    group.kind = crate::contracts::TaskKind::Group;
+    let mut leaf = test_task("RQ-0002", "Draft leaf");
+    leaf.status = TaskStatus::Draft;
+    leaf.parent_id = Some("RQ-0001".to_string());
+    save_queue(
+        &resolved.queue_path,
+        &QueueFile {
+            version: 1,
+            tasks: vec![group, leaf],
+        },
+    )
+    .expect("save queue");
+
+    let document = build_validate_document(&resolved);
+
+    assert!(document.valid);
+    assert!(
+        !document
+            .warnings
+            .iter()
+            .any(|warning| warning.message.contains("all dependency paths")),
+        "draft-only validation should not emit blocked-chain warnings: {:?}",
+        document.warnings
+    );
+    let blocking = document.blocking.as_ref().expect("blocking state");
+    assert_eq!(blocking.status, BlockingStatus::Waiting);
+    assert_eq!(
+        blocking.message,
+        "No runnable tasks because all tasks are draft."
+    );
+    assert_eq!(blocking.task_id.as_deref(), Some("RQ-0002"));
+    assert_eq!(document.continuation.blocking.as_ref(), Some(blocking));
+    assert_eq!(
+        document.continuation.next_steps[0].command,
+        "ralph task ready RQ-0002"
+    );
+}
+
+#[test]
 fn build_repair_document_dry_run_reports_recoverable_repairs() -> anyhow::Result<()> {
     let temp_dir = TempDir::new()?;
     let resolved = create_test_resolved(&temp_dir);
