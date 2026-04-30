@@ -25,23 +25,12 @@ use std::process::Command;
 use tempfile::TempDir;
 
 fn repo_root() -> PathBuf {
-    let exe = std::env::current_exe().expect("resolve current test executable path");
-    let exe_dir = exe
+    let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    crate_dir
         .parent()
-        .expect("test executable should have a parent directory");
-    let profile_dir = if exe_dir.file_name() == Some(std::ffi::OsStr::new("deps")) {
-        exe_dir
-            .parent()
-            .expect("deps directory should have a parent directory")
-    } else {
-        exe_dir
-    };
-
-    profile_dir
+        .expect("crate directory should have a parent")
         .parent()
-        .expect("profile directory should have a parent (target)")
-        .parent()
-        .expect("target directory should have a parent (repo root)")
+        .expect("crates directory should have a parent repo root")
         .to_path_buf()
 }
 

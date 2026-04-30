@@ -26,6 +26,7 @@ Use `ralph migrate` without `--apply` first when you want a preview.
 ## Runner and reasoning changes
 
 - `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
+- Cursor runner execution now uses Ralph's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `ralph migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk@1.0.11`; alternatively set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
 
 ## Parallel configuration changes
 

@@ -26,23 +26,12 @@ use std::process::{Command, ExitStatus};
 use tempfile::TempDir;
 
 fn repo_root() -> PathBuf {
-    let exe = std::env::current_exe().expect("resolve current test executable path");
-    let exe_dir = exe
+    let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    crate_dir
         .parent()
-        .expect("test executable should have a parent directory");
-    let profile_dir = if exe_dir.file_name() == Some(std::ffi::OsStr::new("deps")) {
-        exe_dir
-            .parent()
-            .expect("deps directory should have a parent directory")
-    } else {
-        exe_dir
-    };
-
-    profile_dir
+        .expect("crate directory should have a parent")
         .parent()
-        .expect("profile directory should have a parent (target)")
-        .parent()
-        .expect("target directory should have a parent (repo root)")
+        .expect("crates directory should have a parent repo root")
         .to_path_buf()
 }
 
@@ -67,11 +56,25 @@ fn run_bundle_script(args: &[&str]) -> (ExitStatus, String, String) {
 #[cfg(unix)]
 fn target_binary_path(target_triple: &str) -> PathBuf {
     let bin_name = if cfg!(windows) { "ralph.exe" } else { "ralph" };
-    repo_root()
-        .join("target")
+    target_root()
         .join(target_triple)
         .join("debug")
         .join(bin_name)
+}
+
+#[cfg(unix)]
+fn target_root() -> PathBuf {
+    match std::env::var_os("CARGO_TARGET_DIR") {
+        Some(path) => {
+            let path = PathBuf::from(path);
+            if path.is_absolute() {
+                path
+            } else {
+                repo_root().join(path)
+            }
+        }
+        None => repo_root().join("target"),
+    }
 }
 
 #[cfg(unix)]
@@ -139,7 +142,7 @@ fn bundle_script_rebuilds_even_when_binary_already_exists() {
         ])
     });
 
-    let _ = std::fs::remove_dir_all(repo_root().join("target").join(&target_triple));
+    let _ = std::fs::remove_dir_all(target_root().join(&target_triple));
 
     assert!(
         status.success(),
@@ -204,7 +207,7 @@ fn bundle_script_reuses_fresh_binary_without_rebuilding() {
         ])
     });
 
-    let _ = std::fs::remove_dir_all(repo_root().join("target").join(&target_triple));
+    let _ = std::fs::remove_dir_all(target_root().join(&target_triple));
 
     assert!(
         status.success(),

@@ -113,9 +113,7 @@ fn inventory_succeeds_with_fake_runners() -> Result<()> {
     let script_path = inventory_script_path(&repo_root);
 
     let temp_dir = TempDir::new().context("create temp dir")?;
-    for runner in [
-        "codex", "opencode", "gemini", "claude", "kimi", "pi", "agent",
-    ] {
+    for runner in ["codex", "opencode", "gemini", "claude", "kimi", "pi"] {
         test_support::create_fake_runner(temp_dir.path(), runner, &fake_runner_script(runner))
             .with_context(|| format!("create fake runner: {runner}"))?;
     }
@@ -128,9 +126,7 @@ fn inventory_succeeds_with_fake_runners() -> Result<()> {
         .context("run inventory script")?;
     anyhow::ensure!(status.success(), "inventory script should succeed");
 
-    for runner in [
-        "codex", "opencode", "gemini", "claude", "kimi", "pi", "agent",
-    ] {
+    for runner in ["codex", "opencode", "gemini", "claude", "kimi", "pi"] {
         let runner_dir = out_dir.join(runner);
         anyhow::ensure!(
             runner_dir.join("resolved_path.txt").exists(),
@@ -192,9 +188,7 @@ fn inventory_exits_nonzero_when_base_help_fails() -> Result<()> {
     let script_path = inventory_script_path(&repo_root);
 
     let temp_dir = TempDir::new().context("create temp dir")?;
-    for runner in [
-        "codex", "opencode", "gemini", "claude", "kimi", "pi", "agent",
-    ] {
+    for runner in ["codex", "opencode", "gemini", "claude", "kimi", "pi"] {
         let mut script = fake_runner_script(runner);
         if runner == "gemini" {
             script = r#"#!/usr/bin/env bash

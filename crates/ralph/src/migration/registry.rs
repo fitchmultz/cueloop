@@ -84,6 +84,11 @@ pub static MIGRATIONS: &[Migration] = &[
         },
     },
     Migration {
+        id: "config_key_remove_agent_cursor_bin_2026_04",
+        description: "Remove legacy agent.cursor_bin and profiles.*.cursor_bin because Cursor now runs through the SDK Node bridge",
+        migration_type: MigrationType::ConfigCursorBinRemove,
+    },
+    Migration {
         id: "file_rename_config_json_to_jsonc_2026_02",
         description: "Migrate config.json to config.jsonc for JSONC comment support and remove legacy config.json",
         migration_type: MigrationType::FileRename {
@@ -152,6 +157,7 @@ mod tests {
     #[test]
     fn get_migration_by_id_finds_existing() {
         assert!(get_migration_by_id("config_key_rename_parallel_worktree_root_2026_02").is_some());
+        assert!(get_migration_by_id("config_key_remove_agent_cursor_bin_2026_04").is_some());
         assert!(get_migration_by_id("nonexistent").is_none());
     }
 

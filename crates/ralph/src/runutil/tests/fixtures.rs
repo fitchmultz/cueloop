@@ -82,7 +82,7 @@ pub(super) fn base_invocation<'a>(repo_root: &'a Path) -> RunnerInvocation<'a> {
                 opencode: "opencode",
                 gemini: "gemini",
                 claude: "claude",
-                cursor: "agent",
+                cursor: "node",
                 kimi: "kimi",
                 pi: "pi",
             },

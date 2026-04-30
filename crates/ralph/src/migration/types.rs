@@ -65,6 +65,8 @@ pub enum MigrationType {
     ConfigCiGateRewrite,
     /// Upgrade pre-0.3 config contract keys and version markers.
     ConfigLegacyContractUpgrade,
+    /// Remove legacy Cursor binary override keys from agent defaults and profile patches.
+    ConfigCursorBinRemove,
     /// Rename/move a file.
     FileRename {
         /// Path to the old file, relative to repo root.

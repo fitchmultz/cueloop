@@ -262,6 +262,32 @@ fn validate_project_execution_trust_rejects_untrusted_project_plugin_runner_sele
 }
 
 #[test]
+fn validate_project_execution_trust_rejects_untrusted_project_cursor_runner_selection() {
+    let mut layer = ConfigLayer::default();
+    layer.agent.runner = Some(crate::contracts::Runner::Cursor);
+
+    let err = validate_project_execution_trust(Some(&layer), &RepoTrust::default())
+        .expect_err("expected trust failure");
+    assert!(err.to_string().contains(ERR_PROJECT_EXECUTION_TRUST));
+}
+
+#[test]
+fn validate_project_execution_trust_rejects_untrusted_project_phase_cursor_selection() {
+    let mut layer = ConfigLayer::default();
+    layer.agent.phase_overrides = Some(crate::contracts::PhaseOverrides {
+        phase1: Some(crate::contracts::PhaseOverrideConfig {
+            runner: Some(crate::contracts::Runner::Cursor),
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
+
+    let err = validate_project_execution_trust(Some(&layer), &RepoTrust::default())
+        .expect_err("expected trust failure");
+    assert!(err.to_string().contains(ERR_PROJECT_EXECUTION_TRUST));
+}
+
+#[test]
 fn validate_config_rejects_zero_iterations() {
     let mut cfg = Config::default();
     cfg.agent.iterations = Some(0);
@@ -292,12 +318,36 @@ fn validate_config_rejects_zero_session_timeout_hours() {
 }
 
 #[test]
-fn validate_config_rejects_empty_cursor_bin() {
+fn validate_config_rejects_empty_cursor_sdk_node_bin() {
     let mut cfg = Config::default();
-    cfg.agent.cursor_bin = Some("   ".to_string());
+    cfg.agent.cursor_sdk_node_bin = Some("   ".to_string());
 
     let err = validate_config(&cfg).expect_err("expected validation to fail");
-    assert!(err.to_string().contains("agent.cursor_bin"));
+    assert!(err.to_string().contains("agent.cursor_sdk_node_bin"));
+}
+
+#[test]
+fn load_layer_accepts_legacy_cursor_bin_for_migration() -> anyhow::Result<()> {
+    let temp = tempfile::TempDir::new()?;
+    let config_path = temp.path().join("config.jsonc");
+    std::fs::write(
+        &config_path,
+        r#"{
+  "version": 2,
+  "agent": {
+    "runner": "cursor",
+    "cursor_bin": "cursor-agent"
+  }
+}
+"#,
+    )?;
+
+    let layer = load_layer(&config_path)?;
+
+    assert_eq!(layer.agent.runner, Some(crate::contracts::Runner::Cursor));
+    assert_eq!(layer.agent.cursor_bin.as_deref(), Some("cursor-agent"));
+    assert_eq!(layer.agent.cursor_sdk_node_bin, None);
+    Ok(())
 }
 
 // Tests for kimi_bin and pi_bin validation (previously missing)

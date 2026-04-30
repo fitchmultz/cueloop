@@ -17,10 +17,11 @@
 //! - Dot-path keys use object navigation only.
 //! - Scoped rename behavior must remain exactly compatible with the prior module.
 //! - Leaf renames only support changing the final key within the same parent path.
-//! - Removal rewrites parsed JSON and may normalize formatting/comments.
+//! - Simple [`MigrationType::ConfigKeyRemove`] removals reparse JSON to serde and may discard
+//!   comments; `cursor_bin` removal uses JSONC AST spans to preserve formatting.
 
 use anyhow::{Context, Result};
-use jsonc_parser::ast::{ObjectPropName, Value as JsoncAstValue};
+use jsonc_parser::ast::{Object, ObjectPropName, Value as JsoncAstValue};
 use jsonc_parser::common::Ranged;
 use serde_json::Value;
 use std::{fs, path::Path};
@@ -58,6 +59,21 @@ pub fn apply_key_remove(ctx: &MigrationContext, key: &str) -> Result<()> {
     {
         remove_key_in_file(global_path, key)
             .with_context(|| "remove key in global config".to_string())?;
+    }
+
+    Ok(())
+}
+
+/// Remove legacy Cursor binary override keys from agent defaults and profile patches.
+pub fn apply_cursor_bin_remove(ctx: &MigrationContext) -> Result<()> {
+    for path in super::detect::project_migration_config_disk_paths(&ctx.repo_root) {
+        remove_cursor_bin_in_file(path.as_path())
+            .with_context(|| format!("remove cursor_bin entries in {}", path.display()))?;
+    }
+
+    if let Some(global_path) = &ctx.global_config_path {
+        remove_cursor_bin_in_file(global_path)
+            .with_context(|| format!("remove cursor_bin entries in {}", global_path.display()))?;
     }
 
     Ok(())
@@ -136,6 +152,117 @@ pub(crate) fn remove_key_in_file(path: &Path, key: &str) -> Result<()> {
 
     log::info!("Removed config key '{}' in {}", key, path.display());
     Ok(())
+}
+
+fn remove_cursor_bin_in_file(path: &Path) -> Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+
+    let raw =
+        fs::read_to_string(path).with_context(|| format!("read config file {}", path.display()))?;
+
+    let collect_options = jsonc_parser::CollectOptions::default();
+    let parse_options = jsonc_parser::ParseOptions::default();
+    let parse_result = jsonc_parser::parse_to_ast(&raw, &collect_options, &parse_options)
+        .with_context(|| format!("parse JSONC for cursor_bin removal in {}", path.display()))?;
+
+    let Some(root) = parse_result.value.as_ref() else {
+        return Ok(());
+    };
+
+    let mut spans = Vec::new();
+    collect_legacy_cursor_bin_spans(root, &raw, &mut spans);
+
+    if spans.is_empty() {
+        return Ok(());
+    }
+
+    let replacements: Vec<(usize, usize, String)> = spans
+        .into_iter()
+        .map(|(s, e)| (s, e, String::new()))
+        .collect();
+    let modified = apply_text_replacements(&raw, replacements);
+
+    crate::fsutil::write_atomic(path, modified.as_bytes())
+        .with_context(|| format!("write modified config to {}", path.display()))?;
+
+    log::info!(
+        "Removed legacy Cursor SDK binary override keys in {}",
+        path.display()
+    );
+    Ok(())
+}
+
+/// Span covering a property `key: value` plus an adjacent separator comma so the object stays
+/// valid JSONC after removal.
+fn removal_span_for_object_prop(raw: &str, object: &Object<'_>, prop_idx: usize) -> (usize, usize) {
+    let prop = &object.properties[prop_idx];
+    let mut start = prop.range.start;
+    let end = prop.range.end;
+    let bytes = raw.as_bytes();
+
+    let mut idx = end;
+    while idx < bytes.len() && bytes[idx].is_ascii_whitespace() {
+        idx += 1;
+    }
+    if idx < bytes.len() && bytes[idx] == b',' {
+        return (start, idx + 1);
+    }
+
+    if prop_idx > 0 {
+        let mut s = start;
+        while s > 0 && bytes[s - 1].is_ascii_whitespace() {
+            s -= 1;
+        }
+        if s > 0 && bytes[s - 1] == b',' {
+            start = s - 1;
+        }
+    }
+
+    (start, end)
+}
+
+fn collect_spans_for_cursor_bin_in_object(
+    raw: &str,
+    object: &Object<'_>,
+    spans: &mut Vec<(usize, usize)>,
+) {
+    for (idx, prop) in object.properties.iter().enumerate() {
+        if prop.name.as_str() == "cursor_bin" {
+            spans.push(removal_span_for_object_prop(raw, object, idx));
+        }
+    }
+}
+
+fn collect_legacy_cursor_bin_spans(
+    value: &JsoncAstValue<'_>,
+    raw: &str,
+    spans: &mut Vec<(usize, usize)>,
+) {
+    let JsoncAstValue::Object(root) = value else {
+        return;
+    };
+
+    for prop in &root.properties {
+        match prop.name.as_str() {
+            "agent" => {
+                if let JsoncAstValue::Object(agent_obj) = &prop.value {
+                    collect_spans_for_cursor_bin_in_object(raw, agent_obj, spans);
+                }
+            }
+            "profiles" => {
+                if let JsoncAstValue::Object(profiles) = &prop.value {
+                    for profile_prop in &profiles.properties {
+                        if let JsoncAstValue::Object(profile_obj) = &profile_prop.value {
+                            collect_spans_for_cursor_bin_in_object(raw, profile_obj, spans);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Rename a key in JSONC text while preserving comments and formatting.

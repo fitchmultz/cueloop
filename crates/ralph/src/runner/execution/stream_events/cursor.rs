@@ -27,11 +27,18 @@ pub(super) fn collect_lines(json: &JsonValue, lines: &mut Vec<String>) {
         return;
     }
 
+    let subtype = json.get("subtype").and_then(|s| s.as_str());
+    if let Some(name) = json.get("name").and_then(|value| value.as_str()) {
+        let args = json.get("args").or_else(|| json.get("result"));
+        let details = args.and_then(format_tool_details);
+        lines.push(format_tool_label(name, subtype, details.as_deref()));
+        return;
+    }
+
     let Some(tool_call) = json.get("tool_call") else {
         return;
     };
 
-    let subtype = json.get("subtype").and_then(|s| s.as_str());
     if let Some(line) = format_cursor_tool_call(tool_call, subtype) {
         lines.push(line);
         return;
@@ -97,13 +104,19 @@ fn format_cursor_tool_call(tool_call: &JsonValue, subtype: Option<&str>) -> Opti
 
 fn format_named_tool_call(name: &str, args: &JsonValue, subtype: Option<&str>) -> String {
     let details = format_tool_details(args);
+    format_tool_label(name, subtype, details.as_deref())
+}
+
+fn format_tool_label(name: &str, subtype: Option<&str>, details: Option<&str>) -> String {
     let label = match subtype {
         Some("started") => name.to_string(),
+        Some("running") => name.to_string(),
         Some("completed") => format!("{name} (completed)"),
+        Some("error") => format!("{name} (error)"),
         Some(other) => format!("{name} ({other})"),
         None => name.to_string(),
     };
-    outpututil::format_tool_call(&label, details.as_deref())
+    outpututil::format_tool_call(&label, details)
 }
 
 #[cfg(test)]
@@ -157,5 +170,22 @@ mod tests {
         assert!(joined.contains("write_file"));
         assert!(joined.contains("summary.txt"));
         assert!(!joined.contains("pretend this is huge"));
+    }
+
+    #[test]
+    fn cursor_sdk_tool_call_renders_stable_envelope() {
+        let event = json!({
+            "type": "tool_call",
+            "subtype": "running",
+            "call_id": "call_3",
+            "name": "shell",
+            "args": { "command": "cargo test" },
+            "session_id": "agent-local-123"
+        });
+
+        let lines = extract_display_lines(&event);
+        let joined = lines.join(" ");
+        assert!(joined.contains("shell"));
+        assert!(joined.contains("cargo test"));
     }
 }

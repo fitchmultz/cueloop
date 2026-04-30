@@ -66,6 +66,9 @@ fn is_migration_applicable(ctx: &MigrationContext, migration: &Migration) -> boo
         MigrationType::ConfigLegacyContractUpgrade => {
             config_migrations::config_needs_legacy_contract_upgrade(ctx)
         }
+        MigrationType::ConfigCursorBinRemove => {
+            config_migrations::config_has_legacy_cursor_bin(ctx)
+        }
         MigrationType::FileRename { old_path, new_path } => {
             if matches!(
                 migration.id,
@@ -132,6 +135,10 @@ pub fn apply_migration(ctx: &mut MigrationContext, migration: &Migration) -> Res
         MigrationType::ConfigLegacyContractUpgrade => {
             config_migrations::apply_legacy_contract_upgrade(ctx)
                 .with_context(|| format!("apply legacy config upgrade for {}", migration.id))?;
+        }
+        MigrationType::ConfigCursorBinRemove => {
+            config_migrations::apply_cursor_bin_remove(ctx)
+                .with_context(|| format!("apply Cursor binary key removal for {}", migration.id))?;
         }
         MigrationType::FileRename { old_path, new_path } => match (*old_path, *new_path) {
             (".ralph/queue.json", ".ralph/queue.jsonc") => {

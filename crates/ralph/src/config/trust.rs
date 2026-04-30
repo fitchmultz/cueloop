@@ -83,7 +83,7 @@ fn write_trust_file(path: &Path, trust: &RepoTrust) -> Result<()> {
 fn print_trust_warning() {
     eprintln!(
         "Warning: Trusting this repo allows project-local execution settings under .ralph/config.jsonc\n\
-         (runner binary overrides, plugin runners, agent.ci_gate, plugins.*, parallel.ignored_file_allowlist) to take effect. Review that file first.\n\
+         (runner binary overrides, Cursor/plugin runner selection, agent.ci_gate, plugins.*, parallel.ignored_file_allowlist) to take effect. Review that file first.\n\
          Keep .ralph/trust.jsonc untracked; do not commit it."
     );
 }

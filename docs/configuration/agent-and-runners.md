@@ -26,7 +26,8 @@ Supported fields:
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
   **Safety warning:** Disabling the CI gate skips Ralph-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
-- `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `cursor_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name (Cursor uses the `agent` binary).
+- `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name.
+- `cursor_sdk_node_bin`: override the Node.js executable used by Ralph's Cursor SDK bridge (default: `node`). Cursor no longer uses the legacy `agent` binary; install the pinned SDK in a trusted workspace with `npm install --save-exact @cursor/sdk@1.0.11`, or set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
@@ -67,7 +68,7 @@ Supported normalized fields:
 
   **Codex exception**: Ralph does NOT pass approval flags to Codex, regardless of this setting. Codex will use whatever approval mode is configured in your global Codex config file (`~/.codex/config.json`). If you want YOLO behavior with Codex, configure it there, not in Ralph.
 - `sandbox`: `default`, `enabled`, `disabled`
-- `plan_mode`: `default`, `enabled`, `disabled`
+- `plan_mode`: `default`, `enabled`, `disabled` (Cursor SDK rejects non-default values so Ralph plan artifacts are still produced by Ralph's planning phase)
 - `unsupported_option_policy`: `ignore`, `warn`, `error`
 
 Notes:

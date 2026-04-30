@@ -53,7 +53,7 @@ pub struct RunnerFeatures {
     pub reasoning_effort: bool,
     /// Sandbox mode control.
     pub sandbox: SandboxSupport,
-    /// Plan mode support (Cursor only).
+    /// Runner-native plan mode support.
     pub plan_mode: bool,
     /// Verbose output control.
     pub verbose: bool,
@@ -199,9 +199,9 @@ pub(crate) fn get_runner_features(runner: &Runner) -> RunnerFeatures {
                 supported: true,
                 modes: vec!["enabled".into(), "disabled".into()],
             },
-            plan_mode: true,
+            plan_mode: false,
             verbose: false,
-            approval_modes: vec!["force".into()],
+            approval_modes: vec![],
         },
         Runner::Opencode => RunnerFeatures {
             reasoning_effort: false,
@@ -282,7 +282,7 @@ fn get_bin_name(runner: &Runner) -> String {
         Runner::Opencode => "opencode".into(),
         Runner::Gemini => "gemini".into(),
         Runner::Claude => "claude".into(),
-        Runner::Cursor => "agent".into(), // Cursor uses 'agent' binary
+        Runner::Cursor => "node".into(), // Cursor uses Ralph's Node-based SDK bridge
         Runner::Kimi => "kimi".into(),
         Runner::Pi => "pi".into(),
         Runner::Plugin(id) => id.clone(),
@@ -390,10 +390,11 @@ mod tests {
     }
 
     #[test]
-    fn cursor_has_plan_mode_support() {
+    fn cursor_sdk_does_not_expose_plan_mode() {
         let features = get_runner_features(&Runner::Cursor);
-        assert!(features.plan_mode);
+        assert!(!features.plan_mode);
         assert!(!features.reasoning_effort);
+        assert!(features.approval_modes.is_empty());
     }
 
     #[test]

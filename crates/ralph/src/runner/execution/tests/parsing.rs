@@ -111,8 +111,8 @@ fn confirmed_lifecycle_events_are_persisted_by_runner() {
         ),
         (
             Runner::Cursor,
-            json!({ "type": "system", "subtype": "init", "session_id": "cursor-123" }),
-            "cursor-123",
+            json!({ "type": "system", "subtype": "init", "session_id": "agent-123" }),
+            "agent-123",
         ),
     ] {
         assert_eq!(
@@ -121,6 +121,21 @@ fn confirmed_lifecycle_events_are_persisted_by_runner() {
             "{runner:?}"
         );
     }
+}
+
+#[test]
+fn cursor_sdk_agent_id_events_are_persisted() {
+    let payload = json!({
+        "type": "result",
+        "agent_id": "agent-local-123",
+        "run_id": "run-123",
+        "result": "done"
+    });
+
+    assert_eq!(
+        extract_session_id_from_json(&Runner::Cursor, &payload),
+        Some("agent-local-123")
+    );
 }
 
 #[test]

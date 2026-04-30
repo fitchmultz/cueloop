@@ -80,6 +80,7 @@ pub(crate) fn dispatch_plugin_operation(
         RunnerInvocation::Resume {
             session_id,
             message,
+            force: _,
         } => execution::run_plugin_runner_resume(
             work_dir,
             &bin,

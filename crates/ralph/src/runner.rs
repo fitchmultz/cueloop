@@ -132,7 +132,7 @@ pub(crate) fn resolve_binaries(agent: &crate::contracts::AgentConfig) -> RunnerB
     let opencode = agent.opencode_bin.as_deref().unwrap_or("opencode");
     let gemini = agent.gemini_bin.as_deref().unwrap_or("gemini");
     let claude = agent.claude_bin.as_deref().unwrap_or("claude");
-    let cursor = agent.cursor_bin.as_deref().unwrap_or("agent");
+    let cursor = agent.cursor_sdk_node_bin.as_deref().unwrap_or("node");
     let kimi = agent.kimi_bin.as_deref().unwrap_or("kimi");
     let pi = agent.pi_bin.as_deref().unwrap_or("pi");
     RunnerBinaries {
@@ -207,6 +207,43 @@ pub(crate) fn resume_session(
     phase_type: PhaseType,
     plugins: Option<&PluginRegistry>,
 ) -> Result<RunnerOutput, RunnerError> {
+    resume_session_with_options(
+        runner,
+        work_dir,
+        bins,
+        model,
+        reasoning_effort,
+        runner_cli,
+        session_id,
+        message,
+        permission_mode,
+        timeout,
+        output_handler,
+        output_stream,
+        phase_type,
+        false,
+        plugins,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn resume_session_with_options(
+    runner: Runner,
+    work_dir: &Path,
+    bins: RunnerBinaries<'_>,
+    model: Model,
+    reasoning_effort: Option<ReasoningEffort>,
+    runner_cli: execution::ResolvedRunnerCliOptions,
+    session_id: &str,
+    message: &str,
+    permission_mode: Option<ClaudePermissionMode>,
+    timeout: Option<Duration>,
+    output_handler: Option<OutputHandler>,
+    output_stream: OutputStream,
+    phase_type: PhaseType,
+    force: bool,
+    plugins: Option<&PluginRegistry>,
+) -> Result<RunnerOutput, RunnerError> {
     invoke::dispatch(
         invoke::RunnerDispatchContext {
             runner,
@@ -225,6 +262,7 @@ pub(crate) fn resume_session(
         invoke::RunnerInvocation::Resume {
             session_id,
             message,
+            force,
         },
     )
 }

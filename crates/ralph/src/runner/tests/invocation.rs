@@ -29,7 +29,7 @@ fn resume_session_missing_session_id_includes_runner_and_bin() {
         opencode: "opencode",
         gemini: "gemini",
         claude: "claude",
-        cursor: "agent",
+        cursor: "node",
         kimi: "kimi",
         pi: "pi",
     };
@@ -67,7 +67,7 @@ fn run_prompt_invalid_model_includes_operation_and_bin() {
         opencode: "opencode",
         gemini: "gemini",
         claude: "claude",
-        cursor: "agent",
+        cursor: "node",
         kimi: "kimi",
         pi: "pi",
     };

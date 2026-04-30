@@ -286,6 +286,9 @@ pub mod paths {
 
 /// Version constants for schemas and templates.
 pub mod versions {
+    /// Cursor SDK package version Ralph's local bridge is validated against.
+    pub const CURSOR_SDK_VERSION: &str = "1.0.11";
+
     /// README template version.
     pub const README_VERSION: u32 = 8;
 
@@ -313,8 +316,8 @@ pub mod defaults {
     /// Default Claude model name.
     pub const DEFAULT_CLAUDE_MODEL: &str = "sonnet";
 
-    /// Default Cursor model name.
-    pub const DEFAULT_CURSOR_MODEL: &str = "auto";
+    /// Default Cursor SDK model name.
+    pub const DEFAULT_CURSOR_MODEL: &str = "composer-2";
 
     /// Opencode prompt file message.
     pub const OPENCODE_PROMPT_FILE_MESSAGE: &str = "Follow the attached prompt file verbatim.";

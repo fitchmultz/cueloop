@@ -2,8 +2,8 @@
 # runner_cli_inventory.sh
 #
 # Responsible for capturing `--help` (and best-effort `--version`) output for the
-# runner CLIs Ralph uses: `codex`, `opencode`, `gemini`, `claude`, `kimi`, `pi`, and Cursor's
-# `agent`. Outputs are written into a stable directory structure to support
+# runner CLIs Ralph uses: `codex`, `opencode`, `gemini`, `claude`, `kimi`, and `pi`.
+# Cursor runs through Ralph's SDK bridge and is intentionally excluded. Outputs are written into a stable directory structure to support
 # Phase 2 discovery and later Phase 3 runner unification work.
 #
 # Subcommand discovery:
@@ -43,7 +43,7 @@ OPTIONS:
       Override a runner binary name/path.
       May be provided multiple times.
 
-      NAME must be one of: codex, opencode, gemini, claude, kimi, pi, agent
+      NAME must be one of: codex, opencode, gemini, claude, kimi, pi
 
   -h, --help
       Print this help.
@@ -62,7 +62,7 @@ OUTPUT:
 EXAMPLES:
   scripts/runner_cli_inventory.sh
   scripts/runner_cli_inventory.sh --out target/tmp/runner_cli_inventory
-  scripts/runner_cli_inventory.sh --bin agent=/Applications/Cursor.app/Contents/Resources/app/bin/agent
+  scripts/runner_cli_inventory.sh --bin codex=/opt/bin/codex
 EOF
 }
 
@@ -72,7 +72,6 @@ BIN_OVERRIDE_CODEX=""
 BIN_OVERRIDE_OPENCODE=""
 BIN_OVERRIDE_GEMINI=""
 BIN_OVERRIDE_CLAUDE=""
-BIN_OVERRIDE_AGENT=""
 BIN_OVERRIDE_KIMI=""
 BIN_OVERRIDE_PI=""
 
@@ -91,9 +90,9 @@ while [[ $# -gt 0 ]]; do
       name="${kv%%=*}"
       path="${kv#*=}"
       case "$name" in
-        codex|opencode|gemini|claude|kimi|pi|agent) ;;
+        codex|opencode|gemini|claude|kimi|pi) ;;
         *)
-          echo "ERROR: --bin NAME must be one of: codex, opencode, gemini, claude, kimi, pi, agent (got: '$name')" >&2
+          echo "ERROR: --bin NAME must be one of: codex, opencode, gemini, claude, kimi, pi (got: '$name')" >&2
           exit 2
           ;;
       esac
@@ -102,7 +101,6 @@ while [[ $# -gt 0 ]]; do
         opencode) BIN_OVERRIDE_OPENCODE="$path" ;;
         gemini) BIN_OVERRIDE_GEMINI="$path" ;;
         claude) BIN_OVERRIDE_CLAUDE="$path" ;;
-        agent) BIN_OVERRIDE_AGENT="$path" ;;
         kimi) BIN_OVERRIDE_KIMI="$path" ;;
         pi) BIN_OVERRIDE_PI="$path" ;;
       esac
@@ -214,12 +212,6 @@ resolve_bin() {
         return 0
       fi
       ;;
-    agent)
-      if [[ -n "$BIN_OVERRIDE_AGENT" ]]; then
-        echo "$BIN_OVERRIDE_AGENT"
-        return 0
-      fi
-      ;;
     kimi)
       if [[ -n "$BIN_OVERRIDE_KIMI" ]]; then
         echo "$BIN_OVERRIDE_KIMI"
@@ -276,7 +268,7 @@ extract_command_path_from_text() {
   for token in "${tokens[@]}"; do
     if [[ -z "$cmd" ]]; then
       case "$token" in
-        opencode|gemini|codex|claude|kimi|pi|agent)
+        opencode|gemini|codex|claude|kimi|pi)
           continue
           ;;
       esac
@@ -494,7 +486,7 @@ create_consolidated_file() {
   echo "    consolidated: ${runner}.md"
 }
 
-declare -a RUNNERS=("codex" "opencode" "gemini" "claude" "kimi" "pi" "agent")
+declare -a RUNNERS=("codex" "opencode" "gemini" "claude" "kimi" "pi")
 
 echo "Runner CLI inventory: start"
 echo "Output dir: $OUT_DIR"

@@ -266,16 +266,23 @@ fn cursor_build_run_command_phase_aware_defaults() {
     let mut ctx = create_run_context("test prompt", None);
     ctx.phase_type = Some(PhaseType::Planning);
 
-    let (cmd, _payload, _guards) = plugin.build_run_command(ctx).unwrap();
+    let (cmd, payload, _guards) = plugin.build_run_command(ctx).unwrap();
 
     let args: Vec<String> = cmd
         .get_args()
         .map(|a| a.to_string_lossy().to_string())
         .collect::<Vec<_>>();
-    assert!(args.contains(&"--sandbox".to_string()));
-    // In planning phase, sandbox defaults to "enabled"
-    assert!(args.contains(&"enabled".to_string()));
-    assert!(args.contains(&"--plan".to_string()));
+    assert_eq!(args.len(), 1, "Cursor runs through the SDK helper");
+    let payload = payload.expect("cursor sdk request");
+    let request: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+    assert_eq!(request["operation"], "run");
+    assert_eq!(request["message"], "test prompt");
+    assert_eq!(request["model"], "composer-2");
+    assert_eq!(request["sandbox_enabled"], true);
+    assert!(
+        request.get("plan").is_none(),
+        "Cursor SDK plan mode must not be serialized"
+    );
 }
 
 #[test]
@@ -285,19 +292,62 @@ fn cursor_build_run_command_implementation_phase() {
     ctx.phase_type = Some(PhaseType::Implementation);
     ctx.runner_cli.approval_mode = RunnerApprovalMode::Yolo;
 
-    let (cmd, _payload, _guards) = plugin.build_run_command(ctx).unwrap();
+    let (cmd, payload, _guards) = plugin.build_run_command(ctx).unwrap();
 
     let args: Vec<String> = cmd
         .get_args()
         .map(|a| a.to_string_lossy().to_string())
         .collect::<Vec<_>>();
+    assert_eq!(args.len(), 1, "Cursor runs through the SDK helper");
+    let payload = payload.expect("cursor sdk request");
+    let request: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+    assert_eq!(request["operation"], "run");
     assert!(
-        args.contains(&"--force".to_string()),
-        "Yolo mode should add --force"
+        request.get("force").is_none(),
+        "approval_mode=yolo must not map to SDK local.force"
     );
-    assert!(args.contains(&"--sandbox".to_string()));
-    // In implementation phase, sandbox defaults to "disabled"
-    assert!(args.contains(&"disabled".to_string()));
+    assert_eq!(request["sandbox_enabled"], false);
+    assert!(
+        request.get("plan").is_none(),
+        "Cursor SDK plan mode must not be serialized"
+    );
+}
+
+#[test]
+fn cursor_build_resume_command_uses_sdk_agent_id() {
+    let plugin = BuiltInRunnerPlugin::Cursor;
+    let ctx = create_resume_context("agent-local-123", "resume prompt");
+
+    let (cmd, payload, _guards) = plugin.build_resume_command(ctx).unwrap();
+
+    let args: Vec<String> = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    assert_eq!(args.len(), 1, "Cursor resumes through the SDK helper");
+    let payload = payload.expect("cursor sdk request");
+    let request: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+    assert_eq!(request["operation"], "resume");
+    assert_eq!(request["agent_id"], "agent-local-123");
+    assert_eq!(request["message"], "resume prompt");
+    assert!(
+        request.get("force").is_none(),
+        "normal Cursor resume must not force-expire active SDK runs"
+    );
+}
+
+#[test]
+fn cursor_build_forced_resume_serializes_sdk_force() {
+    let plugin = BuiltInRunnerPlugin::Cursor;
+    let mut ctx = create_resume_context("agent-local-123", "resume prompt");
+    ctx.force = true;
+
+    let (_cmd, payload, _guards) = plugin.build_resume_command(ctx).unwrap();
+    let payload = payload.expect("cursor sdk request");
+    let request: serde_json::Value = serde_json::from_slice(&payload).unwrap();
+
+    assert_eq!(request["operation"], "resume");
+    assert_eq!(request["force"], true);
 }
 
 // =============================================================================

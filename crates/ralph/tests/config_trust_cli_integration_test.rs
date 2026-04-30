@@ -29,6 +29,36 @@ const SENSITIVE_CONFIG: &str = r#"{
   }
 }"#;
 
+const PROJECT_CURSOR_CONFIG: &str = r#"{
+  "version": 2,
+  "agent": {
+    "runner": "cursor",
+    "model": "composer-2"
+  }
+}"#;
+
+#[test]
+fn config_show_rejects_untrusted_project_cursor_selection() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    std::fs::create_dir_all(dir.path().join(".ralph"))?;
+    std::fs::write(
+        dir.path().join(".ralph/config.jsonc"),
+        PROJECT_CURSOR_CONFIG,
+    )?;
+
+    let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "show"]);
+    assert!(
+        !status.success(),
+        "expected config show to fail without trust\nstderr:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("not trusted") && stderr.contains("Cursor"),
+        "expected Cursor trust error in stderr, got:\n{stderr}"
+    );
+    Ok(())
+}
+
 #[test]
 fn config_trust_init_repairs_missing_trust_for_sensitive_project_config() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();

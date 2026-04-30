@@ -25,8 +25,7 @@
 //! If you are tempted to add approval flag support for Codex here, DON'T. This is by design.
 //! The only exception is when sandbox is disabled, which passes `--dangerously-bypass-approvals-and-sandbox`.
 
-use crate::commands::run::PhaseType;
-use crate::contracts::{RunnerApprovalMode, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity};
+use crate::contracts::{RunnerApprovalMode, RunnerSandboxMode, RunnerVerbosity};
 
 use super::cli_options::ResolvedRunnerCliOptions;
 use super::command::RunnerCommandBuilder;
@@ -77,42 +76,6 @@ pub(super) fn apply_claude_options(
         RunnerVerbosity::Verbose => builder.arg("--verbose"),
         RunnerVerbosity::Quiet | RunnerVerbosity::Normal => builder,
     }
-}
-
-pub(super) fn apply_cursor_options(
-    mut builder: RunnerCommandBuilder,
-    opts: ResolvedRunnerCliOptions,
-    phase_type: PhaseType,
-) -> RunnerCommandBuilder {
-    let is_planning = phase_type == PhaseType::Planning;
-
-    if opts.approval_mode == RunnerApprovalMode::Yolo {
-        builder = builder.arg("--force");
-    }
-
-    let sandbox_mode = match opts.sandbox {
-        RunnerSandboxMode::Enabled => "enabled",
-        RunnerSandboxMode::Disabled => "disabled",
-        RunnerSandboxMode::Default => {
-            if is_planning {
-                "enabled"
-            } else {
-                "disabled"
-            }
-        }
-    };
-    builder = builder.args(["--sandbox", sandbox_mode]);
-
-    let plan_enabled = match opts.plan_mode {
-        RunnerPlanMode::Enabled => true,
-        RunnerPlanMode::Disabled => false,
-        RunnerPlanMode::Default => is_planning,
-    };
-    if plan_enabled {
-        builder = builder.arg("--plan");
-    }
-
-    builder
 }
 
 pub(super) fn apply_kimi_options(

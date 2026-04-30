@@ -267,9 +267,9 @@
               "null"
             ]
           },
-          "cursor_bin": {
+          "cursor_sdk_node_bin": {
             "default": null,
-            "description": "Override the cursor agent executable name/path (default is \"agent\" if None).\n\nNOTE: Cursor's runner binary name is `agent` (not `cursor`).",
+            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in Ralph Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
             "type": [
               "string",
               "null"
@@ -571,7 +571,7 @@
               "claude_bin": "claude",
               "claude_permission_mode": "accept_edits",
               "codex_bin": "codex",
-              "cursor_bin": "agent",
+              "cursor_sdk_node_bin": "node",
               "followup_reasoning_effort": null,
               "gemini_bin": "gemini",
               "git_publish_mode": "off",
@@ -7772,9 +7772,9 @@
               "null"
             ]
           },
-          "cursor_bin": {
+          "cursor_sdk_node_bin": {
             "default": null,
-            "description": "Override the cursor agent executable name/path (default is \"agent\" if None).\n\nNOTE: Cursor's runner binary name is `agent` (not `cursor`).",
+            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in Ralph Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
             "type": [
               "string",
               "null"
@@ -8076,7 +8076,7 @@
               "claude_bin": "claude",
               "claude_permission_mode": "accept_edits",
               "codex_bin": "codex",
-              "cursor_bin": "agent",
+              "cursor_sdk_node_bin": "node",
               "followup_reasoning_effort": null,
               "gemini_bin": "gemini",
               "git_publish_mode": "off",
