@@ -48,7 +48,7 @@ The feature should feel native to Ralph rather than bolted on. Users should be a
 ### US-001: Decompose a New Goal into a Task Tree
 
 As a user starting from a high-level engineering goal,
-I want to run `ralph task decompose "..."` and preview a structured task tree,
+I want to run `ralph task decompose "<SOURCE>"` and preview a structured task tree,
 so that I can turn an abstract goal into reviewable, executable queue entries.
 
 #### Acceptance Criteria
@@ -129,9 +129,9 @@ so that I can review or consume decompositions programmatically.
 
 #### Acceptance Criteria
 
-- Running `ralph task decompose ... --with-dependencies` resolves sibling-only `depends_on` edges from planner keys or sibling titles.
+- Running `ralph task decompose <SOURCE> --with-dependencies` resolves sibling-only `depends_on` edges from planner keys or sibling titles.
 - Self-dependencies, unknown dependencies, and non-sibling references are dropped with warnings.
-- Running `ralph task decompose ... --format json` emits a stable versioned JSON payload for preview or write mode.
+- Running `ralph task decompose <SOURCE> --format json` emits a stable versioned JSON payload for preview or write mode.
 - JSON output includes actionability metadata identifying the root/group task and first actionable leaf without requiring consumers to parse human text.
 
 ### US-005: Use the Workflow Reliably in Non-Interactive Environments
@@ -302,7 +302,7 @@ Planner guidance should emphasize:
 
 Preview SHALL be the hard default in all environments.
 
-- `ralph task decompose ...` performs a preview only.
+- `ralph task decompose <SOURCE>` performs a preview only.
 - Queue mutation requires explicit `--write`.
 - There is no TTY-only “safety behavior” split for preview vs write.
 - This keeps the command predictable, scriptable, and safe.

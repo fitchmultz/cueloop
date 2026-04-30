@@ -22,7 +22,7 @@
 use crate::cli::machine::common::{
     machine_queue_graph_command, machine_queue_undo_dry_run_command,
     machine_queue_validate_command, machine_run_one_resume_command, machine_task_build_command,
-    machine_task_decompose_command, machine_task_mutate_command,
+    machine_task_decompose_write_preview_command, machine_task_mutate_command,
 };
 use crate::commands::task as task_cmd;
 use crate::contracts::{
@@ -114,6 +114,7 @@ pub(super) fn mutation_continuation(
 pub(super) fn decompose_continuation(
     preview: &task_cmd::DecompositionPreview,
     write: Option<&task_cmd::TaskDecomposeWriteResult>,
+    checkpoint: Option<&task_cmd::DecompositionPreviewCheckpointRef>,
 ) -> MachineContinuationSummary {
     if let Some(write) = write {
         let first_leaf_id = write.first_actionable_leaf_task_id.as_deref();
@@ -186,15 +187,25 @@ pub(super) fn decompose_continuation(
             .unwrap_or_else(|| {
                 "Ralph planned a task tree that can be written when you are ready.".to_string()
             });
+        let write_command = checkpoint
+            .map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id))
+            .unwrap_or_else(|| "ralph machine task decompose --write <SOURCE>".to_string());
+        let replay_detail = checkpoint
+            .map(|checkpoint| {
+                format!(
+                    "Persist this exact saved preview from checkpoint {} into the queue.",
+                    checkpoint.id
+                )
+            })
+            .unwrap_or_else(|| {
+                "Run write mode with an explicit source; this invokes the planner again and may differ from this preview."
+                    .to_string()
+            });
         return MachineContinuationSummary {
             headline: "Decomposition preview is ready.".to_string(),
             detail,
             blocking: None,
-            next_steps: vec![step(
-                "Write the preview",
-                &machine_task_decompose_command(true, "..."),
-                "Persist the planned tree into the queue.",
-            )],
+            next_steps: vec![step("Write the preview", &write_command, &replay_detail)],
         };
     }
 
@@ -212,26 +223,39 @@ pub(super) fn decompose_continuation(
                     .map(|target| target.task.id.clone()),
                 "Ralph is blocked from continuing this decomposition write.",
                 preview.write_blockers.join(" "),
-                Some(machine_task_decompose_command(true, "--child-policy append ...")),
+                checkpoint.map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id)),
             )
             .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback()),
         ),
-        next_steps: vec![
-            step(
-                "Append under the existing parent",
-                &machine_task_decompose_command(true, "--child-policy append ..."),
-                "Keep existing children and add the new subtree.",
-            ),
-            step(
-                "Replace the existing subtree",
-                &machine_task_decompose_command(true, "--child-policy replace ..."),
-                "Use only when the existing subtree can be safely replaced.",
-            ),
-            step(
-                "Keep the preview only",
-                &machine_task_decompose_command(false, "..."),
-                "Retain the proposed tree while deciding how to proceed.",
-            ),
-        ],
+        next_steps: blocked_decompose_steps(checkpoint),
     }
+}
+
+fn blocked_decompose_steps(
+    checkpoint: Option<&task_cmd::DecompositionPreviewCheckpointRef>,
+) -> Vec<MachineContinuationAction> {
+    let mut steps = vec![
+        step(
+            "Inspect the queue graph",
+            machine_queue_graph_command(),
+            "Review the existing child subtree and decide whether to mutate it before retrying.",
+        ),
+        step(
+            "Validate the queue",
+            machine_queue_validate_command(),
+            "Confirm current queue invariants before attempting another decomposition write.",
+        ),
+    ];
+    if let Some(checkpoint) = checkpoint {
+        let command = machine_task_decompose_write_preview_command(&checkpoint.id);
+        steps.insert(
+            0,
+            step(
+                "Retry exact preview write",
+                &command,
+                "Retry writing the same saved preview after resolving the blocker; this does not invoke the planner again.",
+            ),
+        );
+    }
+    steps
 }

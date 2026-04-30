@@ -23,7 +23,7 @@
 use crate::contracts::{Model, ReasoningEffort, Runner, Task, TaskKind, TaskStatus};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DecompositionChildPolicy {
     Fail,
@@ -56,7 +56,7 @@ pub enum TaskDecomposeSourceInput {
     PlanFile { path: String, content: String },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DecompositionSource {
     Freeform {
@@ -67,18 +67,18 @@ pub enum DecompositionSource {
     },
     PlanFile {
         path: String,
-        #[serde(skip_serializing)]
+        #[serde(skip_serializing, default)]
         content: String,
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecompositionAttachTarget {
     pub task: Box<Task>,
     pub has_existing_children: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecompositionPreview {
     pub source: DecompositionSource,
     pub attach_target: Option<DecompositionAttachTarget>,
@@ -91,7 +91,7 @@ pub struct DecompositionPreview {
     pub with_dependencies: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct DecompositionPlan {
     pub root: PlannedNode,
     pub warnings: Vec<String>,
@@ -182,7 +182,7 @@ pub struct DecompositionTaskLocator {
     pub kind: TaskKind,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DependencyEdgePreview {
     pub task_title: String,
     pub depends_on_title: String,
@@ -227,7 +227,7 @@ pub(super) struct RawPlannedNode {
     pub(super) children: Vec<RawPlannedNode>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlannedNode {
     pub planner_key: String,
     pub title: String,
@@ -237,8 +237,8 @@ pub struct PlannedNode {
     pub scope: Vec<String>,
     pub depends_on_keys: Vec<String>,
     pub children: Vec<PlannedNode>,
-    #[serde(skip_serializing)]
-    pub(super) dependency_refs: Vec<String>,
+    #[serde(skip_serializing, default)]
+    pub(crate) dependency_refs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

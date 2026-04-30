@@ -54,12 +54,20 @@ pub(crate) fn machine_task_build_command() -> &'static str {
     "ralph machine task build --input <PATH>"
 }
 
-pub(crate) fn machine_task_decompose_command(write: bool, suffix: &'static str) -> String {
-    if write {
-        format!("ralph machine task decompose --write {suffix}")
-    } else {
-        format!("ralph machine task decompose {suffix}")
+pub(crate) fn machine_task_decompose_write_preview_command(checkpoint_id: &str) -> String {
+    format!(
+        "ralph machine task decompose --write --from-preview {}",
+        shell_quote(checkpoint_id)
+    )
+}
+
+fn shell_quote(value: &str) -> String {
+    if value.bytes().all(|byte| {
+        byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'/' | b':')
+    }) {
+        return value.to_string();
     }
+    format!("'{}'", value.replace('\'', "'\\''"))
 }
 
 pub(crate) fn machine_run_one_resume_command() -> &'static str {

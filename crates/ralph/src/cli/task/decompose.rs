@@ -32,6 +32,29 @@ use crate::config;
 use crate::contracts::MachineDecomposeDocument;
 
 pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
+    if let Some(checkpoint_id) = args.from_preview.as_deref() {
+        validate_from_preview_args(args)?;
+        let (preview, checkpoint) =
+            task_cmd::load_decomposition_preview_checkpoint(resolved, checkpoint_id)?;
+        let write_result = Some(task_cmd::write_task_decomposition(
+            resolved, &preview, force,
+        )?);
+        let document = crate::cli::machine::build_task_decompose_document(
+            &preview,
+            write_result.as_ref(),
+            Some(&checkpoint),
+        );
+        match args.format {
+            TaskDecomposeFormatArg::Text => {
+                print_text_output(&preview, write_result.as_ref(), &document)
+            }
+            TaskDecomposeFormatArg::Json => {
+                println!("{}", serde_json::to_string_pretty(&document)?)
+            }
+        }
+        return Ok(());
+    }
+
     let source = source_from_args(resolved, &args.source, args.from_file.as_deref())?;
     let overrides = agent::resolve_agent_overrides(&agent::AgentArgs {
         runner: args.runner.clone(),
@@ -72,8 +95,18 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
     } else {
         None
     };
-    let document =
-        crate::cli::machine::build_task_decompose_document(&preview, write_result.as_ref());
+    let checkpoint = if args.write {
+        None
+    } else {
+        Some(task_cmd::save_decomposition_preview_checkpoint(
+            resolved, &preview,
+        )?)
+    };
+    let document = crate::cli::machine::build_task_decompose_document(
+        &preview,
+        write_result.as_ref(),
+        checkpoint.as_ref(),
+    );
 
     match args.format {
         TaskDecomposeFormatArg::Text => {
@@ -82,6 +115,26 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
         TaskDecomposeFormatArg::Json => println!("{}", serde_json::to_string_pretty(&document)?),
     }
 
+    Ok(())
+}
+
+fn validate_from_preview_args(args: &TaskDecomposeArgs) -> Result<()> {
+    if !args.write {
+        bail!("`ralph task decompose --from-preview` requires --write for queue mutation.");
+    }
+    if args.preview {
+        bail!("`ralph task decompose --from-preview` cannot be combined with --preview.");
+    }
+    if !args.source.is_empty() || args.from_file.is_some() {
+        bail!(
+            "`ralph task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
+        );
+    }
+    if args.attach_to.is_some() || args.with_dependencies {
+        bail!(
+            "`ralph task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
+        );
+    }
     Ok(())
 }
 

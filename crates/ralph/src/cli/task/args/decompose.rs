@@ -37,6 +37,10 @@ pub struct TaskDecomposeArgs {
     #[arg(long = "from-file", value_name = "PATH")]
     pub from_file: Option<PathBuf>,
 
+    /// Write an exact saved preview checkpoint instead of invoking the planner again.
+    #[arg(long = "from-preview", value_name = "CHECKPOINT_ID")]
+    pub from_preview: Option<String>,
+
     /// Attach a new decomposition subtree under an existing parent task.
     #[arg(long, value_name = "TASK_ID")]
     pub attach_to: Option<String>,

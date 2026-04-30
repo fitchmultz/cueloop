@@ -146,7 +146,7 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
                 println!("  - Promote a leaf draft task to todo");
             }
             println!(
-                "  - For future decompositions, use 'ralph task decompose --write --parent-status draft --leaf-status todo ...'"
+                "  - For future decompositions, use 'ralph task decompose --write --parent-status draft --leaf-status todo <SOURCE>'"
             );
             println!();
         }

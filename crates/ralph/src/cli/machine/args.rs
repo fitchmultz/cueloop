@@ -160,6 +160,8 @@ pub struct MachineTaskDecomposeArgs {
     pub source: Vec<String>,
     #[arg(long = "from-file", value_name = "PATH")]
     pub from_file: Option<PathBuf>,
+    #[arg(long = "from-preview", value_name = "CHECKPOINT_ID")]
+    pub from_preview: Option<String>,
     #[arg(long)]
     pub attach_to: Option<String>,
     #[arg(long, default_value_t = 3)]

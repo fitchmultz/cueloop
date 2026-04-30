@@ -143,7 +143,7 @@ fn decompose_document_all_draft_write_guides_first_leaf_promotion() {
         parent_annotated: false,
     };
 
-    let document = crate::cli::machine::build_task_decompose_document(&preview, Some(&write));
+    let document = crate::cli::machine::build_task_decompose_document(&preview, Some(&write), None);
 
     assert_eq!(
         document.continuation.headline,
@@ -192,7 +192,7 @@ fn decompose_document_single_leaf_draft_write_ignores_parent_status_for_activati
         parent_annotated: false,
     };
 
-    let document = crate::cli::machine::build_task_decompose_document(&preview, Some(&write));
+    let document = crate::cli::machine::build_task_decompose_document(&preview, Some(&write), None);
 
     assert_eq!(
         document.continuation.headline,
@@ -240,7 +240,7 @@ fn decompose_document_runnable_leaf_write_guides_run_without_activation() {
         parent_annotated: false,
     };
 
-    let document = crate::cli::machine::build_task_decompose_document(&preview, Some(&write));
+    let document = crate::cli::machine::build_task_decompose_document(&preview, Some(&write), None);
     let commands = document
         .continuation
         .next_steps

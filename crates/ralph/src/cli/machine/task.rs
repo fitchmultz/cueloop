@@ -107,6 +107,20 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             print_json(&build_task_mutation_document(&report, args.dry_run)?)
         }
         MachineTaskCommand::Decompose(args) => {
+            if let Some(checkpoint_id) = args.from_preview.as_deref() {
+                validate_machine_from_preview_args(&args)?;
+                let (preview, checkpoint) =
+                    task_cmd::load_decomposition_preview_checkpoint(&resolved, checkpoint_id)?;
+                let write = Some(task_cmd::write_task_decomposition(
+                    &resolved, &preview, force,
+                )?);
+                return print_json(&build_decompose_document(
+                    &preview,
+                    write.as_ref(),
+                    Some(&checkpoint),
+                ));
+            }
+
             let source = machine_decompose_source_from_args(
                 &resolved,
                 &args.source,
@@ -148,9 +162,39 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             } else {
                 None
             };
-            print_json(&build_decompose_document(&preview, write.as_ref()))
+            let checkpoint = if args.write {
+                None
+            } else {
+                Some(task_cmd::save_decomposition_preview_checkpoint(
+                    &resolved, &preview,
+                )?)
+            };
+            print_json(&build_decompose_document(
+                &preview,
+                write.as_ref(),
+                checkpoint.as_ref(),
+            ))
         }
     }
+}
+
+fn validate_machine_from_preview_args(
+    args: &crate::cli::machine::args::MachineTaskDecomposeArgs,
+) -> Result<()> {
+    if !args.write {
+        bail!("`ralph machine task decompose --from-preview` requires --write for queue mutation.");
+    }
+    if !args.source.is_empty() || args.from_file.is_some() {
+        bail!(
+            "`ralph machine task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
+        );
+    }
+    if args.attach_to.is_some() || args.with_dependencies {
+        bail!(
+            "`ralph machine task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
+        );
+    }
+    Ok(())
 }
 
 fn machine_decompose_source_from_args(
@@ -256,18 +300,21 @@ pub(crate) fn build_task_mutation_document(
 pub(crate) fn build_decompose_document(
     preview: &task_cmd::DecompositionPreview,
     write: Option<&task_cmd::TaskDecomposeWriteResult>,
+    checkpoint: Option<&task_cmd::DecompositionPreviewCheckpointRef>,
 ) -> MachineDecomposeDocument {
-    let continuation = decompose_continuation(preview, write);
+    let continuation = decompose_continuation(preview, write, checkpoint);
     let blocking = continuation.blocking.clone();
 
     MachineDecomposeDocument {
         version: MACHINE_DECOMPOSE_VERSION,
         blocking,
         result: serde_json::json!({
-            "version": 1,
+            "version": 2,
             "mode": if write.is_some() { "write" } else { "preview" },
             "preview": preview,
             "write": write,
+            "checkpoint": checkpoint,
+            "replay_exact": checkpoint.is_some(),
         }),
         continuation,
     }

@@ -33,6 +33,7 @@ use anyhow::Result;
 use tempfile::TempDir;
 
 mod actionability;
+mod checkpoint;
 mod plan_file_ordering;
 
 #[test]
@@ -688,7 +689,7 @@ fn write_task_decomposition_plan_file_tasks_include_source_plan_provenance() -> 
     Ok(())
 }
 
-fn planned_node(
+pub(super) fn planned_node(
     key: &str,
     title: &str,
     depends_on_keys: Vec<String>,

@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "task_kind": "queue_shaping",
-        "skill": "comprehensive-codebase-audit",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "skill": "comprehensive-codebase-audit",
+        "runner_used": "codex",
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -610,9 +610,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "runner_used": "codex"
       }
     },
     {
@@ -687,9 +687,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4"
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
+        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
+        "runner_used": "codex"
       }
     },
     {
@@ -831,8 +831,8 @@
       "custom_fields": {
         "runner_used": "codex",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "model_used": "gpt-5.4",
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
+        "runner_used": "codex"
       }
     },
     {
@@ -955,9 +955,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
         "runner_used": "codex",
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md"
       }
     },
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
+        "severity_reason": "parallel-mode task state/data integrity loss",
         "model_used": "openai-codex/gpt-5.5",
         "runner_used": "pi",
-        "severity_reason": "parallel-mode task state/data integrity loss",
-        "reported_command": "ralph run loop --parallel 2",
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
+        "reported_command": "ralph run loop --parallel 2"
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
       }
     },
     {
@@ -3004,8 +3004,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi"
       }
     },
     {
@@ -3063,9 +3063,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3122,9 +3122,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3249,9 +3249,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3386,8 +3386,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high"
       }
     },
@@ -3449,8 +3449,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high"
       }
     },
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3643,9 +3643,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3702,9 +3702,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3770,8 +3770,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi",
         "scan_agent": "scan-general"
       }
     },
@@ -3832,9 +3832,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3887,8 +3887,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi",
         "scan_agent": "scan-general"
       }
     },
@@ -3944,8 +3944,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
@@ -3995,8 +3995,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
@@ -4063,8 +4063,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "runner_used": "pi",
-        "source_feedback": "warden_task_decompose_feedback"
+        "source_feedback": "warden_task_decompose_feedback",
+        "runner_used": "pi"
       }
     },
     {
@@ -4122,8 +4122,8 @@
       ],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "source_feedback": "warden_task_decompose_feedback",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "source_feedback": "warden_task_decompose_feedback"
       }
     },
     {
@@ -4185,9 +4185,9 @@
         "RQ-0078"
       ],
       "custom_fields": {
-        "runner_used": "pi",
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -4261,9 +4261,68 @@
         "RQ-0079"
       ],
       "custom_fields": {
-        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "runner_used": "pi"
+      }
+    },
+    {
+      "id": "RQ-0081",
+      "status": "done",
+      "title": "Make decompose preview continuations exact and copy-pasteable",
+      "description": "Close the preview/write trust gap. A preview followed by a later write should either persist the exact preview result through a checkpoint/continuation ID or clearly state that a new planner invocation may differ. All continuation hints must be literal copy/pasteable commands with no `...` placeholders.",
+      "priority": "high",
+      "tags": [
+        "task-decompose",
+        "preview",
+        "continuation",
+        "machine-api",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/commands/task/decompose/planning.rs",
+        "crates/ralph/src/commands/task/decompose/types.rs",
+        "crates/ralph/src/commands/task/decompose/write.rs",
+        "crates/ralph/src/cli/task/decompose.rs",
+        "crates/ralph/src/cli/machine/task.rs",
+        "crates/ralph/src/cli/machine/task/continuation.rs",
+        "crates/ralph/src/cli/machine/common.rs",
+        "crates/ralph/src/commands/task/decompose/tests.rs",
+        "docs/cli.md",
+        "docs/machine-contract.md"
+      ],
+      "evidence": [
+        "Warden feedback: one preview produced 35 nodes while the subsequent write produced 46 nodes, making preview less trustworthy.",
+        "Current same-invocation `--write` writes the in-memory preview, but separate preview and write commands still re-plan and can diverge.",
+        "Current machine continuation code emits commands like `ralph machine task decompose --write ...`, which is not copy/pasteable."
+      ],
+      "plan": [
+        "Add a preview checkpoint/continuation path that stores the planned tree safely and lets a later write persist that exact tree, or add explicit warning text where exact replay is not available.",
+        "Replace `...` continuation placeholders with exact commands built from the resolved source, options, child policy, and any preview checkpoint ID.",
+        "Expose the same exact continuation through text CLI and machine JSON `next_steps` so RalphMac and other consumers do not need to reconstruct CLI args from prose.",
+        "Add regression tests proving preview checkpoint writes preserve node counts/content, later re-planning is clearly labeled when used, and no continuation command contains placeholder ellipses."
+      ],
+      "notes": [
+        "This can proceed after RQ-0078 so continuation output can include the same root/first-leaf metadata.",
+        "If checkpoint files are introduced, document lifecycle, expiry/cleanup, and undo interaction; do not leave unmanaged runtime artifacts.",
+        "Completed RQ-0081 Phase 3 review: exact decompose preview checkpoints and copy-pasteable continuation commands verified with targeted tests, ellipsis search, and make agent-ci."
+      ],
+      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
+      "created_at": "2026-04-30T19:41:18Z",
+      "updated_at": "2026-04-30T23:31:05.376510000Z",
+      "completed_at": "2026-04-30T23:31:05.376510000Z",
+      "started_at": "2026-04-30T22:59:36.960662000Z",
+      "depends_on": [
+        "RQ-0078"
+      ],
+      "blocks": [],
+      "relates_to": [
+        "RQ-0078"
+      ],
+      "custom_fields": {
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:xhigh",
+        "source_feedback": "warden_task_decompose_feedback"
       }
     }
   ]

@@ -185,6 +185,8 @@ ralph task children <ROOT_TASK_ID>
 
 Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work. Written decomposition trees persist umbrella/root/phase nodes as `kind: group`, leave runnable leaf work as the default `kind: work_item`, and report both the root/group task and the first actionable leaf task in text and JSON output.
 
+Preview-only decomposition saves an exact replay checkpoint under `.ralph/cache/decompose-previews/` and prints a copy/pasteable continuation command with the real checkpoint ID, for example `ralph machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`. Human CLI users may also write the same checkpoint with `ralph task decompose --write --from-preview <CHECKPOINT_ID>`. Checkpoints are runtime cache artifacts, pruned best-effort after seven days; they are not undo snapshots. A successful checkpoint replay still uses normal write safeguards, including queue lock, validation, and a fresh undo snapshot before queue mutation. A normal later `ralph task decompose --write <SOURCE>` without `--from-preview` invokes the planner again and may differ from an earlier preview.
+
 Decomposition status controls are explicit and opt-in. `--status <STATUS>` applies to every generated node by default; `--parent-status <STATUS>` overrides generated group/non-leaf nodes; `--leaf-status <STATUS>` overrides generated leaf work items. Plain `--write` remains review-first and writes generated tasks as `draft`. To make leaf work immediately runnable while keeping parent/group nodes as drafts, use `--parent-status draft --leaf-status todo`. If a write leaves every generated task in `draft`, the continuation output prints an exact activation command such as `ralph task ready RQ-0003` for the first actionable leaf. `ralph queue validate` and `ralph queue explain` use the same calm activation guidance instead of reporting an all-draft decomposition as dependency failure.
 
 ### Diagnostics
@@ -210,6 +212,7 @@ ralph task mutate --format json --input request.json
 ralph task decompose --format json "Improve webhook reliability"
 ralph task decompose --from-file docs/plans/oauth.md --format json
 ralph task decompose --write "Improve webhook reliability"
+ralph task decompose --write --from-preview <CHECKPOINT_ID>
 ralph task followups apply --task RQ-0135
 ralph task followups apply --task RQ-0135 --dry-run --format json
 ralph undo --list
@@ -220,7 +223,7 @@ These commands are now first-class continuation tools. They explain whether Ralp
 
 If `ralph run loop` stops on queue validation, start with `ralph queue repair --dry-run` to preview recoverable fixes, apply them with `ralph queue repair`, and optionally confirm the result with `ralph queue validate`.
 
-`ralph task mutate --format json` and `ralph task decompose --format json` now emit the same shared versioned continuation documents used by `ralph machine ...`.
+`ralph task mutate --format json` and `ralph task decompose --format json` now emit the same shared versioned continuation documents used by `ralph machine` commands.
 `ralph task followups apply` consumes `.ralph/cache/followups/<TASK_ID>.json`, validates the proposal, creates undo, inserts generated tasks into the queue, and removes the proposal after a successful apply.
 
 ### Machine API
@@ -235,6 +238,7 @@ ralph machine config resolve
 ralph machine doctor report
 ralph machine task mutate --input request.json
 ralph machine task decompose --from-file docs/plans/oauth.md --with-dependencies
+ralph machine task decompose --write --from-preview <CHECKPOINT_ID>
 ralph machine run one --resume --id RQ-0001
 ralph machine run loop --resume --max-tasks 5
 ralph machine run loop --resume --max-tasks 0 --parallel 2

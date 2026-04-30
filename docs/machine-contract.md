@@ -286,6 +286,12 @@ Task mutation and decomposition documents now include:
 
 When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation surfaces can consume a single canonical field after preview, write, and write-blocked flows.
 
+For `machine task decompose`, preview-mode `result.version` is `2` and includes exact replay metadata:
+- `checkpoint`: `{ "id", "path", "created_at", "expires_at" }` for preview-only output and checkpoint replay writes
+- `replay_exact`: `true` when a continuation can write the saved preview without invoking the planner again
+
+Preview continuation commands are literal copy/pasteable commands such as `ralph machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`; decompose continuations must not contain ellipsis placeholders. Clients should consume `continuation.next_steps[].command` directly instead of reconstructing CLI args from prose. Checkpoints live under `.ralph/cache/decompose-previews/`, are runtime cache artifacts pruned best-effort after seven days, and are separate from undo snapshots; replay writes still create a normal undo snapshot before mutating the queue.
+
 ### `machine run parallel-status` (`version: 3`)
 
 Parallel status now returns a continuation-oriented document instead of a raw state blob alone:

@@ -143,9 +143,9 @@ impl BlockingState {
             .map(|id| format!("ralph task ready {id}"));
         let detail = match suggested_command {
             Some(command) => format!(
-                "Promote a leaf task to todo, for example: {command}. For future decompositions, use ralph task decompose --write --parent-status draft --leaf-status todo ... to write runnable leaves."
+                "Promote a leaf task to todo, for example: {command}. For future decompositions, use ralph task decompose --write --parent-status draft --leaf-status todo <SOURCE> to write runnable leaves."
             ),
-            None => "Promote a leaf task to todo. For future decompositions, use ralph task decompose --write --parent-status draft --leaf-status todo ... to write runnable leaves.".to_string(),
+            None => "Promote a leaf task to todo. For future decompositions, use ralph task decompose --write --parent-status draft --leaf-status todo <SOURCE> to write runnable leaves.".to_string(),
         };
         Self::new(
             BlockingStatus::Waiting,

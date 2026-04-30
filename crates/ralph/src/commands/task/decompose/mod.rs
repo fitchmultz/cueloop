@@ -21,6 +21,7 @@
 //! - Preview stays side-effect free with respect to queue/done files.
 //! - Write mode re-checks queue state under lock before mutating.
 
+mod checkpoint;
 mod planning;
 mod resolve;
 mod source_file;
@@ -31,11 +32,15 @@ mod tree;
 mod types;
 mod write;
 
+pub use checkpoint::{
+    DecompositionPreviewCheckpointRef, load_decomposition_preview_checkpoint,
+    save_decomposition_preview_checkpoint,
+};
 pub use planning::plan_task_decomposition;
 pub use source_file::read_plan_file_source;
 pub use types::{
     DecompositionAttachTarget, DecompositionChildPolicy, DecompositionPlan, DecompositionPreview,
-    DecompositionSource, PlannedNode, TaskDecomposeOptions, TaskDecomposeSourceInput,
-    TaskDecomposeWriteResult,
+    DecompositionSource, DependencyEdgePreview, PlannedNode, TaskDecomposeOptions,
+    TaskDecomposeSourceInput, TaskDecomposeWriteResult,
 };
 pub use write::write_task_decomposition;
