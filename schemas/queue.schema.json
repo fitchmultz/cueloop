@@ -399,8 +399,7 @@
         },
         "kind": {
           "description": "Whether this task is executable work or a non-runnable grouping node.",
-          "$ref": "#/$defs/TaskKind",
-          "default": "work_item"
+          "$ref": "#/$defs/TaskKind"
         },
         "notes": {
           "type": "array",

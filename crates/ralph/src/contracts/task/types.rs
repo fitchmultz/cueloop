@@ -39,7 +39,7 @@ pub struct Task {
     pub status: TaskStatus,
 
     /// Whether this task is executable work or a non-runnable grouping node.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "TaskKind::is_work_item")]
     pub kind: TaskKind,
 
     pub title: String,
@@ -148,6 +148,10 @@ pub enum TaskKind {
 
 impl TaskKind {
     pub fn is_executable(self) -> bool {
+        matches!(self, TaskKind::WorkItem)
+    }
+
+    pub fn is_work_item(&self) -> bool {
         matches!(self, TaskKind::WorkItem)
     }
 

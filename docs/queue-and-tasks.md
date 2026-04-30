@@ -36,7 +36,7 @@ Common optional fields:
 - `plan` (list of strings, defaults to empty).
 - `notes` (list of strings, defaults to empty).
 - `status`: `draft`, `todo`, `doing`, `done`, `rejected` (default: `todo`). Lifecycle only; it does not say whether the task is executable.
-- `kind`: `work_item` or `group` (default: `work_item`). `work_item` tasks are executable atomic work. `group` tasks are non-runnable decomposition/organization nodes.
+- `kind`: `work_item` or `group` (default: `work_item`). `work_item` tasks are executable atomic work. `group` tasks are non-runnable decomposition/organization nodes. Ralph omits `kind` when saving default `work_item` tasks; write `kind: "group"` only when the task must be non-executable.
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
 - `request`: original human request (string or null).
 - `completed_at`: RFC3339 UTC timestamp (required if status is `done` or `rejected`, otherwise optional).
@@ -109,7 +109,7 @@ Notes:
 ## Lifecycle Notes
 - Executable `work_item` tasks run in the file order from `.ralph/queue.jsonc`.
 - `kind: "group"` tasks remain visible in reads, lists, tree, graph, search, and app surfaces, but are skipped by `ralph queue next`, `run one`, `run loop`, parallel workers, and machine runnability selection by default.
-- Existing tasks without `kind` load as `work_item`; queue file `version` remains 1 because the field is backward-compatible.
+- Existing tasks without `kind` load as `work_item`; Ralph omits the default `work_item` field on save so normal task rewrites stay compatible with older strict readers. Explicit `kind: "group"` requires a Ralph build that supports task kinds.
 - Completed tasks are removed from `.ralph/queue.jsonc` and appended to `.ralph/done.jsonc`.
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.

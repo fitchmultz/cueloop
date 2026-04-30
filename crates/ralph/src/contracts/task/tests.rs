@@ -84,7 +84,19 @@ fn task_kind_deserializes_group_and_rejects_invalid_values() {
 }
 
 #[test]
-fn task_kind_serializes_as_snake_case() {
+fn task_kind_omits_default_work_item_when_serializing() {
+    let task = Task {
+        id: "RQ-0001".to_string(),
+        title: "Work".to_string(),
+        kind: TaskKind::WorkItem,
+        ..Default::default()
+    };
+    let json = serde_json::to_string(&task).expect("serialize");
+    assert!(!json.contains("\"kind\""));
+}
+
+#[test]
+fn task_kind_serializes_group_as_snake_case() {
     let task = Task {
         id: "RQ-0001".to_string(),
         title: "Group".to_string(),

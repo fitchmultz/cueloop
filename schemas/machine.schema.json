@@ -3595,7 +3595,6 @@
           },
           "kind": {
             "$ref": "#/$defs/TaskKind",
-            "default": "work_item",
             "description": "Whether this task is executable work or a non-runnable grouping node."
           },
           "notes": {
@@ -6441,7 +6440,6 @@
           },
           "kind": {
             "$ref": "#/$defs/TaskKind",
-            "default": "work_item",
             "description": "Whether this task is executable work or a non-runnable grouping node."
           },
           "notes": {
@@ -7145,7 +7143,6 @@
           },
           "kind": {
             "$ref": "#/$defs/TaskKind",
-            "default": "work_item",
             "description": "Whether this task is executable work or a non-runnable grouping node."
           },
           "notes": {
@@ -9567,7 +9564,6 @@
           },
           "kind": {
             "$ref": "#/$defs/TaskKind",
-            "default": "work_item",
             "description": "Whether this task is executable work or a non-runnable grouping node."
           },
           "notes": {
