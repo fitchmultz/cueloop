@@ -48,9 +48,9 @@ Related feature docs:
 
 ## Runner Binary Overrides
 
-You can override CLI executable names/paths for runners (`*_bin` fields under `agent`).
+You can override CLI executable names/paths for runners (`*_bin` fields under `agent`). Cursor is the exception: `agent.cursor_sdk_node_bin` selects the Node.js executable for Ralph's checked-in Cursor SDK bridge, and the trusted workspace must provide `@cursor/sdk@1.0.11` or `RALPH_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
 
-Operational rule: project-level binary overrides are execution-sensitive settings and require repository trust before project values are honored.
+Operational rule: project-level binary overrides and project-level Cursor runner selection are execution-sensitive settings and require repository trust before project values are honored.
 
 Canonical details:
 
@@ -98,7 +98,7 @@ Typical controls:
 - `verbosity`
 - `approval_mode`
 - `sandbox`
-- `plan_mode`
+- `plan_mode` (Cursor SDK rejects non-default values; Ralph's own planning phase is separate)
 - `unsupported_option_policy`
 
 Canonical reference: [agent.runner_cli](../configuration/agent-and-runners.md#agentrunner_cli).

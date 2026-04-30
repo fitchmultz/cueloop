@@ -115,6 +115,11 @@ impl ResolvedRunnerCliOptions {
             );
         }
 
+        if self.plan_mode != RunnerPlanMode::Default && runner == &Runner::Cursor {
+            bail!(
+                "runner_cli.plan_mode is not supported for Cursor SDK runs. Ralph planning phases still write Ralph plan artifacts; do not enable Cursor SDK plan mode."
+            );
+        }
         if self.plan_mode != RunnerPlanMode::Default && runner != &Runner::Cursor {
             self.unsupported("plan_mode", runner)?;
         }
@@ -249,5 +254,31 @@ mod tests {
         )?;
         assert_eq!(resolved.plan_mode, RunnerPlanMode::Enabled);
         Ok(())
+    }
+
+    #[test]
+    fn cursor_plan_mode_is_rejected() {
+        let agent = AgentConfig {
+            runner_cli: Some(RunnerCliConfigRoot {
+                defaults: RunnerCliOptionsPatch {
+                    unsupported_option_policy: Some(UnsupportedOptionPolicy::Warn),
+                    plan_mode: Some(RunnerPlanMode::Enabled),
+                    ..Default::default()
+                },
+                runners: BTreeMap::new(),
+            }),
+            ..Default::default()
+        };
+
+        let err = resolve_runner_cli_options(
+            &Runner::Cursor,
+            &RunnerCliOptionsPatch::default(),
+            None,
+            &agent,
+        )
+        .expect_err("expected Cursor plan mode rejection");
+
+        assert!(err.to_string().contains("Cursor SDK"));
+        assert!(err.to_string().contains("plan_mode"));
     }
 }

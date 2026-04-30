@@ -64,6 +64,9 @@ pub(crate) fn check_and_handle_migrations(
                     MigrationType::ConfigLegacyContractUpgrade => {
                         "Config uses the pre-0.3 contract, upgrade to version 2 and agent.git_publish_mode".to_string()
                     }
+                    MigrationType::ConfigCursorBinRemove => {
+                        "Config uses removed Cursor binary override keys, delete them".to_string()
+                    }
                     MigrationType::FileRename { old_path, new_path } => {
                         format!("Rename file '{}' to '{}'", old_path, new_path)
                     }

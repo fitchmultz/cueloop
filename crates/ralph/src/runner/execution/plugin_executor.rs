@@ -199,6 +199,7 @@ impl PluginExecutor {
         output_handler: Option<OutputHandler>,
         output_stream: OutputStream,
         phase_type: PhaseType,
+        force: bool,
         plugins: Option<&PluginRegistry>,
     ) -> Result<RunnerOutput, RunnerError> {
         match &runner {
@@ -233,6 +234,7 @@ impl PluginExecutor {
                     output_handler: output_handler.clone(),
                     output_stream,
                     runner_cli,
+                    force,
                     reasoning_effort,
                     permission_mode,
                     phase_type: Some(phase_type),

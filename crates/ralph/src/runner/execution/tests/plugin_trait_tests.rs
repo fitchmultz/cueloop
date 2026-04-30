@@ -64,6 +64,7 @@ fn create_resume_context<'a>(session_id: &'a str, message: &'a str) -> ResumeCon
         output_handler: None,
         output_stream: OutputStream::HandlerOnly,
         runner_cli: ResolvedRunnerCliOptions::default(),
+        force: false,
         reasoning_effort: None,
         permission_mode: None,
         phase_type: None,

@@ -135,7 +135,7 @@ impl RunnerPlugin for BuiltInRunnerPlugin {
             },
             Self::Cursor => RunnerMetadata {
                 id: "cursor".to_string(),
-                name: "Cursor Agent".to_string(),
+                name: "Cursor SDK".to_string(),
                 supports_resume: true,
                 default_model: None,
             },

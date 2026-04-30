@@ -144,6 +144,7 @@ impl RunnerAttemptContext<'_> {
         &'request self,
         session_id: &'request str,
         message: &'request str,
+        force: bool,
     ) -> RunnerBackendResumeSession<'request> {
         RunnerBackendResumeSession {
             runner_kind: self.runner_kind.clone(),
@@ -159,6 +160,7 @@ impl RunnerAttemptContext<'_> {
             output_handler: self.output_handler.clone(),
             output_stream: self.output_stream,
             phase_type: self.phase_type,
+            force,
             plugins: None,
         }
     }
@@ -195,6 +197,7 @@ pub(crate) struct RunnerBackendResumeSession<'a> {
     pub output_handler: Option<runner::OutputHandler>,
     pub output_stream: runner::OutputStream,
     pub phase_type: PhaseType,
+    pub force: bool,
     pub plugins: Option<&'a crate::plugins::registry::PluginRegistry>,
 }
 
@@ -270,10 +273,11 @@ impl RunnerBackend for RealRunnerBackend {
             output_handler,
             output_stream,
             phase_type,
+            force,
             plugins,
         } = request;
 
-        runner::resume_session(
+        runner::resume_session_with_options(
             runner_kind,
             work_dir,
             bins,
@@ -287,6 +291,7 @@ impl RunnerBackend for RealRunnerBackend {
             output_handler,
             output_stream,
             phase_type,
+            force,
             plugins,
         )
     }

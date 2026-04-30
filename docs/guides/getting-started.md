@@ -356,7 +356,7 @@ Ralph supports multiple AI runners. Choose based on your needs:
 | **Codex** | Expert coding workflows, best default path | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3` | Fast | ⭐⭐⭐ Excellent |
 | **Gemini** | Cost efficiency, speed | `gemini-3-pro-preview`, `gemini-3-flash-preview` | ⚡ Fast | ⭐⭐ Good |
 | **OpenCode** | Flexible/custom endpoints | Arbitrary model IDs | Varies | Varies |
-| **Cursor** | Cursor IDE users | Uses Cursor's `agent` binary | Medium | ⭐⭐⭐ Excellent |
+| **Cursor** | Cursor IDE users | Uses Cursor's local SDK through Node and `@cursor/sdk` | Medium | ⭐⭐⭐ Excellent |
 | **Kimi** | Fast execution, session support | `kimi-for-coding` | ⚡ Fast | ⭐⭐⭐ Excellent |
 | **Pi** | OpenAI GPT models | `gpt-5.3` | Medium | ⭐⭐⭐ Excellent |
 

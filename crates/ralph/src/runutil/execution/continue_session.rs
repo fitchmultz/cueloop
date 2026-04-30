@@ -66,9 +66,14 @@ pub(crate) fn should_fallback_to_fresh_continue(
         Runner::Cursor => {
             text.contains("invalid session")
                 || text.contains("invalid chat")
+                || text.contains("invalid agent")
                 || text.contains("session not found")
+                || text.contains("agent not found")
                 || text.contains("unknown session")
+                || text.contains("unknown agent")
+                || text.contains("unknownagenterror")
                 || text.contains("no session found")
+                || text.contains("no agent found")
                 || text.contains("no matching session")
                 || (text.contains("resume") && text.contains("not found"))
         }
@@ -103,7 +108,11 @@ pub(super) fn continue_or_rerun(
     let continue_session_id =
         choose_continue_session_id(attempt.runner_kind, error_session_id, invocation_session_id);
     if let Some(session_id) = continue_session_id {
-        match backend.resume_session(attempt.resume_session_request(session_id, continue_message)) {
+        match backend.resume_session(attempt.resume_session_request(
+            session_id,
+            continue_message,
+            true,
+        )) {
             Ok(output) => {
                 log::debug!(
                     "resume: continuing the existing runner session for phase {:?}",
@@ -144,6 +153,18 @@ mod tests {
             code: 1,
             stdout: "".into(),
             stderr: "session not found for resume".into(),
+            session_id: None,
+        };
+        assert!(should_fallback_to_fresh_continue(&Runner::Cursor, &err));
+    }
+
+    #[test]
+    fn cursor_sdk_unknown_agent_falls_back_to_fresh() {
+        let err = RunnerError::NonZeroExit {
+            code: 1,
+            stdout: r#"{"type":"error","name":"UnknownAgentError","message":"agent not found"}"#
+                .into(),
+            stderr: "".into(),
             session_id: None,
         };
         assert!(should_fallback_to_fresh_continue(&Runner::Cursor, &err));

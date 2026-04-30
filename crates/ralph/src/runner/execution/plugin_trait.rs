@@ -94,6 +94,7 @@ pub struct ResumeContext<'a> {
     pub output_handler: Option<OutputHandler>,
     pub output_stream: OutputStream,
     pub runner_cli: ResolvedRunnerCliOptions,
+    pub force: bool,
     /// Runner-specific settings
     pub reasoning_effort: Option<ReasoningEffort>,
     pub permission_mode: Option<ClaudePermissionMode>,
@@ -111,6 +112,7 @@ impl std::fmt::Debug for ResumeContext<'_> {
             .field("timeout", &self.timeout)
             .field("output_stream", &self.output_stream)
             .field("runner_cli", &self.runner_cli)
+            .field("force", &self.force)
             .field("reasoning_effort", &self.reasoning_effort)
             .field("permission_mode", &self.permission_mode)
             .field("phase_type", &self.phase_type)

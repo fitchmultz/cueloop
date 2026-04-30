@@ -41,6 +41,7 @@ pub(crate) enum RunnerInvocation<'a> {
     Resume {
         session_id: &'a str,
         message: &'a str,
+        force: bool,
     },
 }
 
@@ -101,6 +102,7 @@ pub(crate) fn dispatch(
         RunnerInvocation::Resume {
             session_id,
             message,
+            force,
         } => {
             validate_resume_inputs(
                 &ctx.runner,
@@ -122,6 +124,7 @@ pub(crate) fn dispatch(
                 ctx.output_handler,
                 ctx.output_stream,
                 ctx.phase_type,
+                force,
                 ctx.plugins,
             )?
         }

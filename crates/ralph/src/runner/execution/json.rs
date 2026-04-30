@@ -95,6 +95,7 @@ fn validate_runner_session_id(runner: &Runner, id: &str) -> bool {
     }
 
     match runner {
+        Runner::Cursor => trimmed.starts_with("agent-") || trimmed.starts_with("bc-"),
         Runner::Opencode => trimmed.starts_with("ses"),
         _ => true,
     }
@@ -146,11 +147,20 @@ fn extract_opencode_session_id(json: &JsonValue) -> Option<&str> {
 fn extract_cursor_session_id(json: &JsonValue) -> Option<&str> {
     let event_type = json.get("type").and_then(|v| v.as_str())?;
     let subtype = json.get("subtype").and_then(|v| v.as_str());
-    matches!(
+    let is_session_event = matches!(
         (event_type, subtype),
         ("system", Some("init")) | ("session", _) | ("session.started", _)
-    )
-    .then(|| json.get("session_id").and_then(|v| v.as_str()))?
+    ) || matches!(
+        event_type,
+        "assistant" | "thinking" | "tool_call" | "status" | "task" | "request" | "result" | "error"
+    );
+
+    is_session_event.then(|| {
+        json.get("session_id")
+            .or_else(|| json.get("agent_id"))
+            .or_else(|| json.get("agentId"))
+            .and_then(|v| v.as_str())
+    })?
 }
 
 fn extract_plugin_session_id(json: &JsonValue) -> Option<&str> {

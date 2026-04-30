@@ -170,28 +170,29 @@ Codex only supports this restricted model list:
 
 **Model Options:**
 - Arbitrary model IDs supported
-- Cursor uses its own `agent` binary
+- Cursor uses Ralph's local SDK bridge through Node and `@cursor/sdk`
 
 **Special Features:**
-- **Plan Mode** - Cursor is the only runner supporting explicit plan mode
+- Durable SDK agent IDs are used for resume (`agent-...` locally, `bc-...` for cloud IDs)
 - Phase-aware sandbox defaults (enabled for planning, disabled for implementation)
+- Project-level Cursor selection requires repository trust because the SDK can be resolved from the workspace
 
-**CLI Options Mapped:**
-- `--force` - When `approval_mode=yolo`
-- `--sandbox` - `enabled`, `disabled`, or phase-dependent default
-- `--plan` - When `plan_mode=enabled` or during planning phase
+**SDK Options Mapped:**
+- `local.sandboxOptions.enabled` - `enabled`, `disabled`, or phase-dependent default
+- `local.settingSources` - Ralph defaults to project, user, and plugin settings so `.cursor/` context is available
+
+**Unsupported SDK Options:**
+- Cursor SDK plan mode is not used. Ralph's own planning phase still writes Ralph plan/cache artifacts.
+
+`approval_mode=yolo` remains the default runner posture for Cursor, but Ralph does not map it to SDK `local.force`; that SDK option is active-run recovery, not approval control.
 
 **Example Configuration:**
 ```json
 {
   "agent": {
     "runner": "cursor",
-    "runner_cli": {
-      "defaults": {
-        "approval_mode": "yolo",
-        "plan_mode": "default"
-      }
-    }
+    "model": "composer-2",
+    "cursor_sdk_node_bin": "node"
   }
 }
 ```
@@ -265,14 +266,14 @@ Override runner binary paths in your config:
     "codex_bin": "codex",
     "opencode_bin": "opencode",
     "gemini_bin": "gemini",
-    "cursor_bin": "cursor",
+    "cursor_sdk_node_bin": "node",
     "kimi_bin": "kimi",
     "pi_bin": "pi"
   }
 }
 ```
 
-**Note:** Cursor uses the `agent` binary from the Cursor IDE installation.
+**Note:** Cursor uses Ralph's Node-based Cursor SDK bridge, not the legacy `agent` binary. The trusted target workspace must be able to resolve the pinned `@cursor/sdk` package (for example, via `npm install --save-exact @cursor/sdk@1.0.11`) or `RALPH_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
 
 ### Configuration Precedence
 
@@ -398,10 +399,11 @@ Ralph provides a normalized configuration surface for runner CLI behavior via `a
 - `normal` (default) - Standard output
 - `verbose` - Detailed output (Claude only)
 
-#### `plan_mode` (Cursor only)
-- `default` - Auto-enable during Phase 1 (planning)
-- `enabled` - Always use plan mode
-- `disabled` - Never use plan mode
+#### `plan_mode`
+- `default` - Do not request runner-native plan mode
+- `enabled` / `disabled` - Unsupported for Cursor SDK runs and ignored or rejected for other runners according to `unsupported_option_policy`
+
+Cursor SDK plan mode is intentionally unsupported because it prevents Cursor from writing Ralph's expected plan/cache artifacts. This does not disable Ralph's own planning phase.
 
 #### `unsupported_option_policy`
 - `ignore` - Silently ignore unsupported options
@@ -412,10 +414,10 @@ Ralph provides a normalized configuration surface for runner CLI behavior via `a
 
 | Normalized Option | Codex | Claude | Gemini | Cursor | Kimi | Pi |
 |-------------------|-------|--------|--------|--------|------|-----|
-| `approval_mode=yolo` | *see note | `--permission-mode bypassPermissions` | `--approval-mode yolo` | `--force` | `--yolo` | `--print` |
+| `approval_mode=yolo` | *see note | `--permission-mode bypassPermissions` | `--approval-mode yolo` | SDK default posture, no `local.force` mapping | `--yolo` | `--print` |
 | `approval_mode=auto_edits` | *see note | `--permission-mode acceptEdits` | `--approval-mode auto_edit` | (not mapped) | `--yolo` | `--print` |
-| `sandbox=enabled` | `--sandbox workspace-write` | (not supported) | `--sandbox` | `--sandbox enabled` | (not supported) | `--sandbox` |
-| `sandbox=disabled` | `--dangerously-bypass-approvals-and-sandbox` | (not supported) | (not mapped) | `--sandbox disabled` | (not supported) | (not mapped) |
+| `sandbox=enabled` | `--sandbox workspace-write` | (not supported) | `--sandbox` | `local.sandboxOptions.enabled` = `true` via SDK (no Cursor agent CLI flags) | (not supported) | `--sandbox` |
+| `sandbox=disabled` | `--dangerously-bypass-approvals-and-sandbox` | (not supported) | (not mapped) | `local.sandboxOptions.enabled` = `false` via SDK (no Cursor agent CLI flags) | (not supported) | (not mapped) |
 
 *Codex approval mode is controlled via `~/.codex/config.json`, not CLI flags.
 

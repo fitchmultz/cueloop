@@ -16,9 +16,12 @@
 //! - Only import paths should change as needed for the new module layout.
 
 use super::ci_gate::rewrite_ci_gate_in_file;
-use super::detect::config_file_has_key;
-use super::keys::{remove_key_in_file, rename_key_in_file, rename_key_in_text};
+use super::detect::{config_file_has_key, config_has_legacy_cursor_bin};
+use super::keys::{
+    apply_cursor_bin_remove, remove_key_in_file, rename_key_in_file, rename_key_in_text,
+};
 use super::legacy::{config_file_needs_legacy_contract_upgrade, upgrade_legacy_contract_in_file};
+use crate::migration::MigrationContext;
 use std::fs;
 use tempfile::TempDir;
 
@@ -371,6 +374,109 @@ fn remove_key_in_file_removes_nested_key() {
     let agent = value.get("agent").unwrap();
     assert!(agent.get("update_task_before_run").is_none());
     assert_eq!(agent.get("runner").and_then(|v| v.as_str()), Some("claude"));
+}
+
+#[test]
+fn cursor_bin_remove_preserves_jsonc_comments_and_formatting() {
+    let dir = TempDir::new().unwrap();
+    let repo_root = dir.path();
+    let config_path = repo_root.join(".ralph/config.jsonc");
+    fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+    let original = r#"{
+  // Header comment
+  "version": 2,
+  "agent": {
+    "runner": "cursor", // pick cursor
+    /* block */
+    "cursor_bin": "agent"
+  }
+}"#;
+    fs::write(&config_path, original).unwrap();
+    let ctx = MigrationContext::discover_from_dir(repo_root).unwrap();
+    assert!(config_has_legacy_cursor_bin(&ctx));
+
+    apply_cursor_bin_remove(&ctx).unwrap();
+
+    let content = fs::read_to_string(&config_path).unwrap();
+    assert!(!content.contains("cursor_bin"));
+    assert!(content.contains("// Header comment"));
+    assert!(content.contains("// pick cursor"));
+    assert!(content.contains("/* block */"));
+    assert!(content.contains("\"runner\": \"cursor\""));
+}
+
+#[test]
+fn cursor_bin_remove_reads_legacy_project_config_json_when_jsonc_missing() {
+    let dir = TempDir::new().unwrap();
+    let repo_root = dir.path();
+    fs::create_dir_all(repo_root.join(".git")).unwrap();
+    fs::create_dir_all(repo_root.join(".ralph")).unwrap();
+    fs::write(
+        repo_root.join(".ralph/config.json"),
+        r#"{"version":2,"agent":{"runner":"cursor","cursor_bin":"/opt/x"}}"#,
+    )
+    .unwrap();
+
+    let ctx = MigrationContext::discover_from_dir(repo_root).unwrap();
+    assert!(config_has_legacy_cursor_bin(&ctx));
+
+    apply_cursor_bin_remove(&ctx).unwrap();
+
+    let content = fs::read_to_string(repo_root.join(".ralph/config.json")).unwrap();
+    assert!(!content.contains("cursor_bin"));
+    assert!(content.contains("\"runner\":\"cursor\""));
+}
+
+#[test]
+fn cursor_bin_remove_handles_agent_and_profiles() {
+    let dir = TempDir::new().unwrap();
+    let repo_root = dir.path();
+    let config_path = repo_root.join(".ralph/config.jsonc");
+    fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+    fs::write(
+        &config_path,
+        r#"{
+  "version": 2,
+  "agent": {
+    "runner": "cursor",
+    "cursor_bin": "agent"
+  },
+  "profiles": {
+    "fast": {
+      "runner": "cursor",
+      "cursor_bin": "/opt/cursor/agent"
+    },
+    "safe": {
+      "runner": "codex"
+    }
+  }
+}"#,
+    )
+    .unwrap();
+    let ctx = MigrationContext::discover_from_dir(repo_root).unwrap();
+    assert!(config_has_legacy_cursor_bin(&ctx));
+
+    apply_cursor_bin_remove(&ctx).unwrap();
+
+    let value = jsonc_parser::parse_to_serde_value::<serde_json::Value>(
+        &fs::read_to_string(&config_path).unwrap(),
+        &Default::default(),
+    )
+    .unwrap();
+    assert!(value.pointer("/agent/cursor_bin").is_none());
+    assert!(value.pointer("/profiles/fast/cursor_bin").is_none());
+    assert_eq!(
+        value
+            .pointer("/profiles/fast/runner")
+            .and_then(|v| v.as_str()),
+        Some("cursor")
+    );
+    assert_eq!(
+        value
+            .pointer("/profiles/safe/runner")
+            .and_then(|v| v.as_str()),
+        Some("codex")
+    );
 }
 
 #[test]

@@ -53,7 +53,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         opencode: runner_path.to_str().expect("runner path"),
         gemini: "gemini",
         claude: "claude",
-        cursor: "agent",
+        cursor: "node",
         kimi: "kimi",
         pi: "pi",
     };
@@ -169,7 +169,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         opencode: runner_path.to_str().expect("runner path"),
         gemini: "gemini",
         claude: "claude",
-        cursor: "agent",
+        cursor: "node",
         kimi: "kimi",
         pi: "pi",
     };
@@ -275,7 +275,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         opencode: runner_path.to_str().expect("runner path"),
         gemini: "gemini",
         claude: "claude",
-        cursor: "agent",
+        cursor: "node",
         kimi: "kimi",
         pi: "pi",
     };
@@ -373,7 +373,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         opencode: runner_path.to_str().expect("runner path"),
         gemini: "gemini",
         claude: "claude",
-        cursor: "agent",
+        cursor: "node",
         kimi: "kimi",
         pi: "pi",
     };

@@ -22,11 +22,14 @@
 
 use crate::commands::doctor::types::{CheckResult, DoctorReport};
 use crate::config;
+use crate::constants::versions::CURSOR_SDK_VERSION;
 use crate::contracts::{BlockingState, Runner};
 use crate::prompts;
 use crate::runner;
 use crate::runutil::{ManagedCommand, TimeoutClass, execute_managed_command};
 use std::process::Command;
+
+const MIN_CURSOR_SDK_NODE_MAJOR: u32 = 18;
 
 fn runner_blocking_state(
     scope: &str,
@@ -69,9 +72,9 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         Runner::Cursor => resolved
             .config
             .agent
-            .cursor_bin
+            .cursor_sdk_node_bin
             .as_deref()
-            .unwrap_or("agent"),
+            .unwrap_or("node"),
         Runner::Kimi => resolved.config.agent.kimi_bin.as_deref().unwrap_or("kimi"),
         Runner::Pi => resolved.config.agent.pi_bin.as_deref().unwrap_or("pi"),
         Runner::Plugin(_plugin_id) => {
@@ -150,6 +153,74 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         log::error!("       }}");
         log::error!("     }}");
         log::error!("  3. Run 'ralph doctor' to verify the fix");
+    } else if runner == Runner::Cursor
+        && let Err(e) = check_cursor_sdk_node_version(bin_name)
+    {
+        let message = format!(
+            "Cursor SDK Node runtime check failed for '{}': {}",
+            bin_name, e
+        );
+        let guidance =
+            "Configure agent.cursor_sdk_node_bin to Node 18 or newer before running Cursor.";
+        let blocking = runner_blocking_state(
+            "runner",
+            "cursor_sdk_node_unsupported",
+            "Ralph is stalled because the Cursor SDK requires Node 18 or newer.",
+            guidance,
+        );
+        report.add(
+            CheckResult::error(
+                "runner",
+                "cursor_sdk_node_version",
+                &message,
+                false,
+                Some(guidance),
+            )
+            .with_blocking(blocking),
+        );
+        log::error!("{message}");
+        log::error!("{guidance}");
+    } else if runner == Runner::Cursor
+        && let Err(e) = check_cursor_sdk_package(bin_name, &resolved.repo_root)
+    {
+        let message = format!("Cursor SDK package check failed for '{}': {}", bin_name, e);
+        let guidance = format!(
+            "Install the SDK in this workspace with `npm install --save-exact @cursor/sdk@{CURSOR_SDK_VERSION}`, \
+                        or set RALPH_CURSOR_SDK_MODULE_PATH to the SDK entrypoint."
+        );
+        let blocking = runner_blocking_state(
+            "runner",
+            "cursor_sdk_missing",
+            "Ralph is stalled because the Cursor SDK package is unavailable.",
+            guidance.clone(),
+        );
+        report.add(
+            CheckResult::error(
+                "runner",
+                "cursor_sdk_package",
+                &message,
+                false,
+                Some(&guidance),
+            )
+            .with_blocking(blocking),
+        );
+        log::error!("{message}");
+        log::error!("{guidance}");
+    } else if runner == Runner::Cursor && !cursor_api_key_configured() {
+        let message = "Cursor SDK API key is not configured";
+        let guidance = "Export CURSOR_API_KEY before running Ralph with the Cursor runner.";
+        let blocking = runner_blocking_state(
+            "runner",
+            "cursor_api_key_missing",
+            "Ralph is stalled because CURSOR_API_KEY is required for Cursor SDK runs.",
+            guidance,
+        );
+        report.add(
+            CheckResult::error("runner", "cursor_api_key", message, false, Some(guidance))
+                .with_blocking(blocking),
+        );
+        log::error!("{message}");
+        log::error!("{guidance}");
     } else {
         report.add(CheckResult::success(
             "runner",
@@ -290,7 +361,7 @@ fn runner_override_is_configured(agent: &crate::contracts::AgentConfig, runner: 
         Runner::Opencode => agent.opencode_bin.is_some(),
         Runner::Gemini => agent.gemini_bin.is_some(),
         Runner::Claude => agent.claude_bin.is_some(),
-        Runner::Cursor => agent.cursor_bin.is_some(),
+        Runner::Cursor => agent.cursor_sdk_node_bin.is_some(),
         Runner::Kimi => agent.kimi_bin.is_some(),
         Runner::Pi => agent.pi_bin.is_some(),
         Runner::Plugin(_) => false,
@@ -314,7 +385,10 @@ pub(crate) fn runner_configured(resolved: &config::Resolved) -> bool {
             || layer.agent.codex_bin.is_some()
             || layer.agent.opencode_bin.is_some()
             || layer.agent.gemini_bin.is_some()
-            || layer.agent.claude_bin.is_some();
+            || layer.agent.claude_bin.is_some()
+            || layer.agent.cursor_sdk_node_bin.is_some()
+            || layer.agent.kimi_bin.is_some()
+            || layer.agent.pi_bin.is_some();
     };
 
     if let Some(path) = resolved.global_config_path.as_ref()
@@ -360,6 +434,172 @@ pub(crate) fn check_runner_binary(bin: &str) -> anyhow::Result<()> {
     ))
 }
 
+pub(crate) fn check_cursor_sdk_package(
+    node_bin: &str,
+    cwd: &std::path::Path,
+) -> anyhow::Result<()> {
+    let script = r#"
+const fs = require('fs');
+const path = require('path');
+const { createRequire } = require('module');
+const { pathToFileURL } = require('url');
+
+const expectedVersion = '__RALPH_CURSOR_SDK_VERSION__';
+
+function normalizeSdkModule(moduleNamespace) {
+  const candidates = [
+    moduleNamespace,
+    moduleNamespace && moduleNamespace.default,
+    moduleNamespace && moduleNamespace.default && moduleNamespace.default.default,
+  ];
+  const sdk = candidates.find((candidate) => candidate && candidate.Agent);
+  if (!sdk) {
+    throw new Error('Loaded @cursor/sdk module does not expose Agent');
+  }
+}
+
+function findCursorSdkPackageJson(entrypoint) {
+  let current = path.resolve(entrypoint);
+  if (!fs.existsSync(current)) {
+    return null;
+  }
+  if (!fs.statSync(current).isDirectory()) {
+    current = path.dirname(current);
+  }
+  while (true) {
+    const candidate = path.join(current, 'package.json');
+    if (fs.existsSync(candidate)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+        if (pkg.name === '@cursor/sdk') {
+          return candidate;
+        }
+      } catch {
+        return null;
+      }
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+}
+
+function assertCursorSdkVersion(entrypoint) {
+  const packageJsonPath = findCursorSdkPackageJson(entrypoint);
+  if (!packageJsonPath) {
+    throw new Error(`Unable to find @cursor/sdk package metadata for ${entrypoint}; install @cursor/sdk@${expectedVersion}`);
+  }
+  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  if (pkg.version !== expectedVersion) {
+    throw new Error(`@cursor/sdk ${pkg.version || 'unknown'} is unsupported; install @cursor/sdk@${expectedVersion}`);
+  }
+}
+
+(async () => {
+const configured = process.env.RALPH_CURSOR_SDK_MODULE_PATH;
+if (configured) {
+  assertCursorSdkVersion(configured);
+  normalizeSdkModule(await import(pathToFileURL(configured).href));
+  return;
+}
+const requireFromWorkspace = createRequire(path.join(process.cwd(), 'package.json'));
+const resolved = requireFromWorkspace.resolve('@cursor/sdk', { paths: [process.cwd()] });
+assertCursorSdkVersion(resolved);
+})().catch((error) => {
+  console.error(error && error.stack ? error.stack : String(error));
+  process.exit(1);
+});
+"#
+    .replace("__RALPH_CURSOR_SDK_VERSION__", CURSOR_SDK_VERSION);
+    let mut command = Command::new(node_bin);
+    command
+        .current_dir(cwd)
+        .arg("-e")
+        .arg(script)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+    let output = execute_managed_command(ManagedCommand::new(
+        command,
+        "doctor runner probe: Cursor SDK package".to_string(),
+        TimeoutClass::Probe,
+    ))?
+    .into_output();
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(anyhow::anyhow!(
+            "{}",
+            if stderr.trim().is_empty() {
+                "@cursor/sdk could not be resolved from the workspace".to_string()
+            } else {
+                stderr.trim().to_string()
+            }
+        ))
+    }
+}
+
+pub(crate) fn check_cursor_sdk_node_version(node_bin: &str) -> anyhow::Result<()> {
+    let mut command = Command::new(node_bin);
+    command
+        .args(["-p", "process.versions.node"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let output = execute_managed_command(ManagedCommand::new(
+        command,
+        format!("doctor runner probe: {node_bin} Cursor SDK Node version"),
+        TimeoutClass::Probe,
+    ))?
+    .into_output();
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "{}",
+            if stderr.trim().is_empty() {
+                format!(
+                    "failed to read Node version, exit status: {}",
+                    output.status
+                )
+            } else {
+                stderr.trim().to_string()
+            }
+        );
+    }
+
+    let version = String::from_utf8_lossy(&output.stdout);
+    ensure_cursor_sdk_node_version_supported(version.trim())
+}
+
+fn ensure_cursor_sdk_node_version_supported(version: &str) -> anyhow::Result<()> {
+    let major = version
+        .trim_start_matches('v')
+        .split('.')
+        .next()
+        .and_then(|part| part.parse::<u32>().ok());
+
+    match major {
+        Some(major) if major >= MIN_CURSOR_SDK_NODE_MAJOR => Ok(()),
+        Some(major) => anyhow::bail!(
+            "Node {major} is unsupported; Cursor SDK requires Node {MIN_CURSOR_SDK_NODE_MAJOR} or newer"
+        ),
+        None => anyhow::bail!(
+            "could not parse Node version '{version}'; Cursor SDK requires Node {MIN_CURSOR_SDK_NODE_MAJOR} or newer"
+        ),
+    }
+}
+
+fn cursor_api_key_configured() -> bool {
+    cursor_api_key_value_configured(std::env::var_os("CURSOR_API_KEY"))
+}
+
+fn cursor_api_key_value_configured(value: Option<std::ffi::OsString>) -> bool {
+    value.is_some_and(|value| !value.is_empty())
+}
+
 /// Get the config key for a runner's binary path override.
 pub(crate) fn get_runner_config_key(runner: &Runner) -> &'static str {
     match runner {
@@ -367,7 +607,7 @@ pub(crate) fn get_runner_config_key(runner: &Runner) -> &'static str {
         Runner::Opencode => "opencode_bin",
         Runner::Gemini => "gemini_bin",
         Runner::Claude => "claude_bin",
-        Runner::Cursor => "cursor_bin",
+        Runner::Cursor => "cursor_sdk_node_bin",
         Runner::Kimi => "kimi_bin",
         Runner::Pi => "pi_bin",
         Runner::Plugin(_) => "plugin_bin",
@@ -406,5 +646,109 @@ fn check_command(bin: &str, args: &[&str]) -> anyhow::Result<()> {
             )
         };
         Err(anyhow::anyhow!(stderr_msg))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        check_cursor_sdk_package, cursor_api_key_value_configured,
+        ensure_cursor_sdk_node_version_supported,
+    };
+    use std::process::Command;
+
+    fn node_available() -> bool {
+        Command::new("node")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    }
+
+    #[test]
+    fn cursor_sdk_workspace_probe_resolves_without_importing_package() -> anyhow::Result<()> {
+        if !node_available() {
+            return Ok(());
+        }
+
+        let temp = tempfile::TempDir::new()?;
+        std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
+        let sdk_dir = temp.path().join("node_modules/@cursor/sdk");
+        std::fs::create_dir_all(&sdk_dir)?;
+        std::fs::write(
+            sdk_dir.join("package.json"),
+            r#"{"name":"@cursor/sdk","version":"1.0.11","main":"index.js"}"#,
+        )?;
+        std::fs::write(
+            sdk_dir.join("index.js"),
+            "import fs from 'node:fs'; fs.writeFileSync('sdk-imported', 'yes'); export class Agent {}",
+        )?;
+
+        check_cursor_sdk_package("node", temp.path())?;
+
+        assert!(
+            !temp.path().join("sdk-imported").exists(),
+            "doctor workspace SDK probe must not import repo-local package code"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_sdk_workspace_probe_rejects_wrong_version_without_importing() -> anyhow::Result<()> {
+        if !node_available() {
+            return Ok(());
+        }
+
+        let temp = tempfile::TempDir::new()?;
+        std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
+        let sdk_dir = temp.path().join("node_modules/@cursor/sdk");
+        std::fs::create_dir_all(&sdk_dir)?;
+        std::fs::write(
+            sdk_dir.join("package.json"),
+            r#"{"name":"@cursor/sdk","version":"1.0.10","main":"index.js"}"#,
+        )?;
+        std::fs::write(
+            sdk_dir.join("index.js"),
+            "import fs from 'node:fs'; fs.writeFileSync('sdk-imported', 'yes'); export class Agent {}",
+        )?;
+
+        let err = check_cursor_sdk_package("node", temp.path())
+            .expect_err("wrong Cursor SDK version should fail doctor");
+
+        assert!(
+            err.to_string()
+                .contains("@cursor/sdk 1.0.10 is unsupported")
+        );
+        assert!(
+            !temp.path().join("sdk-imported").exists(),
+            "doctor workspace SDK version probe must not import repo-local package code"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_api_key_check_rejects_missing_or_empty_values() {
+        assert!(!cursor_api_key_value_configured(None));
+        assert!(!cursor_api_key_value_configured(Some(
+            std::ffi::OsString::new()
+        )));
+        assert!(cursor_api_key_value_configured(Some(
+            std::ffi::OsString::from("cursor-key")
+        )));
+    }
+
+    #[test]
+    fn cursor_sdk_node_version_requires_node_18_or_newer() {
+        ensure_cursor_sdk_node_version_supported("18.0.0").expect("node 18 should pass");
+        ensure_cursor_sdk_node_version_supported("v20.11.1").expect("node 20 should pass");
+
+        let err =
+            ensure_cursor_sdk_node_version_supported("17.9.1").expect_err("node 17 should fail");
+        assert!(err.to_string().contains("requires Node 18 or newer"));
+
+        let err = ensure_cursor_sdk_node_version_supported("not-a-version")
+            .expect_err("invalid versions should fail");
+        assert!(err.to_string().contains("could not parse Node version"));
     }
 }

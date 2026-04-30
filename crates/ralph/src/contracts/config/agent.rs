@@ -118,9 +118,20 @@ pub struct AgentConfig {
     /// Override the claude executable name/path (default is "claude" if None).
     pub claude_bin: Option<String>,
 
-    /// Override the cursor agent executable name/path (default is "agent" if None).
+    /// Override the Node.js executable used for Cursor SDK local runner execution (default is
+    /// "node" if None).
     ///
-    /// NOTE: Cursor's runner binary name is `agent` (not `cursor`).
+    /// The Cursor runner uses a checked-in Ralph Node bridge plus `@cursor/sdk@1.0.11`;
+    /// it no longer shells out to Cursor's legacy `agent` binary.
+    pub cursor_sdk_node_bin: Option<String>,
+
+    /// Deprecated legacy Cursor Agent CLI binary override.
+    ///
+    /// Kept only so older configs remain loadable until migration removes the key. The SDK runner
+    /// must not treat this as an alias for `cursor_sdk_node_bin`, because the old value named the
+    /// Cursor agent binary while the new value names the Node.js executable.
+    #[serde(skip_serializing)]
+    #[schemars(skip)]
     pub cursor_bin: Option<String>,
 
     /// Override the kimi executable name/path (default is "kimi" if None).
@@ -259,8 +270,8 @@ impl AgentConfig {
         if other.claude_bin.is_some() {
             self.claude_bin = other.claude_bin;
         }
-        if other.cursor_bin.is_some() {
-            self.cursor_bin = other.cursor_bin;
+        if other.cursor_sdk_node_bin.is_some() {
+            self.cursor_sdk_node_bin = other.cursor_sdk_node_bin;
         }
         if other.kimi_bin.is_some() {
             self.kimi_bin = other.kimi_bin;

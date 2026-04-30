@@ -43,7 +43,7 @@ pub fn validate_agent_binary_paths(agent: &AgentConfig, label: &str) -> Result<(
     check_bin!(opencode_bin);
     check_bin!(gemini_bin);
     check_bin!(claude_bin);
-    check_bin!(cursor_bin);
+    check_bin!(cursor_sdk_node_bin);
     check_bin!(kimi_bin);
     check_bin!(pi_bin);
 
@@ -112,20 +112,27 @@ pub(crate) fn agent_has_execution_settings(agent: &AgentConfig) -> bool {
         || agent.opencode_bin.is_some()
         || agent.gemini_bin.is_some()
         || agent.claude_bin.is_some()
-        || agent.cursor_bin.is_some()
+        || agent.cursor_sdk_node_bin.is_some()
         || agent.kimi_bin.is_some()
         || agent.pi_bin.is_some()
-        || agent.runner.as_ref().is_some_and(Runner::is_plugin)
+        || agent
+            .runner
+            .as_ref()
+            .is_some_and(runner_selection_requires_project_trust)
         || agent
             .phase_overrides
             .as_ref()
-            .is_some_and(phase_overrides_have_plugin_runner)
+            .is_some_and(phase_overrides_have_trust_gated_runner)
 }
 
-fn phase_overrides_have_plugin_runner(overrides: &PhaseOverrides) -> bool {
+fn runner_selection_requires_project_trust(runner: &Runner) -> bool {
+    runner.is_plugin() || runner == &Runner::Cursor
+}
+
+fn phase_overrides_have_trust_gated_runner(overrides: &PhaseOverrides) -> bool {
     [&overrides.phase1, &overrides.phase2, &overrides.phase3]
         .into_iter()
         .flatten()
         .filter_map(|phase| phase.runner.as_ref())
-        .any(Runner::is_plugin)
+        .any(runner_selection_requires_project_trust)
 }
