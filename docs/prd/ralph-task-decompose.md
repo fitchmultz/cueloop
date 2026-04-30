@@ -72,6 +72,8 @@ so that I can turn an existing plan into durable Ralph work without copying it i
 - Relative paths are resolved from the process current directory; leading `~` is expanded.
 - Preview output and JSON include the recorded source path. Paths inside the repo are recorded repo-relative; outside files are recorded as absolute paths.
 - The full file content is passed to the planner but is not serialized into machine/app JSON preview payloads.
+- Plan-file decomposition preserves every meaningful source section, headline, or ordered phase in the preview/write task tree unless a warning explains that the section was omitted or merged.
+- Ordered plan phases appear in logical execution order; with `--with-dependencies`, phase prerequisite relationships are represented as sibling `depends_on` edges.
 - `--attach-to <TASK_ID>`, `--child-policy`, `--with-dependencies`, `--format json`, and runner override flags work for plan-file sources.
 - Missing files, directories, empty or whitespace-only files, non-UTF-8 files, unreadable files, and files over the conservative size limit fail before planner invocation with clear diagnostics.
 
@@ -338,6 +340,7 @@ Rationale:
 - Generated trees are valid under existing queue validation rules.
 - Preview-to-write flow is understandable and safe.
 - Users can immediately inspect results with existing `queue tree` and `task children` commands.
+- A representative ordered plan-file fixture decomposes into a complete queue subtree whose tasks cover all source sections, preserve logical execution order, validate with `ralph queue validate`, and can be inspected with `ralph queue tree` and `ralph task children`.
 - The feature reduces manual queue shaping for multi-step goals.
 
 ## Implementation Status

@@ -37,6 +37,8 @@ Limits:
 - If a node should stay a leaf, return it with an empty `children` array.
 - In `freeform` mode, the root represents the requested goal.
 - In `plan_file` mode, the root represents the whole plan document named in the original request; decompose the full file content, not just the title.
+- In `plan_file` mode, cover every meaningful source section, headline, or ordered phase. Do not emit only the most obvious subset. If a section is non-actionable, duplicated, or intentionally merged into another task, include a warning naming that source section and why it was not represented as its own task.
+- In `plan_file` mode, preserve logical execution order from the source document: ordered phases should appear as siblings in source order, and when `WITH_DEPENDENCIES` is `true`, later phase siblings should depend on prerequisite earlier phase siblings using sibling planner keys.
 - In `plan_file` mode, keep every node traceable to the source plan: use `scope` for the original plan path plus any relevant implementation files or section/headline hints, mention the relevant source section/headline in task-local `plan` steps when useful, and do not copy the whole plan into every node.
 - In `existing_task` mode, the root represents the existing parent task and proposed subtasks go in `children`.
 - If `ATTACH_TARGET_JSON` is non-empty, keep the generated root focused and avoid duplicating the attach target as another wrapper layer.

@@ -171,6 +171,18 @@ On macOS, the app exposes the same workflow through `Decompose Task...` in the T
 
 `ralph task decompose --from-file <path>` is the planner-backed path for arbitrary plan documents. `ralph prd create <path>` remains the PRD-parser-specific import path.
 
+For file-backed plans, validate full-plan coverage and ordering with a preview/write/navigation pass:
+
+```bash
+ralph task decompose --from-file docs/plans/full-plan-ordering.md --with-dependencies --format json
+ralph task decompose --from-file docs/plans/full-plan-ordering.md --with-dependencies --write
+ralph queue validate
+ralph queue tree
+ralph task children <ROOT_TASK_ID>
+```
+
+Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work.
+
 ### Diagnostics
 
 ```bash

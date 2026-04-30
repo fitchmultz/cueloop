@@ -32,6 +32,8 @@ use crate::queue;
 use anyhow::Result;
 use tempfile::TempDir;
 
+mod plan_file_ordering;
+
 #[test]
 fn normalize_response_resolves_sibling_dependencies() -> Result<()> {
     let raw = RawDecompositionResponse {
@@ -646,12 +648,24 @@ fn planned_node_with_scope(
     depends_on_keys: Vec<String>,
     children: Vec<PlannedNode>,
 ) -> PlannedNode {
+    planned_node_with_plan_and_scope(key, title, scope, vec![], depends_on_keys, children)
+}
+
+pub(super) fn planned_node_with_plan_and_scope(
+    key: &str,
+    title: &str,
+    scope: Vec<&str>,
+    plan: Vec<&str>,
+    depends_on_keys: Vec<String>,
+    children: Vec<PlannedNode>,
+) -> PlannedNode {
     let mut node = planned_node(key, title, depends_on_keys, children);
     node.scope = scope.into_iter().map(str::to_string).collect();
+    node.plan = plan.into_iter().map(str::to_string).collect();
     node
 }
 
-fn test_resolved() -> Result<(TempDir, config::Resolved)> {
+pub(super) fn test_resolved() -> Result<(TempDir, config::Resolved)> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
     let ralph_dir = repo_root.join(".ralph");
