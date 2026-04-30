@@ -38,6 +38,10 @@ pub struct Task {
     #[serde(default)]
     pub status: TaskStatus,
 
+    /// Whether this task is executable work or a non-runnable grouping node.
+    #[serde(default)]
+    pub kind: TaskKind,
+
     pub title: String,
 
     /// Detailed description of the task's context, goal, purpose, and desired outcome.
@@ -130,6 +134,41 @@ pub struct Task {
     /// Parent task ID if this is a subtask (child-to-parent reference).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskKind {
+    /// Executable atomic work item. This is the default for existing queues.
+    #[default]
+    WorkItem,
+    /// Non-executable grouping/decomposition node.
+    Group,
+}
+
+impl TaskKind {
+    pub fn is_executable(self) -> bool {
+        matches!(self, TaskKind::WorkItem)
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TaskKind::WorkItem => "work_item",
+            TaskKind::Group => "group",
+        }
+    }
+}
+
+impl std::fmt::Display for TaskKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Task {
+    pub fn is_executable_work_item(&self) -> bool {
+        self.kind.is_executable()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default, JsonSchema)]

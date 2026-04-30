@@ -487,3 +487,100 @@ fn machine_config_resolve_fails_when_queue_path_metadata_is_inaccessible() -> Re
     );
     Ok(())
 }
+
+#[test]
+fn machine_queue_read_preserves_group_kind_and_selects_work_item() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    std::fs::write(
+        &queue_path,
+        r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "kind": "group",
+      "title": "Umbrella",
+      "priority": "high",
+      "created_at": "2026-04-01T00:00:00Z",
+      "updated_at": "2026-04-01T00:00:00Z"
+    },
+    {
+      "id": "RQ-0002",
+      "status": "todo",
+      "kind": "work_item",
+      "title": "Leaf",
+      "priority": "high",
+      "created_at": "2026-04-01T00:00:00Z",
+      "updated_at": "2026-04-01T00:00:00Z"
+    }
+  ]
+}
+"#,
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        status.success(),
+        "machine queue read failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["active"]["tasks"][0]["kind"], "group");
+    assert_eq!(document["runnability"]["tasks"][0]["kind"], "group");
+    assert_eq!(document["next_runnable_task_id"], "RQ-0002");
+    assert_eq!(
+        document["runnability"]["selection"]["selected_task_id"],
+        "RQ-0002"
+    );
+    Ok(())
+}
+
+#[test]
+fn machine_queue_read_validation_failed_counts_only_executable_candidates() -> Result<()> {
+    let dir = setup_ralph_repo()?;
+    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    std::fs::write(
+        &queue_path,
+        r#"{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "kind": "group",
+      "title": "Umbrella",
+      "priority": "high",
+      "created_at": "2026-04-01T00:00:00Z",
+      "updated_at": "2026-04-01T00:00:00Z"
+    },
+    {
+      "id": "RQ-0001",
+      "status": "todo",
+      "kind": "work_item",
+      "title": "Duplicate work item",
+      "priority": "high",
+      "created_at": "2026-04-01T00:00:00Z",
+      "updated_at": "2026-04-01T00:00:00Z"
+    }
+  ]
+}
+"#,
+    )?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        status.success(),
+        "machine queue read should return recovery document for invalid queue\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["next_runnable_task_id"], Value::Null);
+    assert_eq!(document["runnability"]["summary"]["candidates_total"], 1);
+    assert_eq!(
+        document["runnability"]["summary"]["blocking"]["reason"]["kind"],
+        "operator_recovery"
+    );
+    Ok(())
+}

@@ -80,6 +80,7 @@ mod tests {
         done.tasks.push(Task {
             id: task_id.to_string(),
             status,
+            kind: Default::default(),
             title: "test".to_string(),
             ..Task::default()
         });

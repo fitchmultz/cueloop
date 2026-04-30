@@ -134,6 +134,7 @@ fn create_placeholder_task(id: String, now: &str) -> Task {
         title: "__import_id_reservation__".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         priority: TaskPriority::Medium,
         created_at: Some(now.to_string()),
         updated_at: Some(now.to_string()),

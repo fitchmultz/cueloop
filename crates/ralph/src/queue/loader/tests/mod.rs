@@ -29,6 +29,7 @@ fn task(id: &str) -> Task {
     Task {
         id: id.to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: Default::default(),

@@ -149,8 +149,9 @@ fn validation_failed_runnability(
         .tasks
         .iter()
         .filter(|task| {
-            task.status == TaskStatus::Todo
-                || (options.include_draft && task.status == TaskStatus::Draft)
+            task.is_executable_work_item()
+                && (task.status == TaskStatus::Todo
+                    || (options.include_draft && task.status == TaskStatus::Draft))
         })
         .count();
 

@@ -59,7 +59,9 @@ pub(crate) fn select_run_one_task_index_excluding(
 
     if options.prefer_doing
         && let Some(idx) = queue_file.tasks.iter().position(|task| {
-            task.status == crate::contracts::TaskStatus::Doing && !is_in_flight(&task.id)
+            task.status == crate::contracts::TaskStatus::Doing
+                && task.is_executable_work_item()
+                && !is_in_flight(&task.id)
         })
     {
         return Ok(Some(idx));
@@ -67,6 +69,7 @@ pub(crate) fn select_run_one_task_index_excluding(
 
     if let Some(idx) = queue_file.tasks.iter().position(|task| {
         task.status == crate::contracts::TaskStatus::Todo
+            && task.is_executable_work_item()
             && !is_in_flight(&task.id)
             && is_task_runnable(task, queue_file, done_ref)
     }) {
@@ -76,6 +79,7 @@ pub(crate) fn select_run_one_task_index_excluding(
     if options.include_draft {
         return Ok(queue_file.tasks.iter().position(|task| {
             task.status == crate::contracts::TaskStatus::Draft
+                && task.is_executable_work_item()
                 && !is_in_flight(&task.id)
                 && is_task_runnable(task, queue_file, done_ref)
         }));
@@ -95,6 +99,7 @@ mod tests {
         Task {
             id: "RQ-0001".to_string(),
             status,
+            kind: Default::default(),
             title: "Test task".to_string(),
             description: None,
             priority: Default::default(),
@@ -125,6 +130,7 @@ mod tests {
         Task {
             id: id.to_string(),
             status,
+            kind: Default::default(),
             title: "Test task".to_string(),
             description: None,
             priority: Default::default(),
@@ -155,6 +161,7 @@ mod tests {
         Task {
             id: "RQ-0001".to_string(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "Test task".to_string(),
             description: None,
             priority: Default::default(),

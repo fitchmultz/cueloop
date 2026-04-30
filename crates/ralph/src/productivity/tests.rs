@@ -34,6 +34,7 @@ fn create_test_task(id: &str, title: &str) -> Task {
         title: title.to_string(),
         description: None,
         status: TaskStatus::Done,
+        kind: Default::default(),
         priority: TaskPriority::Medium,
         tags: vec![],
         scope: vec![],

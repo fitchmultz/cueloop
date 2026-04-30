@@ -64,8 +64,9 @@ pub(crate) fn select_task_for_run(
                     .tasks
                     .iter()
                     .filter(|t| {
-                        t.status == TaskStatus::Todo
-                            || (include_draft && t.status == TaskStatus::Draft)
+                        t.is_executable_work_item()
+                            && (t.status == TaskStatus::Todo
+                                || (include_draft && t.status == TaskStatus::Draft))
                     })
                     .cloned()
                     .collect();

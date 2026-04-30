@@ -326,6 +326,7 @@ fn create_task(
     let task = Task {
         id: predicted_id,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: request.title.trim().to_string(),
         description: request
             .description

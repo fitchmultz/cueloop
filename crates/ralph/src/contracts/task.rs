@@ -9,8 +9,8 @@
 //!   `contracts/task/`.
 //!
 //! Usage:
-//! - Import `Task`, `TaskAgent`, `TaskPriority`, and `TaskStatus` through
-//!   `crate::contracts` or `crate::contracts::task`.
+//! - Import `Task`, `TaskAgent`, `TaskKind`, `TaskPriority`, and `TaskStatus`
+//!   through `crate::contracts` or `crate::contracts::task`.
 //!
 //! Invariants/Assumptions:
 //! - Serde and schemars wire-contract behavior remains unchanged across the
@@ -25,4 +25,4 @@ mod types;
 mod tests;
 
 pub use priority::TaskPriority;
-pub use types::{Task, TaskAgent, TaskStatus};
+pub use types::{Task, TaskAgent, TaskKind, TaskStatus};

@@ -105,6 +105,7 @@ fn run_tutorial_non_interactive(keep_sandbox: bool) -> Result<()> {
         title: "Tutorial task".to_string(),
         description: Some("A sample tutorial task".to_string()),
         status: crate::contracts::TaskStatus::Todo,
+        kind: Default::default(),
         priority: crate::contracts::TaskPriority::Medium,
         tags: vec!["tutorial".to_string()],
         scope: vec!["src/lib.rs".to_string()],

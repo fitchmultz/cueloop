@@ -249,6 +249,7 @@ mod tests {
             } else {
                 TaskStatus::Todo
             },
+            kind: Default::default(),
             created_at: created_at.clone(),
             completed_at,
             updated_at: created_at,

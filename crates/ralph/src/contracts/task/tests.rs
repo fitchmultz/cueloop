@@ -22,7 +22,7 @@ use std::collections::HashMap;
 
 use crate::contracts::{Model, PhaseOverrideConfig, PhaseOverrides, ReasoningEffort, Runner};
 
-use super::{Task, TaskPriority};
+use super::{Task, TaskKind, TaskPriority};
 
 #[test]
 fn task_priority_cycle_wraps_through_all_values() {
@@ -62,6 +62,37 @@ fn task_priority_from_str_empty_string_errors() {
         err.to_string(),
         "Invalid priority: ''. Expected one of: critical, high, medium, low."
     );
+}
+
+#[test]
+fn task_kind_defaults_to_work_item_when_missing() {
+    let raw = r#"{"id":"RQ-0001","title":"t"}"#;
+    let task: Task = serde_json::from_str(raw).expect("deserialize");
+    assert_eq!(task.kind, TaskKind::WorkItem);
+    assert!(task.is_executable_work_item());
+}
+
+#[test]
+fn task_kind_deserializes_group_and_rejects_invalid_values() {
+    let raw = r#"{"id":"RQ-0001","title":"t","kind":"group"}"#;
+    let task: Task = serde_json::from_str(raw).expect("deserialize group");
+    assert_eq!(task.kind, TaskKind::Group);
+    assert!(!task.is_executable_work_item());
+
+    let invalid = r#"{"id":"RQ-0001","title":"t","kind":"umbrella"}"#;
+    assert!(serde_json::from_str::<Task>(invalid).is_err());
+}
+
+#[test]
+fn task_kind_serializes_as_snake_case() {
+    let task = Task {
+        id: "RQ-0001".to_string(),
+        title: "Group".to_string(),
+        kind: TaskKind::Group,
+        ..Default::default()
+    };
+    let json = serde_json::to_string(&task).expect("serialize");
+    assert!(json.contains("\"kind\":\"group\""));
 }
 
 #[test]

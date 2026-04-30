@@ -127,8 +127,11 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
                 // Find first blocking task
                 let mut found_blocker = false;
                 for row in &report.tasks {
-                    // Only consider Todo candidates (same as next_runnable_task logic)
-                    if row.status != crate::contracts::TaskStatus::Todo || row.runnable {
+                    // Only consider executable Todo candidates (same as next_runnable_task logic)
+                    if row.status != crate::contracts::TaskStatus::Todo
+                        || !row.kind.is_executable()
+                        || row.runnable
+                    {
                         continue;
                     }
 
@@ -138,6 +141,9 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
 
                         // Print first reason concisely
                         match &row.reasons[0] {
+                            NotRunnableReason::NonExecutableKind { task_kind } => {
+                                writeln!(handle, "non-executable kind: {}", task_kind)?;
+                            }
                             NotRunnableReason::StatusNotRunnable { status } => {
                                 writeln!(handle, "status: {})", status)?;
                             }

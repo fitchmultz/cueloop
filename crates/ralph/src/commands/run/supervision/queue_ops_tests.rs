@@ -34,6 +34,7 @@ fn write_queue(repo_root: &Path, status: TaskStatus) -> Result<()> {
     let task = Task {
         id: "RQ-0001".to_string(),
         status,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: TaskPriority::Medium,

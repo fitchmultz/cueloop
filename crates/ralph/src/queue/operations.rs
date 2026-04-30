@@ -49,7 +49,7 @@ pub use transaction::*;
 #[path = "operations/tests/mod.rs"]
 mod tests;
 
-use crate::contracts::TaskStatus;
+use crate::contracts::{TaskKind, TaskStatus};
 use crate::error_messages::task_not_found_with_operation;
 
 #[derive(Debug, thiserror::Error)]
@@ -69,6 +69,15 @@ pub enum QueueQueryError {
         operation: String,
         task_id: String,
         status: TaskStatus,
+    },
+
+    #[error(
+        "Queue query failed (operation={operation}): target task {task_id} is a {kind} task and is not executable. Choose a work_item task or inspect the group tree."
+    )]
+    TargetTaskNotExecutable {
+        operation: String,
+        task_id: String,
+        kind: TaskKind,
     },
 
     #[error(

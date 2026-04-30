@@ -187,6 +187,7 @@ mod tests {
             tasks: vec![Task {
                 id: "RQ-DEFAULT".to_string(),
                 status: TaskStatus::Done,
+                kind: Default::default(),
                 title: "default".to_string(),
                 estimated_minutes: Some(10),
                 actual_minutes: Some(10),
@@ -200,6 +201,7 @@ mod tests {
             tasks: vec![Task {
                 id: "RQ-CUSTOM".to_string(),
                 status: TaskStatus::Done,
+                kind: Default::default(),
                 title: "custom".to_string(),
                 estimated_minutes: Some(20),
                 actual_minutes: Some(25),

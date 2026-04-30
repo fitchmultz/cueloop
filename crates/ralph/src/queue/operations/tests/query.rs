@@ -219,3 +219,62 @@ fn test_next_runnable_task_allows_rejected_dep() {
     let next = next_runnable_task(&queue, Some(&done_queue)).expect("should find runnable task");
     assert_eq!(next.id, "RQ-0002");
 }
+
+#[test]
+fn next_runnable_task_skips_group_and_selects_work_item() {
+    let mut group = task("RQ-0001");
+    group.kind = TaskKind::Group;
+    let work_item = task("RQ-0002");
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![group, work_item],
+    };
+
+    let next = next_runnable_task(&queue, None).expect("work item should be selected");
+    assert_eq!(next.id, "RQ-0002");
+}
+
+#[test]
+fn select_runnable_task_index_does_not_prefer_doing_group() {
+    let mut group = task("RQ-0001");
+    group.status = TaskStatus::Doing;
+    group.kind = TaskKind::Group;
+    let work_item = task("RQ-0002");
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![group, work_item],
+    };
+
+    let idx = select_runnable_task_index(&queue, None, RunnableSelectionOptions::new(false, true))
+        .expect("work item should be selected");
+    assert_eq!(idx, 1);
+}
+
+#[test]
+fn select_runnable_task_index_with_target_rejects_group() {
+    let mut group = task("RQ-0001");
+    group.kind = TaskKind::Group;
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![group],
+    };
+
+    let err = select_runnable_task_index_with_target(
+        &queue,
+        None,
+        "RQ-0001",
+        "run --target",
+        RunnableSelectionOptions::new(false, true),
+    )
+    .unwrap_err();
+    assert!(
+        matches!(
+            err.downcast_ref::<QueueQueryError>(),
+            Some(QueueQueryError::TargetTaskNotExecutable {
+                kind: TaskKind::Group,
+                ..
+            })
+        ),
+        "expected TargetTaskNotExecutable error"
+    );
+}

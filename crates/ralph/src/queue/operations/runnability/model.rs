@@ -20,11 +20,11 @@
 //! - Types are serialized in `snake_case` for CLI/JSON consumers.
 //! - `RUNNABILITY_REPORT_VERSION` changes only on intentional schema updates.
 
-use crate::contracts::{BlockingState, TaskStatus};
+use crate::contracts::{BlockingState, TaskKind, TaskStatus};
 use serde::Serialize;
 
 /// Report version for JSON stability.
-pub const RUNNABILITY_REPORT_VERSION: u32 = 1;
+pub const RUNNABILITY_REPORT_VERSION: u32 = 2;
 
 /// A structured report of queue runnability.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -67,6 +67,7 @@ pub struct QueueRunnabilitySummary {
 pub struct TaskRunnabilityRow {
     pub id: String,
     pub status: TaskStatus,
+    pub kind: TaskKind,
     pub runnable: bool,
     pub reasons: Vec<NotRunnableReason>,
 }
@@ -75,6 +76,8 @@ pub struct TaskRunnabilityRow {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum NotRunnableReason {
+    /// Task kind marks the row as non-executable work.
+    NonExecutableKind { task_kind: TaskKind },
     /// Status prevents running (Done/Rejected).
     StatusNotRunnable { status: TaskStatus },
     /// Draft excluded because include_draft is false.

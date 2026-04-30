@@ -25,6 +25,7 @@ pub(crate) fn base_task() -> Task {
     Task {
         id: "RQ-0001".to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: Default::default(),

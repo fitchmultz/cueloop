@@ -689,6 +689,7 @@ fn test_task(id: &str, title: &str, parent_id: Option<&str>) -> Task {
         id: id.to_string(),
         title: title.to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         parent_id: parent_id.map(|value| value.to_string()),
         created_at: Some("2026-03-06T00:00:00Z".to_string()),
         updated_at: Some("2026-03-06T00:00:00Z".to_string()),

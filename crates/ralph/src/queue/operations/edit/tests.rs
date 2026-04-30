@@ -28,6 +28,7 @@ fn test_task() -> Task {
         title: "Test task".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         priority: TaskPriority::Medium,
         tags: vec!["rust".to_string(), "cli".to_string()],
         scope: vec!["crates/ralph".to_string()],

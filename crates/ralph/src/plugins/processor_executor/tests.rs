@@ -47,6 +47,7 @@ fn create_test_task(id: &str) -> Task {
     Task {
         id: id.to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: "Test Task".to_string(),
         description: None,
         priority: TaskPriority::Medium,

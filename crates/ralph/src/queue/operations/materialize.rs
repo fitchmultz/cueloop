@@ -334,6 +334,7 @@ fn materialize_tasks(
             Ok(Task {
                 id,
                 status: spec.status,
+                kind: Default::default(),
                 title: normalize_required(spec.title.as_str(), "task title")?.to_string(),
                 description: spec.description.clone(),
                 priority: spec.priority,

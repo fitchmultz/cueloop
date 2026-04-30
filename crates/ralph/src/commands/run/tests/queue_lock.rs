@@ -40,6 +40,7 @@ fn run_one_with_id_locked_skips_reacquiring_queue_lock() -> anyhow::Result<()> {
     let task = crate::contracts::Task {
         id: "RQ-0001".to_string(),
         status: TaskStatus::Done,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: Default::default(),
@@ -366,6 +367,7 @@ fn run_one_parallel_worker_acquires_queue_lock() -> anyhow::Result<()> {
         title: "Test task".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         priority: crate::contracts::TaskPriority::Medium,
         tags: vec![],
         scope: vec![],

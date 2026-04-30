@@ -33,6 +33,7 @@ fn create_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
         title: title.to_string(),
         description: None,
         status,
+        kind: Default::default(),
         priority: TaskPriority::Medium,
         tags: vec!["test".to_string()],
         scope: vec!["crates/ralph".to_string()],

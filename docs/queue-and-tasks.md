@@ -35,7 +35,8 @@ Common optional fields:
 - `evidence` (list of strings, defaults to empty).
 - `plan` (list of strings, defaults to empty).
 - `notes` (list of strings, defaults to empty).
-- `status`: `draft`, `todo`, `doing`, `done`, `rejected` (default: `todo`).
+- `status`: `draft`, `todo`, `doing`, `done`, `rejected` (default: `todo`). Lifecycle only; it does not say whether the task is executable.
+- `kind`: `work_item` or `group` (default: `work_item`). `work_item` tasks are executable atomic work. `group` tasks are non-runnable decomposition/organization nodes.
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
 - `request`: original human request (string or null).
 - `completed_at`: RFC3339 UTC timestamp (required if status is `done` or `rejected`, otherwise optional).
@@ -106,7 +107,9 @@ Notes:
 ```
 
 ## Lifecycle Notes
-- Tasks run in the file order from `.ralph/queue.jsonc`.
+- Executable `work_item` tasks run in the file order from `.ralph/queue.jsonc`.
+- `kind: "group"` tasks remain visible in reads, lists, tree, graph, search, and app surfaces, but are skipped by `ralph queue next`, `run one`, `run loop`, parallel workers, and machine runnability selection by default.
+- Existing tasks without `kind` load as `work_item`; queue file `version` remains 1 because the field is backward-compatible.
 - Completed tasks are removed from `.ralph/queue.jsonc` and appended to `.ralph/done.jsonc`.
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
@@ -199,6 +202,7 @@ Tasks can form a parent/child hierarchy using the `parent_id` field. This is use
 - A parent can have multiple children
 - Cycles are not allowed (A -> B -> A)
 - Unlike `depends_on`, parent/child relationships do not affect execution order
+- `parent_id` is hierarchy only. Use `kind: "group"` when a parent should be non-executable; a parent can still be a `work_item` when it represents atomic work.
 
 ### Example
 
@@ -206,7 +210,8 @@ Tasks can form a parent/child hierarchy using the `parent_id` field. This is use
 {
   "id": "RQ-0001",
   "title": "Implement feature X",
-  "status": "doing"
+  "status": "todo",
+  "kind": "group"
 },
 {
   "id": "RQ-0002",
@@ -259,6 +264,8 @@ It's important to understand the difference:
 | Affects task order | No | Yes |
 | Visualized with | `ralph queue tree` | `ralph queue graph` |
 | Validation | Warnings for cycles/missing parents | Hard errors for cycles/missing deps |
+
+Use `kind` for actionability: `kind: "group"` prevents default execution selection, while `kind: "work_item"` can run when lifecycle/dependencies/schedule allow it.
 
 ### Parent ID Validation
 

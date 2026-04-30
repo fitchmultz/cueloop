@@ -141,6 +141,7 @@ mod tests {
                 id: "RQ-0001".to_string(),
                 title: "Test task".to_string(),
                 status: TaskStatus::Todo,
+                kind: Default::default(),
                 description: None,
                 priority: Default::default(),
                 tags: vec!["test".to_string()],

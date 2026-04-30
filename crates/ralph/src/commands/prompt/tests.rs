@@ -32,6 +32,7 @@ fn make_task(id: &str, status: TaskStatus) -> Task {
         title: format!("Task {id}"),
         description: None,
         status,
+        kind: Default::default(),
         priority: TaskPriority::Medium,
         tags: vec!["test".to_string()],
         scope: vec!["crates/ralph".to_string()],

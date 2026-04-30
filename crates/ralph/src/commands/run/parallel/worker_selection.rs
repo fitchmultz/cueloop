@@ -106,7 +106,9 @@ fn candidate_tasks(
     tasks
         .iter()
         .filter(|task| {
-            (task.status == TaskStatus::Todo || (include_draft && task.status == TaskStatus::Draft))
+            task.is_executable_work_item()
+                && (task.status == TaskStatus::Todo
+                    || (include_draft && task.status == TaskStatus::Draft))
                 && !excluded_ids.contains(task.id.trim())
         })
         .cloned()

@@ -134,6 +134,31 @@ fn schema_alignment_queue_task_required_fields_match_runtime_validation() {
 }
 
 #[test]
+fn schema_alignment_queue_task_kind_exposes_actionability_enum() {
+    let schema = load_queue_schema();
+    let kind_ref = schema["$defs"]["Task"]["properties"]["kind"]["$ref"]
+        .as_str()
+        .expect("Task.kind should reference TaskKind");
+    assert_eq!(kind_ref, "#/$defs/TaskKind");
+
+    let enum_values: BTreeSet<&str> = schema["$defs"]["TaskKind"]["oneOf"]
+        .as_array()
+        .expect("TaskKind.oneOf should be an array")
+        .iter()
+        .map(|value| {
+            value["const"]
+                .as_str()
+                .expect("TaskKind variants must be string constants")
+        })
+        .collect();
+    assert_eq!(
+        enum_values,
+        ["group", "work_item"].into_iter().collect(),
+        "queue schema must expose both executable work and group task kinds"
+    );
+}
+
+#[test]
 fn schema_alignment_queue_task_timestamps_require_strings() {
     let schema = load_queue_schema();
     let created_at = &schema["$defs"]["Task"]["properties"]["created_at"]["type"];

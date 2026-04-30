@@ -101,6 +101,7 @@ mod tests {
             title: "Test Task".to_string(),
             description: None,
             status: crate::contracts::TaskStatus::Todo,
+            kind: Default::default(),
             priority: TaskPriority::High,
             tags: vec!["bug".to_string(), "fix".to_string()],
             scope: vec!["crates/ralph".to_string()],
@@ -209,6 +210,7 @@ mod tests {
             title: "Empty".to_string(),
             description: None,
             status: crate::contracts::TaskStatus::Todo,
+            kind: Default::default(),
             priority: TaskPriority::Medium,
             tags: vec![],
             scope: vec![],
@@ -280,6 +282,7 @@ mod tests {
             title: "Empty".to_string(),
             description: None,
             status: crate::contracts::TaskStatus::Todo,
+            kind: Default::default(),
             priority: TaskPriority::Medium, // Default priority - should not appear
             tags: vec![],
             scope: vec![],

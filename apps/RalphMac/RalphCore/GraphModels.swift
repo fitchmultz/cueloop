@@ -67,16 +67,21 @@ public struct RalphGraphNode: Codable, Sendable, Equatable, Identifiable {
     public let id: String
     public let title: String
     public let status: String
+    public let kind: RalphTaskKind?
     public let dependencies: [String]
     public let dependents: [String]
     public let isCritical: Bool
     
     private enum CodingKeys: String, CodingKey {
-        case id, title, status, dependencies, dependents, isCritical = "critical"
+        case id, title, status, kind, dependencies, dependents, isCritical = "critical"
     }
     
     public var statusEnum: RalphTaskStatus? {
         RalphTaskStatus(rawValue: status)
+    }
+
+    public var effectiveKind: RalphTaskKind {
+        kind ?? .workItem
     }
 }
 

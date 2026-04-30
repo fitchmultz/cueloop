@@ -454,6 +454,7 @@ mod tests {
         Task {
             id: id.to_string(),
             status,
+            kind: Default::default(),
             title: "Test".to_string(),
             description: None,
             priority: TaskPriority::Medium,

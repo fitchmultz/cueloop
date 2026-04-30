@@ -18,13 +18,14 @@
 //! - Task timestamps are present (to satisfy `Task` invariants in this crate's contracts).
 
 use super::*;
-use crate::contracts::{QueueFile, Task, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskKind, TaskStatus};
 use std::collections::HashMap;
 
 fn task(id: &str, depends_on: Vec<&str>, status: TaskStatus) -> Task {
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: format!("Task {}", id),
         description: None,
         priority: Default::default(),
@@ -296,4 +297,22 @@ fn bounded_chain_from_full_chain_helper_works() {
     let result = BoundedChainResult::from_full_chain(chain.clone(), 0);
     assert!(result.task_ids.is_empty());
     assert!(result.truncated);
+}
+
+#[test]
+fn graph_keeps_group_nodes_but_excludes_them_from_runnable_and_blocked_counts() {
+    let mut group = task("RQ-0001", vec!["RQ-9999"], TaskStatus::Todo);
+    group.kind = TaskKind::Group;
+    let work_item = task("RQ-0002", vec![], TaskStatus::Todo);
+    let active = queue_file(vec![group, work_item]);
+
+    let graph = build_graph(&active, None);
+
+    assert!(graph.contains("RQ-0001"));
+    assert_eq!(
+        graph.get("RQ-0001").expect("group node").task.kind,
+        TaskKind::Group
+    );
+    assert_eq!(get_runnable_tasks(&graph), vec!["RQ-0002".to_string()]);
+    assert!(!get_blocked_tasks(&graph).contains(&"RQ-0001".to_string()));
 }

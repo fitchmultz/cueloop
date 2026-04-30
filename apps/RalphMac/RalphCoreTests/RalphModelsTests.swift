@@ -294,6 +294,36 @@ final class RalphModelsTests: RalphCoreTestCase {
         XCTAssertEqual(document.tasks[0].id, "RQ-1001")
     }
 
+    func test_decode_taskKind_defaultsAndPreservesGroup() throws {
+        let json = #"""
+        {
+          "version": 1,
+          "tasks": [
+            {
+              "id": "RQ-1001",
+              "status": "todo",
+              "title": "Old task",
+              "priority": "medium"
+            },
+            {
+              "id": "RQ-1002",
+              "status": "todo",
+              "kind": "group",
+              "title": "Group task",
+              "priority": "medium"
+            }
+          ]
+        }
+        """#
+
+        let document = try JSONDecoder().decode(RalphTaskQueueDocument.self, from: Data(json.utf8))
+
+        XCTAssertEqual(document.tasks[0].kind, .workItem)
+        XCTAssertTrue(document.tasks[0].kind.isExecutable)
+        XCTAssertEqual(document.tasks[1].kind, .group)
+        XCTAssertFalse(document.tasks[1].kind.isExecutable)
+    }
+
     func test_decode_taskQueueDocument_arrayShape_fails() {
         let json = #"""
         [

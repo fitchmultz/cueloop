@@ -36,6 +36,7 @@ pub(super) fn make_task(id: &str, title: &str, status: TaskStatus) -> Task {
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: title.to_string(),
         description: None,
         priority: TaskPriority::Medium,

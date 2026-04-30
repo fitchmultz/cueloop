@@ -394,6 +394,7 @@ enum RalphMockCLITestSupport {
             id: id,
             title: title,
             status: status.rawValue,
+            kind: .workItem,
             dependencies: dependencies,
             dependents: dependents,
             isCritical: critical

@@ -47,6 +47,7 @@ fn setup_test_queue() -> Result<(TempDir, config::Resolved)> {
         tasks: vec![Task {
             id: "RQ-0001".to_string(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "Test task for custom fields".to_string(),
             description: None,
             priority: Default::default(),
@@ -219,6 +220,7 @@ fn test_queue_validate_rejects_empty_custom_field_key() -> Result<()> {
         tasks: vec![Task {
             id: "RQ-0001".to_string(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "Test task".to_string(),
             description: None,
             priority: Default::default(),
@@ -275,6 +277,7 @@ fn test_queue_validate_rejects_whitespace_in_custom_field_key() -> Result<()> {
         tasks: vec![Task {
             id: "RQ-0001".to_string(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "Test task".to_string(),
             description: None,
             priority: Default::default(),
@@ -351,6 +354,7 @@ fn test_custom_fields_serialization_roundtrip() -> Result<()> {
     let task = Task {
         id: "RQ-0001".to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: Default::default(),

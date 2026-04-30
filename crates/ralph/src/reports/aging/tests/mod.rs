@@ -27,6 +27,7 @@ fn task_with_status(id: &str, status: TaskStatus) -> Task {
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: crate::contracts::TaskPriority::Medium,

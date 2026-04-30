@@ -103,13 +103,16 @@ pub fn is_task_scheduled_for_future(task: &Task) -> bool {
     false
 }
 
-/// Check if a task is runnable (dependencies met and scheduling satisfied).
+/// Check if a task is runnable (executable, dependencies met, and scheduling satisfied).
 ///
 /// A task is runnable if:
+/// - It is an executable work item
 /// - All dependencies are met (depends_on tasks are Done or Rejected)
 /// - The scheduled_start time has passed (or is not set)
 pub fn is_task_runnable(task: &Task, active: &QueueFile, done: Option<&QueueFile>) -> bool {
-    are_dependencies_met(task, active, done) && !is_task_scheduled_for_future(task)
+    task.is_executable_work_item()
+        && are_dependencies_met(task, active, done)
+        && !is_task_scheduled_for_future(task)
 }
 
 /// Return the first runnable task (Todo and dependencies met).
@@ -136,7 +139,7 @@ pub fn select_runnable_task_index(
         && let Some(idx) = active
             .tasks
             .iter()
-            .position(|task| task.status == TaskStatus::Doing)
+            .position(|task| task.status == TaskStatus::Doing && task.is_executable_work_item())
     {
         return Some(idx);
     }
@@ -182,6 +185,15 @@ pub fn select_runnable_task_index_with_target(
             task_id: needle.to_string(),
         })?;
     let task = &active.tasks[idx];
+    if !task.is_executable_work_item() {
+        return Err(QueueQueryError::TargetTaskNotExecutable {
+            operation: operation.to_string(),
+            task_id: needle.to_string(),
+            kind: task.kind,
+        }
+        .into());
+    }
+
     match task.status {
         TaskStatus::Done | TaskStatus::Rejected => {
             return Err(QueueQueryError::TargetTaskNotRunnable {
@@ -257,6 +269,7 @@ mod tests {
         Task {
             id: id.to_string(),
             status,
+            kind: Default::default(),
             title: format!("Task {}", id),
             description: None,
             priority: Default::default(),

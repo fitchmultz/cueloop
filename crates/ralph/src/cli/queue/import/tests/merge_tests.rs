@@ -46,6 +46,7 @@ fn merge_imported_tasks_rename_records_mapping() {
             title: "Existing".to_string(),
             description: None,
             status: TaskStatus::Todo,
+            kind: Default::default(),
             created_at: Some("2026-01-01T00:00:00Z".to_string()),
             updated_at: Some("2026-01-01T00:00:00Z".to_string()),
             ..Default::default()
@@ -57,6 +58,7 @@ fn merge_imported_tasks_rename_records_mapping() {
         title: "Duplicate".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         created_at: Some("2026-01-02T00:00:00Z".to_string()),
         updated_at: Some("2026-01-02T00:00:00Z".to_string()),
         ..Default::default()

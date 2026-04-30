@@ -86,7 +86,9 @@ pub fn dry_run_one(
         .tasks
         .iter()
         .filter(|t| {
-            t.status == TaskStatus::Todo || (include_draft && t.status == TaskStatus::Draft)
+            t.is_executable_work_item()
+                && (t.status == TaskStatus::Todo
+                    || (include_draft && t.status == TaskStatus::Draft))
         })
         .collect();
 
@@ -135,8 +137,9 @@ pub fn dry_run_one(
                 // Show first blocking task
                 println!();
                 for row in &report.tasks {
-                    let is_candidate = row.status == TaskStatus::Todo
-                        || (include_draft && row.status == TaskStatus::Draft);
+                    let is_candidate = row.kind.is_executable()
+                        && (row.status == TaskStatus::Todo
+                            || (include_draft && row.status == TaskStatus::Draft));
                     if !is_candidate || row.runnable || row.reasons.is_empty() {
                         continue;
                     }
@@ -144,6 +147,9 @@ pub fn dry_run_one(
                     println!("First blocking task: {} (status: {:?})", row.id, row.status);
                     for reason in &row.reasons {
                         match reason {
+                            crate::queue::operations::NotRunnableReason::NonExecutableKind { task_kind } => {
+                                println!("  - Non-executable task kind: {}", task_kind);
+                            }
                             crate::queue::operations::NotRunnableReason::UnmetDependencies { dependencies } => {
                                 if dependencies.len() == 1 {
                                     match &dependencies[0] {

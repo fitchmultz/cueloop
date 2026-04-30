@@ -200,6 +200,7 @@ mod tests {
         Task {
             id: task_id.to_string(),
             status: TaskStatus::Done,
+            kind: Default::default(),
             title: "Completed parent task".to_string(),
             description: Some("Parent task for follow-up apply coverage.".to_string()),
             priority: TaskPriority::High,

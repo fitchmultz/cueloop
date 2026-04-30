@@ -220,6 +220,7 @@ mod tests {
             title: format!("Task {id}"),
             description: None,
             status,
+            kind: Default::default(),
             created_at: created_at.clone(),
             completed_at,
             updated_at: created_at,

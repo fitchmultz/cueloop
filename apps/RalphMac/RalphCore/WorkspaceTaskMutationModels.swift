@@ -329,6 +329,7 @@ enum WorkspaceTaskMutationField: String, Sendable {
   case title
   case description
   case status
+  case kind
   case priority
   case tags
   case scope

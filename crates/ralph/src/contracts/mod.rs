@@ -95,4 +95,4 @@ pub use session::{PhaseSettingsSnapshot, SessionState};
 pub use crate::constants::versions::SESSION_STATE_VERSION;
 
 // Re-exports from task module
-pub use task::{Task, TaskAgent, TaskPriority, TaskStatus};
+pub use task::{Task, TaskAgent, TaskKind, TaskPriority, TaskStatus};

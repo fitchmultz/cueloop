@@ -92,6 +92,7 @@ pub fn create_task_from_comment(comment: &DetectedComment, resolved: &Resolved) 
     Ok(Task {
         id: generate_task_id(resolved)?,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: format!(
             "{}: {} in {}",
             type_str,

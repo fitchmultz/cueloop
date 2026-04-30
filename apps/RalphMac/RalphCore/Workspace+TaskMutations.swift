@@ -167,6 +167,10 @@ extension Workspace {
       edits.append(WorkspaceTaskMutationField.status.edit(value: updated.status.rawValue))
     }
 
+    if original.kind != updated.kind {
+      edits.append(WorkspaceTaskMutationField.kind.edit(value: updated.kind.rawValue))
+    }
+
     if original.priority != updated.priority {
       edits.append(WorkspaceTaskMutationField.priority.edit(value: updated.priority.rawValue))
     }

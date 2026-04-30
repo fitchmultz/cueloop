@@ -226,6 +226,8 @@ App and automation clients should decode this document on stdout for successful 
 
 `runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, mixed, or structurally invalid.
 
+Task payloads include `kind` (`work_item` or `group`) with backward-compatible default `work_item`. Runnability report `version: 2` also includes `kind` on each row. `group` rows remain visible with `runnable: false` and a `non_executable_kind` reason, but they do not count as runnable candidates or blockers. `next_runnable_task_id` and `runnability.selection.selected_task_id` select executable `work_item` tasks only.
+
 When the queue and done files are readable but structural validation fails, `machine queue read` still returns the queue snapshot for app recovery UI, but it must not advertise runnable work: `next_runnable_task_id` is omitted/null, `runnability.selection.selected_task_id` is null, and `runnability.summary.blocking` carries a stalled `operator_recovery` state whose `scope` is `queue_validate`.
 
 ### `machine queue validate` (`version: 1`)

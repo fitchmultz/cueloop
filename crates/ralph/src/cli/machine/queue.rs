@@ -158,6 +158,7 @@ fn build_graph_json(
                 "id": node.task.id,
                 "title": node.task.title,
                 "status": node.task.status.as_str(),
+                "kind": node.task.kind.as_str(),
                 "dependencies": dependencies,
                 "dependents": dependents,
                 "critical": graph.is_on_critical_path(&node.task.id, critical_paths),

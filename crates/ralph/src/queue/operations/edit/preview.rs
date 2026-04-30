@@ -22,7 +22,7 @@ use super::key::TaskEditKey;
 use super::parsing::{
     cycle_status, normalize_rfc3339_input, parse_list, parse_status, parse_task_agent_override,
 };
-use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskKind, TaskPriority, TaskStatus};
 use crate::queue;
 use crate::queue::ValidationWarning;
 use crate::queue::operations::validate::{ensure_task_id, parse_custom_fields_with_context};
@@ -124,6 +124,11 @@ pub fn preview_task_edit(
             } else {
                 preview_task.completed_at = None;
             }
+        }
+        TaskEditKey::Kind => {
+            preview_task.kind = parse_task_kind(trimmed).with_context(|| {
+                format!("Queue edit preview failed (task_id={}, field=kind)", needle)
+            })?;
         }
         TaskEditKey::Priority => {
             preview_task.priority = if trimmed.is_empty() {
@@ -311,6 +316,15 @@ pub fn preview_task_edit(
 ///
 /// Uses semicolon separator for Evidence, Plan, Notes (longer text items)
 /// and comma separator for other list fields.
+fn parse_task_kind(value: &str) -> Result<TaskKind> {
+    match value {
+        "work_item" => Ok(TaskKind::WorkItem),
+        "group" => Ok(TaskKind::Group),
+        "" => bail!("kind cannot be empty; expected work_item or group"),
+        other => bail!("invalid task kind '{}'; expected work_item or group", other),
+    }
+}
+
 pub(crate) fn format_field_value(task: &Task, key: TaskEditKey) -> String {
     let sep = match key {
         TaskEditKey::Evidence | TaskEditKey::Plan | TaskEditKey::Notes => "; ",

@@ -397,6 +397,11 @@
         "id": {
           "type": "string"
         },
+        "kind": {
+          "description": "Whether this task is executable work or a non-runnable grouping node.",
+          "$ref": "#/$defs/TaskKind",
+          "default": "work_item"
+        },
         "notes": {
           "type": "array",
           "default": [],
@@ -574,6 +579,20 @@
         }
       },
       "additionalProperties": false
+    },
+    "TaskKind": {
+      "oneOf": [
+        {
+          "description": "Executable atomic work item. This is the default for existing queues.",
+          "type": "string",
+          "const": "work_item"
+        },
+        {
+          "description": "Non-executable grouping/decomposition node.",
+          "type": "string",
+          "const": "group"
+        }
+      ]
     },
     "TaskPriority": {
       "description": "Task priority used for queue ordering and display.",

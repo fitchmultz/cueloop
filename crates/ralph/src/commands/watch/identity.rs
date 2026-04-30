@@ -271,6 +271,7 @@ mod tests {
         Task {
             id: "RQ-0001".to_string(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "watch task".to_string(),
             description: None,
             priority: TaskPriority::Medium,

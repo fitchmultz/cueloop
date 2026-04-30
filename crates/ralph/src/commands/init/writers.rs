@@ -71,6 +71,7 @@ pub fn write_queue(
         let task = Task {
             id: task_id,
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title,
             description: None,
             priority: answers.first_task_priority,

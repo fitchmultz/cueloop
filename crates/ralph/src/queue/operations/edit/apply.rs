@@ -26,7 +26,7 @@ use super::parsing::{
     cycle_status, normalize_rfc3339_input, parse_list, parse_status, parse_task_agent_override,
 };
 use super::validate_input::ensure_now;
-use crate::contracts::{QueueFile, TaskPriority};
+use crate::contracts::{QueueFile, TaskKind, TaskPriority};
 use crate::queue;
 use crate::queue::operations::validate::{ensure_task_id, parse_custom_fields_with_context};
 use anyhow::{Context, Result, anyhow, bail};
@@ -100,6 +100,10 @@ pub fn apply_task_edit(
             };
             let now = ensure_now(now_rfc3339)?;
             queue::apply_status_policy(task, next_status, &now, None)?;
+        }
+        TaskEditKey::Kind => {
+            task.kind = parse_task_kind(trimmed)
+                .with_context(|| format!("Queue edit failed (task_id={}, field=kind)", needle))?;
         }
         TaskEditKey::Priority => {
             task.priority = if trimmed.is_empty() {
@@ -234,4 +238,13 @@ pub fn apply_task_edit(
     }
 
     Ok(())
+}
+
+fn parse_task_kind(value: &str) -> Result<TaskKind> {
+    match value {
+        "work_item" => Ok(TaskKind::WorkItem),
+        "group" => Ok(TaskKind::Group),
+        "" => bail!("kind cannot be empty; expected work_item or group"),
+        other => bail!("invalid task kind '{}'; expected work_item or group", other),
+    }
 }

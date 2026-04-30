@@ -219,6 +219,7 @@ mod tests {
                 .map(|(id, status, tags)| Task {
                     id: (*id).to_string(),
                     status: *status,
+                    kind: Default::default(),
                     title: format!("Task {id}"),
                     description: None,
                     priority: Default::default(),

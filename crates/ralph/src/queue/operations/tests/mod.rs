@@ -19,7 +19,7 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 pub(crate) use super::*;
-pub(crate) use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+pub(crate) use crate::contracts::{QueueFile, Task, TaskKind, TaskPriority, TaskStatus};
 use crate::timeutil;
 pub(crate) use std::collections::HashMap;
 
@@ -31,6 +31,7 @@ pub(crate) fn task_with(id: &str, status: TaskStatus, tags: Vec<String>) -> Task
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: Default::default(),

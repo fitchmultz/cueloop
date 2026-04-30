@@ -2,56 +2,9 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0077",
-      "status": "todo",
-      "title": "Add first-class runnable-vs-group task semantics",
-      "description": "Introduce a canonical task contract for decomposition group nodes versus executable work items so parent tasks are not accidentally selected as atomic implementation tasks. The desired outcome is a machine-safe distinction, likely a `kind`/`runnable` contract rather than prose conventions, that queue selection, runnability reports, schemas, docs, and app consumers all understand.",
-      "priority": "high",
-      "tags": [
-        "task-decompose",
-        "queue",
-        "contracts",
-        "runnability",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/contracts/task/types.rs",
-        "schemas/queue.schema.json",
-        "crates/ralph/src/queue/operations/runnability/",
-        "crates/ralph/src/cli/queue/next.rs",
-        "crates/ralph/src/cli/machine/queue.rs",
-        "apps/RalphMac/RalphCore/",
-        "docs/queue-and-tasks.md",
-        "docs/machine-contract.md"
-      ],
-      "evidence": [
-        "Warden decomposition feedback: RQ-0001 and RQ-0002 read like grouping or umbrella tasks while RQ-0003 was the first concrete leaf task.",
-        "Current task schema has `parent_id` for structure and `status` for lifecycle, but no explicit field that says a parent node is a non-runnable grouping node.",
-        "If `queue next` or an agent selects a grouping parent, the agent may try to implement an entire subtree or duplicate child work."
-      ],
-      "plan": [
-        "Define one canonical contract for task actionability, preferring an explicit typed field over custom_fields or title/status conventions; document migration/default behavior for existing tasks.",
-        "Update the Rust task model, JSON schema generation, queue validation, machine contracts, and RalphMac decoding so the new actionability semantics are preserved end to end.",
-        "Update runnability and queue selection so non-runnable group nodes are skipped unless an explicit include/inspect mode asks for them.",
-        "Add regression coverage proving parent/group tasks are visible in tree/graph output but are not selected by `ralph queue next`, `run one`, or machine runnability by default."
-      ],
-      "notes": [
-        "Created from Warden `task decompose` feedback about unclear parent/group task semantics.",
-        "Avoid solving this with prose-only conventions; downstream automation needs a stable machine-readable signal."
-      ],
-      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
-      "created_at": "2026-04-30T19:41:18Z",
-      "updated_at": "2026-04-30T19:41:18Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback"
-      }
-    },
-    {
       "id": "RQ-0078",
       "status": "todo",
+      "kind": "work_item",
       "title": "Teach task decompose to mark groups and report the first runnable leaf",
       "description": "Make `ralph task decompose` materialization and output use the new actionability contract. Fresh decomposition trees should mark umbrella/root/phase nodes as grouping nodes, mark leaves as runnable work items, and print the root/group task plus the first actionable leaf so the operator knows where execution should begin.",
       "priority": "high",
@@ -106,6 +59,7 @@
     {
       "id": "RQ-0079",
       "status": "todo",
+      "kind": "work_item",
       "title": "Add decompose activation modes and no-runnable draft guidance",
       "description": "Fix the post-write dead-end where a successful decomposition can leave every generated task in `draft` with no obvious runnable next step. `ralph task decompose --write` should either support an explicit activation mode for the first leaf/leaves or print an exact next command that promotes the first actionable leaf to runnable work.",
       "priority": "high",
@@ -159,6 +113,7 @@
     {
       "id": "RQ-0080",
       "status": "todo",
+      "kind": "work_item",
       "title": "Calm validation messaging for normal all-draft decompositions",
       "description": "Reduce scary validation noise when a freshly written decomposition is intentionally all draft. Dependency-blocked diagnostics for draft-only trees should be informational and should summarize the actionable cause: no runnable tasks exist because every generated task is draft, so promote a leaf or use an activation mode.",
       "priority": "medium",
@@ -212,6 +167,7 @@
     {
       "id": "RQ-0081",
       "status": "todo",
+      "kind": "work_item",
       "title": "Make decompose preview continuations exact and copy-pasteable",
       "description": "Close the preview/write trust gap. A preview followed by a later write should either persist the exact preview result through a checkpoint/continuation ID or clearly state that a new planner invocation may differ. All continuation hints must be literal copy/pasteable commands with no `...` placeholders.",
       "priority": "high",

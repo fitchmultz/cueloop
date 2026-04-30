@@ -74,7 +74,8 @@ Task objects live inside Ralph queue files. This page owns the minimum task-bear
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `description` | string \| null | null | Detailed context, goal, and desired outcome |
-| `status` | enum | `todo` | Current status: `draft`, `todo`, `doing`, `done`, `rejected` |
+| `status` | enum | `todo` | Lifecycle status: `draft`, `todo`, `doing`, `done`, `rejected` |
+| `kind` | enum | `work_item` | Actionability: `work_item` is executable atomic work; `group` is a non-runnable decomposition/organization node |
 | `priority` | enum | `medium` | Priority level: `critical`, `high`, `medium`, `low` |
 | `tags` | string[] | [] | Categorical labels for filtering/grouping |
 | `scope` | string[] | [] | Starting points for work (files, paths, commands) |
@@ -91,7 +92,17 @@ Task objects live inside Ralph queue files. This page owns the minimum task-bear
 | `blocks` | string[] | Task IDs that are blocked by this task (inverse of depends_on) |
 | `relates_to` | string[] | Task IDs with loose semantic coupling (no execution constraint) |
 | `duplicates` | string \| null | Task ID this task duplicates (singular reference) |
-| `parent_id` | string \| null | Parent task ID for hierarchical organization |
+| `parent_id` | string \| null | Parent task ID for hierarchical organization; does not by itself make a task non-runnable |
+
+### Actionability Semantics
+
+`kind` is the canonical machine-readable execution contract:
+
+- `work_item` tasks are executable when their `status`, dependencies, and schedule allow it.
+- `group` tasks organize decomposition trees and are skipped by `ralph queue next`, `run one`, `run loop`, parallel worker selection, and machine runnability by default.
+- Group tasks remain visible in queue read/list/search/tree/graph surfaces and app models.
+- Missing `kind` defaults to `work_item` for existing queues; queue file `version` remains 1.
+- `status` is lifecycle, and `parent_id` is hierarchy. Do not infer actionability from either field.
 
 ### Agent Override Fields
 

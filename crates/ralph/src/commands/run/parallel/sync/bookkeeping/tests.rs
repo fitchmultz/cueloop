@@ -40,6 +40,7 @@ fn task(id: &str, status: TaskStatus) -> Task {
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: format!("Task {id}"),
         priority: TaskPriority::Medium,
         created_at: Some("2026-04-27T00:00:00Z".to_string()),

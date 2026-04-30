@@ -27,6 +27,7 @@ pub enum TaskEditKey {
     Title,
     Description,
     Status,
+    Kind,
     Priority,
     Tags,
     Scope,
@@ -55,6 +56,7 @@ impl TaskEditKey {
             TaskEditKey::Title => "title",
             TaskEditKey::Description => "description",
             TaskEditKey::Status => "status",
+            TaskEditKey::Kind => "kind",
             TaskEditKey::Priority => "priority",
             TaskEditKey::Tags => "tags",
             TaskEditKey::Scope => "scope",
@@ -102,6 +104,7 @@ impl TaskEditKey {
             TaskEditKey::Title => task.title.clone(),
             TaskEditKey::Description => task.description.clone().unwrap_or_default(),
             TaskEditKey::Status => task.status.to_string(),
+            TaskEditKey::Kind => task.kind.to_string(),
             TaskEditKey::Priority => task.priority.to_string(),
             TaskEditKey::Tags => task.tags.join(list_sep),
             TaskEditKey::Scope => task.scope.join(list_sep),
@@ -152,6 +155,7 @@ impl std::str::FromStr for TaskEditKey {
             "title" => Ok(TaskEditKey::Title),
             "description" => Ok(TaskEditKey::Description),
             "status" => Ok(TaskEditKey::Status),
+            "kind" => Ok(TaskEditKey::Kind),
             "priority" => Ok(TaskEditKey::Priority),
             "tags" => Ok(TaskEditKey::Tags),
             "scope" => Ok(TaskEditKey::Scope),
@@ -173,7 +177,7 @@ impl std::str::FromStr for TaskEditKey {
             "estimated_minutes" => Ok(TaskEditKey::EstimatedMinutes),
             "actual_minutes" => Ok(TaskEditKey::ActualMinutes),
             _ => bail!(
-                "Unknown task field: '{}'. Expected one of: title, description, status, priority, tags, scope, evidence, plan, notes, request, depends_on, blocks, relates_to, duplicates, custom_fields, agent, created_at, updated_at, completed_at, started_at, scheduled_start, estimated_minutes, actual_minutes.",
+                "Unknown task field: '{}'. Expected one of: title, description, status, kind, priority, tags, scope, evidence, plan, notes, request, depends_on, blocks, relates_to, duplicates, custom_fields, agent, created_at, updated_at, completed_at, started_at, scheduled_start, estimated_minutes, actual_minutes.",
                 value
             ),
         }

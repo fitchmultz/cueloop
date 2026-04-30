@@ -17,7 +17,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Reasons are appended in stable order: status/flags, dependencies, schedule.
+//! - Reasons are appended in stable order: kind/actionability, status/flags,
+//!   dependencies, schedule.
 //! - Missing dependencies are reported as blocking.
 
 use crate::contracts::{QueueFile, Task, TaskStatus};
@@ -35,6 +36,13 @@ pub(super) fn analyze_task_runnability(
 ) -> TaskRunnabilityRow {
     let mut reasons = Vec::new();
     let mut runnable = true;
+
+    if !task.is_executable_work_item() {
+        runnable = false;
+        reasons.push(NotRunnableReason::NonExecutableKind {
+            task_kind: task.kind,
+        });
+    }
 
     match task.status {
         TaskStatus::Done | TaskStatus::Rejected => {
@@ -76,15 +84,20 @@ pub(super) fn analyze_task_runnability(
     TaskRunnabilityRow {
         id: task.id.clone(),
         status: task.status,
+        kind: task.kind,
         runnable,
         reasons,
     }
 }
 
 fn should_check_schedule(reasons: &[NotRunnableReason]) -> bool {
-    reasons
-        .iter()
-        .all(|reason| !matches!(reason, NotRunnableReason::StatusNotRunnable { .. }))
+    reasons.iter().all(|reason| {
+        !matches!(
+            reason,
+            NotRunnableReason::StatusNotRunnable { .. }
+                | NotRunnableReason::NonExecutableKind { .. }
+        )
+    })
 }
 
 fn dependency_issues(

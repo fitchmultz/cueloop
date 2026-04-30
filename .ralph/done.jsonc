@@ -4,6 +4,7 @@
     {
       "id": "RQ-0002",
       "status": "done",
+      "kind": "work_item",
       "title": "Unify managed wait paths and remove polling-based readiness drift",
       "description": "Bring subprocess waiting and daemon readiness behavior back in line with the repo's managed-execution standards. The current runtime still carries duplicated `try_wait` plus `sleep` loops, a raw retry-backoff sleep that bypasses cancellation-aware helpers, and daemon readiness polling that repeatedly re-reads `daemon.json`. The desired outcome is one shared wait strategy for managed subprocesses and runner children, cancellation-aware retry sleeps everywhere, and explicit or event-driven daemon readiness instead of fixed-interval polling.",
       "priority": "medium",
@@ -55,6 +56,7 @@
     {
       "id": "RQ-0001",
       "status": "done",
+      "kind": "work_item",
       "title": "Restore RalphMac machine contract parity and fail-fast versioning",
       "description": "Fix the concrete cross-surface machine-contract drift between Rust, docs, and RalphMac instead of doing another audit pass. The current app accepts several versioned machine documents without explicit version gates, misclassifies unknown blocking reasons as `mixed_queue`, still scrapes human CLI text for some recovery flows, and caches a partial Swift copy of the Rust task contract. The desired outcome is a single-source-of-truth machine/app contract that fails fast on unsupported versions, preserves operator-state semantics, keeps app-side task and graph models aligned with Rust, and removes human-text parsing from app recovery paths.",
       "priority": "high",
@@ -132,6 +134,7 @@
     {
       "id": "RQ-0003",
       "status": "done",
+      "kind": "work_item",
       "title": "Audit Ralph and materialize a remediation queue",
       "description": "Run a repository-wide maintainability audit using the comprehensive-codebase-audit skill, focusing on Ralph's architecture boundaries, complexity hotspots, testing and verification gaps, and configuration or operability risks. Use repo evidence to identify the highest-value structural findings, then convert those findings into a small set of chunky, dependency-aware follow-up tasks directly in `.ralph/queue.jsonc` through Ralph's normal follow-up proposal flow rather than producing a stand-alone report.",
       "priority": "medium",
@@ -193,15 +196,16 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "task_kind": "queue_shaping",
+        "skill": "comprehensive-codebase-audit",
         "runner_used": "codex",
-        "skill": "comprehensive-codebase-audit"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4"
       }
     },
     {
       "id": "RQ-0005",
       "status": "done",
+      "kind": "work_item",
       "title": "Harden webhook runtime lifecycle and config validation",
       "description": "The audit found a reliability gap in Ralph's webhook runtime: one dispatcher startup failure disables delivery for the rest of the run, dispatcher teardown does not coordinate worker/scheduler shutdown, and webhook numeric settings are documented with bounds that are not enforced consistently at config-validation time. This task should make webhook startup failures recoverable, shutdown deterministic, and config validation explicit so operators get fast, actionable failures instead of silent runtime drift or permanent disablement.",
       "priority": "high",
@@ -249,6 +253,7 @@
     {
       "id": "RQ-0004",
       "status": "done",
+      "kind": "work_item",
       "title": "Consolidate task materialization and slim task command helpers",
       "description": "The audit found that Ralph currently materializes new queue tasks through multiple overlapping paths. `commands/task/mod.rs` is carrying helper-surface, option, runner-resolution, request-reading, and field-diff responsibilities, while follow-up proposal application and task decomposition each allocate IDs, map dependencies, choose insertion points, stamp timestamps, and validate queue writes independently. This work should establish one canonical task-materialization path, reduce boundary drift in the task command surface, and keep follow-up/decomposition behavior aligned for IDs, dependency remapping, timestamps, insertion order, and validation.",
       "priority": "high",
@@ -294,6 +299,7 @@
     {
       "id": "RQ-0006",
       "status": "done",
+      "kind": "work_item",
       "title": "Expand execution and operator contract coverage",
       "description": "The audit found several high-value orchestration and operator-facing branches that are carrying important behavior with thinner direct coverage than the surrounding happy paths. The highest-signal gaps are the event-driven parallel worker completion path, run-session resume decisions that must preserve preview-vs-execute semantics, doctor's trust/instruction-file blocking surface, CI gate argv-only enforcement parity, and webhook delivery failure-path diagnostics. This task should add regression coverage around those contracts so future runtime changes fail locally before they leak into parallel runs, app integrations, or operator workflows.",
       "priority": "high",
@@ -347,6 +353,7 @@
     {
       "id": "RQ-0007",
       "status": "done",
+      "kind": "work_item",
       "title": "Split oversized machine and release contract suites",
       "description": "The audit found contract-heavy test files that are carrying too many unrelated scenarios in a single place, which makes failures less local and pushes Ralph away from its own small-file guidance. `machine_contract_test.rs` is already a multi-surface end-to-end suite, and `pre_public_check_contracts_early.rs` has grown to nearly 1,000 lines. This task should reorganize those suites into directory-backed, behavior-grouped modules with shared helpers so contract coverage remains strong while maintenance and review costs come down.",
       "priority": "medium",
@@ -392,6 +399,7 @@
     {
       "id": "RQ-0010",
       "status": "done",
+      "kind": "work_item",
       "title": "Let machine run one select the next task for RalphMac",
       "description": "Remove RalphMac's duplicated next-task selection before `machine run one`. The app currently reads the queue, chooses a task ID, then invokes `machine run one --id <id>`, which can race external queue changes and drift from CLI selection rules. When the user clicks Run Next without an explicit task selection, the app should call no-ID `ralph machine run one --resume` and render the actual selected task from machine output.",
       "priority": "medium",
@@ -438,6 +446,7 @@
     {
       "id": "RQ-0008",
       "status": "done",
+      "kind": "work_item",
       "title": "Fix machine run loop idle and blocked summaries",
       "description": "Repair the machine contract for `ralph machine run loop` so idle, no-candidate, blocked, stalled, stopped, failed, and completed states remain distinct all the way to terminal machine summaries and RalphMac Run Control. Today several non-success operator states return `Ok(())` from the shared loop implementation and the machine command emits `outcome: \"completed\"` with no `blocking`, which lets the Swift app clear or hide useful operator state. The desired outcome is a loop-level outcome model with blocking-aware summaries that match the semantics already expected from `machine run one`.",
       "priority": "high",
@@ -488,6 +497,7 @@
     {
       "id": "RQ-0009",
       "status": "done",
+      "kind": "work_item",
       "title": "Guarantee terminal machine summaries for loop failures",
       "description": "Make `ralph machine run loop` emit a deterministic terminal machine summary on recoverable execution failures instead of short-circuiting through `?` after structured start events. Native clients should not have to infer final run state from process exit, stderr, or human text after the machine stream begins.",
       "priority": "high",
@@ -539,15 +549,16 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
       "id": "RQ-0011",
       "status": "done",
+      "kind": "work_item",
       "title": "Move Stop After Current onto a machine command",
       "description": "Replace RalphMac's Stop After Current implementation that shells out to human `ralph queue stop` with a typed machine command and versioned document. Stopping a loop is an operator-critical workflow, so the app should receive structured status, resolved paths, marker state, continuation context, and machine-safe errors instead of parsing or appending raw stdout/stderr.",
       "priority": "medium",
@@ -610,14 +621,15 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
       "id": "RQ-0012",
       "status": "done",
+      "kind": "work_item",
       "title": "Derive native execution controls from machine capabilities",
       "description": "Replace hardcoded RalphMac runner, effort, and loop-worker controls with machine-visible capabilities/configuration so native controls do not lag behind CLI, plugin runner, or model support. The app should preserve unknown configured values, expose available plugin runners when trusted, and avoid arbitrary worker caps that are narrower than the CLI contract.",
       "priority": "medium",
@@ -686,15 +698,16 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "runner_used": "codex",
-        "model_used": "gpt-5.4"
+        "source_report": "/tmp/ralph-report.md",
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
       }
     },
     {
       "id": "RQ-0013",
       "status": "done",
+      "kind": "work_item",
       "title": "Make custom queue paths first-class in RalphMac",
       "description": "Fix the remaining RalphMac and app-doc paths that assume `.ralph/queue.jsonc` before resolving configuration. Ralph supports configurable `queue.file` and `queue.done_file`; the app should resolve paths through machine/config sources before direct queue existence checks and should not tell users to initialize a repo when the configured queue file simply lives somewhere else.",
       "priority": "medium",
@@ -760,8 +773,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
         "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
         "runner_used": "codex"
       }
@@ -769,6 +782,7 @@
     {
       "id": "RQ-0014",
       "status": "done",
+      "kind": "work_item",
       "title": "Turn RalphMac continuation next steps into native actions",
       "description": "Improve Run Control so machine-provided operator next steps become native actions where safe instead of mostly appearing as terminal instructions. The app should classify each continuation or blocking next step as actionable, copy-only, or unsupported-with-reason, then render buttons for safe actions such as refresh, validate, repair preview, undo list, stop after current, and status refresh.",
       "priority": "medium",
@@ -829,15 +843,16 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
-        "model_used": "gpt-5.4",
         "runner_used": "codex"
       }
     },
     {
       "id": "RQ-0015",
       "status": "done",
+      "kind": "work_item",
       "title": "Fix stale RalphMac and session-management docs",
       "description": "Update app and session-management documentation so contributors are pointed at the current machine surfaces and contract versions. Current docs still reference older app command paths and stale machine run event versions, which creates drift pressure even when the runtime code is correct.",
       "priority": "low",
@@ -890,15 +905,16 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/ralph-report.md"
       }
     },
     {
       "id": "RQ-0016",
       "status": "done",
+      "kind": "work_item",
       "title": "Add scenario-level app parity coverage",
       "description": "Expand app parity tracking beyond top-level command presence so it catches the actual cross-surface drift found in the audit: loop summaries, stop behavior, custom queue paths, plugin/native controls, and continuation actions. The parity source should describe user-visible scenarios and point to Rust plus RalphMac tests that prove each surface stays aligned.",
       "priority": "low",
@@ -956,14 +972,15 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
       "id": "RQ-0018",
       "status": "done",
+      "kind": "work_item",
       "title": "Enforce `machine_error` version checks before retry/recovery classification",
       "description": "Principles violated: E (make bugs hard to write), F (fail fast), J (consistency/integrity). RalphMac defines `RalphMachineContract.errorVersion` but `MachineErrorDocument.decode(from:)` bypasses contract validation and accepts any version value. Retry and recovery paths then trust that decoded payload as authoritative. Why it matters: incompatible `machine_error` payloads can be misclassified as valid structured errors, masking contract drift and producing incorrect retry/recovery behavior. Minimal fix: move machine-error decoding behind contract validation and reject unsupported versions with explicit recovery errors. Acceptance criteria: malformed/unknown machine-error versions no longer classify as valid machine errors; supported version behavior remains unchanged.",
       "priority": "high",
@@ -1010,6 +1027,7 @@
     {
       "id": "RQ-0017",
       "status": "done",
+      "kind": "work_item",
       "title": "Version-gate `machine system info` in RalphMac compatibility checks",
       "description": "Principles violated: E (make bugs hard to write), F (fail fast), J (consistency/integrity). `WorkspaceManager+Versioning.executeVersionCheck` decodes `MachineSystemInfoDocument` directly without validating the machine document version, even though Ralph’s machine contract is explicitly versioned. This allows incompatible payload shapes to flow into compatibility logic without a clear contract error. Why it matters: a future CLI/document version bump can cause false compatibility outcomes or ambiguous errors during app startup/version checks. Minimal fix: make `MachineSystemInfoDocument` conform to `VersionedMachineDocument`, add a `systemInfoVersion` constant in `RalphMachineContract`, and decode through `RalphMachineContract.decode(...)`. Acceptance criteria: mismatched system-info version produces `.versionMismatch` recovery messaging; matched version still validates normally.",
       "priority": "high",
@@ -1053,6 +1071,7 @@
     {
       "id": "RQ-0019",
       "status": "done",
+      "kind": "work_item",
       "title": "Replace stderr text heuristics for workspace-overview fallback detection",
       "description": "Principles violated: E (make bugs hard to write), F (fail fast), G (least astonishment), J (consistency/integrity). `Workspace+QueueLoading` falls back from `machine workspace overview` by matching human stderr phrases like `usage:` and `unknown command`. This contradicts the documented machine-contract guidance to consume structured payloads instead of prose scraping. Why it matters: unrelated command failures that mention those strings can trigger incorrect legacy fallback paths and hide the real error class. Minimal fix: use a structured machine capability/version signal (or machine_error code) for fallback decisions and reserve string heuristics only as a temporary, explicit compatibility bridge with tests. Acceptance criteria: fallback triggers only on explicit unsupported-capability signals, not generic stderr text.",
       "priority": "high",
@@ -1097,6 +1116,7 @@
     {
       "id": "RQ-0020",
       "status": "done",
+      "kind": "work_item",
       "title": "Unify transient-error classification across retry and recovery surfaces",
       "description": "Principles violated: C (DRY knowledge), D (localize change), J (consistency/integrity). Transient error pattern logic is duplicated across `RalphCLIClient+Retry`, `RetryHelper`, and `RalphCLIRecoveryClassifier` with divergent literal sets and behavior. Why it matters: a newly observed transient failure may be retried in one path but classified as non-retryable/unknown in another, causing inconsistent UX and harder debugging. Minimal fix: centralize transient error classification in one shared policy module used by retry execution and recovery UI classification. Acceptance criteria: one authoritative pattern source, consistent classification results across all three call paths, and focused tests for shared policy outputs.",
       "priority": "medium",
@@ -1142,6 +1162,7 @@
     {
       "id": "RQ-0021",
       "status": "done",
+      "kind": "work_item",
       "title": "Resolve dead API drift around `CollectedOutput.isRetryableFailure`",
       "description": "Principles violated: B (YAGNI), C (DRY knowledge), H (operational hygiene). `CollectedOutput.isRetryableFailure` maintains its own retry heuristic surface but appears unused in production call paths, while retry decisions are already made via `RetryHelper.defaultShouldRetry`. Why it matters: unused but tested behavior can silently drift and confuse maintainers about which retry contract is canonical. Minimal fix: either remove the dead API and tests, or migrate production retry decisions to use it as the single canonical path. Acceptance criteria: one clearly documented retryability API remains and no orphaned duplicate retry heuristics persist.",
       "priority": "medium",
@@ -1184,6 +1205,7 @@
     {
       "id": "RQ-0022",
       "status": "done",
+      "kind": "work_item",
       "title": "Surface diagnostics persistence failures instead of swallowing write errors",
       "description": "Principles violated: F (fail fast), H (operational hygiene), J (consistency/integrity). Diagnostics writers in app presentation coordinators use `try?` for JSON encoding and file writes, silently dropping failures without telemetry or recovery state updates. Why it matters: contract diagnostics can vanish exactly when needed for investigation, while the UI appears healthy. Minimal fix: replace silent `try?` writes with explicit error handling that logs/records persistence issues and preserves an operator-visible signal. Acceptance criteria: failed diagnostics writes emit structured error telemetry and are test-covered.",
       "priority": "medium",
@@ -1224,6 +1246,7 @@
     {
       "id": "RQ-0023",
       "status": "done",
+      "kind": "work_item",
       "title": "Make workspace reveal timeout explicit instead of silent polling exhaustion",
       "description": "Principles violated: F (fail fast), G (least astonishment), H (operational hygiene). `scheduleWorkspaceReveal` polls up to 60 attempts with fixed sleep/yield and then silently exits with no user-visible error or telemetry if reveal never succeeds. Why it matters: workspace focus failures can become silent UX dead-ends that are difficult to diagnose. Minimal fix: replace silent exhaustion with an explicit timeout state and diagnostic event, and prefer event-driven readiness when possible. Acceptance criteria: reveal timeout is observable in diagnostics/logs and covered by deterministic tests.",
       "priority": "medium",
@@ -1264,6 +1287,7 @@
     {
       "id": "RQ-0024",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `Workspace+RunnerState.swift` below hard 1,000 LOC limit",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The file exceeds the repository hard file-size limit, increasing coupling and making run-state changes risky across unrelated concerns. Why it matters: one-file edits now mix multiple state-management responsibilities, raising merge conflict and regression risk. Minimal fix: split by bounded concerns (console buffering/render cadence, operator-state synthesis, parallel status, run metadata) with a thin facade. Acceptance criteria: no file remains above hard limit and targeted runner-state tests still pass.",
       "priority": "medium",
@@ -1304,6 +1328,7 @@
     {
       "id": "RQ-0025",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `WorkspaceRunCancelAndLoopTests.swift` into focused suites under 800 LOC",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The suite exceeds the soft file-size ceiling, making cancel/loop behavior tests harder to navigate and maintain. Why it matters: broad, monolithic test files reduce failure locality and increase maintenance overhead when evolving run-loop semantics. Minimal fix: split test groups into targeted files (cancel flow, loop completion states, retry/resume interactions) under the existing test hub pattern. Acceptance criteria: suite is decomposed into focused files and all tests continue to pass.",
       "priority": "medium",
@@ -1344,6 +1369,7 @@
     {
       "id": "RQ-0026",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `RunControlDetailSections+Configuration.swift` under soft size ceiling",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). This run-control configuration view file is above the soft size target and blends multiple UI decision paths. Why it matters: configuration UX changes require touching a large mixed-responsibility file, increasing regression risk in run controls. Minimal fix: split into section-specific view components plus shared model/view-state helpers. Acceptance criteria: each new file remains below soft limits and run-control behavior snapshots stay stable.",
       "priority": "medium",
@@ -1384,6 +1410,7 @@
     {
       "id": "RQ-0027",
       "status": "done",
+      "kind": "work_item",
       "title": "Add CI guardrail for repository file-size limits",
       "description": "Principles violated: E (make bugs hard to write), H (operational hygiene), J (consistency/integrity). File-size limits are documented but not enforced by current local gates, allowing oversized files to accumulate undetected. Why it matters: policy-only limits drift over time and increase refactor risk. Minimal fix: add a non-flaky local gate script/target that fails when files exceed hard limits and warns/fails on soft-limit policy as agreed. Acceptance criteria: CI/local gate fails on new hard-limit violations and reports actionable offenders.",
       "priority": "medium",
@@ -1427,6 +1454,7 @@
     {
       "id": "RQ-0028",
       "status": "done",
+      "kind": "work_item",
       "title": "Add targeted tests for fallback/versioning/diagnostics error paths",
       "description": "Principles violated: E (make bugs hard to write), H (operational hygiene), J (consistency/integrity). Several high-risk branches (workspace-overview fallback heuristics, machine-system-info versioning, machine-error version compatibility, diagnostics write failures) lack direct focused tests. Why it matters: contract regressions in these boundaries can ship silently because broad suite coverage does not pin exact edge behavior. Minimal fix: add deterministic unit/integration tests for each boundary branch and expected error classification. Acceptance criteria: new tests fail on regressions in fallback gating, version mismatch handling, and diagnostics persistence error reporting.",
       "priority": "medium",
@@ -1472,6 +1500,7 @@
     {
       "id": "RQ-0030",
       "status": "done",
+      "kind": "work_item",
       "title": "Decouple `machine config resolve` from required queue-file presence",
       "description": "Principles violated: E (make bugs hard to write), F (fail fast appropriately), J (consistency/integrity). `machine config resolve` currently hard-fails when `.ralph/queue.jsonc` is missing because resume preview calls strict queue load. Why it matters: machine clients cannot fetch resolved paths/safety/config in bootstrap or degraded states, even though the contract describes config/paths with optional `resume_preview`. Minimal fix: make resume preview resilient to missing queue files (for example, default queue context with `resume_preview: null` or a structured no-session preview) while keeping command success for config introspection.",
       "priority": "high",
@@ -1512,6 +1541,7 @@
     {
       "id": "RQ-0029",
       "status": "done",
+      "kind": "work_item",
       "title": "Keep `ralph queue validate` strictly read-only by default",
       "description": "Principles violated: G (least astonishment), H (operational hygiene), J (consistency/integrity). The command is documented as read-only, but startup sanity auto-fixes mutate `.ralph` state when operators are only validating continuation safety. Why it matters: read-only verification commands currently introduce hidden writes that can surprise automation, dirty worktrees, and change state before triage. Minimal fix: gate startup auto-fixes for read-only queue surfaces (or default to no-write sanity for these commands) and require explicit opt-in for writes.",
       "priority": "high",
@@ -1552,6 +1582,7 @@
     {
       "id": "RQ-0032",
       "status": "done",
+      "kind": "work_item",
       "title": "Classify untrusted execution-settings failures as config errors in machine stderr",
       "description": "Principles violated: F (fail fast appropriately), G (least astonishment), J (consistency/integrity). Untrusted-repo trust violations are currently emitted as machine error code `parse_error`, even though the underlying failure is project-config trust incompatibility. Why it matters: automation that branches on machine error codes can take the wrong remediation path (parse handling instead of trust/config handling). Minimal fix: add explicit trust/config-incompatibility matching before parse fallbacks and return `config_incompatible` with trust-focused message.",
       "priority": "medium",
@@ -1591,6 +1622,7 @@
     {
       "id": "RQ-0031",
       "status": "done",
+      "kind": "work_item",
       "title": "Align `machine queue read` runnability output with queue validation state",
       "description": "Principles violated: E (make bugs hard to write), G (least astonishment), J (consistency/integrity). `machine queue read` currently emits runnable task selection and `next_runnable_task_id` even when `queue validate` reports structural invalidity. Why it matters: app/automation surfaces can present a runnable queue while the canonical continuation gate is stalled, creating cross-surface drift and unsafe operator guidance. Minimal fix: validate queue/read payload before reporting runnability, and gate or annotate runnability/next-task fields when structural errors exist.",
       "priority": "high",
@@ -1631,6 +1663,7 @@
     {
       "id": "RQ-0034",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `WorkspaceQueueRefreshTests.swift` to satisfy enforced hard file-size limit",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The test file exceeds the hard 1,000-line guardrail and currently hard-fails the repo size gate. Why it matters: `make ci-fast`/`make check-file-size-limits` fails immediately, blocking routine verification workflows and forcing unrelated work to stop. Minimal fix: split queue refresh test scenarios into focused companion test files with shared fixtures and keep each file under enforced limits.",
       "priority": "high",
@@ -1670,6 +1703,7 @@
     {
       "id": "RQ-0033",
       "status": "done",
+      "kind": "work_item",
       "title": "Expose plugin-registry load failures as structured machine diagnostics",
       "description": "Principles violated: F (fail fast appropriately), H (operational hygiene), J (consistency/integrity). `machine config resolve` silently drops project/global plugin runners to built-ins when plugin registry loading fails, while only emitting a plain WARN line on stderr. Why it matters: machine consumers can neither detect nor explain why configured runners disappeared, and stderr logging is not a stable contract surface. Minimal fix: add structured warning diagnostics to machine config documents (and keep successful machine commands stderr-clean by default).",
       "priority": "medium",
@@ -1710,6 +1744,7 @@
     {
       "id": "RQ-0037",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `docs/features/tasks.md` below soft file-size threshold",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The tasks feature doc exceeds the soft size policy and aggregates many loosely coupled sections. Why it matters: task semantics are core correctness boundaries; oversized docs make relationship and validation rules easier to drift across edits. Minimal fix: separate schema/reference, lifecycle, and advanced relationship sections into linked docs with one authoritative index page.",
       "priority": "medium",
@@ -1747,6 +1782,7 @@
     {
       "id": "RQ-0035",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `docs/guides/advanced.md` below soft file-size threshold",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). `advanced.md` exceeds the repo soft size guardrail and contributes to recurring gate warnings. Why it matters: oversized docs are harder to navigate and keep current, and warning noise can hide higher-severity gate signals. Minimal fix: split into linked sub-guides by advanced workflow domain and keep index-style navigation in the parent guide.",
       "priority": "medium",
@@ -1784,6 +1820,7 @@
     {
       "id": "RQ-0036",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `docs/features/plugins.md` below soft file-size threshold",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The plugins feature doc is above the soft size guardrail. Why it matters: plugin behavior and safety rules are high-change areas; monolithic docs increase drift risk and slow targeted updates. Minimal fix: split plugin architecture, lifecycle, and operator workflows into smaller linked docs while preserving one canonical entry point.",
       "priority": "medium",
@@ -1821,6 +1858,7 @@
     {
       "id": "RQ-0038",
       "status": "done",
+      "kind": "work_item",
       "title": "Split `docs/features/configuration.md` below soft file-size threshold",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The feature configuration doc is above soft limits and overlaps broad configuration concerns. Why it matters: configuration guidance is a trust and safety surface; large overlapping docs increase mismatch risk across defaults, precedence, and trust policy updates. Minimal fix: break the feature-focused configuration narrative into concise sections with explicit links to canonical config reference pages.",
       "priority": "medium",
@@ -1858,6 +1896,7 @@
     {
       "id": "RQ-0042",
       "status": "done",
+      "kind": "work_item",
       "title": "Keep gitignored source queue/done files synced during parallel runs",
       "description": "Principles violated: J (consistency/integrity), G (least astonishment), H (operational hygiene). Parallel workers currently keep workspace-local bookkeeping coherent, but when the source repo's resolved queue/done files are gitignored the source-directory copies can remain stale after worker integration. Why it matters: operators read `.ralph/queue.jsonc` and `.ralph/done.jsonc` as the active source of truth; stale source files create confusion and can cause repeated task execution. Minimal fix: make parallel completion explicitly refresh or mirror the coordinator/source resolved queue and done paths even when Git cannot restore them from tracked refs, and add regression coverage for gitignored bookkeeping paths.",
       "priority": "high",
@@ -1906,6 +1945,7 @@
     {
       "id": "RQ-0039",
       "status": "done",
+      "kind": "work_item",
       "title": "Split top-level `docs/configuration.md` below soft file-size threshold",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). The top-level configuration reference exceeds soft limits and carries high-churn policy details. Why it matters: this is a source-of-truth document for safety-critical config behavior; oversized structure makes targeted edits riskier and review harder. Minimal fix: partition into linked reference chapters (trust, precedence, runner controls, webhooks, migration notes) while keeping `docs/configuration.md` as canonical entry hub.",
       "priority": "medium",
@@ -1943,6 +1983,7 @@
     {
       "id": "RQ-0041",
       "status": "done",
+      "kind": "work_item",
       "title": "Sync session-management `machine config resolve` example with live contract values",
       "description": "Principles violated: J (consistency/integrity), G (least astonishment). The session-management doc example for `execution_controls` no longer matches actual machine output (`reasoning_efforts` and `parallel_workers.max`). Why it matters: app/automation implementers can encode incorrect bounds or omit valid effort values when following stale examples. Minimal fix: update the example payload to match current emitted contract values and add a contract-test-backed doc check if available.",
       "priority": "medium",
@@ -1983,6 +2024,7 @@
     {
       "id": "RQ-0040",
       "status": "done",
+      "kind": "work_item",
       "title": "Reduce `docs/features/daemon-and-watch.md` and `Makefile` soft-limit warnings",
       "description": "Principles violated: A (KISS), D (localize change), H (operational hygiene). Both the daemon/watch feature doc and root Makefile exceed soft file-size thresholds, producing recurring warnings in size gates. Why it matters: gate warning volume grows and hides higher-severity signals, while large mixed-scope files make maintenance slower and riskier. Minimal fix: split daemon/watch documentation into linked subpages and extract Makefile sections into included `.mk` fragments with stable top-level targets.",
       "priority": "low",
@@ -2022,6 +2064,7 @@
     {
       "id": "RQ-0044",
       "status": "done",
+      "kind": "work_item",
       "title": "Stop webhook shutdown from flushing delayed retries immediately",
       "description": "Principles violated: F (fail fast appropriately), G (least astonishment), H (operational hygiene). The webhook retry scheduler currently drains every pending retry into the ready queue when shutdown starts, which bypasses the configured backoff and can block teardown on a bounded send. Why it matters: a retry scheduled far into the future can fire immediately during dispatcher rebuilds or process shutdown, creating surprising retry bursts and slower exits exactly when Ralph is trying to stop cleanly. Minimal fix: treat shutdown as cancellation for pending retries, or persist/reclassify them without re-enqueueing them immediately; do not block scheduler teardown on bounded ready-queue sends. Acceptance criteria: shutdown no longer causes delayed retries to execute early, dispatcher teardown remains bounded, focused scheduler tests cover shutdown cancellation behavior, and `cargo test -p ralph-agent-loop webhook` passes.",
       "priority": "high",
@@ -2061,6 +2104,7 @@
     {
       "id": "RQ-0045",
       "status": "done",
+      "kind": "work_item",
       "title": "Restore resolved queue and done paths in parallel-worker cleanup",
       "description": "Principles violated: J (consistency/integrity), C (DRY knowledge), H (operational hygiene). Parallel-worker post-run cleanup hardcodes `.ralph/queue.jsonc` and `.ralph/done.jsonc` instead of using the resolved queue and done paths that worker execution already honors. Why it matters: repos with custom `queue.file` or `queue.done_file` can leave their real bookkeeping files dirty after worker supervision, so custom queue/done artifacts can leak into worker commits or block finalization even though the default paths were restored. Minimal fix: drive cleanup and dirty-path detection from `resolved.queue_path` / `resolved.done_path` plus the workspace-mapped equivalents instead of hardcoded default filenames. Acceptance criteria: a regression with custom queue and done paths proves worker cleanup restores the real bookkeeping files and leaves no lingering bookkeeping dirtiness, and the targeted parallel supervision tests pass.",
       "priority": "high",
@@ -2100,6 +2144,7 @@
     {
       "id": "RQ-0043",
       "status": "done",
+      "kind": "work_item",
       "title": "Redact secret-bearing webhook payload fields before persisting failures",
       "description": "Principles violated: I (security baseline), J (consistency/integrity), H (operational hygiene). Persisted webhook failure records sanitize `destination` and `error` but still clone `msg.payload` verbatim, so operator-supplied notes and other payload text leak into `.ralph/cache/webhooks/failures.json`. Why it matters: rejected-task notes and other webhook payload text can contain tokens, customer data, or raw error material, and the failure store keeps that content on disk for replay and local inspection. Minimal fix: sanitize or omit secret-bearing payload fields before writing `WebhookFailureRecord`, while keeping enough safe metadata for diagnostics and replay selection. Acceptance criteria: a failing-webhook regression proves persisted failure records no longer contain raw secret-bearing `payload.note` or equivalent unsanitized payload text, replay remains functional with the retained safe payload shape, and `cargo test -p ralph-agent-loop webhook` passes.",
       "priority": "high",
@@ -2139,6 +2184,7 @@
     {
       "id": "RQ-0048",
       "status": "done",
+      "kind": "work_item",
       "title": "Skip parallel webhook dispatcher startup when webhooks are disabled or unconfigured",
       "description": "Principles violated: A (KISS), B (YAGNI), H (operational hygiene). Parallel preflight unconditionally starts the webhook runtime, and dispatcher construction does not check whether webhooks are enabled or even have a URL before spawning worker and scheduler threads. Why it matters: every parallel run pays thread and global-runtime overhead even in repos that do not use webhooks, and startup noise or failures can surface for a feature that is effectively off. Minimal fix: gate `init_worker_for_parallel` and dispatcher creation on resolved webhook enablement plus URL presence, and keep diagnostics capacity zero when no runtime is needed. Acceptance criteria: disabled/unconfigured webhook configs do not spawn dispatcher threads during parallel preflight, enabled configs still initialize correctly, and the focused runtime tests cover both gated and active cases.",
       "priority": "medium",
@@ -2179,6 +2225,7 @@
     {
       "id": "RQ-0047",
       "status": "done",
+      "kind": "work_item",
       "title": "Propagate repo context through task-level webhook notifications",
       "description": "Principles violated: H (operational hygiene), J (consistency/integrity), G (least astonishment). Task-level webhook helpers still build `WebhookContext::default()` even when call sites already know the repo root and task execution context, and failure persistence falls back to the current working directory when `repo_root` is absent. Why it matters: failed-delivery diagnostics and replay can be attributed to the wrong repo in multi-repo or moved-repo workflows, and task-level failure records lose branch/commit context that loop-level events already preserve. Minimal fix: route task start/complete/reject notifications through the context-carrying variants and make repo-root persistence explicit instead of relying on cwd fallback. Acceptance criteria: task-level webhook payloads include repo_root at a minimum, failure-store persistence no longer depends on cwd for normal task events, and focused webhook payload/diagnostics tests pass.",
       "priority": "medium",
@@ -2220,6 +2267,7 @@
     {
       "id": "RQ-0049",
       "status": "done",
+      "kind": "work_item",
       "title": "Investigate tracked queue and done staleness after best-effort coordinator refresh failures",
       "description": "Principles violated: J (consistency/integrity), G (least astonishment), H (operational hygiene). The successful worker-finish path tolerates coordinator branch refresh failures, and tracked queue/done files are explicitly excluded from workspace-to-source mirroring, so tracked source bookkeeping may stay stale whenever the local fast-forward step cannot run cleanly. Why it matters: operators can see a successful worker and updated remote branch while their local tracked queue/done files still show pre-integration state, which invites repeated work or incorrect manual recovery. Minimal fix if confirmed: either make tracked bookkeeping refresh explicit after a successful worker push or surface a blocking error when the source branch cannot be refreshed cleanly. Acceptance criteria: a focused regression or temp harness proves whether tracked source queue/done can stay stale after a successful worker completion with refresh failure; go if stale local bookkeeping persists, no-go if source files are already refreshed or the flow correctly blocks.",
       "priority": "medium",
@@ -2259,6 +2307,7 @@
     {
       "id": "RQ-0046",
       "status": "done",
+      "kind": "work_item",
       "title": "Make push_upstream_with_rebase fail or recover when a no-upstream branch is behind remote",
       "description": "Principles violated: F (fail fast appropriately), J (consistency/integrity), H (operational hygiene). `push_upstream_with_rebase()` can return success for a branch with no upstream even when the local branch is already behind `origin/<branch>`, because the early no-upstream path only checks whether HEAD is ahead of the fallback ref and returns `Ok(())` when it is not. Why it matters: worker finalization and other publish paths can silently leave a branch behind remote while reporting success, which defeats the whole purpose of the rebase-aware push helper in concurrent update scenarios. Minimal fix: when no upstream is configured, treat behind-or-diverged `origin/<branch>` state as work to repair with fetch/rebase/upstream setup rather than as a successful no-op. Acceptance criteria: a regression reproduces the behind-without-upstream scenario and proves the helper either rebases/pushes to a synced state or returns an explicit error, and the git commit helper tests pass.",
       "priority": "high",
@@ -2298,6 +2347,7 @@
     {
       "id": "RQ-0056",
       "status": "done",
+      "kind": "work_item",
       "title": "Deeply investigate and fix parallel-mode queue/done sync for gitignored JSONC queues",
       "description": "Perform a thorough root-cause investigation and remediation for `ralph run loop --parallel 2` when a target repository keeps `.ralph/queue.jsonc` and `.ralph/done.jsonc` gitignored. Prior attempted fixes are not sufficient: after parallel workspace agents finish, commit, and push, the source/root repository's queue and done JSONC files can remain stale instead of reflecting completed worker bookkeeping. The outcome must be a durable, tested parallel-mode synchronization contract that updates coordinator-resolved queue/done paths for gitignored JSONC files without relying on git-tracked propagation.",
       "priority": "critical",
@@ -2400,15 +2450,16 @@
       ],
       "custom_fields": {
         "reported_command": "ralph run loop --parallel 2",
-        "severity_reason": "parallel-mode task state/data integrity loss",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
+        "model_used": "openai-codex/gpt-5.5",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "severity_reason": "parallel-mode task state/data integrity loss"
       }
     },
     {
       "id": "RQ-0050",
       "status": "done",
+      "kind": "work_item",
       "title": "Bump Ralph's pinned Rust baseline from 1.94.1 to 1.95.0",
       "description": "Update the repository's explicit Rust override to match the system global stable toolchain (`rustc 1.95.0`, `cargo 1.95.0`) and record the baseline in the active source-of-truth docs. The earlier queue shaping accidentally trusted the repo-local `rust-toolchain.toml` override, so this task must reconcile `rust-toolchain.toml`, crate `rust-version`, lockfile behavior, release/versioning scripts, and CI docs around the intended Rust 1.95.0 development baseline.",
       "priority": "high",
@@ -2469,6 +2520,7 @@
     {
       "id": "RQ-0057",
       "status": "done",
+      "kind": "work_item",
       "title": "Investigate and design trusted ignored-file sync for parallel workers",
       "description": "Investigate Ralph's current parallel-worker behavior for gitignored non-`.ralph` files beyond `.env*`, decide which ignored local runtime inputs workers should receive, and design a safe explicit policy instead of leaving the concern implicit. The current implementation intentionally copies only ignored `.env` / `.env.*` basenames into worker workspaces. That is not a security concern by itself because files remain local, but repos may depend on other ignored local inputs (tool config, credentials stubs, local data fixtures, model/provider config, or generated-but-required runtime files), and parallel workers may fail or behave differently if those files are absent. Produce a concrete direction and task-ready remediation plan with tests.",
       "priority": "high",
@@ -2536,6 +2588,7 @@
     {
       "id": "RQ-0051",
       "status": "done",
+      "kind": "work_item",
       "title": "Adopt Rust 1.95 match ergonomics and if-let guard best practices",
       "description": "Audit Ralph's match-heavy control flow for places where Rust 1.95's stabilized `if let` guards on match arms make branching clearer without changing semantics. Also run a compatibility pass for 1.95 pattern-matching changes, including stricter import checking, non-exhaustive enum discriminant reads, accidental `mut ref` shorthand gating, and lifetime/visibility diagnostics.",
       "priority": "medium",
@@ -2585,6 +2638,7 @@
     {
       "id": "RQ-0052",
       "status": "done",
+      "kind": "work_item",
       "title": "Apply Rust 1.95 library APIs where they reduce unsafe or mutation boilerplate",
       "description": "Audit Ralph's Rust code for focused, value-positive adoption of Rust 1.95's newly stabilized library APIs. Prioritize APIs that simplify real code: `Vec::push_mut` / `insert_mut`, `VecDeque::*_mut`, atomic `update` / `try_update`, `cfg_select!`, `core::hint::cold_path`, `bool: TryFrom<{integer}>`, const `ControlFlow` helpers, and the `MaybeUninit`/`Cell` array conversion accessors. Replace older patterns only when the result is clearer, safer, or measurably better.",
       "priority": "medium",
@@ -2635,6 +2689,7 @@
     {
       "id": "RQ-0058",
       "status": "done",
+      "kind": "work_item",
       "title": "Audit and modernize `ralph init` UX, trust creation, and parallel-sync setup",
       "description": "Audit the `ralph init` command and initialization documentation for outdated wording and missing setup steps, then modernize init so a new or existing repository is immediately ready for trusted local execution and parallel mode. The desired direction is that running `ralph init` in a repo automatically creates or updates `.ralph/trust.jsonc` because explicit initialization is a trust action; the current optional `--trust-project-commands` path and `ralph config trust init` flow are not discoverable enough. Also add an interactive init step that scans for likely ignored local files needed by parallel workers and lets the user select/deselect recommended files for the explicit parallel sync allowlist designed in RQ-0057.",
       "priority": "high",
@@ -2715,13 +2770,14 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
       }
     },
     {
       "id": "RQ-0053",
       "status": "done",
+      "kind": "work_item",
       "title": "Run the Rust 1.95 compatibility and future-incompatibility audit",
       "description": "Use Rust 1.95.0's compatibility notes as a checklist for build, lint, target, and code-generation risks. The task should make any new warnings or behavior changes explicit, especially custom target JSON destabilization, ambiguous glob-imported traits, derive helper attribute conflicts, array coercion inference changes, non-exhaustive enum matching changes, and stricter feature-attribute checking.",
       "priority": "high",
@@ -2774,6 +2830,7 @@
     {
       "id": "RQ-0054",
       "status": "done",
+      "kind": "work_item",
       "title": "Refresh dependencies, Clippy, rustdoc, and security posture under Rust 1.95.0",
       "description": "Re-run Ralph's dependency freshness, security, lint, and documentation checks under the Rust 1.95.0 toolchain. Include the compiler-side security context from the 1.95 release, rustdoc's new deprecated-item search behavior where relevant to generated documentation review, and LLVM 22/toolchain behavior changes. Make sure dependency updates and any lockfile drift are intentional and documented.",
       "priority": "high",
@@ -2830,6 +2887,7 @@
     {
       "id": "RQ-0055",
       "status": "done",
+      "kind": "work_item",
       "title": "Codify Rust 1.95.0 best-practice verification in local gates",
       "description": "After the Rust 1.95.0 baseline, language/API adoption, compatibility audit, and dependency/security/doc checks are complete, consolidate recurring verification into Ralph's canonical local gates. The outcome should be a clear `make agent-ci` / release-gate story that catches future toolchain drift, including repo-local rustup overrides masking global stable updates, without duplicating CI logic or creating another source of truth.",
       "priority": "medium",
@@ -2887,6 +2945,7 @@
     {
       "id": "RQ-0059",
       "status": "done",
+      "kind": "work_item",
       "title": "Clarify CI gate wording in review prompts",
       "description": "Review the canonical prompt and checklist wording around `agent.ci_gate.enabled` so agents do not confuse a disabled CI requirement with a disabled run. The current completion checklist includes language about \"if the CI gate is disabled\" and being \"CI-clean only when the CI gate is enabled,\" and a real agent trace showed that this wording led to uncertainty about whether setting the gate to false would disable the run itself. Update the prompt verbiage at the source of truth, keep any mirrored prompt/docs wording consistent, and add regression coverage so future prompt changes preserve the clearer contract.",
       "priority": "high",
@@ -2952,6 +3011,7 @@
     {
       "id": "RQ-0060",
       "status": "done",
+      "kind": "work_item",
       "title": "Suppress pi-facing runner buffer truncation warning noise",
       "description": "Stop surfacing Ralph's internal runner output buffer truncation warning during pi-runner usage while preserving the bounded-buffer safeguard itself. The current stream buffering path logs `Runner output buffer exceeded 10MB limit; truncating older content`, which leaks an implementation-detail warning into operator-visible output during pi sessions. The desired outcome is that pi runs no longer show this warning on our side, buffer truncation still protects memory usage, and regression coverage proves the suppression does not hide real failures or break runner stream handling.",
       "priority": "high",
@@ -3011,6 +3071,7 @@
     {
       "id": "RQ-0061",
       "status": "done",
+      "kind": "work_item",
       "title": "Support allowlisted files beneath ignored directory roots",
       "description": "Parallel ignored-file sync currently cannot copy allowlisted files when Git reports only an ignored parent directory entry instead of the nested file path. Why it matters: repos that ignore a whole directory such as `config/` cannot use `parallel.ignored_file_allowlist` to sync specific files inside that directory, even though the config contract says repo-relative file paths and file globs are supported. Minimal fix: change ignored-path enumeration and matching so preflight and sync can inspect concrete ignored files under ignored directory roots without broadening sync to whole directory trees.",
       "priority": "high",
@@ -3063,14 +3124,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
       "id": "RQ-0062",
       "status": "done",
+      "kind": "work_item",
       "title": "Block ignored-file sync from following repo-escaping symlinks",
       "description": "Parallel ignored-file sync currently treats gitignored symlinks as regular files and copies their resolved content into worker workspaces without checking whether the target stays inside the repository. Why it matters: a trusted allowlist or default ignored-file sync entry can exfiltrate arbitrary local machine files into worker clones and downstream runner prompts. Minimal fix: canonicalize matched ignored files during preflight and sync, reject symlinks whose resolved target escapes the repo root, and add regression coverage for both escaping and safe in-repo cases.",
       "priority": "high",
@@ -3123,13 +3185,14 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "pi"
       }
     },
     {
       "id": "RQ-0063",
       "status": "done",
+      "kind": "work_item",
       "title": "Stop zero-match allowlist entries from blocking unrelated machines",
       "description": "Parallel preflight currently makes any `parallel.ignored_file_allowlist` entry that matches zero files a hard failure. Why it matters: trusted repo config and shared global config cannot safely express optional machine-local files like `config/*.local.json` unless every machine has at least one matching ignored file, which makes the feature brittle for team use. Minimal fix: redesign zero-match handling so optional absent files are skipped with explicit diagnostics while unsafe paths, directories, and workspace-root overlaps still fail fast.",
       "priority": "medium",
@@ -3180,14 +3243,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
       "id": "RQ-0064",
       "status": "done",
+      "kind": "work_item",
       "title": "Document the real allowlist contract in trust docs and init UX",
       "description": "The operator-facing docs and init flow do not explain the allowlist contract as concretely as the runtime enforces it. Why it matters: feedback already points to confusion around natural entries like `node_modules/*`, and today users only learn some important rules from runtime failures. Minimal fix: update the canonical configuration/trust docs, schema description, and init/help messaging so they explicitly call out trust gating, valid file/glob examples, invalid examples such as `node_modules/*` and `dir/`, and the fact that this feature is for small ignored files rather than ignored directory trees.",
       "priority": "medium",
@@ -3249,14 +3313,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
       "id": "RQ-0065",
       "status": "done",
+      "kind": "work_item",
       "title": "Keep machine-mode recovery output JSON-only",
       "description": "Machine/app integrations expect structured JSON or NDJSON, but several recovery and startup paths still write prose to stderr before or during self-healing. Goal: suppress human-facing warnings while recovery is in flight and route terminal diagnostics through machine events/documents so app callers get stable typed output.",
       "priority": "high",
@@ -3318,14 +3383,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi"
       }
     },
     {
       "id": "RQ-0066",
       "status": "done",
+      "kind": "work_item",
       "title": "Quarantine corrupt session cache instead of aborting recovery",
       "description": "A corrupt or unreadable session cache currently bubbles up as an error before Ralph can make a resume/fresh/blocking decision. Goal: treat bad session cache as a recoverable state: preserve diagnostics, quarantine the bad file, and continue with a safe explicit recovery outcome when possible.",
       "priority": "high",
@@ -3386,14 +3452,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
       "id": "RQ-0067",
       "status": "done",
+      "kind": "work_item",
       "title": "Defer retry warnings until runner recovery is exhausted",
       "description": "Retry admission and auto-revert paths log warnings during in-flight self-healing. Goal: collect retry diagnostics per attempt, keep in-flight logs at debug/trace, and emit ample redacted detail only on terminal failure or operator-visible recovery output.",
       "priority": "medium",
@@ -3449,14 +3516,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
       "id": "RQ-0068",
       "status": "done",
+      "kind": "work_item",
       "title": "Classify missing CLI binaries as cli_unavailable in machine errors",
       "description": "The machine contract defines a typed cli_unavailable code, but the classifier does not currently map common missing-binary/spawn failures to it. Goal: make app-side recovery typed and stable instead of falling through to Unknown or unrelated generic codes.",
       "priority": "medium",
@@ -3520,6 +3588,7 @@
     {
       "id": "RQ-0069",
       "status": "done",
+      "kind": "work_item",
       "title": "Validate runner session IDs before persisting them",
       "description": "Session-id recovery accepts broad JSON keys and scans all stdout, which can persist unrelated IDs from runner chatter. Goal: only store IDs from runner-specific session-start/resume events and preserve last known-good state when output is ambiguous.",
       "priority": "medium",
@@ -3583,6 +3652,7 @@
     {
       "id": "RQ-0070",
       "status": "done",
+      "kind": "work_item",
       "title": "Stop showing retry progress as Mac error messages",
       "description": "Mac workspace repository loads write retry progress into the same error-message fields used for terminal failures. Goal: keep retry progress non-alarming while self-healing continues, then show a recovery sheet/error only after all attempts are exhausted.",
       "priority": "medium",
@@ -3643,14 +3713,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
       "id": "RQ-0071",
       "status": "done",
+      "kind": "work_item",
       "title": "Suppress Mac watcher degraded warnings during active retry",
       "description": "Queue watcher health reports a warning for degraded state while the watcher still has a scheduled retry. Goal: render active self-healing as neutral/informational status and reserve warning/error severity for exhausted or operator-action states.",
       "priority": "medium",
@@ -3702,14 +3773,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
       "id": "RQ-0072",
       "status": "done",
+      "kind": "work_item",
       "title": "Retry Mac CLI health timeouts before warning users",
       "description": "A single CLI health timeout immediately becomes an unavailable warning in operational health. Goal: self-heal transient health-check timeouts with bounded retries before surfacing a warning, and include attempt diagnostics only if the final health state remains unavailable.",
       "priority": "medium",
@@ -3770,14 +3842,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
       "id": "RQ-0073",
       "status": "done",
+      "kind": "work_item",
       "title": "Align Mac RetryConfiguration semantics with actual attempts",
       "description": "RetryConfiguration is named and documented as maxRetries, but RetryHelper interprets it as total attempts. This can lead maintainers to believe users get more self-healing attempts than they actually do. Goal: make the type/API documentation and tests unambiguous.",
       "priority": "low",
@@ -3832,14 +3905,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "runner_used": "pi"
       }
     },
     {
       "id": "RQ-0074",
       "status": "done",
+      "kind": "work_item",
       "title": "Add plan-file decomposition as a first-class source",
       "description": "Add an explicit file-backed decomposition workflow so a user can point Ralph at a plan document and ask it to create a queue tree for the entire plan. The current `ralph task decompose` surface accepts only task IDs, freeform text, or stdin, while `ralph prd create` reads files but uses a PRD-specific parser instead of the recursive decomposition planner. The desired outcome is one clear command path such as `ralph task decompose --from-file <path>` or an equivalent documented plan-file source that reads the full file, records the source path, preserves preview-first safety, and exposes the same behavior through machine/app surfaces where decomposition is already supported.",
       "priority": "high",
@@ -3887,14 +3961,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
       "id": "RQ-0075",
       "status": "done",
+      "kind": "work_item",
       "title": "Make decomposed tasks retain source-plan provenance",
       "description": "Ensure every task created from a plan-file decomposition carries enough provenance for the executing agent to understand the original plan, the specific slice it owns, and where to look for surrounding context. Current materialization copies planner title/description/tags/scope/plan/request but writes empty evidence and does not inject a source plan path into generated task fields. The desired outcome is generated tasks that consistently reference the original plan file and relevant sections in evidence, scope, request, and/or plan steps while preserving queue schema validity.",
       "priority": "high",
@@ -3944,14 +4019,15 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
       "id": "RQ-0076",
       "status": "done",
+      "kind": "work_item",
       "title": "Prove plan decomposition covers full-plan ordering",
       "description": "Add end-to-end-style coverage and acceptance checks that force plan-file decomposition to preserve the entire plan in logical execution order. The current decomposition prompt asks for directly actionable tasks and optional sibling dependencies, but it does not explicitly require coverage of every plan section, and existing tests focus on normalization, attach/write behavior, replacement safety, and sibling dependencies. The desired outcome is a regression suite and documented acceptance workflow showing that a fixture plan with ordered sections becomes a complete queue subtree with sensible `depends_on` edges and no omitted plan sections.",
       "priority": "medium",
@@ -3995,9 +4071,77 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "scan_agent": "scan-general"
+      }
+    },
+    {
+      "id": "RQ-0077",
+      "status": "done",
+      "kind": "work_item",
+      "title": "Add first-class runnable-vs-group task semantics",
+      "description": "Introduce a canonical task contract for decomposition group nodes versus executable work items so parent tasks are not accidentally selected as atomic implementation tasks. The desired outcome is a machine-safe distinction, likely a `kind`/`runnable` contract rather than prose conventions, that queue selection, runnability reports, schemas, docs, and app consumers all understand.",
+      "priority": "high",
+      "tags": [
+        "task-decompose",
+        "queue",
+        "contracts",
+        "runnability",
+        "ux"
+      ],
+      "scope": [
+        "crates/ralph/src/contracts/task/types.rs",
+        "crates/ralph/src/contracts/task/tests.rs",
+        "crates/ralph/src/queue/operations/query.rs",
+        "crates/ralph/src/queue/operations/runnability/",
+        "crates/ralph/src/queue/operations/tests/query.rs",
+        "crates/ralph/src/queue/operations/tests/runnability.rs",
+        "crates/ralph/src/commands/run/selection.rs",
+        "crates/ralph/src/commands/run/run_one/selection.rs",
+        "crates/ralph/src/commands/run/parallel/worker_selection.rs",
+        "crates/ralph/src/cli/queue/next.rs",
+        "crates/ralph/src/cli/queue/explain.rs",
+        "crates/ralph/src/cli/machine/common.rs",
+        "crates/ralph/src/cli/machine/queue.rs",
+        "apps/RalphMac/RalphCore/RalphTaskModels.swift",
+        "apps/RalphMac/RalphCore/GraphModels.swift",
+        "schemas/queue.schema.json",
+        "crates/ralph/tests/schema_alignment_test.rs",
+        "docs/queue-and-tasks.md",
+        "docs/features/task-schema.md",
+        "docs/machine-contract.md"
+      ],
+      "evidence": [
+        "Warden decomposition feedback: RQ-0001 and RQ-0002 read like grouping or umbrella tasks while RQ-0003 was the first concrete leaf task.",
+        "Current task schema has `parent_id` for structure and `status` for lifecycle, but no explicit field that says a parent node is a non-runnable grouping node.",
+        "If `queue next` or an agent selects a grouping parent, the agent may try to implement an entire subtree or duplicate child work.",
+        "Discovery found runnable selection is centralized in queue operations and run-command helpers, while machine queue read builds a separate `next_runnable_task_id` from `next_runnable_task`.",
+        "RalphMac decodes the full queue task payload in `RalphTaskModels.swift`; any new task contract field must be added there so app round-trips and machine reads preserve it."
+      ],
+      "plan": [
+        "Define one canonical contract for task actionability, preferring a typed `kind` enum with default runnable/work-item behavior over custom_fields or title/status conventions; document migration/default behavior for existing tasks.",
+        "Update the Rust task model, JSON schema generation, queue validation, machine contracts, and RalphMac decoding so the new actionability semantics are preserved end to end.",
+        "Centralize task-actionability helpers and route queue selection, run one/loop/parallel selection, runnability reports, prompt inference, and machine `next_runnable_task_id` through them so group nodes are skipped by default.",
+        "Add regression coverage proving parent/group tasks are visible in tree/graph output but are not selected by `ralph queue next`, `run one`, or machine runnability by default."
+      ],
+      "notes": [
+        "Created from Warden `task decompose` feedback about unclear parent/group task semantics.",
+        "Avoid solving this with prose-only conventions; downstream automation needs a stable machine-readable signal.",
+        "Added first-class task kind semantics for executable work items vs non-runnable groups; Phase 3 fixed machine validation-failure candidate counting and verified CI green."
+      ],
+      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
+      "created_at": "2026-04-30T19:41:18Z",
+      "updated_at": "2026-04-30T20:46:43.377209000Z",
+      "completed_at": "2026-04-30T20:46:43.377209000Z",
+      "started_at": "2026-04-30T19:44:26.974017000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi",
+        "source_feedback": "warden_task_decompose_feedback"
       }
     }
   ]

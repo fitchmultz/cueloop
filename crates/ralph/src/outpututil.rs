@@ -278,6 +278,7 @@ mod tests {
         let task = Task {
             id: "RQ-123".into(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "My Task".into(),
             ..Default::default()
         };
@@ -292,6 +293,7 @@ mod tests {
         let task = Task {
             id: "RQ-123".into(),
             status: TaskStatus::Done,
+            kind: Default::default(),
             title: "My Task".into(),
             tags: vec!["t1".into(), "t2".into()],
             scope: vec!["s1".into()],
@@ -313,6 +315,7 @@ mod tests {
         let task = Task {
             id: "RQ-123".into(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             priority: TaskPriority::High,
             title: "My Task".into(),
             ..Default::default()

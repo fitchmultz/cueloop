@@ -184,7 +184,8 @@ pub fn get_runnable_tasks(graph: &DependencyGraph) -> Vec<String> {
     graph
         .values()
         .filter(|n| {
-            n.task.status == TaskStatus::Todo
+            n.task.is_executable_work_item()
+                && n.task.status == TaskStatus::Todo
                 && n.dependencies
                     .iter()
                     .all(|dep_id| graph.is_task_completed(dep_id))
@@ -197,7 +198,8 @@ pub fn get_blocked_tasks(graph: &DependencyGraph) -> Vec<String> {
     graph
         .values()
         .filter(|n| {
-            matches!(n.task.status, TaskStatus::Todo | TaskStatus::Doing)
+            n.task.is_executable_work_item()
+                && matches!(n.task.status, TaskStatus::Todo | TaskStatus::Doing)
                 && n.dependencies
                     .iter()
                     .any(|dep_id| !graph.is_task_completed(dep_id))

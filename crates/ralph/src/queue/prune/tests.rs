@@ -45,6 +45,7 @@ fn task_with(id: &str, status: TaskStatus, tags: Vec<String>) -> Task {
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: "Test task".to_string(),
         description: None,
         priority: Default::default(),

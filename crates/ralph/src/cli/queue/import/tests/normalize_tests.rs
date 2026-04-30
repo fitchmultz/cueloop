@@ -42,6 +42,7 @@ fn normalize_task_backfills_timestamps() {
         title: "Test".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         ..Default::default()
     };
     let now = "2026-01-01T00:00:00.000000000Z";
@@ -60,6 +61,7 @@ fn normalize_task_backfills_completed_at_for_terminal() {
         title: "Test".to_string(),
         description: None,
         status: TaskStatus::Done,
+        kind: Default::default(),
         ..Default::default()
     };
     normalize_task(&mut done_task, now);
@@ -70,6 +72,7 @@ fn normalize_task_backfills_completed_at_for_terminal() {
         title: "Test".to_string(),
         description: None,
         status: TaskStatus::Rejected,
+        kind: Default::default(),
         ..Default::default()
     };
     normalize_task(&mut rejected_task, now);

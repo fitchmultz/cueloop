@@ -22,6 +22,22 @@
 
 public import Foundation
 
+public enum RalphTaskKind: String, Codable, Sendable, Equatable, CaseIterable {
+    case workItem = "work_item"
+    case group = "group"
+
+    public var displayName: String {
+        switch self {
+        case .workItem: return "Work item"
+        case .group: return "Group"
+        }
+    }
+
+    public var isExecutable: Bool {
+        self == .workItem
+    }
+}
+
 public enum RalphTaskStatus: String, Codable, Sendable, Equatable, CaseIterable {
     case draft = "draft"
     case todo = "todo"
@@ -309,6 +325,7 @@ public enum RalphTaskExecutionPreset: String, CaseIterable, Sendable, Identifiab
 public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     public let id: String
     public var status: RalphTaskStatus
+    public var kind: RalphTaskKind
     public var title: String
     public var description: String?
     public var priority: RalphTaskPriority
@@ -334,7 +351,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     public var parentID: String?
 
     private enum CodingKeys: String, CodingKey {
-        case id, status, title, description, priority, tags, scope, evidence, plan, notes
+        case id, status, kind, title, description, priority, tags, scope, evidence, plan, notes
         case request, agent, dependsOn = "depends_on", blocks, relatesTo = "relates_to"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -351,6 +368,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     public init(
         id: String,
         status: RalphTaskStatus,
+        kind: RalphTaskKind = .workItem,
         title: String,
         description: String? = nil,
         priority: RalphTaskPriority,
@@ -377,6 +395,7 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
     ) {
         self.id = id
         self.status = status
+        self.kind = kind
         self.title = title
         self.description = description
         self.priority = priority
@@ -400,6 +419,36 @@ public struct RalphTask: Codable, Sendable, Equatable, Identifiable {
         self.duplicates = duplicates
         self.customFields = customFields
         self.parentID = parentID
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.status = try container.decode(RalphTaskStatus.self, forKey: .status)
+        self.kind = try container.decodeIfPresent(RalphTaskKind.self, forKey: .kind) ?? .workItem
+        self.title = try container.decode(String.self, forKey: .title)
+        self.description = try container.decodeIfPresent(String.self, forKey: .description)
+        self.priority = try container.decode(RalphTaskPriority.self, forKey: .priority)
+        self.tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        self.scope = try container.decodeIfPresent([String].self, forKey: .scope)
+        self.evidence = try container.decodeIfPresent([String].self, forKey: .evidence)
+        self.plan = try container.decodeIfPresent([String].self, forKey: .plan)
+        self.notes = try container.decodeIfPresent([String].self, forKey: .notes)
+        self.request = try container.decodeIfPresent(String.self, forKey: .request)
+        self.agent = try container.decodeIfPresent(RalphTaskAgent.self, forKey: .agent)
+        self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        self.updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        self.startedAt = try container.decodeIfPresent(Date.self, forKey: .startedAt)
+        self.completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        self.estimatedMinutes = try container.decodeIfPresent(Int.self, forKey: .estimatedMinutes)
+        self.actualMinutes = try container.decodeIfPresent(Int.self, forKey: .actualMinutes)
+        self.scheduledStart = try container.decodeIfPresent(Date.self, forKey: .scheduledStart)
+        self.dependsOn = try container.decodeIfPresent([String].self, forKey: .dependsOn)
+        self.blocks = try container.decodeIfPresent([String].self, forKey: .blocks)
+        self.relatesTo = try container.decodeIfPresent([String].self, forKey: .relatesTo)
+        self.duplicates = try container.decodeIfPresent(String.self, forKey: .duplicates)
+        self.customFields = try container.decodeIfPresent([String: String].self, forKey: .customFields)
+        self.parentID = try container.decodeIfPresent(String.self, forKey: .parentID)
     }
 }
 

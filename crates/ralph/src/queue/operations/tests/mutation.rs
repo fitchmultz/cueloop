@@ -79,6 +79,7 @@ fn backfill_missing_fields_applies_defaults() {
         tasks: vec![Task {
             id: "RQ-0002".to_string(),
             status: TaskStatus::Todo,
+            kind: Default::default(),
             title: "Title".to_string(),
             description: None,
             priority: Default::default(),
@@ -292,6 +293,7 @@ fn sort_tasks_by_priority_descending_orders_high_first() {
             Task {
                 id: "RQ-0002".to_string(),
                 status: TaskStatus::Todo,
+                kind: Default::default(),
                 title: "Low".to_string(),
                 description: None,
                 priority: TaskPriority::Low,
@@ -319,6 +321,7 @@ fn sort_tasks_by_priority_descending_orders_high_first() {
             Task {
                 id: "RQ-0001".to_string(),
                 status: TaskStatus::Todo,
+                kind: Default::default(),
                 title: "High".to_string(),
                 description: None,
                 priority: TaskPriority::High,
@@ -382,6 +385,7 @@ fn task_id_set_ignores_empty_ids() {
     queue.tasks.push(Task {
         id: "".to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: "Bad".to_string(),
         description: None,
         priority: Default::default(),

@@ -89,6 +89,7 @@ fn scan_task(id: &str, title: &str) -> Task {
     Task {
         id: id.to_string(),
         status: TaskStatus::Todo,
+        kind: Default::default(),
         title: title.to_string(),
         description: None,
         priority: Default::default(),

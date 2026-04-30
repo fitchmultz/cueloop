@@ -19,7 +19,7 @@
 //! - Timestamps in tests are RFC3339 and treated as UTC.
 //! - Report output is deterministic for the provided `now` timestamp.
 
-use super::{QueueFile, Task, TaskStatus};
+use super::{QueueFile, Task, TaskKind, TaskStatus};
 use crate::contracts::BlockingReason;
 use crate::queue::operations::{
     NotRunnableReason, RunnableSelectionOptions, queue_runnability_report_at,
@@ -35,6 +35,7 @@ fn make_task_with_deps(
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: format!("Task {}", id),
         description: None,
         priority: Default::default(),
@@ -398,5 +399,96 @@ fn test_runnability_report_mixed_queue_blocking_state() {
             schedule_blocked: 1,
             status_filtered: 0,
         })
+    ));
+}
+
+#[test]
+fn runnability_report_keeps_group_row_but_excludes_it_from_candidates() {
+    let mut group = make_task_with_deps("RQ-0001", TaskStatus::Todo, None, vec![]);
+    group.kind = TaskKind::Group;
+    let work_item = make_task_with_deps("RQ-0002", TaskStatus::Todo, None, vec![]);
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![group, work_item],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, false),
+    )
+    .unwrap();
+
+    assert_eq!(report.tasks[0].kind, TaskKind::Group);
+    assert!(!report.tasks[0].runnable);
+    assert!(matches!(
+        report.tasks[0].reasons[0],
+        NotRunnableReason::NonExecutableKind {
+            task_kind: TaskKind::Group
+        }
+    ));
+    assert_eq!(report.summary.candidates_total, 1);
+    assert_eq!(report.summary.runnable_candidates, 1);
+    assert_eq!(
+        report.selection.selected_task_id.as_deref(),
+        Some("RQ-0002")
+    );
+}
+
+#[test]
+fn runnability_report_group_only_queue_is_idle_with_zero_candidates() {
+    let mut group = make_task_with_deps("RQ-0001", TaskStatus::Todo, None, vec![]);
+    group.kind = TaskKind::Group;
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![group],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, false),
+    )
+    .unwrap();
+
+    assert_eq!(report.summary.candidates_total, 0);
+    assert_eq!(report.summary.runnable_candidates, 0);
+    assert!(matches!(
+        report.summary.blocking.as_ref().map(|state| &state.reason),
+        Some(BlockingReason::Idle {
+            include_draft: false
+        })
+    ));
+    assert_eq!(report.selection.selected_task_id, None);
+}
+
+#[test]
+fn runnability_report_mixed_group_and_blocked_work_item_counts_only_work_item() {
+    let mut group = make_task_with_deps("RQ-0001", TaskStatus::Todo, None, vec![]);
+    group.kind = TaskKind::Group;
+    let blocked = make_task_with_deps("RQ-0002", TaskStatus::Todo, None, vec!["RQ-9999"]);
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![group, blocked],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, false),
+    )
+    .unwrap();
+
+    assert_eq!(report.summary.candidates_total, 1);
+    assert_eq!(report.summary.blocked_by_dependencies, 1);
+    assert!(matches!(
+        report.summary.blocking.as_ref().map(|state| &state.reason),
+        Some(BlockingReason::DependencyBlocked { blocked_tasks: 1 })
     ));
 }

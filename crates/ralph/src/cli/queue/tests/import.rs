@@ -72,6 +72,7 @@ fn queue_import_dry_run_does_not_write() -> Result<()> {
         title: "Existing task".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
         ..Default::default()
@@ -109,6 +110,7 @@ fn queue_import_dry_run_invalid_timestamp_fails() -> Result<()> {
         title: "Existing task".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
         ..Default::default()
@@ -151,6 +153,7 @@ fn queue_import_writes_and_repositions() -> Result<()> {
         title: "Doing task".to_string(),
         description: None,
         status: TaskStatus::Doing,
+        kind: Default::default(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
         ..Default::default()
@@ -194,6 +197,7 @@ fn queue_import_duplicate_fail() -> Result<()> {
         title: "Existing".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
         ..Default::default()
@@ -232,6 +236,7 @@ fn queue_import_duplicate_skip() -> Result<()> {
         title: "Existing".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
         ..Default::default()
@@ -268,6 +273,7 @@ fn queue_import_duplicate_rename() -> Result<()> {
         title: "Existing".to_string(),
         description: None,
         status: TaskStatus::Todo,
+        kind: Default::default(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
         ..Default::default()

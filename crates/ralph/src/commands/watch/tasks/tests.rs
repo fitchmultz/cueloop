@@ -96,6 +96,7 @@ fn task_with_custom_fields(
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: "watch task".to_string(),
         description: None,
         priority: TaskPriority::Medium,

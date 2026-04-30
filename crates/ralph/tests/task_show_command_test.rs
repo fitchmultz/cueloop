@@ -37,6 +37,7 @@ fn make_task(id: &str, status: TaskStatus, title: &str) -> Task {
     Task {
         id: id.to_string(),
         status,
+        kind: Default::default(),
         title: title.to_string(),
         description: None,
         priority: ralph::contracts::TaskPriority::Medium,

@@ -59,7 +59,9 @@ pub fn run_loop(resolved: &config::Resolved, opts: RunLoopOptions) -> Result<Run
         .tasks
         .iter()
         .filter(|task| {
-            task.status == TaskStatus::Todo || (include_draft && task.status == TaskStatus::Draft)
+            task.is_executable_work_item()
+                && (task.status == TaskStatus::Todo
+                    || (include_draft && task.status == TaskStatus::Draft))
         })
         .count() as u32;
 

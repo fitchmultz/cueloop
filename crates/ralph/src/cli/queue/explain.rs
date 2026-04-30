@@ -129,10 +129,11 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
         println!("Blocking reasons (first 10 candidates):");
         let mut shown = 0;
         for row in &report.tasks {
-            // Only show candidates (Todo or Draft if include_draft)
-            let is_candidate = row.status == crate::contracts::TaskStatus::Todo
-                || (report.selection.include_draft
-                    && row.status == crate::contracts::TaskStatus::Draft);
+            // Only show executable candidates (Todo or Draft if include_draft)
+            let is_candidate = row.kind.is_executable()
+                && (row.status == crate::contracts::TaskStatus::Todo
+                    || (report.selection.include_draft
+                        && row.status == crate::contracts::TaskStatus::Draft));
             if !is_candidate || row.runnable {
                 continue;
             }
@@ -140,6 +141,9 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
             println!("  {} (status: {:?}):", row.id, row.status);
             for reason in &row.reasons {
                 match reason {
+                    NotRunnableReason::NonExecutableKind { task_kind } => {
+                        println!("    - Non-executable task kind: {}", task_kind);
+                    }
                     NotRunnableReason::StatusNotRunnable { status } => {
                         println!("    - Status prevents running: {}", status);
                     }
@@ -225,6 +229,9 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
                 println!("  Reasons:");
                 for reason in &row.reasons {
                     match reason {
+                        NotRunnableReason::NonExecutableKind { task_kind } => {
+                            println!("    - Non-executable task kind: {}", task_kind);
+                        }
                         NotRunnableReason::StatusNotRunnable { status } => {
                             println!("    - Status prevents running: {}", status);
                         }

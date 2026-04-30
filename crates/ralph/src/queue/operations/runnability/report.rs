@@ -17,8 +17,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Candidate counting matches `queue next` semantics: Todo plus Draft when enabled.
-//! - Prefer-doing selection intentionally wins even if a Doing task is blocked.
+//! - Candidate counting matches `queue next` semantics: executable Todo plus Draft when enabled.
+//! - Prefer-doing selection intentionally wins only for executable Doing tasks.
 
 use anyhow::Result;
 
@@ -94,7 +94,7 @@ fn summarize_rows(
     let mut blocked_by_schedule = 0usize;
     let mut blocked_by_status_or_flags = 0usize;
 
-    for row in rows.iter().filter(|row| is_candidate(row.status, options)) {
+    for row in rows.iter().filter(|row| is_candidate(row, options)) {
         candidates_total += 1;
         if row.runnable {
             runnable_candidates += 1;
@@ -103,6 +103,7 @@ fn summarize_rows(
 
         for reason in &row.reasons {
             match reason {
+                NotRunnableReason::NonExecutableKind { .. } => {}
                 NotRunnableReason::StatusNotRunnable { .. } | NotRunnableReason::DraftExcluded => {
                     blocked_by_status_or_flags += 1;
                 }
@@ -179,7 +180,10 @@ fn build_selection(
     options: RunnableSelectionOptions,
 ) -> QueueRunnabilitySelection {
     let (selected_task_id, selected_task_status) = if options.prefer_doing
-        && let Some(task) = active.tasks.iter().find(|t| t.status == TaskStatus::Doing)
+        && let Some(task) = active
+            .tasks
+            .iter()
+            .find(|t| t.status == TaskStatus::Doing && t.is_executable_work_item())
     {
         (Some(task.id.clone()), Some(TaskStatus::Doing))
     } else {
@@ -202,11 +206,14 @@ fn select_first_runnable_row(
 ) -> Option<&super::model::TaskRunnabilityRow> {
     rows.iter().find(|row| {
         row.runnable
+            && row.kind.is_executable()
             && (row.status == TaskStatus::Todo
                 || (options.include_draft && row.status == TaskStatus::Draft))
     })
 }
 
-fn is_candidate(status: TaskStatus, options: RunnableSelectionOptions) -> bool {
-    status == TaskStatus::Todo || (options.include_draft && status == TaskStatus::Draft)
+fn is_candidate(row: &super::model::TaskRunnabilityRow, options: RunnableSelectionOptions) -> bool {
+    row.kind.is_executable()
+        && (row.status == TaskStatus::Todo
+            || (options.include_draft && row.status == TaskStatus::Draft))
 }

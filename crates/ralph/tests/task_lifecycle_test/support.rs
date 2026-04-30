@@ -90,6 +90,7 @@ pub(super) fn draft_task(id: &str, title: &str) -> Task {
         id: id.to_string(),
         title: title.to_string(),
         status: TaskStatus::Draft,
+        kind: Default::default(),
         created_at: Some(FIXTURE_TIMESTAMP.to_string()),
         updated_at: Some(FIXTURE_TIMESTAMP.to_string()),
         ..Default::default()
