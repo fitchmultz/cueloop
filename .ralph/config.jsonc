@@ -9,7 +9,7 @@
     },
     "git_publish_mode": "commit_and_push",
     "runner": "pi",
-    "model": "openai-codex/gpt-5.5:high",
+    "model": "openai-codex/gpt-5.5:xhigh",
     "phases": 3
   },
   "version": 2
