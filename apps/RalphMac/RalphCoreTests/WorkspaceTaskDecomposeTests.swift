@@ -62,6 +62,38 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
         XCTAssertFalse(log.contains("--write"))
     }
 
+    func test_previewTaskDecomposition_passesPlanFileArgumentsAndDecodesSource() async throws {
+        let fixture = try Self.makeMockCLIFixture(previewJSON: Self.planFilePreviewJSON)
+        var workspace: Workspace!
+        defer { RalphCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try RalphCLIClient(executableURL: fixture.scriptURL)
+        )
+        let planURL = fixture.workspaceURL.appendingPathComponent("docs/plans/auth.md")
+
+        let preview = try await workspace.previewTaskDecomposition(
+            source: .planFile(planURL),
+            options: TaskDecomposeOptions(
+                attachToTaskID: "RQ-0042",
+                maxDepth: 4,
+                maxChildren: 6,
+                maxNodes: 40,
+                status: .todo,
+                childPolicy: .append,
+                withDependencies: true
+            )
+        )
+
+        XCTAssertEqual(preview.source, .planFile(path: "docs/plans/auth.md"))
+        XCTAssertEqual(preview.attachTarget?.task.id, "RQ-0042")
+
+        let log = try String(contentsOf: fixture.logURL, encoding: .utf8)
+        XCTAssertTrue(log.contains("machine task decompose --from-file \(planURL.path) --max-depth 4 --max-children 6 --max-nodes 40 --status todo --child-policy append --with-dependencies --attach-to RQ-0042"))
+        XCTAssertFalse(log.contains("--write"))
+    }
+
     func test_writeTaskDecomposition_decodesWriteResultAndReloadsTasks() async throws {
         let fixture = try Self.makeMockCLIFixture()
         var workspace: Workspace!
@@ -129,7 +161,8 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
     }
 
     private static func makeMockCLIFixture(
-        decomposeFailureDocument: MachineErrorDocument? = nil
+        decomposeFailureDocument: MachineErrorDocument? = nil,
+        previewJSON: String? = nil
     ) throws -> MockCLIFixture {
         let queueTasks = [
             RalphMockCLITestSupport.task(
@@ -178,7 +211,7 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
         )
 
         let previewURL = fixture.rootURL.appendingPathComponent("decompose-preview.json", isDirectory: false)
-        try Self.previewJSON.write(to: previewURL, atomically: true, encoding: .utf8)
+        try (previewJSON ?? Self.previewJSON).write(to: previewURL, atomically: true, encoding: .utf8)
         let writeURL = fixture.rootURL.appendingPathComponent("decompose-write.json", isDirectory: false)
         try Self.writeJSON.write(to: writeURL, atomically: true, encoding: .utf8)
         let errorURL: URL?
@@ -317,6 +350,51 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
             "detail": "Persist the planned tree into the queue."
           }
         ]
+      }
+    }
+    """
+
+    private static let planFilePreviewJSON = """
+    {
+      "version": 2,
+      "blocking": null,
+      "result": {
+        "version": 1,
+        "mode": "preview",
+        "preview": {
+          "source": {"kind": "plan_file", "path": "docs/plans/auth.md"},
+          "attach_target": {
+            "task": {"id":"RQ-0042","status":"todo","title":"Auth program","priority":"high","tags":[]},
+            "has_existing_children": false
+          },
+          "plan": {
+            "root": {
+              "planner_key": "root",
+              "title": "Auth plan",
+              "description": null,
+              "plan": [],
+              "tags": [],
+              "scope": [],
+              "depends_on_keys": [],
+              "children": []
+            },
+            "warnings": [],
+            "total_nodes": 1,
+            "leaf_nodes": 1,
+            "dependency_edges": []
+          },
+          "write_blockers": [],
+          "child_status": "todo",
+          "child_policy": "append",
+          "with_dependencies": true
+        },
+        "write": null
+      },
+      "continuation": {
+        "headline": "Decomposition preview is ready.",
+        "detail": "Ralph planned a task tree that can be written when you are ready.",
+        "blocking": null,
+        "next_steps": []
       }
     }
     """

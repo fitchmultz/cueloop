@@ -19,6 +19,8 @@
 //! - Preview is the default mode; `--write` must be explicit for mutation.
 //! - `source` may be a task ID or freeform request text.
 
+use std::path::PathBuf;
+
 use clap::Args;
 
 use super::types::{TaskDecomposeChildPolicyArg, TaskDecomposeFormatArg, TaskStatusArg};
@@ -27,9 +29,13 @@ use crate::agent;
 #[derive(Args, Clone, Debug)]
 pub struct TaskDecomposeArgs {
     /// Task ID or freeform request text to decompose.
-    /// If omitted, reads from stdin.
+    /// If omitted and --from-file is not used, reads from stdin.
     #[arg(value_name = "SOURCE")]
     pub source: Vec<String>,
+
+    /// Read a plan document from a file and decompose the entire plan.
+    #[arg(long = "from-file", value_name = "PATH")]
+    pub from_file: Option<PathBuf>,
 
     /// Attach a new decomposition subtree under an existing parent task.
     #[arg(long, value_name = "TASK_ID")]

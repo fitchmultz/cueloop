@@ -18,7 +18,7 @@
 
  Invariants/assumptions callers must respect:
  - Preview and write must use the same source/options except for `--write`.
- - Freeform attach workflows use `attachToTaskID`; existing-task decomposition does not.
+ - New-subtree workflows use `attachToTaskID`; existing-task decomposition does not.
  - JSON responses must conform to the stable CLI envelope schema.
  */
 
@@ -110,7 +110,9 @@ extension Workspace {
             "machine",
             "task",
             "decompose",
-            sourceArgument(for: source),
+        ]
+        arguments.append(contentsOf: sourceArguments(for: source))
+        arguments.append(contentsOf: [
             "--max-depth",
             String(options.maxDepth),
             "--max-children",
@@ -121,13 +123,13 @@ extension Workspace {
             options.status.rawValue,
             "--child-policy",
             options.childPolicy.rawValue,
-        ]
+        ])
 
         if options.withDependencies {
             arguments.append("--with-dependencies")
         }
 
-        if case .freeform = source,
+        if source.allowsAttachTarget,
            let attachToTaskID = normalizedOptionalString(options.attachToTaskID) {
             arguments.append(contentsOf: ["--attach-to", attachToTaskID])
         }
@@ -139,12 +141,25 @@ extension Workspace {
         return arguments
     }
 
-    private func sourceArgument(for source: TaskDecomposeSourceInput) -> String {
+    private func sourceArguments(for source: TaskDecomposeSourceInput) -> [String] {
         switch source {
         case .freeform(let request):
-            return request
+            return [request]
         case .existingTaskID(let taskID):
-            return taskID
+            return [taskID]
+        case .planFile(let url):
+            return ["--from-file", url.path]
+        }
+    }
+}
+
+private extension TaskDecomposeSourceInput {
+    var allowsAttachTarget: Bool {
+        switch self {
+        case .freeform, .planFile:
+            return true
+        case .existingTaskID:
+            return false
         }
     }
 }

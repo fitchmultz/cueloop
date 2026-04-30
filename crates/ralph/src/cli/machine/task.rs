@@ -107,12 +107,16 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             print_json(&build_task_mutation_document(&report, args.dry_run)?)
         }
         MachineTaskCommand::Decompose(args) => {
-            let source_input = task_cmd::read_request_from_args_or_stdin(&args.source)?;
+            let source = machine_decompose_source_from_args(
+                &resolved,
+                &args.source,
+                args.from_file.as_deref(),
+            )?;
             let overrides = agent::resolve_agent_overrides(&args.agent)?;
             let preview = task_cmd::plan_task_decomposition(
                 &resolved,
                 &task_cmd::TaskDecomposeOptions {
-                    source_input,
+                    source,
                     attach_to_task_id: args.attach_to,
                     max_depth: args.max_depth,
                     max_children: usize::from(args.max_children),
@@ -140,6 +144,24 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             print_json(&build_decompose_document(&preview, write.as_ref()))
         }
     }
+}
+
+fn machine_decompose_source_from_args(
+    resolved: &config::Resolved,
+    source_args: &[String],
+    from_file: Option<&std::path::Path>,
+) -> Result<task_cmd::TaskDecomposeSourceInput> {
+    if let Some(path) = from_file {
+        if !source_args.is_empty() {
+            bail!(
+                "`ralph machine task decompose --from-file` cannot be combined with positional SOURCE text."
+            );
+        }
+        return task_cmd::read_plan_file_source(resolved, path);
+    }
+    Ok(task_cmd::TaskDecomposeSourceInput::Inline(
+        task_cmd::read_request_from_args_or_stdin(source_args)?,
+    ))
 }
 
 fn build_task_from_request(

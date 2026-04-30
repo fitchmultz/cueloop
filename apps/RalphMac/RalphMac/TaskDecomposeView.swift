@@ -6,7 +6,7 @@
 
  Responsibilities:
  - Present a dedicated UI for previewing and writing task decompositions.
- - Support freeform decomposition and existing-task decomposition from a selected task context.
+ - Support freeform, plan-file, and existing-task decomposition from a selected task context.
  - Render CLI preview results, warnings, blockers, and write summaries without reimplementing planner logic.
 
  Does not handle:
@@ -19,11 +19,12 @@
 
  Invariants/assumptions callers must respect:
  - Preview must be run before write.
- - Existing-task mode decomposes the selected task in place; freeform mode may optionally attach under a parent.
+ - Existing-task mode decomposes the selected task in place; freeform and plan-file modes may optionally attach under a parent.
  - Any form change invalidates the active preview and requires a fresh preview before write.
  */
 
 import SwiftUI
+import UniformTypeIdentifiers
 import RalphCore
 
 @MainActor
@@ -35,6 +36,7 @@ struct TaskDecomposeView: View {
     private enum SourceMode: String, CaseIterable, Identifiable {
         case freeform
         case existingTask
+        case planFile
 
         var id: String { rawValue }
 
@@ -42,6 +44,16 @@ struct TaskDecomposeView: View {
             switch self {
             case .freeform: return "Freeform Goal"
             case .existingTask: return "Existing Task"
+            case .planFile: return "Plan File"
+            }
+        }
+
+        var allowsAttachTarget: Bool {
+            switch self {
+            case .freeform, .planFile:
+                return true
+            case .existingTask:
+                return false
             }
         }
     }
@@ -49,6 +61,7 @@ struct TaskDecomposeView: View {
     private enum AccessibilityID {
         static let requestField = "task-decompose-request-field"
         static let taskPicker = "task-decompose-task-picker"
+        static let planFileButton = "task-decompose-plan-file-button"
         static let previewButton = "task-decompose-preview-button"
         static let writeButton = "task-decompose-write-button"
         static let summary = "task-decompose-summary"
@@ -62,6 +75,8 @@ struct TaskDecomposeView: View {
     @State private var freeformRequest: String = ""
     @State private var selectedTaskID: String?
     @State private var attachToTaskID: String?
+    @State private var planFileURL: URL?
+    @State private var showingPlanFileImporter = false
     @State private var maxDepth: Int = 3
     @State private var maxChildren: Int = 5
     @State private var maxNodes: Int = 50
@@ -105,12 +120,15 @@ struct TaskDecomposeView: View {
         case .existingTask:
             guard let selectedTaskID, !selectedTaskID.isEmpty else { return nil }
             return .existingTaskID(selectedTaskID)
+        case .planFile:
+            guard let planFileURL else { return nil }
+            return .planFile(planFileURL)
         }
     }
 
     private var options: TaskDecomposeOptions {
         TaskDecomposeOptions(
-            attachToTaskID: sourceMode == .freeform ? attachToTaskID : nil,
+            attachToTaskID: sourceMode.allowsAttachTarget ? attachToTaskID : nil,
             maxDepth: maxDepth,
             maxChildren: maxChildren,
             maxNodes: maxNodes,
@@ -154,6 +172,15 @@ struct TaskDecomposeView: View {
             }
         }
         .frame(minWidth: 760, minHeight: 680)
+        .fileImporter(
+            isPresented: $showingPlanFileImporter,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result {
+                planFileURL = urls.first
+            }
+        }
         .sheet(isPresented: $showingRecoverySheet) {
             if let recoveryError {
                 ErrorRecoverySheet(
@@ -178,6 +205,7 @@ struct TaskDecomposeView: View {
         .onChange(of: freeformRequest) { _, _ in invalidatePreview() }
         .onChange(of: selectedTaskID) { _, _ in invalidatePreview() }
         .onChange(of: attachToTaskID) { _, _ in invalidatePreview() }
+        .onChange(of: planFileURL) { _, _ in invalidatePreview() }
         .onChange(of: maxDepth) { _, _ in invalidatePreview() }
         .onChange(of: maxChildren) { _, _ in invalidatePreview() }
         .onChange(of: maxNodes) { _, _ in invalidatePreview() }
@@ -201,6 +229,35 @@ struct TaskDecomposeView: View {
                 TextField("Describe the goal to decompose", text: $freeformRequest, axis: .vertical)
                     .lineLimit(3...6)
                     .accessibilityIdentifier(AccessibilityID.requestField)
+
+                Picker("Attach under", selection: Binding(
+                    get: { attachToTaskID ?? "" },
+                    set: { attachToTaskID = $0.isEmpty ? nil : $0 }
+                )) {
+                    Text("None").tag("")
+                    ForEach(availableTasks) { task in
+                        Text("\(task.id) · \(task.title)").tag(task.id)
+                    }
+                }
+                .pickerStyle(.menu)
+            case .planFile:
+                Button {
+                    showingPlanFileImporter = true
+                } label: {
+                    Label("Choose Plan File...", systemImage: "doc.text")
+                }
+                .accessibilityIdentifier(AccessibilityID.planFileButton)
+
+                if let planFileURL {
+                    Text(planFileURL.path)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                } else {
+                    Text("Choose a Markdown, text, or other UTF-8 plan document to decompose.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 Picker("Attach under", selection: Binding(
                     get: { attachToTaskID ?? "" },
@@ -401,6 +458,8 @@ struct TaskDecomposeView: View {
             return request
         case .existingTask(let task):
             return "\(task.id) · \(task.title)"
+        case .planFile(let path):
+            return "Plan file: \(path)"
         }
     }
 

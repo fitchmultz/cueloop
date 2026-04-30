@@ -21,6 +21,8 @@
 //! - Machine commands stay non-human-facing and versioned.
 //! - Subcommand shapes remain stable unless machine contract versions change.
 
+use std::path::PathBuf;
+
 use clap::Args;
 use clap::Subcommand;
 
@@ -156,6 +158,8 @@ pub struct MachineTaskMutateArgs {
 #[derive(Args)]
 pub struct MachineTaskDecomposeArgs {
     pub source: Vec<String>,
+    #[arg(long = "from-file", value_name = "PATH")]
+    pub from_file: Option<PathBuf>,
     #[arg(long)]
     pub attach_to: Option<String>,
     #[arg(long, default_value_t = 3)]

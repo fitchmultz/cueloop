@@ -22,7 +22,7 @@
  - Existing-task decomposition and attach-to-freeform decomposition remain distinct user intents.
  */
 
-import Foundation
+public import Foundation
 
 public enum DecompositionChildPolicy: String, Decodable, Sendable, Equatable, CaseIterable, Identifiable {
     case fail
@@ -54,6 +54,7 @@ public enum DecompositionChildPolicy: String, Decodable, Sendable, Equatable, Ca
 public enum TaskDecomposeSourceInput: Sendable, Equatable {
     case freeform(String)
     case existingTaskID(String)
+    case planFile(URL)
 }
 
 public struct TaskDecomposeOptions: Sendable, Equatable {
@@ -87,6 +88,7 @@ public struct TaskDecomposeOptions: Sendable, Equatable {
 public enum DecompositionSource: Sendable, Equatable {
     case freeform(request: String)
     case existingTask(task: RalphTask)
+    case planFile(path: String)
 }
 
 extension DecompositionSource: Decodable {
@@ -94,11 +96,13 @@ extension DecompositionSource: Decodable {
         case kind
         case request
         case task
+        case path
     }
 
     private enum Kind: String, Decodable {
         case freeform
         case existingTask = "existing_task"
+        case planFile = "plan_file"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -108,6 +112,8 @@ extension DecompositionSource: Decodable {
             self = .freeform(request: try container.decode(String.self, forKey: .request))
         case .existingTask:
             self = .existingTask(task: try container.decode(RalphTask.self, forKey: .task))
+        case .planFile:
+            self = .planFile(path: try container.decode(String.self, forKey: .path))
         }
     }
 }

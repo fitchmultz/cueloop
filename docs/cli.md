@@ -158,6 +158,8 @@ ralph queue archive
 ```bash
 ralph task build "Refactor queue parsing"
 ralph task decompose "Build OAuth login with GitHub and Google"
+ralph task decompose --from-file docs/plans/oauth.md
+ralph task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
 ralph task decompose RQ-0001 --child-policy append --with-dependencies --write
 ralph task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
 ralph task start RQ-0001
@@ -165,7 +167,9 @@ ralph task status doing RQ-0001
 ralph task done RQ-0001 --note "Verified with make agent-ci"
 ```
 
-On macOS, the app exposes the same workflow through `Decompose Task...` in the Task menu, command palette, queue toolbar, and task context menus.
+On macOS, the app exposes the same workflow through `Decompose Task...` in the Task menu, command palette, queue toolbar, and task context menus, including a plan-file picker that passes `--from-file` to the machine API.
+
+`ralph task decompose --from-file <path>` is the planner-backed path for arbitrary plan documents. `ralph prd create <path>` remains the PRD-parser-specific import path.
 
 ### Diagnostics
 
@@ -188,6 +192,7 @@ ralph queue repair
 ralph task mutate --dry-run --input request.json
 ralph task mutate --format json --input request.json
 ralph task decompose --format json "Improve webhook reliability"
+ralph task decompose --from-file docs/plans/oauth.md --format json
 ralph task decompose --write "Improve webhook reliability"
 ralph task followups apply --task RQ-0135
 ralph task followups apply --task RQ-0135 --dry-run --format json
@@ -213,6 +218,7 @@ ralph machine queue undo --dry-run
 ralph machine config resolve
 ralph machine doctor report
 ralph machine task mutate --input request.json
+ralph machine task decompose --from-file docs/plans/oauth.md --with-dependencies
 ralph machine run one --resume --id RQ-0001
 ralph machine run loop --resume --max-tasks 5
 ralph machine run loop --resume --max-tasks 0 --parallel 2

@@ -23,6 +23,7 @@
 
 mod planning;
 mod resolve;
+mod source_file;
 mod support;
 #[cfg(test)]
 mod tests;
@@ -31,8 +32,10 @@ mod types;
 mod write;
 
 pub use planning::plan_task_decomposition;
+pub use source_file::read_plan_file_source;
 pub use types::{
     DecompositionAttachTarget, DecompositionChildPolicy, DecompositionPlan, DecompositionPreview,
-    DecompositionSource, PlannedNode, TaskDecomposeOptions, TaskDecomposeWriteResult,
+    DecompositionSource, PlannedNode, TaskDecomposeOptions, TaskDecomposeSourceInput,
+    TaskDecomposeWriteResult,
 };
 pub use write::write_task_decomposition;

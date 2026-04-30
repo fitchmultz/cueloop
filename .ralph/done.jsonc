@@ -125,8 +125,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.4:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.4:xhigh"
       }
     },
     {
@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping",
-        "model_used": "gpt-5.4"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "task_kind": "queue_shaping"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
-        "source_report": "/tmp/ralph-report.md"
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "runner_used": "codex"
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -687,9 +687,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "model_used": "gpt-5.4",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/ralph-report.md",
-        "model_used": "gpt-5.4",
         "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "source_report": "/tmp/ralph-report.md",
         "runner_used": "codex",
-        "source_report": "/tmp/ralph-report.md"
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
         "source_report": "/tmp/ralph-report.md",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
+        "source_report": "/tmp/ralph-report.md",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
-        "source_report": "/tmp/ralph-report.md"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "reported_command": "ralph run loop --parallel 2",
+        "severity_reason": "parallel-mode task state/data integrity loss",
+        "model_used": "openai-codex/gpt-5.5",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
         "runner_used": "pi",
-        "severity_reason": "parallel-mode task state/data integrity loss",
-        "model_used": "openai-codex/gpt-5.5"
+        "reported_command": "ralph run loop --parallel 2"
       }
     },
     {
@@ -2462,8 +2462,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0",
-        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0."
+        "root_cause": "Repo-local rust-toolchain.toml overrode global stable, causing the first pass to research 1.94.1 instead of 1.95.0.",
+        "research_source_1": "https://github.com/rust-lang/rust/releases/tag/1.95.0"
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths."
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.ralph paths.",
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "ralph init creates or updates .ralph/trust.jsonc by default; --check remains read-only."
       }
     },
     {
@@ -2945,8 +2945,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi"
       }
     },
     {
@@ -3004,8 +3004,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3449,8 +3449,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi"
       }
     },
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3644,8 +3644,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "pi"
       }
     },
     {
@@ -3702,8 +3702,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general"
       }
     },
@@ -3770,9 +3770,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3833,8 +3833,63 @@
       "relates_to": [],
       "custom_fields": {
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high"
+      }
+    },
+    {
+      "id": "RQ-0074",
+      "status": "done",
+      "title": "Add plan-file decomposition as a first-class source",
+      "description": "Add an explicit file-backed decomposition workflow so a user can point Ralph at a plan document and ask it to create a queue tree for the entire plan. The current `ralph task decompose` surface accepts only task IDs, freeform text, or stdin, while `ralph prd create` reads files but uses a PRD-specific parser instead of the recursive decomposition planner. The desired outcome is one clear command path such as `ralph task decompose --from-file <path>` or an equivalent documented plan-file source that reads the full file, records the source path, preserves preview-first safety, and exposes the same behavior through machine/app surfaces where decomposition is already supported.",
+      "priority": "high",
+      "tags": [
+        "scan",
+        "task-decompose",
+        "cli",
+        "planning"
+      ],
+      "scope": [
+        "docs/prd/ralph-task-decompose.md",
+        "docs/cli.md",
+        "crates/ralph/src/cli/task/args/decompose.rs",
+        "crates/ralph/src/cli/task/decompose.rs",
+        "crates/ralph/src/commands/task/decompose/",
+        "crates/ralph/src/cli/prd.rs",
+        "apps/RalphMac/RalphCore/Workspace+Decompose.swift",
+        "apps/RalphMac/RalphMac/TaskDecomposeView.swift",
+        "ralph task decompose --help",
+        "ralph queue validate"
+      ],
+      "evidence": [
+        "path: docs/prd/ralph-task-decompose.md :: Functional Requirements :: requirement 2 says decomposition accepts either a freeform request or an existing task ID; no plan-file/path source is specified.",
+        "path: crates/ralph/src/cli/task/args/decompose.rs :: TaskDecomposeArgs.source :: the positional source is documented as `Task ID or freeform request text` and stdin is the only non-argument input path.",
+        "path: crates/ralph/src/cli/task/decompose.rs :: handle :: source text is read through `read_request_from_args_or_stdin(&args.source)` and passed as `source_input`; there is no file-path argument or file-read branch.",
+        "workflow: ralph task decompose --help :: help lists SOURCE/freeform/task-ID/stdin examples but no `--from-file`, `--plan-file`, or path-backed decomposition workflow.",
+        "path: crates/ralph/src/cli/prd.rs :: PrdCreateArgs.path :: `ralph prd create` has a file path input, proving Ralph already has file-backed task creation, but it is separate from recursive task decomposition."
+      ],
+      "plan": [
+        "Update the task-decompose PRD and CLI docs to define the canonical plan-file workflow, including command spelling, preview/write semantics, path normalization, file-size/read errors, and how it differs from PRD-specific import.",
+        "Add CLI and machine/app option plumbing for the selected file-backed source without breaking existing task-ID, freeform, and stdin behavior.",
+        "Read and validate the plan file before planner invocation, include both the repo-relative source path and full plan content in the planner input, and keep preview mode side-effect free.",
+        "Add focused CLI/parser and command tests for file-backed preview/write option handling, missing files, empty files, and compatibility with existing flags such as `--attach-to`, `--with-dependencies`, and `--format json`.",
+        "Verify with targeted Rust tests, `ralph task decompose --help`, a dry preview against a fixture plan file using a stubbed planner path where practical, and `ralph queue validate`."
+      ],
+      "notes": [
+        "Phase 3 review passed. Verified plan-file decomposition across CLI, machine, planner, docs, and RalphMac; targeted Rust/macOS/help/queue checks passed."
+      ],
+      "request": "scan: decomposition command feature",
+      "created_at": "2026-04-30T17:53:04Z",
+      "updated_at": "2026-04-30T18:29:41.335201000Z",
+      "completed_at": "2026-04-30T18:29:41.335201000Z",
+      "started_at": "2026-04-30T17:58:20.520139000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "runner_used": "pi",
+        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     }
   ]

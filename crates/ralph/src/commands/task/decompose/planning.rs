@@ -38,7 +38,7 @@ pub fn plan_task_decomposition(
     opts: &TaskDecomposeOptions,
 ) -> Result<DecompositionPreview> {
     let (active, done) = queue::load_and_validate_queues(resolved, true)?;
-    let source = resolve_source(resolved, &active, done.as_ref(), opts.source_input.trim())?;
+    let source = resolve_source(resolved, &active, done.as_ref(), &opts.source)?;
     let attach_target = resolve_attach_target(
         resolved,
         &active,
@@ -118,6 +118,7 @@ pub fn plan_task_decomposition(
     let default_root_title = match &source {
         DecompositionSource::Freeform { request } => request.clone(),
         DecompositionSource::ExistingTask { task } => task.title.clone(),
+        DecompositionSource::PlanFile { path, .. } => format!("Plan from {path}"),
     };
     let plan = normalize_response(raw, kind_for_source(&source), opts, &default_root_title)?;
     let write_blockers = compute_write_blockers(
@@ -153,6 +154,11 @@ fn build_planner_prompt(
             task.request.clone().unwrap_or_else(|| task.title.clone()),
             serde_json::to_string_pretty(task)
                 .context("serialize source task for decomposition")?,
+        ),
+        DecompositionSource::PlanFile { path, content } => (
+            "plan_file",
+            format!("Plan file path: {path}\n\nPlan file content:\n{content}"),
+            String::new(),
         ),
     };
     let attach_target_json = attach_target

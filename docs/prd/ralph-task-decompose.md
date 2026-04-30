@@ -28,7 +28,7 @@ The feature should feel native to Ralph rather than bolted on. Users should be a
 ## Goals
 
 - Introduce `ralph task decompose` as the dedicated workflow for recursive task decomposition.
-- Let users decompose either a freeform request or an existing queue task.
+- Let users decompose a freeform request, a plan file, or an existing queue task.
 - Generate durable Ralph tasks, not ephemeral planner-only output.
 - Reuse existing task hierarchy, queue validation, ID generation, and undo mechanisms.
 - Keep the workflow preview-first so users can inspect the proposed tree before writing.
@@ -41,7 +41,7 @@ The feature should feel native to Ralph rather than bolted on. Users should be a
 - Introducing a new persistent queue field for “atomic” vs “composite” task kind.
 - Automatically inferring dependencies outside the generated sibling group.
 - Merging or rewriting unrelated existing hierarchy automatically.
-- Building a GUI-only experience before the CLI workflow is stable.
+- Replacing PRD-specific imports; `ralph prd create` remains a parser-backed PRD workflow while `ralph task decompose --from-file` is planner-backed for arbitrary plan documents.
 
 ## User Stories
 
@@ -60,7 +60,22 @@ so that I can turn an abstract goal into reviewable, executable queue entries.
 - Created tasks use `parent_id` to represent hierarchy.
 - Generated tasks can be viewed with existing commands such as `ralph queue tree` and `ralph task children`.
 
-### US-002: Decompose an Existing Task In Place
+### US-002: Decompose a Plan File into a Task Tree
+
+As a user with a plan document in the repository or on disk,
+I want to run `ralph task decompose --from-file <path>` and preview a queue tree for the whole plan,
+so that I can turn an existing plan into durable Ralph work without copying it into the shell.
+
+#### Acceptance Criteria
+
+- Running `ralph task decompose --from-file docs/plans/oauth.md` reads the full file and previews by default.
+- Relative paths are resolved from the process current directory; leading `~` is expanded.
+- Preview output and JSON include the recorded source path. Paths inside the repo are recorded repo-relative; outside files are recorded as absolute paths.
+- The full file content is passed to the planner but is not serialized into machine/app JSON preview payloads.
+- `--attach-to <TASK_ID>`, `--child-policy`, `--with-dependencies`, `--format json`, and runner override flags work for plan-file sources.
+- Missing files, directories, empty or whitespace-only files, non-UTF-8 files, unreadable files, and files over the conservative size limit fail before planner invocation with clear diagnostics.
+
+### US-003: Decompose an Existing Task In Place
 
 As a user with an existing broad task in the queue,
 I want to decompose that task into child tasks,
@@ -130,7 +145,7 @@ so that it does not mutate queue state unless I explicitly request it.
 ## Functional Requirements
 
 1. Ralph SHALL add a new `ralph task decompose` subcommand under the existing `task` command group.
-2. Ralph SHALL accept either a freeform request or an existing task ID as the decomposition source.
+2. Ralph SHALL accept a freeform request, a `--from-file <PATH>` plan document, or an existing task ID as the decomposition source.
 3. Ralph SHALL support a preview-first workflow and SHALL NOT mutate queue state unless `--write` is provided.
 4. Ralph SHALL generate durable queue tasks rather than ephemeral planner-only output.
 5. Ralph SHALL represent task hierarchy using the existing `parent_id` field.
@@ -148,7 +163,7 @@ so that it does not mutate queue state unless I explicitly request it.
 17. Ralph SHALL support runner, model, reasoning-effort, RepoPrompt, and runner CLI override flags consistent with other runner-backed task creation flows.
 18. Ralph SHALL use a dedicated decomposition prompt/template rather than overloading task-builder or scan prompts.
 19. Ralph SHALL fail safely when planner output is malformed, incomplete, or inconsistent with queue rules.
-20. Ralph SHALL support `--attach-to <TASK_ID>` for freeform request decomposition under an existing active parent task.
+20. Ralph SHALL support `--attach-to <TASK_ID>` for freeform request and plan-file decomposition under an existing active parent task.
 21. Ralph SHALL support `--child-policy fail|append|replace` for effective parents with existing child trees.
 22. Ralph SHALL support optional sibling dependency inference behind `--with-dependencies`.
 23. Ralph SHALL emit stable versioned JSON output when `--format json` is requested.
@@ -162,6 +177,10 @@ ralph task decompose "Build OAuth login with GitHub and Google"
 ralph task decompose "Improve webhook reliability" --write
 ralph task decompose RQ-0123 --max-depth 3 --preview
 ralph task decompose RQ-0123 --child-policy append --with-dependencies --write
+ralph task decompose --from-file docs/plans/oauth.md
+ralph task decompose --from-file docs/plans/oauth.md --preview
+ralph task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
+ralph task decompose --from-file docs/plans/oauth.md --format json
 ralph task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
 ```
 
@@ -170,7 +189,7 @@ ralph task decompose --attach-to RQ-0042 --format json "Plan webhook reliability
 Preview output should communicate:
 
 - what is being decomposed
-- whether the source is a new request or an existing task
+- whether the source is a new request, a plan file, or an existing task
 - proposed hierarchy
 - total node and leaf counts
 - warnings about caps, degenerate splits, or dropped invalid output
@@ -229,6 +248,14 @@ Planner guidance should emphasize:
 - Generated parent-child relationships must not create parent cycles.
 
 ## Edge Cases and Failure Modes
+
+### Plan File Input Errors
+
+- Missing paths fail with a clear "plan file not found" diagnostic.
+- Directory paths fail before planner invocation.
+- Empty or whitespace-only files are rejected.
+- Files larger than the decomposition source limit are rejected before reading into the prompt.
+- Non-UTF-8 and unreadable files report the path and UTF-8 read context.
 
 ### Existing Parent Already Has Children
 
@@ -315,12 +342,14 @@ Rationale:
 
 ## Implementation Status
 
-The CLI implementation now includes:
+The implementation now includes:
 
-- preview-first decomposition for freeform requests and existing tasks
-- `--attach-to` subtree attachment for freeform requests
+- preview-first decomposition for freeform requests, plan files, and existing tasks
+- `--from-file <PATH>` plan-file loading with repo-relative provenance when possible
+- `--attach-to` subtree attachment for freeform requests and plan files
 - `--child-policy fail|append|replace`
 - optional sibling dependency inference via `--with-dependencies`
-- stable versioned JSON output via `--format json`
+- stable versioned JSON output via `--format json` and `ralph machine task decompose`
+- RalphMac workspace/model/UI support for plan-file decomposition
 
-Future work can focus on macOS app integration and richer visual review/edit flows rather than core command semantics.
+Richer visual review/edit flows can build on the same machine JSON contract rather than introducing a separate decomposition path.

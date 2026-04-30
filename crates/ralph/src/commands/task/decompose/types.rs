@@ -33,7 +33,7 @@ pub enum DecompositionChildPolicy {
 
 #[derive(Debug, Clone)]
 pub struct TaskDecomposeOptions {
-    pub source_input: String,
+    pub source: TaskDecomposeSourceInput,
     pub attach_to_task_id: Option<String>,
     pub max_depth: u8,
     pub max_children: usize,
@@ -48,11 +48,26 @@ pub struct TaskDecomposeOptions {
     pub repoprompt_tool_injection: bool,
 }
 
+#[derive(Debug, Clone)]
+pub enum TaskDecomposeSourceInput {
+    Inline(String),
+    PlanFile { path: String, content: String },
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DecompositionSource {
-    Freeform { request: String },
-    ExistingTask { task: Box<Task> },
+    Freeform {
+        request: String,
+    },
+    ExistingTask {
+        task: Box<Task>,
+    },
+    PlanFile {
+        path: String,
+        #[serde(skip_serializing)]
+        content: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -142,6 +157,7 @@ pub struct PlannedNode {
 pub(super) enum SourceKind {
     Freeform,
     ExistingTask,
+    PlanFile,
 }
 
 pub(super) struct PlannerState {

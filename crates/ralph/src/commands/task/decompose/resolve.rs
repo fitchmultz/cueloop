@@ -18,11 +18,12 @@
 //!
 //! Invariants/assumptions:
 //! - Existing-task decomposition only operates on active, non-terminal tasks.
-//! - Attach targets are restricted to freeform sources and active queue tasks.
+//! - Attach targets are restricted to new-subtree sources and active queue tasks.
 
 use super::support::{descendant_ids_for_parent, looks_like_task_id};
 use super::types::{
     DecompositionAttachTarget, DecompositionChildPolicy, DecompositionPreview, DecompositionSource,
+    TaskDecomposeSourceInput,
 };
 use crate::contracts::{QueueFile, Task, TaskStatus};
 use crate::queue::operations::ensure_subtree_is_replaceable;
@@ -33,10 +34,29 @@ pub(super) fn resolve_source(
     resolved: &config::Resolved,
     active: &QueueFile,
     done: Option<&QueueFile>,
+    source_input: &TaskDecomposeSourceInput,
+) -> Result<DecompositionSource> {
+    match source_input {
+        TaskDecomposeSourceInput::Inline(raw) => {
+            resolve_inline_source(resolved, active, done, raw.trim())
+        }
+        TaskDecomposeSourceInput::PlanFile { path, content } => Ok(DecompositionSource::PlanFile {
+            path: path.clone(),
+            content: content.clone(),
+        }),
+    }
+}
+
+fn resolve_inline_source(
+    resolved: &config::Resolved,
+    active: &QueueFile,
+    done: Option<&QueueFile>,
     source_input: &str,
 ) -> Result<DecompositionSource> {
     if source_input.is_empty() {
-        bail!("Missing source: task decompose requires a task ID or freeform request.");
+        bail!(
+            "Missing source: task decompose requires a task ID, freeform request, or --from-file path."
+        );
     }
     if looks_like_task_id(source_input, &resolved.id_prefix, resolved.id_width) {
         let task = queue::operations::find_task_across(active, done, source_input)
@@ -79,7 +99,7 @@ pub(super) fn resolve_attach_target(
     }
     if matches!(source, DecompositionSource::ExistingTask { .. }) {
         bail!(
-            "`ralph task decompose --attach-to` only supports freeform request sources. Use either an existing task source or --attach-to, not both."
+            "`ralph task decompose --attach-to` only supports new generated subtree sources such as freeform requests or --from-file plans. Use either an existing task source or --attach-to, not both."
         );
     }
     let task = queue::operations::find_task_across(active, done, attach_to)
@@ -113,7 +133,7 @@ pub(super) fn resolve_effective_parent_for_write(
     }
 
     match &preview.source {
-        DecompositionSource::Freeform { .. } => Ok(None),
+        DecompositionSource::Freeform { .. } | DecompositionSource::PlanFile { .. } => Ok(None),
         DecompositionSource::ExistingTask { task } => {
             let active_task = queue::operations::find_task(active, &task.id)
                 .with_context(|| crate::error_messages::source_task_not_found(&task.id, false))?;
@@ -143,7 +163,7 @@ pub(super) fn compute_write_blockers(
         .map(|target| target.task.id.clone())
         .or_else(|| match source {
             DecompositionSource::ExistingTask { task } => Some(task.id.clone()),
-            DecompositionSource::Freeform { .. } => None,
+            DecompositionSource::Freeform { .. } | DecompositionSource::PlanFile { .. } => None,
         });
 
     if let Some(parent_id) = effective_parent_id {

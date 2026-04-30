@@ -159,6 +159,72 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
 }
 
 #[test]
+fn task_decompose_parses_from_file_with_existing_flags() {
+    let cli = Cli::try_parse_from([
+        "ralph",
+        "task",
+        "decompose",
+        "--from-file",
+        "docs/plan.md",
+        "--attach-to",
+        "RQ-0042",
+        "--with-dependencies",
+        "--format",
+        "json",
+    ])
+    .expect("parse");
+
+    match cli.command {
+        crate::cli::Command::Task(args) => match args.command {
+            Some(crate::cli::task::TaskCommand::Decompose(args)) => {
+                assert_eq!(
+                    args.from_file.as_deref(),
+                    Some(std::path::Path::new("docs/plan.md"))
+                );
+                assert!(args.source.is_empty());
+                assert_eq!(args.attach_to.as_deref(), Some("RQ-0042"));
+                assert!(args.with_dependencies);
+                assert_eq!(args.format, crate::cli::task::TaskDecomposeFormatArg::Json);
+            }
+            _ => panic!("expected task decompose command"),
+        },
+        _ => panic!("expected task command"),
+    }
+}
+
+#[test]
+fn machine_task_decompose_parses_from_file_and_write() {
+    let cli = Cli::try_parse_from([
+        "ralph",
+        "machine",
+        "task",
+        "decompose",
+        "--from-file",
+        "docs/plan.md",
+        "--write",
+    ])
+    .expect("parse");
+
+    match cli.command {
+        crate::cli::Command::Machine(args) => match args.command {
+            crate::cli::machine::MachineCommand::Task(task_args) => match task_args.command {
+                crate::cli::machine::MachineTaskCommand::Decompose(args) => {
+                    assert_eq!(
+                        args.from_file.as_deref(),
+                        Some(std::path::Path::new("docs/plan.md"))
+                    );
+                    assert!(args.source.is_empty());
+                    assert!(args.write);
+                }
+                _ => panic!("expected machine task decompose command"),
+            },
+            _ => panic!("expected machine task command"),
+        },
+        _ => panic!("expected machine command"),
+    }
+}
+
+#[test]
 fn task_decompose_help_mentions_write_and_attach_examples() {
     let mut cmd = Cli::command();
     let task = cmd.find_subcommand_mut("task").expect("task subcommand");
@@ -170,6 +236,8 @@ fn task_decompose_help_mentions_write_and_attach_examples() {
     assert!(help.contains("Improve webhook reliability\" --write"));
     assert!(help.contains("--attach-to RQ-0042"));
     assert!(help.contains("--format json"));
+    assert!(help.contains("--from-file"));
+    assert!(help.contains("ralph task decompose --from-file docs/plans/oauth.md"));
 }
 
 #[test]

@@ -230,5 +230,11 @@ fn undo_snapshot_label(preview: &DecompositionPreview) -> String {
                 task.id, parent.task.id
             )
         }
+        (DecompositionSource::PlanFile { path, .. }, None) => {
+            format!("task decompose plan file '{path}'")
+        }
+        (DecompositionSource::PlanFile { path, .. }, Some(parent)) => {
+            format!("task decompose plan file '{path}' under {}", parent.task.id)
+        }
     }
 }

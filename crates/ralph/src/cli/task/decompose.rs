@@ -21,7 +21,7 @@
 //! - Preview is always shown before any optional write summary.
 //! - `--write` is the only mutating mode.
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 use crate::agent;
 use crate::cli::task::args::{
@@ -32,7 +32,7 @@ use crate::config;
 use crate::contracts::MachineDecomposeDocument;
 
 pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved) -> Result<()> {
-    let source_input = task_cmd::read_request_from_args_or_stdin(&args.source)?;
+    let source = source_from_args(resolved, &args.source, args.from_file.as_deref())?;
     let overrides = agent::resolve_agent_overrides(&agent::AgentArgs {
         runner: args.runner.clone(),
         model: args.model.clone(),
@@ -44,7 +44,7 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
     let preview = task_cmd::plan_task_decomposition(
         resolved,
         &task_cmd::TaskDecomposeOptions {
-            source_input,
+            source,
             attach_to_task_id: args.attach_to.clone(),
             max_depth: args.max_depth,
             max_children: usize::from(args.max_children),
@@ -80,6 +80,24 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
     Ok(())
 }
 
+fn source_from_args(
+    resolved: &config::Resolved,
+    source_args: &[String],
+    from_file: Option<&std::path::Path>,
+) -> Result<task_cmd::TaskDecomposeSourceInput> {
+    if let Some(path) = from_file {
+        if !source_args.is_empty() {
+            bail!(
+                "`ralph task decompose --from-file` cannot be combined with positional SOURCE text."
+            );
+        }
+        return task_cmd::read_plan_file_source(resolved, path);
+    }
+    Ok(task_cmd::TaskDecomposeSourceInput::Inline(
+        task_cmd::read_request_from_args_or_stdin(source_args)?,
+    ))
+}
+
 fn child_policy(value: TaskDecomposeChildPolicyArg) -> task_cmd::DecompositionChildPolicy {
     match value {
         TaskDecomposeChildPolicyArg::Fail => task_cmd::DecompositionChildPolicy::Fail,
@@ -101,6 +119,10 @@ fn print_text_output(
         task_cmd::DecompositionSource::ExistingTask { task } => {
             println!("Decompose preview for existing task {}:", task.id);
             println!("  {}", task.title);
+        }
+        task_cmd::DecompositionSource::PlanFile { path, .. } => {
+            println!("Decompose preview for plan file:");
+            println!("  {}", path);
         }
     }
 

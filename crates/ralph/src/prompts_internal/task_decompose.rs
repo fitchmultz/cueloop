@@ -59,7 +59,7 @@ pub(crate) fn render_task_decompose_prompt(
 
     let mut rendered = base.clone();
     rendered = rendered.replace("{{SOURCE_MODE}}", source_mode.trim());
-    rendered = rendered.replace("{{SOURCE_REQUEST}}", source_request.trim());
+    rendered = rendered.replace("{{SOURCE_REQUEST}}", source_request);
     rendered = rendered.replace("{{SOURCE_TASK_JSON}}", source_task_json.trim());
     rendered = rendered.replace("{{ATTACH_TARGET_JSON}}", attach_target_json.trim());
     rendered = rendered.replace("{{MAX_DEPTH}}", &max_depth.to_string());
@@ -81,7 +81,7 @@ pub(crate) fn render_task_decompose_prompt(
     );
     rendered_for_validation = rendered_for_validation.replace(
         "{{SOURCE_REQUEST}}",
-        escape_placeholder_like_text(source_request.trim()).trim(),
+        &escape_placeholder_like_text(source_request),
     );
     rendered_for_validation = rendered_for_validation.replace(
         "{{SOURCE_TASK_JSON}}",

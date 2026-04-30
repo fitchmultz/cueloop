@@ -30,8 +30,9 @@ mod update;
 pub use build::{build_task, build_task_created_tasks, build_task_without_lock};
 pub use decompose::{
     DecompositionAttachTarget, DecompositionChildPolicy, DecompositionPlan, DecompositionPreview,
-    DecompositionSource, PlannedNode, TaskDecomposeOptions, TaskDecomposeWriteResult,
-    plan_task_decomposition, write_task_decomposition,
+    DecompositionSource, PlannedNode, TaskDecomposeOptions, TaskDecomposeSourceInput,
+    TaskDecomposeWriteResult, plan_task_decomposition, read_plan_file_source,
+    write_task_decomposition,
 };
 pub use diff::compare_task_fields;
 pub use refactor::build_refactor_tasks;

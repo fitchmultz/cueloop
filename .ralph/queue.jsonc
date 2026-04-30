@@ -2,55 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0074",
-      "status": "todo",
-      "title": "Add plan-file decomposition as a first-class source",
-      "description": "Add an explicit file-backed decomposition workflow so a user can point Ralph at a plan document and ask it to create a queue tree for the entire plan. The current `ralph task decompose` surface accepts only task IDs, freeform text, or stdin, while `ralph prd create` reads files but uses a PRD-specific parser instead of the recursive decomposition planner. The desired outcome is one clear command path such as `ralph task decompose --from-file <path>` or an equivalent documented plan-file source that reads the full file, records the source path, preserves preview-first safety, and exposes the same behavior through machine/app surfaces where decomposition is already supported.",
-      "priority": "high",
-      "tags": [
-        "scan",
-        "task-decompose",
-        "cli",
-        "planning"
-      ],
-      "scope": [
-        "docs/prd/ralph-task-decompose.md",
-        "docs/cli.md",
-        "crates/ralph/src/cli/task/args/decompose.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/commands/task/decompose/",
-        "crates/ralph/src/cli/prd.rs",
-        "apps/RalphMac/RalphCore/Workspace+Decompose.swift",
-        "apps/RalphMac/RalphMac/TaskDecomposeView.swift",
-        "ralph task decompose --help",
-        "ralph queue validate"
-      ],
-      "evidence": [
-        "path: docs/prd/ralph-task-decompose.md :: Functional Requirements :: requirement 2 says decomposition accepts either a freeform request or an existing task ID; no plan-file/path source is specified.",
-        "path: crates/ralph/src/cli/task/args/decompose.rs :: TaskDecomposeArgs.source :: the positional source is documented as `Task ID or freeform request text` and stdin is the only non-argument input path.",
-        "path: crates/ralph/src/cli/task/decompose.rs :: handle :: source text is read through `read_request_from_args_or_stdin(&args.source)` and passed as `source_input`; there is no file-path argument or file-read branch.",
-        "workflow: ralph task decompose --help :: help lists SOURCE/freeform/task-ID/stdin examples but no `--from-file`, `--plan-file`, or path-backed decomposition workflow.",
-        "path: crates/ralph/src/cli/prd.rs :: PrdCreateArgs.path :: `ralph prd create` has a file path input, proving Ralph already has file-backed task creation, but it is separate from recursive task decomposition."
-      ],
-      "plan": [
-        "Update the task-decompose PRD and CLI docs to define the canonical plan-file workflow, including command spelling, preview/write semantics, path normalization, file-size/read errors, and how it differs from PRD-specific import.",
-        "Add CLI and machine/app option plumbing for the selected file-backed source without breaking existing task-ID, freeform, and stdin behavior.",
-        "Read and validate the plan file before planner invocation, include both the repo-relative source path and full plan content in the planner input, and keep preview mode side-effect free.",
-        "Add focused CLI/parser and command tests for file-backed preview/write option handling, missing files, empty files, and compatibility with existing flags such as `--attach-to`, `--with-dependencies`, and `--format json`.",
-        "Verify with targeted Rust tests, `ralph task decompose --help`, a dry preview against a fixture plan file using a stubbed planner path where practical, and `ralph queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: decomposition command feature",
-      "created_at": "2026-04-30T17:53:04Z",
-      "updated_at": "2026-04-30T17:53:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0075",
       "status": "todo",
       "title": "Make decomposed tasks retain source-plan provenance",

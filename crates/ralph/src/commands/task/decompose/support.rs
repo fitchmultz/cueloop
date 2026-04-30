@@ -91,6 +91,7 @@ pub(super) fn request_context(preview: &DecompositionPreview) -> String {
                 task.title.clone()
             }
         }),
+        DecompositionSource::PlanFile { path, .. } => format!("Plan file {path}"),
     }
 }
 
@@ -109,6 +110,7 @@ pub(super) fn kind_for_source(source: &DecompositionSource) -> SourceKind {
     match source {
         DecompositionSource::Freeform { .. } => SourceKind::Freeform,
         DecompositionSource::ExistingTask { .. } => SourceKind::ExistingTask,
+        DecompositionSource::PlanFile { .. } => SourceKind::PlanFile,
     }
 }
 
@@ -265,9 +267,21 @@ pub(super) fn annotate_parent(
             created_tasks.len(),
             now
         ),
+        (DecompositionSource::PlanFile { path, .. }, Some(_)) => format!(
+            "Attached decomposed plan file '{}' as {} child task(s) on {}.",
+            path,
+            created_tasks.len(),
+            now
+        ),
         (DecompositionSource::Freeform { request }, None) => format!(
             "Decomposition write for '{}' created {} task(s) on {}.",
             request,
+            created_tasks.len(),
+            now
+        ),
+        (DecompositionSource::PlanFile { path, .. }, None) => format!(
+            "Decomposition write for plan file '{}' created {} task(s) on {}.",
+            path,
             created_tasks.len(),
             now
         ),
