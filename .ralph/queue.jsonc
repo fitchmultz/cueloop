@@ -2,51 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0075",
-      "status": "todo",
-      "title": "Make decomposed tasks retain source-plan provenance",
-      "description": "Ensure every task created from a plan-file decomposition carries enough provenance for the executing agent to understand the original plan, the specific slice it owns, and where to look for surrounding context. Current materialization copies planner title/description/tags/scope/plan/request but writes empty evidence and does not inject a source plan path into generated task fields. The desired outcome is generated tasks that consistently reference the original plan file and relevant sections in evidence, scope, request, and/or plan steps while preserving queue schema validity.",
-      "priority": "high",
-      "tags": [
-        "scan",
-        "task-decompose",
-        "provenance",
-        "queue-contract"
-      ],
-      "scope": [
-        "crates/ralph/assets/prompts/task_decompose.md",
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/support.rs",
-        "crates/ralph/src/commands/task/decompose/tree.rs",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
-        "schemas/queue.schema.json",
-        "ralph queue validate"
-      ],
-      "evidence": [
-        "path: crates/ralph/assets/prompts/task_decompose.md :: Decomposition Rules / Required JSON Shape :: the planner may return optional `scope` and `plan`, but the prompt does not require each task to cite the original plan file or relevant plan sections.",
-        "path: crates/ralph/src/commands/task/decompose/types.rs :: RawPlannedNode :: planner output has title, description, plan, tags, scope, depends_on, and children; there is no explicit source-plan reference or evidence field in the decomposition node model.",
-        "path: crates/ralph/src/commands/task/decompose/support.rs :: collect_materialized_specs_for_nodes :: materialized decomposition specs set `evidence: Vec::new()` and `request: Some(request.to_string())`, so generated queue tasks do not receive evidence-backed provenance by default.",
-        "path: docs/prd/ralph-task-decompose.md :: Data Model and State :: recommended persistent representation mentions `parent_id`, `plan`, `request`, `tags`, and `scope`, but not source-plan-file provenance or evidence entries for generated tasks."
-      ],
-      "plan": [
-        "Build on the plan-file source metadata from RQ-0074 and decide the minimal queue-schema-compatible representation for source provenance, favoring existing fields before adding any new contract surface.",
-        "Tighten the decomposition prompt so each generated node includes task-local implementation guidance plus a reference to the original plan file and relevant section/headline when a file-backed source is used.",
-        "Extend normalization/materialization so generated tasks receive deterministic evidence and scope entries such as `path: <plan-file> :: <section> :: source plan for this decomposed task`, without dropping existing planner-provided task-local scope.",
-        "Add regression coverage that materializes a multi-node decomposition from a plan-file preview and asserts every created task contains source-plan provenance and valid queue fields.",
-        "Verify with targeted command/decomposition tests and `ralph queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: decomposition command feature",
-      "created_at": "2026-04-30T17:53:04Z",
-      "updated_at": "2026-04-30T17:53:04Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0076",
       "status": "todo",
       "title": "Prove plan decomposition covers full-plan ordering",

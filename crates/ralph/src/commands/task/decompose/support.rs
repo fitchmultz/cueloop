@@ -161,7 +161,13 @@ pub(super) fn materialized_specs_for_preview(
     request: &str,
 ) -> Vec<MaterializedTaskSpec> {
     let mut specs = Vec::new();
-    let mut seen_local_keys = HashSet::new();
+    let mut context = MaterializedSpecsContext {
+        status: preview.child_status,
+        request,
+        provenance: source_plan_provenance(&preview.source),
+        seen_local_keys: HashSet::new(),
+        specs: &mut specs,
+    };
     match (&preview.source, effective_parent) {
         (DecompositionSource::ExistingTask { .. }, Some(parent))
             if preview.attach_target.is_none() =>
@@ -170,10 +176,7 @@ pub(super) fn materialized_specs_for_preview(
                 &preview.plan.root.children,
                 None,
                 Some(parent.id.as_str()),
-                preview.child_status,
-                request,
-                &mut seen_local_keys,
-                &mut specs,
+                &mut context,
             );
         }
         (_, parent) => {
@@ -181,10 +184,7 @@ pub(super) fn materialized_specs_for_preview(
                 std::slice::from_ref(&preview.plan.root),
                 None,
                 parent.map(|task| task.id.as_str()),
-                preview.child_status,
-                request,
-                &mut seen_local_keys,
-                &mut specs,
+                &mut context,
             );
         }
     }
@@ -303,18 +303,36 @@ fn collect_descendant_ids(
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+struct SourcePlanProvenance<'a> {
+    path: &'a str,
+}
+
+struct MaterializedSpecsContext<'preview, 'out> {
+    status: TaskStatus,
+    request: &'preview str,
+    provenance: Option<SourcePlanProvenance<'preview>>,
+    seen_local_keys: HashSet<String>,
+    specs: &'out mut Vec<MaterializedTaskSpec>,
+}
+
+fn source_plan_provenance(source: &DecompositionSource) -> Option<SourcePlanProvenance<'_>> {
+    match source {
+        DecompositionSource::PlanFile { path, .. } => Some(SourcePlanProvenance { path }),
+        DecompositionSource::Freeform { .. } | DecompositionSource::ExistingTask { .. } => None,
+    }
+}
+
 fn collect_materialized_specs_for_nodes(
     nodes: &[PlannedNode],
     parent_local_key: Option<&str>,
     parent_task_id: Option<&str>,
-    status: TaskStatus,
-    request: &str,
-    seen_local_keys: &mut HashSet<String>,
-    out: &mut Vec<MaterializedTaskSpec>,
+    context: &mut MaterializedSpecsContext<'_, '_>,
 ) {
     let mut sibling_local_keys = HashMap::with_capacity(nodes.len());
     for node in nodes {
-        let local_key = allocate_materialized_local_key(&node.planner_key, seen_local_keys);
+        let local_key =
+            allocate_materialized_local_key(&node.planner_key, &mut context.seen_local_keys);
         sibling_local_keys.insert(node.planner_key.clone(), local_key);
     }
 
@@ -323,18 +341,18 @@ fn collect_materialized_specs_for_nodes(
             .get(&node.planner_key)
             .expect("assigned sibling local key")
             .clone();
-        out.push(MaterializedTaskSpec {
+        context.specs.push(MaterializedTaskSpec {
             local_key: local_key.clone(),
             title: node.title.clone(),
             description: node.description.clone(),
             priority: Default::default(),
-            status,
+            status: context.status,
             tags: node.tags.clone(),
-            scope: node.scope.clone(),
-            evidence: Vec::new(),
+            scope: task_scope_with_source_plan(node, context.provenance),
+            evidence: task_evidence_with_source_plan(node, context.provenance),
             plan: node.plan.clone(),
             notes: Vec::new(),
-            request: Some(request.to_string()),
+            request: Some(context.request.to_string()),
             relates_to: Vec::new(),
             parent_local_key: parent_local_key.map(|value| value.to_string()),
             parent_task_id: parent_task_id.map(|value| value.to_string()),
@@ -355,11 +373,53 @@ fn collect_materialized_specs_for_nodes(
             &node.children,
             Some(local_key.as_str()),
             None,
-            status,
-            request,
-            seen_local_keys,
-            out,
+            context,
         );
+    }
+}
+
+fn task_scope_with_source_plan(
+    node: &PlannedNode,
+    provenance: Option<SourcePlanProvenance<'_>>,
+) -> Vec<String> {
+    let mut scope = Vec::new();
+    if let Some(provenance) = provenance {
+        push_unique_trimmed_string(&mut scope, provenance.path);
+    }
+    for item in &node.scope {
+        push_unique_trimmed_string(&mut scope, item);
+    }
+    scope
+}
+
+fn task_evidence_with_source_plan(
+    node: &PlannedNode,
+    provenance: Option<SourcePlanProvenance<'_>>,
+) -> Vec<String> {
+    provenance
+        .map(|provenance| {
+            vec![format!(
+                "path: {} :: {} :: source plan for this decomposed task",
+                provenance.path,
+                source_plan_section_label(node)
+            )]
+        })
+        .unwrap_or_default()
+}
+
+fn source_plan_section_label(node: &PlannedNode) -> &str {
+    let title = node.title.trim();
+    if title.is_empty() {
+        node.planner_key.trim()
+    } else {
+        title
+    }
+}
+
+fn push_unique_trimmed_string(out: &mut Vec<String>, value: &str) {
+    let trimmed = value.trim();
+    if !trimmed.is_empty() && !out.iter().any(|existing| existing == trimmed) {
+        out.push(trimmed.to_string());
     }
 }
 

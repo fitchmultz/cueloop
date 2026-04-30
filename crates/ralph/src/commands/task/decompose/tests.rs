@@ -360,6 +360,7 @@ fn write_task_decomposition_created_tasks_inherit_request_and_timestamps_from_sh
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let task = &queue_file.tasks[0];
     assert_eq!(task.request.as_deref(), Some("Ship OAuth"));
+    assert!(task.evidence.is_empty());
     assert!(task.created_at.is_some());
     assert_eq!(task.created_at, task.updated_at);
     Ok(())
@@ -539,6 +540,86 @@ fn plan_file_request_context_mentions_path_not_full_content() {
     assert!(!context.contains("Full content"));
 }
 
+#[test]
+fn write_task_decomposition_plan_file_tasks_include_source_plan_provenance() -> Result<()> {
+    let (_temp, resolved) = test_resolved()?;
+    queue::save_queue(&resolved.queue_path, &QueueFile::default())?;
+
+    let preview = DecompositionPreview {
+        source: DecompositionSource::PlanFile {
+            path: "docs/plans/auth.md".to_string(),
+            content: "# Auth plan\n\n## Backend\nBuild backend auth.\n\n## UI\nBuild auth UI."
+                .to_string(),
+        },
+        attach_target: None,
+        plan: DecompositionPlan {
+            root: planned_node_with_scope(
+                "root",
+                "Ship auth plan",
+                vec!["docs/plans/auth.md"],
+                vec![],
+                vec![
+                    planned_node_with_scope(
+                        "backend",
+                        "Backend auth",
+                        vec!["crates/ralph/src/backend.rs"],
+                        vec![],
+                        vec![],
+                    ),
+                    planned_node("ui", "Auth UI", vec![], vec![]),
+                ],
+            ),
+            warnings: vec![],
+            total_nodes: 3,
+            leaf_nodes: 2,
+            dependency_edges: vec![],
+        },
+        write_blockers: vec![],
+        child_status: TaskStatus::Draft,
+        child_policy: DecompositionChildPolicy::Fail,
+        with_dependencies: false,
+    };
+
+    let result = write_task_decomposition(&resolved, &preview, false)?;
+    assert_eq!(result.created_ids.len(), 3);
+
+    let queue_file = queue::load_queue(&resolved.queue_path)?;
+    assert_eq!(queue_file.tasks.len(), 3);
+    for task in &queue_file.tasks {
+        assert_eq!(
+            task.request.as_deref(),
+            Some("Plan file docs/plans/auth.md")
+        );
+        assert_eq!(
+            task.evidence,
+            vec![format!(
+                "path: docs/plans/auth.md :: {} :: source plan for this decomposed task",
+                task.title
+            )]
+        );
+        assert_eq!(
+            task.scope
+                .iter()
+                .filter(|item| item.as_str() == "docs/plans/auth.md")
+                .count(),
+            1
+        );
+    }
+
+    let backend = queue_file
+        .tasks
+        .iter()
+        .find(|task| task.title == "Backend auth")
+        .expect("backend task");
+    assert!(
+        backend
+            .scope
+            .iter()
+            .any(|item| item == "crates/ralph/src/backend.rs")
+    );
+    Ok(())
+}
+
 fn planned_node(
     key: &str,
     title: &str,
@@ -556,6 +637,18 @@ fn planned_node(
         children,
         dependency_refs: vec![],
     }
+}
+
+fn planned_node_with_scope(
+    key: &str,
+    title: &str,
+    scope: Vec<&str>,
+    depends_on_keys: Vec<String>,
+    children: Vec<PlannedNode>,
+) -> PlannedNode {
+    let mut node = planned_node(key, title, depends_on_keys, children);
+    node.scope = scope.into_iter().map(str::to_string).collect();
+    node
 }
 
 fn test_resolved() -> Result<(TempDir, config::Resolved)> {
