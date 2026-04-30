@@ -116,30 +116,59 @@ pub(super) fn decompose_continuation(
     write: Option<&task_cmd::TaskDecomposeWriteResult>,
 ) -> MachineContinuationSummary {
     if let Some(write) = write {
-        let detail = if let Some(first_leaf_id) = write.first_actionable_leaf_task_id.as_deref() {
-            format!(
+        let first_leaf_id = write.first_actionable_leaf_task_id.as_deref();
+        let all_draft = preview.all_generated_tasks_draft();
+        let has_runnable_leaf = preview.has_runnable_generated_leaf();
+        let detail = match (first_leaf_id, all_draft, has_runnable_leaf) {
+            (Some(first_leaf_id), true, _) => format!(
+                "Ralph wrote the planned task tree in draft and created an undo checkpoint before mutating the queue. Promote first actionable leaf {first_leaf_id} before normal run selection."
+            ),
+            (Some(first_leaf_id), _, true) => format!(
+                "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue. Leaf work is already runnable; start review with first actionable leaf {first_leaf_id}."
+            ),
+            (Some(first_leaf_id), _, _) => format!(
                 "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue. Start review with first actionable leaf {first_leaf_id}."
-            )
-        } else {
-            "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue."
-                .to_string()
+            ),
+            (None, _, _) => "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue."
+                .to_string(),
         };
+        let headline = if all_draft {
+            "Decomposition has been written as draft."
+        } else if has_runnable_leaf {
+            "Decomposition has been written with runnable leaves."
+        } else {
+            "Decomposition has been written."
+        };
+        let mut next_steps = Vec::new();
+        if all_draft && let Some(first_leaf_id) = first_leaf_id {
+            next_steps.push(step(
+                "Promote the first actionable leaf",
+                &format!("ralph task ready {first_leaf_id}"),
+                "Mark the first actionable leaf todo so Ralph can run it.",
+            ));
+        }
+        next_steps.push(step(
+            "Inspect the tree",
+            machine_queue_graph_command(),
+            "Review the written parent/child structure.",
+        ));
+        if has_runnable_leaf {
+            next_steps.push(step(
+                "Run the next task",
+                machine_run_one_resume_command(),
+                "Continue from the updated queue; generated leaf work is already todo.",
+            ));
+        }
+        next_steps.push(step(
+            "Restore if needed",
+            machine_queue_undo_dry_run_command(),
+            "Preview the rollback path for this decomposition.",
+        ));
         return MachineContinuationSummary {
-            headline: "Decomposition has been written.".to_string(),
+            headline: headline.to_string(),
             detail,
             blocking: None,
-            next_steps: vec![
-                step(
-                    "Inspect the tree",
-                    machine_queue_graph_command(),
-                    "Review the written parent/child structure.",
-                ),
-                step(
-                    "Restore if needed",
-                    machine_queue_undo_dry_run_command(),
-                    "Preview the rollback path for this decomposition.",
-                ),
-            ],
+            next_steps,
         };
     }
 

@@ -113,6 +113,8 @@ Notes:
 - Completed tasks are removed from `.ralph/queue.jsonc` and appended to `.ralph/done.jsonc`.
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
+- Decomposed leaves written as `draft` are intentionally skipped until activated. Use `ralph task ready <TASK_ID>` to promote a reviewed leaf to runnable `todo` work; `ralph task decompose --write` prints the exact first-leaf command when all generated work remains draft.
+- To avoid an all-draft decomposition by intent, write parent/group nodes as draft while making generated leaf work runnable with `ralph task decompose --write --parent-status draft --leaf-status todo "<request>"`.
 
 ## Discovery Follow-Ups
 

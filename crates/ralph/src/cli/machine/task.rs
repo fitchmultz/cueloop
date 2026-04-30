@@ -113,6 +113,11 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
                 args.from_file.as_deref(),
             )?;
             let overrides = agent::resolve_agent_overrides(&args.agent)?;
+            let status = parse_task_status(&args.status)?;
+            let parent_status =
+                parse_optional_task_status(args.parent_status.as_deref())?.unwrap_or(status);
+            let leaf_status =
+                parse_optional_task_status(args.leaf_status.as_deref())?.unwrap_or(status);
             let preview = task_cmd::plan_task_decomposition(
                 &resolved,
                 &task_cmd::TaskDecomposeOptions {
@@ -121,7 +126,9 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
                     max_depth: args.max_depth,
                     max_children: usize::from(args.max_children),
                     max_nodes: usize::from(args.max_nodes),
-                    status: parse_task_status(&args.status)?,
+                    status,
+                    parent_status,
+                    leaf_status,
                     child_policy: parse_child_policy(&args.child_policy)?,
                     with_dependencies: args.with_dependencies,
                     runner_override: overrides.runner,
@@ -361,6 +368,10 @@ fn create_task(
     crate::undo::create_undo_snapshot(resolved, &format!("machine task create [{}]", task.id))?;
     queue::save_queue(&resolved.queue_path, &working)?;
     Ok(task)
+}
+
+fn parse_optional_task_status(value: Option<&str>) -> Result<Option<TaskStatus>> {
+    value.map(parse_task_status).transpose()
 }
 
 fn parse_task_status(value: &str) -> Result<TaskStatus> {

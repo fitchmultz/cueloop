@@ -53,9 +53,17 @@ pub struct TaskDecomposeArgs {
     #[arg(long, default_value_t = 50, value_parser = clap::value_parser!(u16).range(1..=200))]
     pub max_nodes: u16,
 
-    /// Status to assign to newly created tasks.
+    /// Default status to assign to newly created tasks.
     #[arg(long, value_enum, default_value_t = TaskStatusArg::Draft)]
     pub status: TaskStatusArg,
+
+    /// Status to assign to generated group/non-leaf tasks. Inherits --status when omitted.
+    #[arg(long, value_enum)]
+    pub parent_status: Option<TaskStatusArg>,
+
+    /// Status to assign to generated leaf work items. Inherits --status when omitted.
+    #[arg(long, value_enum)]
+    pub leaf_status: Option<TaskStatusArg>,
 
     /// Child-tree handling when the effective parent already has children.
     #[arg(long, value_enum, default_value_t = TaskDecomposeChildPolicyArg::Fail)]

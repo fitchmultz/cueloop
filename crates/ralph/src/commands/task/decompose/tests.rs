@@ -32,6 +32,7 @@ use crate::queue;
 use anyhow::Result;
 use tempfile::TempDir;
 
+mod actionability;
 mod plan_file_ordering;
 
 #[test]
@@ -77,6 +78,8 @@ fn normalize_response_resolves_sibling_dependencies() -> Result<()> {
         max_children: 5,
         max_nodes: 10,
         status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: true,
         runner_override: None,
@@ -130,6 +133,8 @@ fn write_task_decomposition_attaches_freeform_subtree_under_existing_parent() ->
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Append,
         with_dependencies: false,
     };
@@ -187,6 +192,8 @@ fn write_task_decomposition_replace_rejects_external_references() -> Result<()> 
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Replace,
         with_dependencies: false,
     };
@@ -225,6 +232,8 @@ fn write_task_decomposition_materializes_sibling_dependencies() -> Result<()> {
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: true,
     };
@@ -241,6 +250,12 @@ fn write_task_decomposition_materializes_sibling_dependencies() -> Result<()> {
     assert_eq!(queue_file.tasks[1].kind, TaskKind::WorkItem);
     assert_eq!(queue_file.tasks[2].kind, TaskKind::WorkItem);
     assert_eq!(queue_file.tasks[2].depends_on, vec!["RQ-0002".to_string()]);
+    assert!(
+        queue_file
+            .tasks
+            .iter()
+            .all(|task| task.status == TaskStatus::Draft)
+    );
     Ok(())
 }
 
@@ -281,6 +296,8 @@ fn write_task_decomposition_append_inserts_after_existing_subtree_without_reorde
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Append,
         with_dependencies: false,
     };
@@ -340,6 +357,8 @@ fn write_task_decomposition_replace_reinserts_new_children_at_removed_subtree_bo
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Replace,
         with_dependencies: false,
     };
@@ -385,6 +404,8 @@ fn write_task_decomposition_created_tasks_inherit_request_and_timestamps_from_sh
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: false,
     };
@@ -441,6 +462,8 @@ fn write_task_decomposition_allows_cross_branch_duplicate_planner_keys() -> Resu
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: false,
     };
@@ -542,6 +565,8 @@ fn plan_file_preview_serializes_path_without_content() -> Result<()> {
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: false,
     };
@@ -570,6 +595,8 @@ fn plan_file_request_context_mentions_path_not_full_content() {
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: false,
     };
@@ -615,6 +642,8 @@ fn write_task_decomposition_plan_file_tasks_include_source_plan_provenance() -> 
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: false,
     };

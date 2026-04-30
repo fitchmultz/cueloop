@@ -161,6 +161,8 @@ ralph task decompose "Build OAuth login with GitHub and Google"
 ralph task decompose --from-file docs/plans/oauth.md
 ralph task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
 ralph task decompose RQ-0001 --child-policy append --with-dependencies --write
+ralph task decompose --write --parent-status draft --leaf-status todo "Plan webhook reliability work"
+ralph task ready RQ-0003
 ralph task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
 ralph task start RQ-0001
 ralph task status doing RQ-0001
@@ -181,7 +183,9 @@ ralph queue tree
 ralph task children <ROOT_TASK_ID>
 ```
 
-Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work. Written decomposition trees persist umbrella/root/phase nodes as `kind: group`, leave runnable leaf work as the default `kind: work_item`, and report both the root/group task and the first actionable leaf task in text and JSON output. If leaves are written as `draft`, review or activate them before expecting run selection.
+Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work. Written decomposition trees persist umbrella/root/phase nodes as `kind: group`, leave runnable leaf work as the default `kind: work_item`, and report both the root/group task and the first actionable leaf task in text and JSON output.
+
+Decomposition status controls are explicit and opt-in. `--status <STATUS>` applies to every generated node by default; `--parent-status <STATUS>` overrides generated group/non-leaf nodes; `--leaf-status <STATUS>` overrides generated leaf work items. Plain `--write` remains review-first and writes generated tasks as `draft`. To make leaf work immediately runnable while keeping parent/group nodes as drafts, use `--parent-status draft --leaf-status todo`. If a write leaves every generated task in `draft`, the continuation output prints an exact activation command such as `ralph task ready RQ-0003` for the first actionable leaf.
 
 ### Diagnostics
 

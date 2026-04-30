@@ -41,6 +41,9 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
         runner_cli: args.runner_cli.clone(),
     })?;
 
+    let status = args.status.into();
+    let parent_status = args.parent_status.map(Into::into).unwrap_or(status);
+    let leaf_status = args.leaf_status.map(Into::into).unwrap_or(status);
     let preview = task_cmd::plan_task_decomposition(
         resolved,
         &task_cmd::TaskDecomposeOptions {
@@ -49,7 +52,9 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
             max_depth: args.max_depth,
             max_children: usize::from(args.max_children),
             max_nodes: usize::from(args.max_nodes),
-            status: args.status.into(),
+            status,
+            parent_status,
+            leaf_status,
             child_policy: child_policy(args.child_policy),
             with_dependencies: args.with_dependencies,
             runner_override: overrides.runner,

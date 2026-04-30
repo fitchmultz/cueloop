@@ -170,6 +170,10 @@ pub struct MachineTaskDecomposeArgs {
     pub max_nodes: u8,
     #[arg(long, default_value = "draft")]
     pub status: String,
+    #[arg(long)]
+    pub parent_status: Option<String>,
+    #[arg(long)]
+    pub leaf_status: Option<String>,
     #[arg(long, default_value = "fail")]
     pub child_policy: String,
     #[arg(long)]

@@ -109,6 +109,10 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
         "RQ-0042",
         "--child-policy",
         "append",
+        "--parent-status",
+        "draft",
+        "--leaf-status",
+        "todo",
         "--with-dependencies",
         "--format",
         "json",
@@ -140,6 +144,14 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
                 assert_eq!(
                     args.child_policy,
                     crate::cli::task::TaskDecomposeChildPolicyArg::Append
+                );
+                assert_eq!(
+                    args.parent_status,
+                    Some(crate::cli::task::TaskStatusArg::Draft)
+                );
+                assert_eq!(
+                    args.leaf_status,
+                    Some(crate::cli::task::TaskStatusArg::Todo)
                 );
                 assert!(args.with_dependencies);
                 assert_eq!(args.format, crate::cli::task::TaskDecomposeFormatArg::Json);
@@ -202,6 +214,10 @@ fn machine_task_decompose_parses_from_file_and_write() {
         "--from-file",
         "docs/plan.md",
         "--write",
+        "--parent-status",
+        "draft",
+        "--leaf-status",
+        "todo",
     ])
     .expect("parse");
 
@@ -215,6 +231,8 @@ fn machine_task_decompose_parses_from_file_and_write() {
                     );
                     assert!(args.source.is_empty());
                     assert!(args.write);
+                    assert_eq!(args.parent_status.as_deref(), Some("draft"));
+                    assert_eq!(args.leaf_status.as_deref(), Some("todo"));
                 }
                 _ => panic!("expected machine task decompose command"),
             },
@@ -236,6 +254,7 @@ fn task_decompose_help_mentions_write_and_attach_examples() {
     assert!(help.contains("Improve webhook reliability\" --write"));
     assert!(help.contains("--attach-to RQ-0042"));
     assert!(help.contains("--format json"));
+    assert!(help.contains("--parent-status draft --leaf-status todo"));
     assert!(help.contains("--from-file"));
     assert!(help.contains("ralph task decompose --from-file docs/plans/oauth.md"));
 }

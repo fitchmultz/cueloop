@@ -2,59 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0079",
-      "status": "todo",
-      "title": "Add decompose activation modes and no-runnable draft guidance",
-      "description": "Fix the post-write dead-end where a successful decomposition can leave every generated task in `draft` with no obvious runnable next step. `ralph task decompose --write` should either support an explicit activation mode for the first leaf/leaves or print an exact next command that promotes the first actionable leaf to runnable work.",
-      "priority": "high",
-      "tags": [
-        "task-decompose",
-        "draft",
-        "queue",
-        "cli",
-        "operator-ux"
-      ],
-      "scope": [
-        "crates/ralph/src/cli/task/args.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/cli/task/status.rs",
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/support.rs",
-        "crates/ralph/src/commands/task/decompose/write.rs",
-        "crates/ralph/src/cli/machine/task/continuation.rs",
-        "docs/cli.md",
-        "docs/queue-and-tasks.md"
-      ],
-      "evidence": [
-        "Warden feedback: after `--write`, all 46 generated tasks were `draft`, `queue validate` was structurally valid, and there were no runnable todo candidates.",
-        "The existing decompose command has one `--status` for all generated nodes, so users must infer how to move from an all-draft decomposition to an executable queue.",
-        "The existing `ralph task ready <TASK_ID>` command can promote a draft to todo, but decompose output does not currently point at the first actionable leaf."
-      ],
-      "plan": [
-        "Add the smallest explicit activation surface for decomposition writes, such as `--ready-first-leaf`, `--leaf-status todo --parent-status draft`, or an equivalent machine-safe option that avoids all-draft dead ends by intent.",
-        "When generated tasks remain all draft, print one exact next step using the resolved first actionable leaf, for example `ralph task ready RQ-0003`.",
-        "Keep preview, text output, machine JSON continuation, and docs aligned on what will be runnable after write.",
-        "Add tests for all-draft writes, mixed parent/leaf statuses, first-leaf promotion guidance, and machine continuation next_steps."
-      ],
-      "notes": [
-        "Depends on RQ-0078 so first-leaf detection is canonical instead of recomputed by text output.",
-        "Do not silently promote tasks by default if that would change current semantics; require an explicit mode or emit exact guidance."
-      ],
-      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
-      "created_at": "2026-04-30T19:41:18Z",
-      "updated_at": "2026-04-30T19:41:18Z",
-      "depends_on": [
-        "RQ-0078"
-      ],
-      "blocks": [],
-      "relates_to": [
-        "RQ-0078"
-      ],
-      "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback"
-      }
-    },
-    {
       "id": "RQ-0080",
       "status": "todo",
       "title": "Calm validation messaging for normal all-draft decompositions",

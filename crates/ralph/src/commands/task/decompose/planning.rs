@@ -135,6 +135,8 @@ pub fn plan_task_decomposition(
         plan,
         write_blockers,
         child_status: opts.status,
+        parent_status: opts.parent_status,
+        leaf_status: opts.leaf_status,
         child_policy: opts.child_policy,
         with_dependencies: opts.with_dependencies,
     })

@@ -128,6 +128,8 @@ fn write_task_decomposition_plan_file_preserves_full_ordered_plan_coverage() -> 
         },
         write_blockers: vec![],
         child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Draft,
         child_policy: DecompositionChildPolicy::Fail,
         with_dependencies: true,
     };

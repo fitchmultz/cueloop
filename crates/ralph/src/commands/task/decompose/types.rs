@@ -39,6 +39,8 @@ pub struct TaskDecomposeOptions {
     pub max_children: usize,
     pub max_nodes: usize,
     pub status: TaskStatus,
+    pub parent_status: TaskStatus,
+    pub leaf_status: TaskStatus,
     pub child_policy: DecompositionChildPolicy,
     pub with_dependencies: bool,
     pub runner_override: Option<Runner>,
@@ -83,6 +85,8 @@ pub struct DecompositionPreview {
     pub plan: DecompositionPlan,
     pub write_blockers: Vec<String>,
     pub child_status: TaskStatus,
+    pub parent_status: TaskStatus,
+    pub leaf_status: TaskStatus,
     pub child_policy: DecompositionChildPolicy,
     pub with_dependencies: bool,
 }
@@ -94,6 +98,23 @@ pub struct DecompositionPlan {
     pub total_nodes: usize,
     pub leaf_nodes: usize,
     pub dependency_edges: Vec<DependencyEdgePreview>,
+}
+
+impl DecompositionPreview {
+    pub fn all_generated_tasks_draft(&self) -> bool {
+        self.leaf_status == TaskStatus::Draft
+            && (!self.plan.has_generated_group_nodes() || self.parent_status == TaskStatus::Draft)
+    }
+
+    pub fn has_runnable_generated_leaf(&self) -> bool {
+        self.leaf_status == TaskStatus::Todo
+    }
+}
+
+impl DecompositionPlan {
+    fn has_generated_group_nodes(&self) -> bool {
+        self.total_nodes > self.leaf_nodes
+    }
 }
 
 impl DecompositionPlan {

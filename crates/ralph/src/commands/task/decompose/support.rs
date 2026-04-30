@@ -168,7 +168,8 @@ pub(super) fn materialized_specs_for_preview(
 ) -> DecompositionMaterializationPlan {
     let mut specs = Vec::new();
     let mut context = MaterializedSpecsContext {
-        status: preview.child_status,
+        parent_status: preview.parent_status,
+        leaf_status: preview.leaf_status,
         request,
         provenance: source_plan_provenance(&preview.source),
         seen_local_keys: HashSet::new(),
@@ -325,7 +326,8 @@ struct SourcePlanProvenance<'a> {
 }
 
 struct MaterializedSpecsContext<'preview, 'out> {
-    status: TaskStatus,
+    parent_status: TaskStatus,
+    leaf_status: TaskStatus,
     request: &'preview str,
     provenance: Option<SourcePlanProvenance<'preview>>,
     seen_local_keys: HashSet<String>,
@@ -366,12 +368,17 @@ fn collect_materialized_specs_for_nodes(
         if kind == TaskKind::WorkItem && context.first_actionable_leaf_local_key.is_none() {
             context.first_actionable_leaf_local_key = Some(local_key.clone());
         }
+        let status = if kind == TaskKind::WorkItem {
+            context.leaf_status
+        } else {
+            context.parent_status
+        };
         context.specs.push(MaterializedTaskSpec {
             local_key: local_key.clone(),
             title: node.title.clone(),
             description: node.description.clone(),
             priority: Default::default(),
-            status: context.status,
+            status,
             kind,
             tags: node.tags.clone(),
             scope: task_scope_with_source_plan(node, context.provenance),
