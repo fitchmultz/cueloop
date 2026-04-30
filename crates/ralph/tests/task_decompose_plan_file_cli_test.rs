@@ -22,7 +22,7 @@
 mod test_support;
 
 use anyhow::{Context, Result};
-use ralph::contracts::QueueFile;
+use ralph::contracts::{QueueFile, TaskKind};
 use serde_json::Value;
 use tempfile::tempdir;
 
@@ -87,6 +87,14 @@ fn plan_file_decompose_preview_write_validate_and_navigate_ordered_plan() -> Res
             .len(),
         3
     );
+    assert_eq!(
+        preview["result"]["preview"]["plan"]["actionability"]["root_group"]["kind"],
+        "group"
+    );
+    assert_eq!(
+        preview["result"]["preview"]["plan"]["actionability"]["first_actionable_leaf"]["planner_key"],
+        "phase-1"
+    );
 
     let (status, stdout, stderr) = test_support::run_in_dir(
         temp.path(),
@@ -112,6 +120,11 @@ fn plan_file_decompose_preview_write_validate_and_navigate_ordered_plan() -> Res
         .expect("created ids");
     assert_eq!(created_ids.len(), 5);
     let root_id = created_ids[0].as_str().expect("root id").to_string();
+    assert_eq!(written["result"]["write"]["root_group_task_id"], root_id);
+    assert_eq!(
+        written["result"]["write"]["first_actionable_leaf_task_id"],
+        created_ids[1]
+    );
 
     assert_command_success(temp.path(), &["queue", "validate"]);
     let tree = assert_command_success(temp.path(), &["queue", "tree"]);
@@ -158,6 +171,10 @@ fn plan_file_decompose_preview_write_validate_and_navigate_ordered_plan() -> Res
         queue_file.tasks[4].depends_on,
         vec![queue_file.tasks[3].id.clone()]
     );
+    assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
+    for task in queue_file.tasks.iter().skip(1) {
+        assert_eq!(task.kind, TaskKind::WorkItem);
+    }
     for task in &queue_file.tasks {
         assert_eq!(
             task.request.as_deref(),

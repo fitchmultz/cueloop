@@ -38,7 +38,7 @@ The feature should feel native to Ralph rather than bolted on. Users should be a
 
 - Automatically executing decomposed tasks as part of the same command.
 - Replacing `ralph task build`, `ralph task split`, `ralph prd create`, or `ralph scan`.
-- Introducing a new persistent queue field for “atomic” vs “composite” task kind.
+- Introducing another persistent queue field for decomposition actionability beyond the existing `Task.kind` actionability contract.
 - Automatically inferring dependencies outside the generated sibling group.
 - Merging or rewriting unrelated existing hierarchy automatically.
 - Replacing PRD-specific imports; `ralph prd create` remains a parser-backed PRD workflow while `ralph task decompose --from-file` is planner-backed for arbitrary plan documents.
@@ -57,6 +57,7 @@ so that I can turn an abstract goal into reviewable, executable queue entries.
 - The preview includes a hierarchy tree, node counts, and warnings when limits or heuristics affect the result.
 - The preview does not modify `.ralph/queue.jsonc` unless `--write` is explicitly provided.
 - When `--write` is provided, Ralph creates a root task and descendant tasks with unique IDs and valid timestamps.
+- Created grouping/root/phase tasks persist `kind: group`; executable leaves remain `kind: work_item`.
 - Created tasks use `parent_id` to represent hierarchy.
 - Generated tasks can be viewed with existing commands such as `ralph queue tree` and `ralph task children`.
 
@@ -88,6 +89,7 @@ so that I can preserve the original task context while making the work more acti
 - Running `ralph task decompose RQ-0123` previews child tasks under the existing task.
 - By default, the existing task is preserved as the parent rather than rejected or archived.
 - Generated child tasks use `parent_id = RQ-0123`.
+- The preserved source task is marked `kind: group` when write mode turns it into a decomposition umbrella.
 - The command refuses to mutate a non-existent task ID.
 - The command refuses to decompose tasks from the done archive unless an explicit opt-in is provided in a future or explicit override mode.
 - The command records a clear human-readable note on the source task indicating that it was decomposed.
@@ -130,6 +132,7 @@ so that I can review or consume decompositions programmatically.
 - Running `ralph task decompose ... --with-dependencies` resolves sibling-only `depends_on` edges from planner keys or sibling titles.
 - Self-dependencies, unknown dependencies, and non-sibling references are dropped with warnings.
 - Running `ralph task decompose ... --format json` emits a stable versioned JSON payload for preview or write mode.
+- JSON output includes actionability metadata identifying the root/group task and first actionable leaf without requiring consumers to parse human text.
 
 ### US-005: Use the Workflow Reliably in Non-Interactive Environments
 
@@ -169,6 +172,8 @@ so that it does not mutate queue state unless I explicitly request it.
 21. Ralph SHALL support `--child-policy fail|append|replace` for effective parents with existing child trees.
 22. Ralph SHALL support optional sibling dependency inference behind `--with-dependencies`.
 23. Ralph SHALL emit stable versioned JSON output when `--format json` is requested.
+24. Ralph SHALL persist generated decomposition grouping nodes as `kind: group` and generated leaves as `kind: work_item`.
+25. Ralph SHALL report root/group and first actionable leaf metadata in preview and write outputs.
 
 ## User Experience
 
@@ -195,28 +200,32 @@ Preview output should communicate:
 - proposed hierarchy
 - total node and leaf counts
 - warnings about caps, degenerate splits, or dropped invalid output
+- the root/group node and the first actionable leaf where execution review should begin
 
 ### Write Output Expectations
 
 Write output should communicate:
 
-- root task affected or created
+- root/group task affected or created
+- first actionable leaf task ID
 - number of tasks created
 - list of created task IDs
 - whether the parent task was preserved or annotated
 
 ## Data Model and State
 
-The v1 implementation should prefer existing Ralph task schema over new persistent contract changes.
+The implementation uses the existing Ralph task schema and the durable actionability contract.
 
 Recommended persistent representation:
 
 - `parent_id` for tree structure
+- `kind: group` for non-executable decomposition umbrella/root/phase nodes
+- default `kind: work_item` for executable leaf tasks
 - `plan` for task-local implementation guidance
 - `request` for original top-level user intent
 - `tags` and `scope` for seeded inheritance
 
-The feature should not require a new `atomic/composite` queue field in v1.
+Missing `kind` remains backward-compatible and deserializes as `work_item`.
 
 ## Planner and Prompt Requirements
 

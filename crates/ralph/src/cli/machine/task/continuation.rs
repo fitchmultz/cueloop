@@ -115,11 +115,18 @@ pub(super) fn decompose_continuation(
     preview: &task_cmd::DecompositionPreview,
     write: Option<&task_cmd::TaskDecomposeWriteResult>,
 ) -> MachineContinuationSummary {
-    if write.is_some() {
+    if let Some(write) = write {
+        let detail = if let Some(first_leaf_id) = write.first_actionable_leaf_task_id.as_deref() {
+            format!(
+                "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue. Start review with first actionable leaf {first_leaf_id}."
+            )
+        } else {
+            "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue."
+                .to_string()
+        };
         return MachineContinuationSummary {
             headline: "Decomposition has been written.".to_string(),
-            detail: "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue."
-                .to_string(),
+            detail,
             blocking: None,
             next_steps: vec![
                 step(
@@ -137,9 +144,22 @@ pub(super) fn decompose_continuation(
     }
 
     if preview.write_blockers.is_empty() {
+        let actionability = preview.plan.actionability();
+        let detail = actionability
+            .first_actionable_leaf
+            .as_ref()
+            .map(|leaf| {
+                format!(
+                    "Ralph planned a task tree that can be written when you are ready. First actionable leaf: {}.",
+                    leaf.title
+                )
+            })
+            .unwrap_or_else(|| {
+                "Ralph planned a task tree that can be written when you are ready.".to_string()
+            });
         return MachineContinuationSummary {
             headline: "Decomposition preview is ready.".to_string(),
-            detail: "Ralph planned a task tree that can be written when you are ready.".to_string(),
+            detail,
             blocking: None,
             next_steps: vec![step(
                 "Write the preview",

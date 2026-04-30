@@ -2,64 +2,8 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0078",
-      "status": "todo",
-      "kind": "work_item",
-      "title": "Teach task decompose to mark groups and report the first runnable leaf",
-      "description": "Make `ralph task decompose` materialization and output use the new actionability contract. Fresh decomposition trees should mark umbrella/root/phase nodes as grouping nodes, mark leaves as runnable work items, and print the root/group task plus the first actionable leaf so the operator knows where execution should begin.",
-      "priority": "high",
-      "tags": [
-        "task-decompose",
-        "queue",
-        "cli",
-        "machine-api",
-        "ux"
-      ],
-      "scope": [
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/support.rs",
-        "crates/ralph/src/commands/task/decompose/write.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/cli/machine/task.rs",
-        "crates/ralph/src/cli/machine/task/continuation.rs",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
-        "crates/ralph/src/commands/task/decompose/tests/",
-        "docs/cli.md",
-        "docs/prd/ralph-task-decompose.md"
-      ],
-      "evidence": [
-        "Feedback expected post-write text like `First actionable leaf task: RQ-0003` or `Root/group task: RQ-0001. First runnable child: RQ-0003.`",
-        "Current text output prints the written root and created IDs, but does not classify the root as a group or name the first runnable leaf.",
-        "Current public preview types expose total and leaf counts but not a resolved first actionable node or leaf/group classification."
-      ],
-      "plan": [
-        "Add decomposition preview/write metadata for group nodes, leaf nodes, root task ID, and first runnable leaf ID without relying on title wording.",
-        "Update materialization so generated parent/root/phase nodes receive the group actionability marker and generated leaves receive the runnable marker.",
-        "Update text and machine output to include a clear root/group summary and first runnable leaf summary after preview and write.",
-        "Cover freeform, plan-file, existing-task, attach, append, and replace flows so IDs and classifications stay correct across write policies."
-      ],
-      "notes": [
-        "Depends on the canonical actionability contract from RQ-0077.",
-        "Do not make grouping semantics depend on whether a task currently has children in memory; persisted queue documents must carry enough intent for later runs."
-      ],
-      "request": "Create Ralph tasks from Warden `task decompose` feedback focused on queue/actionability UX.",
-      "created_at": "2026-04-30T19:41:18Z",
-      "updated_at": "2026-04-30T19:41:18Z",
-      "depends_on": [
-        "RQ-0077"
-      ],
-      "blocks": [],
-      "relates_to": [
-        "RQ-0077"
-      ],
-      "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback"
-      }
-    },
-    {
       "id": "RQ-0079",
       "status": "todo",
-      "kind": "work_item",
       "title": "Add decompose activation modes and no-runnable draft guidance",
       "description": "Fix the post-write dead-end where a successful decomposition can leave every generated task in `draft` with no obvious runnable next step. `ralph task decompose --write` should either support an explicit activation mode for the first leaf/leaves or print an exact next command that promotes the first actionable leaf to runnable work.",
       "priority": "high",
@@ -113,7 +57,6 @@
     {
       "id": "RQ-0080",
       "status": "todo",
-      "kind": "work_item",
       "title": "Calm validation messaging for normal all-draft decompositions",
       "description": "Reduce scary validation noise when a freshly written decomposition is intentionally all draft. Dependency-blocked diagnostics for draft-only trees should be informational and should summarize the actionable cause: no runnable tasks exist because every generated task is draft, so promote a leaf or use an activation mode.",
       "priority": "medium",
@@ -167,7 +110,6 @@
     {
       "id": "RQ-0081",
       "status": "todo",
-      "kind": "work_item",
       "title": "Make decompose preview continuations exact and copy-pasteable",
       "description": "Close the preview/write trust gap. A preview followed by a later write should either persist the exact preview result through a checkpoint/continuation ID or clearly state that a new planner invocation may differ. All continuation hints must be literal copy/pasteable commands with no `...` placeholders.",
       "priority": "high",

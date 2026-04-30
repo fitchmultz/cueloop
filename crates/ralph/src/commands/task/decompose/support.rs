@@ -24,7 +24,7 @@ use super::types::{
     DecompositionAttachTarget, DecompositionPreview, DecompositionSource, DependencyEdgePreview,
     PlannedNode, SourceKind,
 };
-use crate::contracts::{QueueFile, Task, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskKind, TaskStatus};
 use crate::queue;
 use crate::queue::operations::MaterializedTaskSpec;
 use anyhow::{Result, bail};
@@ -155,11 +155,17 @@ pub(super) fn normalize_key(value: Option<&str>, fallback_title: &str) -> String
     }
 }
 
+pub(super) struct DecompositionMaterializationPlan {
+    pub(super) specs: Vec<MaterializedTaskSpec>,
+    pub(super) root_group_local_key: Option<String>,
+    pub(super) first_actionable_leaf_local_key: Option<String>,
+}
+
 pub(super) fn materialized_specs_for_preview(
     preview: &DecompositionPreview,
     effective_parent: Option<&Task>,
     request: &str,
-) -> Vec<MaterializedTaskSpec> {
+) -> DecompositionMaterializationPlan {
     let mut specs = Vec::new();
     let mut context = MaterializedSpecsContext {
         status: preview.child_status,
@@ -167,6 +173,8 @@ pub(super) fn materialized_specs_for_preview(
         provenance: source_plan_provenance(&preview.source),
         seen_local_keys: HashSet::new(),
         specs: &mut specs,
+        root_group_local_key: None,
+        first_actionable_leaf_local_key: None,
     };
     match (&preview.source, effective_parent) {
         (DecompositionSource::ExistingTask { .. }, Some(parent))
@@ -188,7 +196,14 @@ pub(super) fn materialized_specs_for_preview(
             );
         }
     }
-    specs
+    let root_group_local_key = context.root_group_local_key.clone();
+    let first_actionable_leaf_local_key = context.first_actionable_leaf_local_key.clone();
+    drop(context);
+    DecompositionMaterializationPlan {
+        specs,
+        root_group_local_key,
+        first_actionable_leaf_local_key,
+    }
 }
 
 pub(super) fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -247,6 +262,7 @@ pub(super) fn annotate_parent(
         );
     };
     let mut updated_parent = active.tasks[parent_index].clone();
+    updated_parent.kind = TaskKind::Group;
     updated_parent.updated_at = Some(now.to_string());
     let note = match (source, attach_target) {
         (DecompositionSource::ExistingTask { task }, None) => format!(
@@ -314,6 +330,8 @@ struct MaterializedSpecsContext<'preview, 'out> {
     provenance: Option<SourcePlanProvenance<'preview>>,
     seen_local_keys: HashSet<String>,
     specs: &'out mut Vec<MaterializedTaskSpec>,
+    root_group_local_key: Option<String>,
+    first_actionable_leaf_local_key: Option<String>,
 }
 
 fn source_plan_provenance(source: &DecompositionSource) -> Option<SourcePlanProvenance<'_>> {
@@ -341,12 +359,20 @@ fn collect_materialized_specs_for_nodes(
             .get(&node.planner_key)
             .expect("assigned sibling local key")
             .clone();
+        let kind = kind_for_planned_node(node);
+        if context.root_group_local_key.is_none() {
+            context.root_group_local_key = Some(local_key.clone());
+        }
+        if kind == TaskKind::WorkItem && context.first_actionable_leaf_local_key.is_none() {
+            context.first_actionable_leaf_local_key = Some(local_key.clone());
+        }
         context.specs.push(MaterializedTaskSpec {
             local_key: local_key.clone(),
             title: node.title.clone(),
             description: node.description.clone(),
             priority: Default::default(),
             status: context.status,
+            kind,
             tags: node.tags.clone(),
             scope: task_scope_with_source_plan(node, context.provenance),
             evidence: task_evidence_with_source_plan(node, context.provenance),
@@ -375,6 +401,14 @@ fn collect_materialized_specs_for_nodes(
             None,
             context,
         );
+    }
+}
+
+fn kind_for_planned_node(node: &PlannedNode) -> TaskKind {
+    if node.children.is_empty() {
+        TaskKind::WorkItem
+    } else {
+        TaskKind::Group
     }
 }
 

@@ -181,7 +181,7 @@ ralph queue tree
 ralph task children <ROOT_TASK_ID>
 ```
 
-Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work.
+Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work. Written decomposition trees persist umbrella/root/phase nodes as `kind: group`, leave runnable leaf work as the default `kind: work_item`, and report both the root/group task and the first actionable leaf task in text and JSON output. If leaves are written as `draft`, review or activate them before expecting run selection.
 
 ### Diagnostics
 

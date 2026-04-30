@@ -27,7 +27,7 @@ use super::types::{
 };
 use super::write_task_decomposition;
 use crate::config;
-use crate::contracts::{Config, QueueFile, Task, TaskStatus};
+use crate::contracts::{Config, QueueFile, Task, TaskKind, TaskStatus};
 use crate::queue;
 use anyhow::Result;
 use tempfile::TempDir;
@@ -136,10 +136,18 @@ fn write_task_decomposition_attaches_freeform_subtree_under_existing_parent() ->
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
     assert_eq!(result.parent_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0002"));
+    assert_eq!(
+        result.first_actionable_leaf_task_id.as_deref(),
+        Some("RQ-0003")
+    );
     assert_eq!(result.created_ids.len(), 2);
 
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue_file.tasks.len(), 3);
+    assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
+    assert_eq!(queue_file.tasks[1].kind, TaskKind::Group);
+    assert_eq!(queue_file.tasks[2].kind, TaskKind::WorkItem);
     assert_eq!(queue_file.tasks[1].parent_id.as_deref(), Some("RQ-0001"));
     assert_eq!(queue_file.tasks[2].parent_id.as_deref(), Some("RQ-0002"));
     Ok(())
@@ -223,7 +231,15 @@ fn write_task_decomposition_materializes_sibling_dependencies() -> Result<()> {
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
     assert_eq!(result.created_ids.len(), 3);
+    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(
+        result.first_actionable_leaf_task_id.as_deref(),
+        Some("RQ-0002")
+    );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
+    assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
+    assert_eq!(queue_file.tasks[1].kind, TaskKind::WorkItem);
+    assert_eq!(queue_file.tasks[2].kind, TaskKind::WorkItem);
     assert_eq!(queue_file.tasks[2].depends_on, vec!["RQ-0002".to_string()]);
     Ok(())
 }
@@ -269,7 +285,12 @@ fn write_task_decomposition_append_inserts_after_existing_subtree_without_reorde
         with_dependencies: false,
     };
 
-    write_task_decomposition(&resolved, &preview, false)?;
+    let result = write_task_decomposition(&resolved, &preview, false)?;
+    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0004"));
+    assert_eq!(
+        result.first_actionable_leaf_task_id.as_deref(),
+        Some("RQ-0005")
+    );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(
         queue_file
@@ -279,6 +300,9 @@ fn write_task_decomposition_append_inserts_after_existing_subtree_without_reorde
             .collect::<Vec<_>>(),
         vec!["RQ-0001", "RQ-0002", "RQ-0004", "RQ-0005", "RQ-0003"]
     );
+    assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
+    assert_eq!(queue_file.tasks[2].kind, TaskKind::Group);
+    assert_eq!(queue_file.tasks[3].kind, TaskKind::WorkItem);
     Ok(())
 }
 
@@ -322,6 +346,11 @@ fn write_task_decomposition_replace_reinserts_new_children_at_removed_subtree_bo
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
     assert_eq!(result.replaced_ids, vec!["RQ-0002".to_string()]);
+    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(
+        result.first_actionable_leaf_task_id.as_deref(),
+        Some("RQ-0004")
+    );
 
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(
@@ -332,6 +361,8 @@ fn write_task_decomposition_replace_reinserts_new_children_at_removed_subtree_bo
             .collect::<Vec<_>>(),
         vec!["RQ-0001", "RQ-0004", "RQ-0003"]
     );
+    assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
+    assert_eq!(queue_file.tasks[1].kind, TaskKind::WorkItem);
     Ok(())
 }
 
@@ -358,9 +389,15 @@ fn write_task_decomposition_created_tasks_inherit_request_and_timestamps_from_sh
         with_dependencies: false,
     };
 
-    write_task_decomposition(&resolved, &preview, false)?;
+    let result = write_task_decomposition(&resolved, &preview, false)?;
+    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(
+        result.first_actionable_leaf_task_id.as_deref(),
+        Some("RQ-0001")
+    );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let task = &queue_file.tasks[0];
+    assert_eq!(task.kind, TaskKind::WorkItem);
     assert_eq!(task.request.as_deref(), Some("Ship OAuth"));
     assert!(task.evidence.is_empty());
     assert!(task.created_at.is_some());

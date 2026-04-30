@@ -20,7 +20,7 @@
 //! - Serialized public types remain stable for current CLI and machine output contracts.
 //! - Internal planner structs mirror the planner JSON schema with unknown fields rejected.
 
-use crate::contracts::{Model, ReasoningEffort, Runner, Task, TaskStatus};
+use crate::contracts::{Model, ReasoningEffort, Runner, Task, TaskKind, TaskStatus};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -87,13 +87,78 @@ pub struct DecompositionPreview {
     pub with_dependencies: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct DecompositionPlan {
     pub root: PlannedNode,
     pub warnings: Vec<String>,
     pub total_nodes: usize,
     pub leaf_nodes: usize,
     pub dependency_edges: Vec<DependencyEdgePreview>,
+}
+
+impl DecompositionPlan {
+    pub fn actionability(&self) -> DecompositionActionabilitySummary {
+        let root_kind = kind_for_planned_node(&self.root);
+        let first_leaf = first_leaf_node(&self.root);
+        DecompositionActionabilitySummary {
+            root_group: DecompositionTaskLocator {
+                planner_key: Some(self.root.planner_key.clone()),
+                task_id: None,
+                title: self.root.title.clone(),
+                kind: root_kind,
+            },
+            first_actionable_leaf: Some(DecompositionTaskLocator {
+                planner_key: Some(first_leaf.planner_key.clone()),
+                task_id: None,
+                title: first_leaf.title.clone(),
+                kind: TaskKind::WorkItem,
+            }),
+        }
+    }
+}
+
+impl Serialize for DecompositionPlan {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("DecompositionPlan", 6)?;
+        state.serialize_field("root", &self.root)?;
+        state.serialize_field("warnings", &self.warnings)?;
+        state.serialize_field("total_nodes", &self.total_nodes)?;
+        state.serialize_field("leaf_nodes", &self.leaf_nodes)?;
+        state.serialize_field("dependency_edges", &self.dependency_edges)?;
+        state.serialize_field("actionability", &self.actionability())?;
+        state.end()
+    }
+}
+
+fn kind_for_planned_node(node: &PlannedNode) -> TaskKind {
+    if node.children.is_empty() {
+        TaskKind::WorkItem
+    } else {
+        TaskKind::Group
+    }
+}
+
+fn first_leaf_node(node: &PlannedNode) -> &PlannedNode {
+    node.children.first().map(first_leaf_node).unwrap_or(node)
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DecompositionActionabilitySummary {
+    pub root_group: DecompositionTaskLocator,
+    pub first_actionable_leaf: Option<DecompositionTaskLocator>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DecompositionTaskLocator {
+    pub planner_key: Option<String>,
+    pub task_id: Option<String>,
+    pub title: String,
+    pub kind: TaskKind,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -105,6 +170,8 @@ pub struct DependencyEdgePreview {
 #[derive(Debug, Clone, Serialize)]
 pub struct TaskDecomposeWriteResult {
     pub root_task_id: Option<String>,
+    pub root_group_task_id: Option<String>,
+    pub first_actionable_leaf_task_id: Option<String>,
     pub parent_task_id: Option<String>,
     pub created_ids: Vec<String>,
     pub replaced_ids: Vec<String>,

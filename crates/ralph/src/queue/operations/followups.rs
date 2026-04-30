@@ -27,7 +27,7 @@ use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 
 use crate::config::Resolved;
-use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskKind, TaskPriority, TaskStatus};
 use crate::queue::operations::{
     MaterializeInsertion, MaterializeTaskGraphOptions, MaterializedTaskSpec,
     apply_materialized_task_graph,
@@ -295,6 +295,7 @@ fn materialized_followup_specs(
                 ),
                 priority: proposal.priority,
                 status: TaskStatus::Todo,
+                kind: TaskKind::WorkItem,
                 tags: proposal.tags.clone(),
                 scope: proposal.scope.clone(),
                 evidence: proposal.evidence.clone(),

@@ -23,7 +23,7 @@
 //! - Local keys are unique within one materialization request.
 //! - Parent-local and dependency-local references point only within the same request.
 
-use crate::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskKind, TaskPriority, TaskStatus};
 use crate::queue;
 use anyhow::{Context, Result, anyhow, bail};
 use std::collections::{HashMap, HashSet};
@@ -35,6 +35,7 @@ pub struct MaterializedTaskSpec {
     pub description: Option<String>,
     pub priority: TaskPriority,
     pub status: TaskStatus,
+    pub kind: TaskKind,
     pub tags: Vec<String>,
     pub scope: Vec<String>,
     pub evidence: Vec<String>,
@@ -334,7 +335,7 @@ fn materialize_tasks(
             Ok(Task {
                 id,
                 status: spec.status,
-                kind: Default::default(),
+                kind: spec.kind,
                 title: normalize_required(spec.title.as_str(), "task title")?.to_string(),
                 description: spec.description.clone(),
                 priority: spec.priority,

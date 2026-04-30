@@ -76,7 +76,7 @@ pub fn write_task_decomposition(
 
     let now = timeutil::now_utc_rfc3339()?;
     let request_context = request_context(preview);
-    let specs =
+    let materialization_plan =
         materialized_specs_for_preview(preview, effective_parent.as_ref(), &request_context);
     let materialize_insertion = materialize_insertion_strategy(
         preview,
@@ -94,7 +94,7 @@ pub fn write_task_decomposition(
     let materialized = apply_materialized_task_graph(
         &mut active,
         done_ref,
-        &specs,
+        &materialization_plan.specs,
         &MaterializeTaskGraphOptions {
             now_rfc3339: &now,
             id_prefix: &resolved.id_prefix,
@@ -125,6 +125,19 @@ pub fn write_task_decomposition(
             .first()
             .map(|task| task.id.clone()),
     };
+    let root_group_task_id = match (&preview.source, preview.attach_target.as_ref()) {
+        (DecompositionSource::ExistingTask { .. }, None) => parent_task_id.clone(),
+        _ => materialization_plan
+            .root_group_local_key
+            .as_deref()
+            .and_then(|key| materialized.local_key_to_id.get(key))
+            .cloned(),
+    };
+    let first_actionable_leaf_task_id = materialization_plan
+        .first_actionable_leaf_local_key
+        .as_deref()
+        .and_then(|key| materialized.local_key_to_id.get(key))
+        .cloned();
     let created_ids = materialized
         .created_tasks
         .iter()
@@ -133,6 +146,8 @@ pub fn write_task_decomposition(
 
     Ok(TaskDecomposeWriteResult {
         root_task_id,
+        root_group_task_id,
+        first_actionable_leaf_task_id,
         parent_task_id,
         created_ids,
         replaced_ids,

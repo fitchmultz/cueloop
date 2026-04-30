@@ -144,6 +144,25 @@ fn print_text_output(
         "Stats: {} node(s), {} leaf node(s).",
         preview.plan.total_nodes, preview.plan.leaf_nodes
     );
+    let actionability = preview.plan.actionability();
+    println!(
+        "Root/group task: {} ({}, kind: {}).",
+        actionability.root_group.title,
+        actionability
+            .root_group
+            .planner_key
+            .as_deref()
+            .unwrap_or("root"),
+        actionability.root_group.kind
+    );
+    if let Some(first_leaf) = actionability.first_actionable_leaf.as_ref() {
+        println!(
+            "First actionable leaf: {} ({}, kind: {}).",
+            first_leaf.title,
+            first_leaf.planner_key.as_deref().unwrap_or("leaf"),
+            first_leaf.kind
+        );
+    }
     println!(
         "Planner options: child policy {:?}, sibling dependencies {}.",
         preview.child_policy,
@@ -175,6 +194,12 @@ fn print_text_output(
             println!("Wrote decomposition rooted at {}.", root_id);
         } else if let Some(parent_id) = &result.parent_task_id {
             println!("Wrote decomposition under existing parent {}.", parent_id);
+        }
+        if let Some(root_group_id) = &result.root_group_task_id {
+            println!("Root/group task: {}.", root_group_id);
+        }
+        if let Some(first_leaf_id) = &result.first_actionable_leaf_task_id {
+            println!("First actionable leaf task: {}.", first_leaf_id);
         }
         println!("Created {} task(s):", result.created_ids.len());
         for id in &result.created_ids {

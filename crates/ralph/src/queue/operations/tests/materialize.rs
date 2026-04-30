@@ -25,6 +25,7 @@ fn spec(local_key: &str, title: &str) -> MaterializedTaskSpec {
         description: Some(format!("{title} description")),
         priority: TaskPriority::Medium,
         status: TaskStatus::Todo,
+        kind: TaskKind::WorkItem,
         tags: vec!["queue".to_string()],
         scope: vec!["crates/ralph".to_string()],
         evidence: vec!["observed".to_string()],
