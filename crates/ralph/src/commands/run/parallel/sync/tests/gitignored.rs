@@ -69,7 +69,7 @@ fn take_logs() -> (LoggerState, Vec<String>) {
 }
 
 #[test]
-fn sync_ralph_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Result<()> {
+fn sync_cueloop_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -95,7 +95,7 @@ fn sync_ralph_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Res
     )?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(fs::read_to_string(workspace_root.join(".env"))?, "secret");
     assert_eq!(
@@ -108,7 +108,7 @@ fn sync_ralph_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> Res
 }
 
 #[test]
-fn sync_ralph_state_copies_allowlisted_ignored_file() -> Result<()> {
+fn sync_cueloop_state_copies_allowlisted_ignored_file() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -124,7 +124,7 @@ fn sync_ralph_state_copies_allowlisted_ignored_file() -> Result<()> {
     fs::write(repo_root.join("unlisted.json"), "skip me")?;
 
     let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["local-tool.json"]);
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("local-tool.json"))?,
@@ -135,7 +135,7 @@ fn sync_ralph_state_copies_allowlisted_ignored_file() -> Result<()> {
 }
 
 #[test]
-fn sync_ralph_state_copies_allowlisted_ignored_glob_matches() -> Result<()> {
+fn sync_cueloop_state_copies_allowlisted_ignored_glob_matches() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -151,7 +151,7 @@ fn sync_ralph_state_copies_allowlisted_ignored_glob_matches() -> Result<()> {
 
     let resolved =
         build_test_resolved_with_ignored_allowlist(&repo_root, vec!["fixtures/local-*.json"]);
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("fixtures/local-a.json"))?,
@@ -166,7 +166,7 @@ fn sync_ralph_state_copies_allowlisted_ignored_glob_matches() -> Result<()> {
 }
 
 #[test]
-fn sync_ralph_state_copies_allowlisted_file_under_ignored_directory_root() -> Result<()> {
+fn sync_cueloop_state_copies_allowlisted_file_under_ignored_directory_root() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -183,7 +183,7 @@ fn sync_ralph_state_copies_allowlisted_file_under_ignored_directory_root() -> Re
         build_test_resolved_with_ignored_allowlist(&repo_root, vec!["config/local.json"]);
 
     sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)?;
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("config/local.json"))?,
@@ -194,7 +194,7 @@ fn sync_ralph_state_copies_allowlisted_file_under_ignored_directory_root() -> Re
 }
 
 #[test]
-fn sync_ralph_state_copies_allowlisted_glob_under_ignored_directory_root() -> Result<()> {
+fn sync_cueloop_state_copies_allowlisted_glob_under_ignored_directory_root() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -212,7 +212,7 @@ fn sync_ralph_state_copies_allowlisted_glob_under_ignored_directory_root() -> Re
         build_test_resolved_with_ignored_allowlist(&repo_root, vec!["config/local-*.json"]);
 
     sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)?;
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("config/local-a.json"))?,
@@ -253,7 +253,7 @@ fn preflight_parallel_ignored_file_allowlist_rejects_external_symlink() -> Resul
 
 #[cfg(unix)]
 #[test]
-fn sync_ralph_state_rejects_external_ignored_symlink_without_copying() -> Result<()> {
+fn sync_cueloop_state_rejects_external_ignored_symlink_without_copying() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -266,7 +266,7 @@ fn sync_ralph_state_rejects_external_ignored_symlink_without_copying() -> Result
     unix_fs::symlink(&outside, repo_root.join("secret-link"))?;
 
     let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["secret-link"]);
-    let err = sync_ralph_state(&resolved, &workspace_root)
+    let err = sync_cueloop_state(&resolved, &workspace_root)
         .expect_err("expected runtime sync to reject external symlink");
 
     let msg = err.to_string();
@@ -278,7 +278,7 @@ fn sync_ralph_state_rejects_external_ignored_symlink_without_copying() -> Result
 
 #[cfg(unix)]
 #[test]
-fn sync_ralph_state_allows_ignored_symlink_resolving_inside_repo() -> Result<()> {
+fn sync_cueloop_state_allows_ignored_symlink_resolving_inside_repo() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -295,7 +295,7 @@ fn sync_ralph_state_allows_ignored_symlink_resolving_inside_repo() -> Result<()>
 
     let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["safe-link"]);
     sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)?;
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("safe-link"))?,
@@ -335,7 +335,7 @@ fn preflight_parallel_ignored_file_allowlist_rejects_symlink_resolving_to_denied
 
 #[cfg(unix)]
 #[test]
-fn sync_ralph_state_rejects_symlink_resolving_inside_workspace_root() -> Result<()> {
+fn sync_cueloop_state_rejects_symlink_resolving_inside_workspace_root() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = repo_root.join("workers/RQ-0001");
@@ -350,7 +350,7 @@ fn sync_ralph_state_rejects_symlink_resolving_inside_workspace_root() -> Result<
     )?;
 
     let resolved = build_test_resolved_with_ignored_allowlist(&repo_root, vec!["safe-link"]);
-    let err = sync_ralph_state(&resolved, &workspace_root)
+    let err = sync_cueloop_state(&resolved, &workspace_root)
         .expect_err("expected symlink resolving into workspace root to be rejected");
 
     let msg = err.to_string();
@@ -362,7 +362,7 @@ fn sync_ralph_state_rejects_symlink_resolving_inside_workspace_root() -> Result<
 
 #[cfg(unix)]
 #[test]
-fn sync_ralph_state_rejects_default_env_symlink_resolving_outside_repo() -> Result<()> {
+fn sync_cueloop_state_rejects_default_env_symlink_resolving_outside_repo() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -375,7 +375,7 @@ fn sync_ralph_state_rejects_default_env_symlink_resolving_outside_repo() -> Resu
     unix_fs::symlink(&outside, repo_root.join(".env"))?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
-    let err = sync_ralph_state(&resolved, &workspace_root)
+    let err = sync_cueloop_state(&resolved, &workspace_root)
         .expect_err("expected default env symlink to be rejected");
 
     let msg = err.to_string();
@@ -421,7 +421,7 @@ fn preflight_parallel_ignored_file_allowlist_warns_and_skips_missing_matches() -
 }
 
 #[test]
-fn sync_ralph_state_skips_missing_allowlist_entry_but_copies_matching_entry() -> Result<()> {
+fn sync_cueloop_state_skips_missing_allowlist_entry_but_copies_matching_entry() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -439,7 +439,7 @@ fn sync_ralph_state_skips_missing_allowlist_entry_but_copies_matching_entry() ->
     );
 
     sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)?;
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("config/local.json"))?,
@@ -500,7 +500,7 @@ fn preflight_parallel_ignored_file_allowlist_rejects_workspace_descendants() -> 
 }
 
 #[test]
-fn sync_ralph_state_skips_parent_of_workspace() -> Result<()> {
+fn sync_cueloop_state_skips_parent_of_workspace() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = repo_root.join(".ralph/workspaces/RQ-0001");
@@ -515,7 +515,7 @@ fn sync_ralph_state_skips_parent_of_workspace() -> Result<()> {
     fs::create_dir_all(&workspace_root)?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert!(!workspace_root.join(".ralph/workspaces/shared.txt").exists());
     Ok(())

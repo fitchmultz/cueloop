@@ -23,7 +23,7 @@
 use super::*;
 
 #[test]
-fn sync_ralph_state_custom_queue_done_paths_are_synced() -> Result<()> {
+fn sync_cueloop_state_custom_queue_done_paths_are_synced() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -43,7 +43,7 @@ fn sync_ralph_state_custom_queue_done_paths_are_synced() -> Result<()> {
     fs::create_dir_all(&workspace_root)?;
 
     let resolved = build_test_resolved(&repo_root, Some(queue_path), Some(done_path));
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("queue/active.json"))?,
@@ -65,7 +65,7 @@ fn sync_ralph_state_custom_queue_done_paths_are_synced() -> Result<()> {
 }
 
 #[test]
-fn sync_ralph_state_custom_queue_done_paths_inside_ralph_are_synced() -> Result<()> {
+fn sync_cueloop_state_custom_queue_done_paths_inside_ralph_are_synced() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -84,7 +84,7 @@ fn sync_ralph_state_custom_queue_done_paths_inside_ralph_are_synced() -> Result<
     fs::create_dir_all(&workspace_root)?;
 
     let resolved = build_test_resolved(&repo_root, Some(queue_path), Some(done_path));
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join(".ralph/data/queue.jsonc"))?,
@@ -106,7 +106,7 @@ fn sync_ralph_state_custom_queue_done_paths_inside_ralph_are_synced() -> Result<
 }
 
 #[test]
-fn sync_ralph_state_missing_done_file_allowed() -> Result<()> {
+fn sync_cueloop_state_missing_done_file_allowed() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -123,7 +123,7 @@ fn sync_ralph_state_missing_done_file_allowed() -> Result<()> {
 
     let done_path = repo_root.join("archive/done.json");
     let resolved = build_test_resolved(&repo_root, Some(queue_path), Some(done_path));
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join("queue/active.json"))?,
@@ -134,7 +134,7 @@ fn sync_ralph_state_missing_done_file_allowed() -> Result<()> {
 }
 
 #[test]
-fn sync_ralph_state_seeds_jsonc_bookkeeping_for_migrated_uncommitted_config() -> Result<()> {
+fn sync_cueloop_state_seeds_jsonc_bookkeeping_for_migrated_uncommitted_config() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -163,7 +163,7 @@ fn sync_ralph_state_seeds_jsonc_bookkeeping_for_migrated_uncommitted_config() ->
         Some(repo_root.join(".ralph/queue.jsonc")),
         Some(repo_root.join(".ralph/done.jsonc")),
     );
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join(".ralph/queue.jsonc"))?,

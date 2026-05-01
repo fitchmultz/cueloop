@@ -23,7 +23,7 @@
 use super::*;
 
 #[test]
-fn sync_ralph_state_copies_config_prompts_and_resolved_queue_done() -> Result<()> {
+fn sync_cueloop_state_copies_config_prompts_and_resolved_queue_done() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -37,7 +37,7 @@ fn sync_ralph_state_copies_config_prompts_and_resolved_queue_done() -> Result<()
     fs::write(repo_root.join(".ralph/prompts/override.md"), "prompt")?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join(".ralph/queue.json"))?,
@@ -59,7 +59,7 @@ fn sync_ralph_state_copies_config_prompts_and_resolved_queue_done() -> Result<()
 }
 
 #[test]
-fn sync_ralph_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()> {
+fn sync_cueloop_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -100,7 +100,7 @@ fn sync_ralph_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()> 
     fs::write(repo_root.join(".ralph/lock/queue.lock"), "lock")?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
         fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?,
@@ -131,7 +131,7 @@ fn sync_ralph_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()> 
 }
 
 #[test]
-fn sync_ralph_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
+fn sync_cueloop_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -164,7 +164,7 @@ fn sync_ralph_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
         Some(repo_root.join(".ralph/queue.jsonc")),
         Some(repo_root.join(".ralph/done.jsonc")),
     );
-    sync_ralph_state(&resolved, &workspace_root)?;
+    sync_cueloop_state(&resolved, &workspace_root)?;
 
     let config_json = fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?;
     let config: serde_json::Value = serde_json::from_str(&config_json)?;
