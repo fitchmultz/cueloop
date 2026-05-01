@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - The Ralph binary is built and discoverable by the test harness.
+//! - The CueLoop and legacy Ralph binaries are built and discoverable by the test harness.
 
 use std::process::{Command, ExitStatus};
 
@@ -397,16 +397,16 @@ fn config_examples_from_docs_execute_successfully() {
         .output()
         .expect("failed to set git name");
 
-    // Run ralph init
-    let ralph_init = Command::new(test_support::ralph_bin())
+    // Run cueloop init
+    let cueloop_init = Command::new(test_support::cueloop_bin())
         .args(["init", "--non-interactive"])
         .current_dir(&temp_dir)
         .output()
-        .expect("failed to run ralph init");
+        .expect("failed to run cueloop init");
     assert!(
-        ralph_init.status.success(),
-        "ralph init failed: {}",
-        String::from_utf8_lossy(&ralph_init.stderr)
+        cueloop_init.status.success(),
+        "cueloop init failed: {}",
+        String::from_utf8_lossy(&cueloop_init.stderr)
     );
 
     let commands: Vec<Vec<&str>> = vec![
@@ -418,18 +418,18 @@ fn config_examples_from_docs_execute_successfully() {
     ];
 
     for args in &commands {
-        let output = Command::new(test_support::ralph_bin())
+        let output = Command::new(test_support::cueloop_bin())
             .args(args)
             .current_dir(&temp_dir)
             .output()
-            .unwrap_or_else(|_| panic!("failed to execute ralph {}", args.join(" ")));
+            .unwrap_or_else(|_| panic!("failed to execute cueloop {}", args.join(" ")));
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         assert!(
             output.status.success(),
-            "expected `ralph {}` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}",
+            "expected `cueloop {}` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}",
             args.join(" ")
         );
     }

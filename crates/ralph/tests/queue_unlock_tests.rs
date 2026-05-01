@@ -38,7 +38,7 @@ fn create_lock_with_pid(dir: &Path, pid: u32) -> Result<()> {
 fn test_unlock_dry_run_shows_lock_info() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with current process PID (definitely running)
     let current_pid = std::process::id();
@@ -69,7 +69,7 @@ fn test_unlock_dry_run_shows_lock_info() -> Result<()> {
 fn test_unlock_blocked_for_active_process() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with current process PID (definitely running)
     let current_pid = std::process::id();
@@ -98,7 +98,7 @@ fn test_unlock_blocked_for_active_process() -> Result<()> {
 fn test_unlock_succeeds_with_force() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with current process PID
     let current_pid = std::process::id();
@@ -123,7 +123,7 @@ fn test_unlock_succeeds_with_force() -> Result<()> {
 fn test_unlock_succeeds_for_dead_process() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with a PID that definitely doesn't exist (max value)
     create_lock_with_pid(dir.path(), 0xFFFFFFFE)?;
@@ -147,7 +147,7 @@ fn test_unlock_succeeds_for_dead_process() -> Result<()> {
 fn test_unlock_no_lock_exists() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "unlock"]);
 
@@ -166,7 +166,7 @@ fn test_unlock_no_lock_exists() -> Result<()> {
 fn test_unlock_help_shows_new_options() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["queue", "unlock", "--help"]);
@@ -198,7 +198,7 @@ fn test_unlock_help_shows_new_options() -> Result<()> {
 fn test_unlock_dry_run_shows_process_status() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with current process PID (definitely running)
     let current_pid = std::process::id();
@@ -224,7 +224,7 @@ fn test_unlock_dry_run_shows_process_status() -> Result<()> {
 fn test_unlock_malformed_owner_file() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with malformed owner file
     let lock_dir = dir.path().join(".ralph").join("lock");
@@ -246,7 +246,7 @@ fn test_unlock_malformed_owner_file() -> Result<()> {
 fn test_unlock_missing_owner_file() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock directory but no owner file
     let lock_dir = dir.path().join(".ralph").join("lock");
@@ -267,7 +267,7 @@ fn test_unlock_missing_owner_file() -> Result<()> {
 fn test_unlock_dry_run_shows_not_running_status() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     // Create lock with a PID that definitely doesn't exist
     create_lock_with_pid(dir.path(), 0xFFFFFFFE)?;

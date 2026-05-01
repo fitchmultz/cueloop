@@ -12,12 +12,12 @@
 //! Usage:
 //! - Prefer `seed_ralph_dir()` when a test needs legacy `.ralph/` runtime fixtures.
 //! - Prefer `seed_git_repo_with_ralph()` when a suite repeatedly needs the same initialized git repo.
-//! - Use `run_in_dir()`/`ralph_command()` for CLI execution and `create_fake_runner()` for fake runner binaries.
+//! - Use `run_in_dir()`/`cueloop_command()` for CLI execution and `create_fake_runner()` for fake runner binaries.
 //!
 //! Invariants/assumptions callers must respect:
 //! - Callers that need cross-test PATH isolation must hold `env_lock()` while using `with_prepend_path`.
 //! - Executable fixture helpers mark scripts executable only on Unix hosts.
-//! - `ralph_init()` invokes the real CLI and may overwrite queue files; tests that need pre-seeded fixtures should call `seed_ralph_dir()` or `seed_git_repo_with_ralph()` instead.
+//! - `cueloop_init()` invokes the real CLI and may overwrite queue files; tests that need pre-seeded fixtures should call `seed_ralph_dir()` or `seed_git_repo_with_ralph()` instead.
 
 use anyhow::{Context, Result};
 use ralph::config::project_runtime_dir;
@@ -25,13 +25,13 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::sync::OnceLock;
 
-const TEST_GIT_USER_NAME: &str = "Ralph Test";
-const TEST_GIT_USER_EMAIL: &str = "ralph-tests@example.invalid";
+const TEST_GIT_USER_NAME: &str = "CueLoop Test";
+const TEST_GIT_USER_EMAIL: &str = "cueloop-tests@example.invalid";
 
 static RALPH_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
 static CUELOOP_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
 static EMPTY_GIT_CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
-static RALPH_INIT_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
+static CUELOOP_INIT_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
 static SEEDED_GIT_RALPH_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn resolve_cli_bin(bin_name: &str) -> PathBuf {
@@ -87,7 +87,7 @@ pub fn cueloop_bin() -> PathBuf {
 fn empty_git_config_path() -> &'static PathBuf {
     EMPTY_GIT_CONFIG_PATH.get_or_init(|| {
         let tempfile = tempfile::Builder::new()
-            .prefix("ralph-empty-gitconfig.")
+            .prefix("cueloop-empty-gitconfig.")
             .tempfile()
             .expect("create empty git config");
         let (_file, path) = tempfile.keep().expect("persist empty git config");
@@ -140,23 +140,23 @@ fn copy_dir_recursive_missing_only(src: &Path, dst: &Path) -> Result<()> {
     Ok(())
 }
 
-fn run_ralph_init_cli(dir: &Path) -> Result<()> {
+fn run_cueloop_init_cli(dir: &Path) -> Result<()> {
     let (status, stdout, stderr) = run_in_dir(dir, &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     Ok(())
 }
 
-fn ralph_init_template_dir() -> &'static PathBuf {
-    RALPH_INIT_TEMPLATE_DIR.get_or_init(|| {
+fn cueloop_init_template_dir() -> &'static PathBuf {
+    CUELOOP_INIT_TEMPLATE_DIR.get_or_init(|| {
         let template_dir = tempfile::Builder::new()
-            .prefix("ralph-init-template.")
+            .prefix("cueloop-init-template.")
             .tempdir()
-            .expect("create ralph init template dir");
+            .expect("create cueloop init template dir");
         let template_path = template_dir.keep();
-        run_ralph_init_cli(&template_path).expect("seed ralph init template");
+        run_cueloop_init_cli(&template_path).expect("seed cueloop init template");
         template_path
     })
 }
@@ -187,12 +187,12 @@ fn mark_executable_if_unix(path: &Path) -> Result<()> {
 }
 
 pub fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
-    let output = Command::new(ralph_bin())
+    let output = Command::new(cueloop_bin())
         .current_dir(dir)
         .env_remove("RUST_LOG")
         .args(args)
         .output()
-        .expect("failed to execute ralph binary");
+        .expect("failed to execute cueloop binary");
     (
         output.status,
         String::from_utf8_lossy(&output.stdout).to_string(),
@@ -200,9 +200,9 @@ pub fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
     )
 }
 
-/// Create a ralph Command with proper environment isolation.
-pub fn ralph_command(dir: &Path) -> Command {
-    let mut cmd = Command::new(ralph_bin());
+/// Create a cueloop Command with proper environment isolation.
+pub fn cueloop_command(dir: &Path) -> Command {
+    let mut cmd = Command::new(cueloop_bin());
     cmd.current_dir(dir).env_remove("RUST_LOG");
     cmd
 }
@@ -286,20 +286,20 @@ pub fn git_status_porcelain(dir: &Path) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-/// Initialize a Ralph project by invoking the real CLI.
-pub fn ralph_init(dir: &Path) -> Result<()> {
-    run_ralph_init_cli(dir)
+/// Initialize a CueLoop project by invoking the real CLI.
+pub fn cueloop_init(dir: &Path) -> Result<()> {
+    run_cueloop_init_cli(dir)
 }
 
-/// Initialize a Ralph project by invoking the real CLI.
-pub fn ralph_init_cli(dir: &Path) -> Result<()> {
-    run_ralph_init_cli(dir)
+/// Initialize a CueLoop project by invoking the real CLI.
+pub fn cueloop_init_cli(dir: &Path) -> Result<()> {
+    run_cueloop_init_cli(dir)
 }
 
 /// Seed legacy `.ralph/` from a cached template while preserving files already written by the test.
 pub fn seed_ralph_dir(dir: &Path) -> Result<()> {
     let target = dir.join(".ralph");
-    let template = ralph_init_template_dir().join(".cueloop");
+    let template = cueloop_init_template_dir().join(".cueloop");
     copy_dir_recursive_missing_only(&template, &target)
 }
 

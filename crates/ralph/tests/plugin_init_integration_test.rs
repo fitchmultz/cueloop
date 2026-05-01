@@ -45,8 +45,8 @@ fn git_init(dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn ralph_init(dir: &Path) -> Result<()> {
-    let output = Command::new(test_support::ralph_bin())
+fn cueloop_init(dir: &Path) -> Result<()> {
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(dir)
         .env_remove("RUST_LOG")
         .args(["init", "--force", "--non-interactive"])
@@ -54,19 +54,19 @@ fn ralph_init(dir: &Path) -> Result<()> {
 
     anyhow::ensure!(
         output.status.success(),
-        "ralph init failed: {}",
+        "cueloop init failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
 }
 
 fn run_in_dir(dir: &Path, args: &[&str]) -> (std::process::ExitStatus, String, String) {
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(dir)
         .env_remove("RUST_LOG")
         .args(args)
         .output()
-        .expect("failed to execute ralph binary");
+        .expect("failed to execute cueloop binary");
     (
         output.status,
         String::from_utf8_lossy(&output.stdout).to_string(),
@@ -78,7 +78,7 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (std::process::ExitStatus, String, S
 fn plugin_init_scaffold_default_and_validate() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Run plugin init
     let (status, stdout, stderr) =
@@ -123,7 +123,7 @@ fn plugin_init_scaffold_default_and_validate() -> Result<()> {
 fn plugin_init_dry_run_writes_nothing() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Run plugin init with --dry-run
     let (status, stdout, stderr) = run_in_dir(
@@ -147,7 +147,7 @@ fn plugin_init_dry_run_writes_nothing() -> Result<()> {
 fn plugin_init_rejects_invalid_id_with_path_separator() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Test forward slash
     let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "foo/bar"]);
@@ -174,7 +174,7 @@ fn plugin_init_rejects_invalid_id_with_path_separator() -> Result<()> {
 fn plugin_init_target_exists_requires_force() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // First init should succeed
     let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "exists.test"]);
@@ -207,7 +207,7 @@ fn plugin_init_target_exists_requires_force() -> Result<()> {
 fn plugin_init_legacy_plugin_collision_requires_force() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     let legacy_dir = temp_dir.path().join(".ralph/plugins/legacy.shadow");
     std::fs::create_dir_all(&legacy_dir)?;
@@ -248,10 +248,10 @@ fn plugin_init_legacy_plugin_collision_requires_force() -> Result<()> {
 fn plugin_init_global_scope_requires_home() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Run with HOME removed from environment
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(temp_dir.path())
         .env_remove("HOME")
         .env_remove("RUST_LOG")
@@ -273,7 +273,7 @@ fn plugin_init_global_scope_requires_home() -> Result<()> {
 fn plugin_init_with_runner_only() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Run with --with-runner only
     let (status, _stdout, stderr) = run_in_dir(
@@ -306,7 +306,7 @@ fn plugin_init_with_runner_only() -> Result<()> {
 fn plugin_init_with_processor_only() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Run with --with-processor only
     let (status, _stdout, stderr) = run_in_dir(
@@ -339,7 +339,7 @@ fn plugin_init_with_processor_only() -> Result<()> {
 fn plugin_init_custom_path() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Create a custom directory
     let custom_dir = temp_dir.path().join("custom_plugins");
@@ -374,7 +374,7 @@ fn plugin_init_custom_path() -> Result<()> {
 fn plugin_init_with_custom_metadata() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     // Run with custom metadata
     let (status, _, stderr) = run_in_dir(

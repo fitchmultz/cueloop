@@ -25,7 +25,7 @@ use std::path::Path;
 
 mod test_support;
 use test_support::{
-    git_init, make_test_task, ralph_init, read_queue, run_in_dir, temp_dir_outside_repo,
+    cueloop_init, git_init, make_test_task, read_queue, run_in_dir, temp_dir_outside_repo,
     write_queue,
 };
 
@@ -49,7 +49,7 @@ fn task_split_output_shows_actual_child_ids() -> Result<()> {
 
     // Initialize git and ralph
     git_init(dir.path()).context("git init")?;
-    ralph_init(dir.path()).context("ralph init")?;
+    cueloop_init(dir.path()).context("cueloop init")?;
 
     // Create a queue with RQ-0001 and RQ-0050 (high ID existing)
     let task_0001 = Task {
@@ -154,7 +154,7 @@ fn task_split_output_with_empty_queue() -> Result<()> {
 
     // Initialize git and ralph
     git_init(dir.path()).context("git init")?;
-    ralph_init(dir.path()).context("ralph init")?;
+    cueloop_init(dir.path()).context("cueloop init")?;
 
     // Create a queue with only RQ-0001
     let task_0001 = Task {

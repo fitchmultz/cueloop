@@ -30,7 +30,7 @@ mod test_support;
 fn setup_repo() -> Result<tempfile::TempDir> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
     Ok(dir)
 }
 
