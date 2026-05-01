@@ -33,14 +33,14 @@ fn task_update_single_task_moved_to_done_during_update() -> Result<()> {
     let script = r#"#!/bin/sh
 cat >/dev/null
 # Move task from queue.jsonc to done.jsonc
-mv .ralph/queue.jsonc .ralph/queue.jsonc.bak
-cat > .ralph/queue.jsonc << 'QUEUEEOF'
+mv .cueloop/queue.jsonc .cueloop/queue.jsonc.bak
+cat > .cueloop/queue.jsonc << 'QUEUEEOF'
 {
   "version": 1,
   "tasks": []
 }
 QUEUEEOF
-cat > .ralph/done.jsonc << 'DONEEOF'
+cat > .cueloop/done.jsonc << 'DONEEOF'
 {
   "version": 1,
   "tasks": [
@@ -61,7 +61,7 @@ cat > .ralph/done.jsonc << 'DONEEOF'
   ]
 }
 DONEEOF
-rm .ralph/queue.jsonc.bak
+rm .cueloop/queue.jsonc.bak
 exit 0
 "#;
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
@@ -102,7 +102,7 @@ fn task_update_single_task_removed_during_update() -> Result<()> {
     let script = r#"#!/bin/sh
 cat >/dev/null
 # Remove task from queue.jsonc (empty queue)
-cat > .ralph/queue.jsonc << 'QUEUEEOF'
+cat > .cueloop/queue.jsonc << 'QUEUEEOF'
 {
   "version": 1,
   "tasks": []
@@ -143,14 +143,14 @@ fn task_update_single_task_moved_to_done_no_changes() -> Result<()> {
     let script = r#"#!/bin/sh
 cat >/dev/null
 # Move task from queue.jsonc to done.jsonc without changes
-mv .ralph/queue.jsonc .ralph/queue.jsonc.bak
-cat > .ralph/queue.jsonc << 'QUEUEEOF'
+mv .cueloop/queue.jsonc .cueloop/queue.jsonc.bak
+cat > .cueloop/queue.jsonc << 'QUEUEEOF'
 {
   "version": 1,
   "tasks": []
 }
 QUEUEEOF
-cat > .ralph/done.jsonc << 'DONEEOF'
+cat > .cueloop/done.jsonc << 'DONEEOF'
 {
   "version": 1,
   "tasks": [
@@ -171,7 +171,7 @@ cat > .ralph/done.jsonc << 'DONEEOF'
   ]
 }
 DONEEOF
-rm .ralph/queue.jsonc.bak
+rm .cueloop/queue.jsonc.bak
 exit 0
 "#;
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;

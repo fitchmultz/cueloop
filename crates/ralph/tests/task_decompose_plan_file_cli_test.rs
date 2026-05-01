@@ -22,6 +22,7 @@
 mod test_support;
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::contracts::{QueueFile, TaskKind};
 use serde_json::Value;
 use tempfile::tempdir;
@@ -142,7 +143,8 @@ fn plan_file_decompose_preview_write_validate_and_navigate_ordered_plan() -> Res
     assert_titles_in_order(&children, &PHASE_TITLES);
 
     let queue_file: QueueFile = serde_json::from_str(
-        &std::fs::read_to_string(temp.path().join(".ralph/queue.jsonc")).context("read queue")?,
+        &std::fs::read_to_string(project_runtime_dir(temp.path()).join("queue.jsonc"))
+            .context("read queue")?,
     )
     .context("parse queue")?;
     assert_eq!(

@@ -119,7 +119,10 @@ fn run_tutorial_non_interactive(keep_sandbox: bool) -> Result<()> {
         version: 1,
         tasks: vec![task],
     };
-    crate::queue::save_queue(&sandbox.path.join(".ralph/queue.jsonc"), &queue)?;
+    crate::queue::save_queue(
+        &crate::config::project_runtime_dir(&sandbox.path).join("queue.jsonc"),
+        &queue,
+    )?;
 
     std::env::set_current_dir(&original_dir)?;
 

@@ -60,7 +60,7 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
 
     // Load ETA calculator if needed
     let eta_calculator = args.with_eta.then(|| {
-        let cache_dir = resolved.repo_root.join(".ralph/cache");
+        let cache_dir = crate::config::project_runtime_dir(&resolved.repo_root).join("cache");
         EtaCalculator::load(&cache_dir)
     });
 

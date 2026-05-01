@@ -17,8 +17,9 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Requires a valid Ralph project (with .ralph directory).
+//! - Uses current `.cueloop` or legacy `.ralph` runtime markers when discovering projects.
 //! - `--apply` requires explicit user action (not automatic).
+//! - `migrate runtime-dir --apply` is explicit and is never part of normal `migrate --apply`.
 //! - Exit code 1 from `--check` when migrations are pending for CI integration.
 
 use crate::commands::init::gitignore;
@@ -33,10 +34,11 @@ use colored::Colorize;
     after_long_help = "Examples:
   ralph migrate              # Check for pending migrations
   ralph migrate --check      # Exit with error code if migrations pending (CI)
-  ralph migrate --apply      # Apply all pending migrations
-  ralph migrate --apply      # Also repairs legacy v1 config files that 0.3 cannot load directly
+  ralph migrate --apply      # Apply all pending config/file migrations
   ralph migrate --list       # List all migrations and their status
   ralph migrate status       # Show detailed migration status
+  ralph migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop
+  ralph migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop
 "
 )]
 pub struct MigrateArgs {
@@ -65,13 +67,30 @@ pub struct MigrateArgs {
 pub enum MigrateCommand {
     /// Show detailed migration status.
     Status,
+    /// Explicitly check or apply the `.ralph` -> `.cueloop` runtime directory migration.
+    #[command(name = "runtime-dir")]
+    RuntimeDir(RuntimeDirArgs),
+}
+
+#[derive(Args)]
+pub struct RuntimeDirArgs {
+    /// Check runtime-dir migration status without applying it (exit 1 if migration is needed).
+    #[arg(long, conflicts_with = "apply")]
+    pub check: bool,
+
+    /// Move `.ralph` project runtime state to `.cueloop` when safe.
+    #[arg(long, conflicts_with = "check")]
+    pub apply: bool,
 }
 
 /// Handle the migrate command.
 pub fn handle_migrate(args: MigrateArgs) -> Result<()> {
     // Handle subcommands first
-    if let Some(MigrateCommand::Status) = args.command {
-        return show_migration_status();
+    if let Some(command) = args.command {
+        return match command {
+            MigrateCommand::Status => show_migration_status(),
+            MigrateCommand::RuntimeDir(runtime_args) => handle_runtime_dir_migration(runtime_args),
+        };
     }
 
     // Handle flags
@@ -276,6 +295,104 @@ fn apply_migrations(force: bool) -> Result<()> {
                 format!("⚠ Warning: Failed to update .gitignore for JSONC: {}", e).yellow()
             );
         }
+    }
+
+    Ok(())
+}
+
+/// Handle the explicit runtime-dir migration command.
+fn handle_runtime_dir_migration(args: RuntimeDirArgs) -> Result<()> {
+    let ctx = MigrationContext::discover_from_cwd().context("discover migration context")?;
+
+    if args.apply {
+        return apply_runtime_dir_migration(&ctx.repo_root);
+    }
+
+    let state = migration::runtime_dir::check_runtime_dir_migration(&ctx.repo_root);
+    print_runtime_dir_state(&state);
+
+    if args.check && state.check_should_fail() {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+fn print_runtime_dir_state(state: &migration::runtime_dir::RuntimeDirMigrationState) {
+    let label = match state {
+        migration::runtime_dir::RuntimeDirMigrationState::Uninitialized { .. } => {
+            state.label().dimmed()
+        }
+        migration::runtime_dir::RuntimeDirMigrationState::AlreadyCurrent { .. } => {
+            state.label().green()
+        }
+        migration::runtime_dir::RuntimeDirMigrationState::NeedsMigration { .. } => {
+            state.label().yellow()
+        }
+        migration::runtime_dir::RuntimeDirMigrationState::Collision { .. } => state.label().red(),
+    };
+
+    println!("{} {}", "Runtime directory migration:".bold(), label);
+    println!("{}", state.guidance());
+    if matches!(
+        state,
+        migration::runtime_dir::RuntimeDirMigrationState::NeedsMigration { .. }
+    ) {
+        println!(
+            "Run {} to move durable project state to .cueloop.",
+            "ralph migrate runtime-dir --apply".cyan()
+        );
+    }
+}
+
+fn apply_runtime_dir_migration(repo_root: &std::path::Path) -> Result<()> {
+    let report = migration::runtime_dir::apply_runtime_dir_migration(repo_root)?;
+
+    match &report.initial_state {
+        migration::runtime_dir::RuntimeDirMigrationState::Uninitialized { .. }
+        | migration::runtime_dir::RuntimeDirMigrationState::AlreadyCurrent { .. } => {
+            print_runtime_dir_state(&report.initial_state);
+            return Ok(());
+        }
+        migration::runtime_dir::RuntimeDirMigrationState::NeedsMigration { .. } => {}
+        migration::runtime_dir::RuntimeDirMigrationState::Collision { .. } => unreachable!(
+            "runtime-dir collision should be returned as an error before report construction"
+        ),
+    }
+
+    println!(
+        "{}",
+        "✓ Moved project runtime directory from .ralph to .cueloop".green()
+    );
+    if report.gitignore_updated {
+        println!("{}", "✓ Updated .gitignore runtime path references".green());
+    }
+    if report.config_files_updated > 0 {
+        println!(
+            "{}",
+            format!(
+                "✓ Updated runtime path references in {} config file(s)",
+                report.config_files_updated
+            )
+            .green()
+        );
+    }
+    if report.readme_refreshed {
+        println!("{}", "✓ Refreshed generated runtime README".green());
+    }
+    if report.history_recorded {
+        println!(
+            "{}",
+            format!(
+                "✓ Recorded migration history at {}",
+                migration::history::migration_history_path(repo_root).display()
+            )
+            .green()
+        );
+    }
+
+    for warning in report.warnings {
+        eprintln!("{}", format!("⚠ Warning: {warning}").yellow());
     }
 
     Ok(())

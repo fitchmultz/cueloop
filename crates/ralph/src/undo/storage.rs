@@ -34,7 +34,9 @@ pub(crate) const UNDO_SNAPSHOT_PREFIX: &str = "undo-";
 
 /// Get the undo cache directory path.
 pub fn undo_cache_dir(repo_root: &Path) -> PathBuf {
-    repo_root.join(".ralph").join("cache").join("undo")
+    crate::config::project_runtime_dir(repo_root)
+        .join("cache")
+        .join("undo")
 }
 
 /// Create a snapshot before a mutation operation.

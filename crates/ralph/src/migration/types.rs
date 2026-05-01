@@ -106,7 +106,7 @@ impl MigrationContext {
             resolved
                 .project_config_path
                 .clone()
-                .unwrap_or_else(|| resolved.repo_root.join(".ralph/config.jsonc")),
+                .unwrap_or_else(|| crate::config::project_config_path(&resolved.repo_root)),
             resolved.global_config_path.clone(),
             resolved.config.clone(),
         )
@@ -203,7 +203,7 @@ mod tests {
 
     fn create_test_context(dir: &TempDir) -> MigrationContext {
         let repo_root = dir.path().to_path_buf();
-        let project_config_path = repo_root.join(".ralph/config.jsonc");
+        let project_config_path = crate::config::project_config_path(&repo_root);
 
         MigrationContext {
             repo_root,
@@ -259,6 +259,19 @@ mod tests {
 
         assert_eq!(ctx.repo_root, dir.path());
         assert_eq!(ctx.project_config_path, ralph_dir.join("config.jsonc"));
+    }
+
+    #[test]
+    fn migration_context_defaults_project_config_to_cueloop() {
+        let dir = TempDir::new().unwrap();
+
+        let ctx = MigrationContext::discover_from_dir(dir.path()).unwrap();
+
+        assert_eq!(ctx.repo_root, dir.path());
+        assert_eq!(
+            ctx.project_config_path,
+            dir.path().join(".cueloop/config.jsonc")
+        );
     }
 
     #[test]

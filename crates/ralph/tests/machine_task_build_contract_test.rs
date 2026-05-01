@@ -32,7 +32,7 @@ fn machine_task_build_suppresses_noisy_runner_output_before_json() -> Result<()>
 cat >/dev/null
 echo "NOISY_RUNNER_STDOUT_BEFORE_MACHINE_JSON"
 echo "NOISY_RUNNER_STDERR_BEFORE_MACHINE_JSON" >&2
-cat <<'JSON' > .ralph/queue.jsonc
+cat <<'JSON' > .cueloop/queue.jsonc
 {
   "version": 1,
   "tasks": [

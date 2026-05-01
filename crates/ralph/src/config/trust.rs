@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Define the local trust file contract for execution-sensitive project settings.
-//! - Load `.ralph/trust.jsonc` files with JSONC support.
+//! - Load active `.cueloop/trust.jsonc` or legacy `.ralph/trust.jsonc` files with JSONC support.
 //! - Provide helpers for source-aware trust checks during config resolution.
 //!
 //! Not handled here:
@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::resolution::project_runtime_dir;
 use crate::fsutil;
 
 /// Local trust file for execution-sensitive project configuration.
@@ -48,7 +49,7 @@ impl RepoTrust {
 
 /// Preferred local trust path for a repository root.
 pub fn project_trust_path(repo_root: &Path) -> PathBuf {
-    repo_root.join(".ralph").join("trust.jsonc")
+    project_runtime_dir(repo_root).join("trust.jsonc")
 }
 
 /// Load repo trust if present, otherwise return the default untrusted state.
@@ -65,7 +66,7 @@ pub fn load_repo_trust(repo_root: &Path) -> Result<RepoTrust> {
 /// Outcome of [`initialize_repo_trust_file`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrustFileInitStatus {
-    /// Wrote a new `.ralph/trust.jsonc`.
+    /// Wrote a new repo-local `trust.jsonc` in the active runtime directory.
     Created,
     /// Updated an existing file (enabled trust or backfilled `trusted_at`).
     Updated,
@@ -82,22 +83,23 @@ fn write_trust_file(path: &Path, trust: &RepoTrust) -> Result<()> {
 
 fn print_trust_warning() {
     eprintln!(
-        "Warning: Trusting this repo allows project-local execution settings under .ralph/config.jsonc\n\
+        "Warning: Trusting this repo allows project-local execution settings under the active runtime config\n\
          (runner binary overrides, Cursor/plugin runner selection, agent.ci_gate, plugins.*, parallel.ignored_file_allowlist) to take effect. Review that file first.\n\
-         Keep .ralph/trust.jsonc untracked; do not commit it."
+         Keep the repo-local trust.jsonc untracked; do not commit it."
     );
 }
 
-/// Create or update `.ralph/trust.jsonc` so [`RepoTrust::is_trusted`] becomes true.
+/// Create or update repo-local `trust.jsonc` so [`RepoTrust::is_trusted`] becomes true.
 ///
-/// - Creates `.ralph/` when missing.
+/// - Creates the active runtime directory when missing.
 /// - If the file is absent, writes `allow_project_commands: true` and `trusted_at` set to the
 ///   current UTC instant.
 /// - If the file exists: when already trusted with a `trusted_at` timestamp, leaves the file
 ///   unchanged; otherwise merges in trust (backfills `trusted_at` or enables `allow_project_commands`).
 pub fn initialize_repo_trust_file(repo_root: &Path) -> Result<TrustFileInitStatus> {
-    let ralph_dir = repo_root.join(".ralph");
-    fs::create_dir_all(&ralph_dir).with_context(|| format!("create {}", ralph_dir.display()))?;
+    let runtime_dir = project_runtime_dir(repo_root);
+    fs::create_dir_all(&runtime_dir)
+        .with_context(|| format!("create {}", runtime_dir.display()))?;
 
     let path = project_trust_path(repo_root);
     if !path.exists() {
@@ -142,8 +144,21 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn project_trust_path_is_jsonc_only() {
+    fn project_trust_path_defaults_to_cueloop_jsonc() {
         let repo_root = TempDir::new().expect("temp dir");
+        assert_eq!(
+            project_trust_path(repo_root.path()),
+            repo_root.path().join(".cueloop/trust.jsonc")
+        );
+    }
+
+    #[test]
+    fn project_trust_path_uses_legacy_runtime_when_marked() {
+        let repo_root = TempDir::new().expect("temp dir");
+        let ralph_dir = repo_root.path().join(".ralph");
+        fs::create_dir_all(&ralph_dir).expect("create .ralph");
+        fs::write(ralph_dir.join("config.jsonc"), r#"{"version":2}"#).expect("write config");
+
         assert_eq!(
             project_trust_path(repo_root.path()),
             repo_root.path().join(".ralph/trust.jsonc")
@@ -196,8 +211,8 @@ mod tests {
     #[test]
     fn initialize_repo_trust_file_backfills_trusted_at() {
         let repo_root = TempDir::new().expect("temp dir");
-        let ralph_dir = repo_root.path().join(".ralph");
-        fs::create_dir_all(&ralph_dir).expect("create .ralph");
+        let runtime_dir = repo_root.path().join(".cueloop");
+        fs::create_dir_all(&runtime_dir).expect("create .cueloop");
         fs::write(
             project_trust_path(repo_root.path()),
             r#"{"allow_project_commands":true}"#,

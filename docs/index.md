@@ -1,11 +1,11 @@
-# Ralph Documentation
+# CueLoop Documentation
 Status: Active
 Owner: Maintainers
 Source of truth: this document for documentation navigation
 Parent: [README](../README.md)
 
 
-Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. During this rebrand phase, the executable remains `ralph` and the package remains `ralph-agent-loop`.
 
 ## Start Here
 
@@ -22,7 +22,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 - [PRD Specs](prd/ralph-task-decompose.md): feature-level product requirements
 - [Queue and Tasks](queue-and-tasks.md): task model and queue semantics
 - [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path
-- [Ralph Dogfood Harness](guides/dogfood-ralph.md): repeatable end-to-end fixture project with real three-phase runner execution
+- [CueLoop Dogfood Harness](guides/dogfood-ralph.md): repeatable end-to-end fixture project with real three-phase runner execution
 - [Advanced Usage Guide](guides/advanced.md): power-user workflows, profiles, plugins, automation, and optimization
 - [Advanced Troubleshooting and Reference](guides/advanced-troubleshooting.md): complex recovery patterns and quick references
 - [Stack Audit (2026-04)](guides/stack-audit-2026-04.md): current toolchain/dependency inventory and Rust 1.95.0 baseline review
@@ -46,7 +46,7 @@ Use these when you want to validate a clone, understand the operational model, o
 - [README](../README.md)
 - [Evaluator Path](guides/evaluator-path.md)
 - [Local Smoke Test](guides/local-smoke-test.md)
-- [Ralph Dogfood Harness](guides/dogfood-ralph.md)
+- [CueLoop Dogfood Harness](guides/dogfood-ralph.md)
 - [Architecture Overview](architecture.md)
 - [Public Readiness Checklist](guides/public-readiness.md)
 - [Security Model](security-model.md)
@@ -69,10 +69,11 @@ Use these when you want to validate a clone, understand the operational model, o
 
 ## Runtime Paths (Defaults)
 
-- Queue: `.ralph/queue.jsonc`
-- Done archive: `.ralph/done.jsonc`
-- Project config: `.ralph/config.jsonc`
-- Prompt overrides: `.ralph/prompts/`
+- Queue: `.cueloop/queue.jsonc`
+- Done archive: `.cueloop/done.jsonc`
+- Project config: `.cueloop/config.jsonc`
+- Prompt overrides: `.cueloop/prompts/`
+- Legacy fallback: `.ralph/` remains supported; use `ralph migrate runtime-dir --apply` when ready.
 
 ## Validation and CI
 

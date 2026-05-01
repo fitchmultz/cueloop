@@ -2,10 +2,10 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-This page documents Ralph's current command surface. Default `ralph --help` shows the core workflow only; use `ralph help-all` or `ralph <command> --help` to reveal advanced and experimental surfaces.
+This page documents CueLoop's current command surface. The executable remains `ralph` during this rebrand phase. Default `ralph --help` shows the core workflow only; use `ralph help-all` or `ralph <command> --help` to reveal advanced and experimental surfaces.
 
 ## Global Flags
 
@@ -13,7 +13,7 @@ These are available on most commands:
 
 - `--force`
 - `-v, --verbose`
-- `--debug` (supported on run flows; writes raw logs to `.ralph/logs/debug.log`)
+- `--debug` (supported on run flows; writes raw logs to `.cueloop/logs/debug.log`; legacy `.ralph/logs/debug.log` remains possible in legacy repos)
 - `--color <auto|always|never>`
 - `--no-color`
 - `--auto-fix`
@@ -26,7 +26,7 @@ These are available on most commands:
 - `ralph run` - Execute tasks (`one`, `loop`, `resume`, `parallel`)
 - `ralph task` - Build/create and manage task lifecycle
 - `ralph scan` - Create tasks by scanning repository state
-- `ralph init` - Bootstrap `.ralph/` files
+- `ralph init` - Bootstrap `.cueloop/` files for new repos, or keep `.ralph/` for legacy repos
 - `ralph app` - macOS app integration
 - `ralph version` - Build/version info
 
@@ -39,7 +39,7 @@ These are available on most commands:
 - `ralph daemon` - Background daemon controls
 - `ralph prd` - Convert PRD markdown into tasks
 - `ralph completions` - Generate shell completions
-- `ralph migrate` - Check/apply migrations
+- `ralph migrate` - Check/apply config migrations and explicit `runtime-dir` migration (`.ralph` → `.cueloop`)
 - `ralph cleanup` - Remove temporary runtime artifacts
 - `ralph version` - Build/version info
 - `ralph watch` - File watch to detect task comments
@@ -63,7 +63,7 @@ ralph init
 ralph init --non-interactive
 ```
 
-`ralph init` creates or updates local repository trust (`.ralph/trust.jsonc`) by default, refreshes the generated `.ralph/README.md` when Ralph ships a newer template, and adds the trust file to `.gitignore`. Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
+`ralph init` creates or updates local repository trust (`.cueloop/trust.jsonc` by default, `.ralph/trust.jsonc` for legacy repos), refreshes the generated runtime README, and adds the trust file to `.gitignore`. Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
 
 Interactive init can select extra ignored files for parallel workers; manual additions belong in trusted `parallel.ignored_file_allowlist` and follow the small-file allowlist contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync).
 
@@ -83,7 +83,7 @@ ralph run resume
 
 ### Resume-aware execution
 
-Ralph now explicitly narrates whether it is:
+CueLoop now explicitly narrates whether it is:
 - resuming the same session
 - falling back to a fresh invocation
 - refusing to resume because confirmation is required
@@ -94,7 +94,7 @@ Useful commands:
 # Inspect interrupted work and choose interactively when needed
 ralph run one
 
-# Auto-resume when Ralph can do so safely
+# Auto-resume when CueLoop can do so safely
 ralph run one --resume
 ralph run loop --resume --max-tasks 5
 ralph run resume
@@ -106,7 +106,7 @@ ralph run loop --non-interactive
 
 ### Blocked / waiting / stalled narration
 
-When Ralph cannot make progress, it now classifies the current state instead of only printing generic wait prose. Operator-facing run surfaces distinguish:
+When CueLoop cannot make progress, it now classifies the current state instead of only printing generic wait prose. Operator-facing run surfaces distinguish:
 
 - true idle waiting (no todo work)
 - dependency blocking
@@ -185,7 +185,7 @@ ralph task children <ROOT_TASK_ID>
 
 Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work. Written decomposition trees persist umbrella/root/phase nodes as `kind: group`, leave runnable leaf work as the default `kind: work_item`, and report both the root/group task and the first actionable leaf task in text and JSON output.
 
-Preview-only decomposition saves an exact replay checkpoint under `.ralph/cache/decompose-previews/` and prints a copy/pasteable continuation command with the real checkpoint ID, for example `ralph machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`. Human CLI users may also write the same checkpoint with `ralph task decompose --write --from-preview <CHECKPOINT_ID>`. Checkpoints are runtime cache artifacts, pruned best-effort after seven days; they are not undo snapshots. A successful checkpoint replay still uses normal write safeguards, including queue lock, validation, and a fresh undo snapshot before queue mutation. A normal later `ralph task decompose --write <SOURCE>` without `--from-preview` invokes the planner again and may differ from an earlier preview.
+Preview-only decomposition saves an exact replay checkpoint under `.cueloop/cache/decompose-previews/` (or legacy `.ralph/cache/decompose-previews/`) and prints a copy/pasteable continuation command with the checkpoint ID.
 
 Decomposition status controls are explicit and opt-in. `--status <STATUS>` applies to every generated node by default; `--parent-status <STATUS>` overrides generated group/non-leaf nodes; `--leaf-status <STATUS>` overrides generated leaf work items. Plain `--write` remains review-first and writes generated tasks as `draft`. To make leaf work immediately runnable while keeping parent/group nodes as drafts, use `--parent-status draft --leaf-status todo`. If a write leaves every generated task in `draft`, the continuation output prints an exact activation command such as `ralph task ready RQ-0003` for the first actionable leaf. `ralph queue validate` and `ralph queue explain` use the same calm activation guidance instead of reporting an all-draft decomposition as dependency failure.
 
@@ -199,7 +199,7 @@ ralph runner capabilities claude
 ralph config show --format json
 ```
 
-When Ralph is not making progress, `ralph doctor` now uses the same canonical `BlockingState` vocabulary as the live run surfaces: `waiting`, `blocked`, or `stalled`, with reasons such as `dependency_blocked`, `schedule_blocked`, `lock_blocked`, `ci_blocked`, `runner_recovery`, and `operator_recovery`.
+When CueLoop is not making progress, `ralph doctor` now uses the same canonical `BlockingState` vocabulary as the live run surfaces: `waiting`, `blocked`, or `stalled`.
 
 ### Recovery and continuation
 
@@ -219,12 +219,12 @@ ralph undo --list
 ralph undo --dry-run
 ```
 
-These commands are now first-class continuation tools. They explain whether Ralph is ready, waiting, blocked, or stalled, preserve partial value where safe, and point to the next recovery step instead of treating queue repair or undo as emergency-only workflows.
+These commands are now first-class continuation tools. They explain whether CueLoop is ready, waiting, blocked, or stalled, preserve partial value where safe, and use undo-backed writes for queue/done mutations.
 
 If `ralph run loop` stops on queue validation, start with `ralph queue repair --dry-run` to preview recoverable fixes, apply them with `ralph queue repair`, and optionally confirm the result with `ralph queue validate`.
 
 `ralph task mutate --format json` and `ralph task decompose --format json` now emit the same shared versioned continuation documents used by `ralph machine` commands.
-`ralph task followups apply` consumes `.ralph/cache/followups/<TASK_ID>.json`, validates the proposal, creates undo, inserts generated tasks into the queue, and removes the proposal after a successful apply.
+`ralph task followups apply` consumes `.cueloop/cache/followups/<TASK_ID>.json` (or legacy `.ralph/cache/followups/<TASK_ID>.json`), validates the proposal, creates undo, inserts generated tasks into the queue, and records continuation state in the same family as task mutate/decompose.
 
 ### Machine API
 

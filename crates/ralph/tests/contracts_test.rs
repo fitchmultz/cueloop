@@ -27,10 +27,13 @@ fn test_config_default() {
     let config = Config::default();
     assert_eq!(config.version, 2);
     assert_eq!(config.project_type, Some(ProjectType::Code));
-    assert_eq!(config.queue.file, Some(PathBuf::from(".ralph/queue.jsonc")));
+    assert_eq!(
+        config.queue.file,
+        Some(PathBuf::from(".cueloop/queue.jsonc"))
+    );
     assert_eq!(
         config.queue.done_file,
-        Some(PathBuf::from(".ralph/done.jsonc"))
+        Some(PathBuf::from(".cueloop/done.jsonc"))
     );
     assert_eq!(config.queue.id_prefix, Some("RQ".to_string()));
     assert_eq!(config.queue.id_width, Some(4));

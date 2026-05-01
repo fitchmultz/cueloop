@@ -3,23 +3,24 @@
 //! Responsibilities:
 //! - Resolve the built `ralph` binary and run isolated subprocesses for tests.
 //! - Initialize disposable git repos and executable fixtures.
-//! - Seed reusable `.ralph/` scaffolding and cached git+`.ralph/` repo templates.
+//! - Seed reusable runtime scaffolding and cached git+runtime repo templates.
 //! - Provide scoped PATH mutation utilities for fake toolchains.
 //!
 //! Scope:
 //! - Test-only process, git, and fixture bootstrap helpers used by Rust integration suites.
 //!
 //! Usage:
-//! - Prefer `seed_ralph_dir()` when a test only needs `.ralph/` fixtures.
+//! - Prefer `seed_ralph_dir()` when a test needs legacy `.ralph/` runtime fixtures.
 //! - Prefer `seed_git_repo_with_ralph()` when a suite repeatedly needs the same initialized git repo.
 //! - Use `run_in_dir()`/`ralph_command()` for CLI execution and `create_fake_runner()` for fake runner binaries.
 //!
 //! Invariants/assumptions callers must respect:
 //! - Callers that need cross-test PATH isolation must hold `env_lock()` while using `with_prepend_path`.
 //! - Executable fixture helpers mark scripts executable only on Unix hosts.
-//! - `ralph_init()` invokes the real CLI and may overwrite `.ralph/queue.jsonc`; tests that need pre-seeded fixtures should call `seed_ralph_dir()` or `seed_git_repo_with_ralph()` instead.
+//! - `ralph_init()` invokes the real CLI and may overwrite queue files; tests that need pre-seeded fixtures should call `seed_ralph_dir()` or `seed_git_repo_with_ralph()` instead.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::sync::OnceLock;
@@ -145,12 +146,12 @@ fn ralph_init_template_dir() -> &'static PathBuf {
 fn seeded_git_ralph_template_dir() -> &'static PathBuf {
     SEEDED_GIT_RALPH_TEMPLATE_DIR.get_or_init(|| {
         let template_dir = tempfile::Builder::new()
-            .prefix("ralph-git-ralph-template.")
+            .prefix("ralph-git-runtime-template.")
             .tempdir()
-            .expect("create cached git + .ralph template dir");
+            .expect("create cached git + runtime template dir");
         let template_path = template_dir.keep();
         git_init(&template_path).expect("initialize cached git repo");
-        seed_ralph_dir(&template_path).expect("seed cached .ralph fixture");
+        seed_ralph_dir(&template_path).expect("seed cached runtime fixture");
         template_path
     })
 }
@@ -194,7 +195,7 @@ pub fn git_init(dir: &Path) -> Result<()> {
     let gitignore_path = dir.join(".gitignore");
     std::fs::write(
         &gitignore_path,
-        ".ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
+        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
     )
     .context("write .gitignore")?;
 
@@ -209,10 +210,10 @@ pub fn git_init(dir: &Path) -> Result<()> {
 }
 
 pub fn trust_project_commands(dir: &Path) -> Result<()> {
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir).context("create runtime dir")?;
     std::fs::write(
-        ralph_dir.join("trust.jsonc"),
+        runtime_dir.join("trust.jsonc"),
         r#"{
   "allow_project_commands": true,
   "trusted_at": "2026-03-07T00:00:00Z"
@@ -277,14 +278,14 @@ pub fn ralph_init_cli(dir: &Path) -> Result<()> {
     run_ralph_init_cli(dir)
 }
 
-/// Seed `.ralph/` from a cached template while preserving files already written by the test.
+/// Seed legacy `.ralph/` from a cached template while preserving files already written by the test.
 pub fn seed_ralph_dir(dir: &Path) -> Result<()> {
     let target = dir.join(".ralph");
-    let template = ralph_init_template_dir().join(".ralph");
+    let template = ralph_init_template_dir().join(".cueloop");
     copy_dir_recursive_missing_only(&template, &target)
 }
 
-/// Seed an empty disposable directory from a cached git repo plus cached `.ralph/` scaffold.
+/// Seed an empty disposable directory from a cached git repo plus cached legacy runtime scaffold.
 ///
 /// This avoids repeated `git init` subprocesses in command-heavy integration suites.
 pub fn seed_git_repo_with_ralph(dir: &Path) -> Result<()> {

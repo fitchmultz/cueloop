@@ -24,6 +24,7 @@
 //! - ETA is appended as a final tab-separated column.
 
 use anyhow::Result;
+use ralph::config::project_runtime_dir;
 use std::path::Path;
 
 mod test_support;
@@ -55,7 +56,7 @@ fn write_queue_with_todo(dir: &Path) -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(project_runtime_dir(dir).join("queue.jsonc"), queue)?;
     Ok(())
 }
 
@@ -158,7 +159,7 @@ fn queue_next_with_eta_no_runnable_task() -> Result<()> {
     init_repo(dir.path())?;
     // Empty queue - no runnable task
     let queue = r#"{"version": 1, "tasks": []}"#;
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(project_runtime_dir(dir.path()).join("queue.jsonc"), queue)?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "next", "--with-eta"]);
     assert!(

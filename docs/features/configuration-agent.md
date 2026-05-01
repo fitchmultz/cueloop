@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for feature-level agent/runner configuration guidance
 Parent: [Configuration Feature Guide](configuration.md)
 
-Use this guide when choosing how Ralph invokes AI runners. For exact field names, defaults, and validation rules, use [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
+Use this guide when choosing how CueLoop invokes AI runners. For exact field names, defaults, and validation rules, use [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
 
 ---
 
@@ -70,7 +70,7 @@ Operator-sensitive controls include:
 
 Treat permissive modes (`yolo`, bypass-style approvals, publish-on-run) as high-trust settings and scope them intentionally.
 
-> Note: Codex approval behavior is managed through Codex-native config. Ralph does not force Codex approval flags.
+> Note: Codex approval behavior is managed through Codex-native config. CueLoop does not force Codex approval flags.
 
 ---
 
@@ -98,7 +98,7 @@ Typical controls:
 - `verbosity`
 - `approval_mode`
 - `sandbox`
-- `plan_mode` (Cursor SDK rejects non-default values; Ralph's own planning phase is separate)
+- `plan_mode` (Cursor SDK rejects non-default values; CueLoop's own planning phase is separate)
 - `unsupported_option_policy`
 
 Canonical reference: [agent.runner_cli](../configuration/agent-and-runners.md#agentrunner_cli).

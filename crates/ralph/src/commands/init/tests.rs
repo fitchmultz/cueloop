@@ -6,6 +6,7 @@
 //! Responsibilities:
 //! - Cover creation, force-overwrite, README handling, and invalid queue/done validation.
 //! - Exercise wizard-driven initialization outputs.
+//! - Verify new CueLoop runtime defaults and legacy Ralph runtime compatibility.
 //!
 //! Scope:
 //! - Unit tests for init workflow behavior only.
@@ -26,9 +27,10 @@ use crate::contracts::{Config, ProjectType};
 
 fn resolved_for(dir: &TempDir) -> crate::config::Resolved {
     let repo_root = dir.path().to_path_buf();
-    let queue_path = repo_root.join(".ralph/queue.jsonc");
-    let done_path = repo_root.join(".ralph/done.jsonc");
-    let project_config_path = Some(repo_root.join(".ralph/config.jsonc"));
+    let queue_path = repo_root.join(".cueloop/queue.jsonc");
+    let done_path = repo_root.join(".cueloop/done.jsonc");
+    let project_config_path = Some(repo_root.join(".cueloop/config.jsonc"));
+    fs::create_dir_all(repo_root.join(".cueloop")).expect("create .cueloop test runtime");
     crate::config::Resolved {
         config: Config::default(),
         repo_root,
@@ -38,6 +40,24 @@ fn resolved_for(dir: &TempDir) -> crate::config::Resolved {
         id_width: 4,
         global_config_path: None,
         project_config_path,
+    }
+}
+
+fn resolved_for_legacy(dir: &TempDir) -> crate::config::Resolved {
+    let repo_root = dir.path().to_path_buf();
+    let runtime_dir = repo_root.join(".ralph");
+    fs::create_dir_all(&runtime_dir).expect("create .ralph test runtime");
+    fs::write(runtime_dir.join("config.jsonc"), r#"{"version":2}"#)
+        .expect("create legacy config marker");
+    crate::config::Resolved {
+        config: Config::default(),
+        repo_root,
+        queue_path: dir.path().join(".ralph/queue.jsonc"),
+        done_path: dir.path().join(".ralph/done.jsonc"),
+        id_prefix: "RQ".to_string(),
+        id_width: 4,
+        global_config_path: None,
+        project_config_path: Some(dir.path().join(".ralph/config.jsonc")),
     }
 }
 
@@ -67,10 +87,11 @@ fn init_creates_missing_files() -> anyhow::Result<()> {
     let raw_cfg = std::fs::read_to_string(resolved.project_config_path.as_ref().unwrap())?;
     let cfg: Config = serde_json::from_str(&raw_cfg)?;
     assert_eq!(cfg.version, 2);
-    let readme_path = resolved.repo_root.join(".ralph/README.md");
+    let readme_path = resolved.repo_root.join(".cueloop/README.md");
     assert!(readme_path.exists());
     let readme_raw = std::fs::read_to_string(readme_path)?;
-    assert!(readme_raw.contains("# Ralph runtime files"));
+    assert!(readme_raw.contains("# CueLoop runtime files"));
+    assert!(readme_raw.contains("ralph init"));
     Ok(())
 }
 
@@ -86,7 +107,7 @@ fn init_generates_readme_with_correct_archive_command() -> anyhow::Result<()> {
             interactive: false,
         },
     )?;
-    let readme_path = resolved.repo_root.join(".ralph/README.md");
+    let readme_path = resolved.repo_root.join(".cueloop/README.md");
     let readme_raw = std::fs::read_to_string(readme_path)?;
     assert!(
         readme_raw.contains("ralph queue archive"),
@@ -103,7 +124,6 @@ fn init_generates_readme_with_correct_archive_command() -> anyhow::Result<()> {
 fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
     let queue_json = r#"{
   "version": 1,
   "tasks": [
@@ -144,7 +164,7 @@ fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
     let config_json = r#"{
   "version": 2,
   "queue": {
-    "file": ".ralph/queue.jsonc"
+    "file": ".cueloop/queue.jsonc"
   }
 }"#;
     std::fs::write(resolved.project_config_path.as_ref().unwrap(), config_json)?;
@@ -174,7 +194,6 @@ fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
 fn init_overwrites_when_forced() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
     std::fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
     std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     std::fs::write(
@@ -201,11 +220,11 @@ fn init_overwrites_when_forced() -> anyhow::Result<()> {
     assert_eq!(cfg.project_type, Some(ProjectType::Code));
     assert_eq!(
         cfg.queue.file,
-        Some(std::path::PathBuf::from(".ralph/queue.jsonc"))
+        Some(std::path::PathBuf::from(".cueloop/queue.jsonc"))
     );
     assert_eq!(
         cfg.queue.done_file,
-        Some(std::path::PathBuf::from(".ralph/done.jsonc"))
+        Some(std::path::PathBuf::from(".cueloop/done.jsonc"))
     );
     assert_eq!(cfg.queue.id_prefix, Some("RQ".to_string()));
     assert_eq!(cfg.queue.id_width, Some(4));
@@ -247,10 +266,49 @@ fn init_creates_json_for_new_install() -> anyhow::Result<()> {
 }
 
 #[test]
+fn init_uses_legacy_runtime_when_repo_is_legacy() -> anyhow::Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for_legacy(&dir);
+    let report = run_init(
+        &resolved,
+        InitOptions {
+            force: false,
+            force_lock: false,
+            interactive: false,
+        },
+    )?;
+
+    assert_eq!(
+        report.queue_path,
+        resolved.repo_root.join(".ralph/queue.jsonc")
+    );
+    assert_eq!(
+        report.done_path,
+        resolved.repo_root.join(".ralph/done.jsonc")
+    );
+    assert_eq!(report.queue_status, FileInitStatus::Created);
+    assert_eq!(report.done_status, FileInitStatus::Created);
+    assert_eq!(report.config_status, FileInitStatus::Valid);
+    let readme = std::fs::read_to_string(resolved.repo_root.join(".ralph/README.md"))?;
+    assert!(readme.contains(".ralph/queue.jsonc"));
+    assert!(readme.contains(".ralph/config.jsonc"));
+    assert!(!readme.contains(".cueloop/queue.jsonc"));
+    assert!(!resolved.repo_root.join(".cueloop/queue.jsonc").exists());
+
+    let gitignore = std::fs::read_to_string(resolved.repo_root.join(".gitignore"))?;
+    assert!(gitignore.contains(".ralph/workspaces/"));
+    assert!(gitignore.contains(".ralph/logs/"));
+    assert!(gitignore.contains(".ralph/trust.jsonc"));
+    assert!(!gitignore.contains(".cueloop/workspaces/"));
+    Ok(())
+}
+
+#[test]
 fn init_skips_readme_when_not_referenced() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
 
+    // Legacy prompt overrides remain readable as a fallback during the CueLoop cutover.
     let overrides = resolved.repo_root.join(".ralph/prompts");
     fs::create_dir_all(&overrides)?;
     let prompt_files = [
@@ -281,7 +339,7 @@ fn init_skips_readme_when_not_referenced() -> anyhow::Result<()> {
         },
     )?;
     assert_eq!(report.readme_status, None);
-    let readme_path = resolved.repo_root.join(".ralph/README.md");
+    let readme_path = resolved.repo_root.join(".cueloop/README.md");
     assert!(!readme_path.exists());
     Ok(())
 }
@@ -290,7 +348,6 @@ fn init_skips_readme_when_not_referenced() -> anyhow::Result<()> {
 fn init_fails_on_invalid_existing_queue() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
 
     let queue_json = r#"{
   "version": 1,
@@ -335,7 +392,6 @@ fn init_fails_on_invalid_existing_queue() -> anyhow::Result<()> {
 fn init_fails_on_invalid_existing_done() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
 
     std::fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
 
@@ -440,9 +496,9 @@ fn init_updates_outdated_readme_by_default() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
 
-    fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
     let old_readme = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
-    fs::write(resolved.repo_root.join(".ralph/README.md"), old_readme)?;
+    fs::write(resolved.repo_root.join(".cueloop/README.md"), old_readme)?;
     fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(
@@ -464,8 +520,8 @@ fn init_updates_outdated_readme_by_default() -> anyhow::Result<()> {
         Some((FileInitStatus::Updated, Some(README_VERSION)))
     ));
 
-    let content = std::fs::read_to_string(resolved.repo_root.join(".ralph/README.md"))?;
+    let content = std::fs::read_to_string(resolved.repo_root.join(".cueloop/README.md"))?;
     assert!(!content.contains("Old content"));
-    assert!(content.contains("Ralph runtime files"));
+    assert!(content.contains("CueLoop runtime files"));
     Ok(())
 }

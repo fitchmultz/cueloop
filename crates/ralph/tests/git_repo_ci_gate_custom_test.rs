@@ -18,6 +18,7 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 mod test_support;
 
 #[test]
@@ -109,7 +110,7 @@ fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
         "expected run one to succeed with CI gate disabled\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
-    let done_content = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let done_content = std::fs::read_to_string(project_runtime_dir(dir.path()).join("done.jsonc"))?;
     anyhow::ensure!(
         done_content.contains("RQ-0001"),
         "task should be moved to done when CI gate is disabled"
@@ -122,8 +123,8 @@ fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
         "git status failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     anyhow::ensure!(
-        stdout.contains("M .ralph/done.jsonc")
-            && stdout.contains("M .ralph/queue.jsonc")
+        stdout.contains("M .cueloop/done.jsonc")
+            && stdout.contains("M .cueloop/queue.jsonc")
             && stdout.contains("?? dirty-file.txt"),
         "expected local-only run artifacts when publish mode is off, but git status showed:\n{stdout}"
     );

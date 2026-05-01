@@ -27,6 +27,7 @@ pub mod config_migrations;
 pub mod file_migrations;
 pub mod history;
 pub mod registry;
+pub mod runtime_dir;
 mod types;
 
 #[cfg(test)]

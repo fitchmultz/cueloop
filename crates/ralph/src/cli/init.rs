@@ -144,7 +144,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
     report_status("queue", report.queue_status, &report.queue_path);
     report_status("done", report.done_status, &report.done_path);
     if let Some((status, version_info)) = report.readme_status {
-        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        let readme_path = config::project_runtime_dir(&resolved.repo_root).join("README.md");
         match status {
             init_cmd::FileInitStatus::Created => {
                 if let Some(version) = version_info {
@@ -198,7 +198,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
     }
     if args.trust_project_commands {
         log::info!(
-            "trust: --trust-project-commands is a compatibility alias; `ralph init` creates repo trust by default"
+            "trust: --trust-project-commands is a compatibility alias; `ralph init` creates active runtime repo trust by default"
         );
     }
     Ok(())
@@ -206,7 +206,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
 
 #[derive(Args)]
 #[command(
-    about = "Bootstrap Ralph files in the current repository",
+    about = "Bootstrap CueLoop runtime files in the current repository",
     after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --check"
 )]
 pub struct InitArgs {
@@ -226,7 +226,7 @@ pub struct InitArgs {
     #[arg(long)]
     pub check: bool,
 
-    /// Compatibility alias; `ralph init` now creates `.ralph/trust.jsonc` by default.
+    /// Compatibility alias; `ralph init` creates active runtime `trust.jsonc` by default.
     #[arg(long = "trust-project-commands", visible_alias = "trust", hide = true)]
     pub trust_project_commands: bool,
 }

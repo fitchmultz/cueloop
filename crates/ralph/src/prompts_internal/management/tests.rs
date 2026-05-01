@@ -46,7 +46,8 @@ fn export_template_writes_digest_header_and_version_info() {
     let written = export_template(temp.path(), PromptTemplateId::Worker, false, "0.5.0").unwrap();
     assert!(written);
 
-    let content = fs::read_to_string(temp.path().join(".ralph/prompts/worker.md")).unwrap();
+    let content = fs::read_to_string(temp.path().join(".cueloop/prompts/worker.md")).unwrap();
+    assert!(content.contains("Exported from CueLoop embedded defaults"));
     assert!(content.contains("Digest: sha256:"));
 
     let info = load_version_info(temp.path()).unwrap().unwrap();
@@ -73,9 +74,67 @@ fn check_sync_status_reports_missing_and_up_to_date() {
 }
 
 #[test]
+fn current_override_precedes_legacy_override_in_inventory_and_content() {
+    let temp = TempDir::new().unwrap();
+    let current = temp.path().join(".cueloop/prompts");
+    let legacy = temp.path().join(".ralph/prompts");
+    fs::create_dir_all(&current).unwrap();
+    fs::create_dir_all(&legacy).unwrap();
+    fs::write(current.join("worker.md"), "current").unwrap();
+    fs::write(legacy.join("worker.md"), "legacy").unwrap();
+
+    let templates = list_templates(temp.path());
+    let worker = templates
+        .iter()
+        .find(|template| template.name == "worker")
+        .unwrap();
+    assert!(worker.has_override);
+    assert_eq!(
+        get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
+        "current"
+    );
+}
+
+#[test]
+fn legacy_override_counts_as_fallback_override() {
+    let temp = TempDir::new().unwrap();
+    let legacy = temp.path().join(".ralph/prompts");
+    fs::create_dir_all(&legacy).unwrap();
+    fs::write(legacy.join("worker.md"), "legacy").unwrap();
+
+    let templates = list_templates(temp.path());
+    let worker = templates
+        .iter()
+        .find(|template| template.name == "worker")
+        .unwrap();
+    assert!(worker.has_override);
+    assert_eq!(
+        get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
+        "legacy"
+    );
+}
+
+#[test]
+fn export_template_preserves_legacy_override_without_force() {
+    let temp = TempDir::new().unwrap();
+    let legacy = temp.path().join(".ralph/prompts");
+    fs::create_dir_all(&legacy).unwrap();
+    fs::write(legacy.join("worker.md"), "legacy").unwrap();
+
+    let written = export_template(temp.path(), PromptTemplateId::Worker, false, "0.5.0").unwrap();
+
+    assert!(!written);
+    assert!(!temp.path().join(".cueloop/prompts/worker.md").exists());
+    assert_eq!(
+        get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
+        "legacy"
+    );
+}
+
+#[test]
 fn load_version_info_ignores_legacy_schema_during_cutover() {
     let temp = TempDir::new().unwrap();
-    let cache_dir = temp.path().join(".ralph/cache");
+    let cache_dir = temp.path().join(".cueloop/cache");
     fs::create_dir_all(&cache_dir).unwrap();
     fs::write(
         cache_dir.join("prompt_versions.json"),

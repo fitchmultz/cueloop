@@ -66,8 +66,8 @@ fn stats_json_includes_summary_and_durations() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
     anyhow::ensure!(

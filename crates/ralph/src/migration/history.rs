@@ -4,7 +4,7 @@
 //! - Migration history persistence for tracking applied migrations.
 //!
 //! Responsibilities:
-//! - Load and save migration history from `.ralph/cache/migrations.jsonc`.
+//! - Load and save migration history from the active runtime cache.
 //! - Provide default history for new projects.
 //!
 //! Not handled here:
@@ -16,10 +16,9 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - History file is stored in `.ralph/cache/migrations.jsonc`.
+//! - History file is stored in the active runtime directory's `cache/migrations.jsonc`.
 //! - History format is versioned for future compatibility.
 
-use crate::constants::paths::MIGRATION_HISTORY_PATH;
 use crate::constants::versions::HISTORY_VERSION;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
@@ -60,7 +59,7 @@ pub struct AppliedMigration {
 /// Load migration history from the repo.
 /// Returns default (empty) history if file doesn't exist.
 pub fn load_migration_history(repo_root: &Path) -> Result<MigrationHistory> {
-    let history_path = repo_root.join(MIGRATION_HISTORY_PATH);
+    let history_path = migration_history_path(repo_root);
 
     if !history_path.exists() {
         log::debug!(
@@ -95,7 +94,7 @@ pub fn load_migration_history(repo_root: &Path) -> Result<MigrationHistory> {
 
 /// Save migration history to the repo.
 pub fn save_migration_history(repo_root: &Path, history: &MigrationHistory) -> Result<()> {
-    let history_path = repo_root.join(MIGRATION_HISTORY_PATH);
+    let history_path = migration_history_path(repo_root);
 
     // Ensure parent directory exists
     if let Some(parent) = history_path.parent() {
@@ -119,7 +118,9 @@ pub fn save_migration_history(repo_root: &Path, history: &MigrationHistory) -> R
 
 /// Get the path to the migration history file.
 pub fn migration_history_path(repo_root: &Path) -> PathBuf {
-    repo_root.join(MIGRATION_HISTORY_PATH)
+    crate::config::project_runtime_dir(repo_root)
+        .join("cache")
+        .join("migrations.jsonc")
 }
 
 #[cfg(test)]
@@ -165,17 +166,30 @@ mod tests {
     }
 
     #[test]
-    fn migration_history_path_is_correct() {
+    fn migration_history_path_defaults_to_cueloop() {
         let dir = crate::testsupport::path::portable_abs_path("test_repo");
         let path = migration_history_path(&dir);
 
-        assert_eq!(path, dir.join(".ralph/cache/migrations.jsonc"));
+        assert_eq!(path, dir.join(".cueloop/cache/migrations.jsonc"));
+    }
+
+    #[test]
+    fn migration_history_path_uses_legacy_runtime_when_marked() {
+        let dir = TempDir::new().unwrap();
+        let ralph_dir = dir.path().join(".ralph");
+        fs::create_dir_all(&ralph_dir).unwrap();
+        fs::write(ralph_dir.join("config.jsonc"), r#"{"version":2}"#).unwrap();
+
+        assert_eq!(
+            migration_history_path(dir.path()),
+            dir.path().join(".ralph/cache/migrations.jsonc")
+        );
     }
 
     #[test]
     fn save_migration_history_creates_parent_directories() {
         let dir = TempDir::new().unwrap();
-        let deep_path = dir.path().join(".ralph/cache");
+        let deep_path = dir.path().join(".cueloop/cache");
 
         // Ensure the directory doesn't exist yet
         assert!(!deep_path.exists());

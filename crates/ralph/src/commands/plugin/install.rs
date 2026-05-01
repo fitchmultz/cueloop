@@ -24,7 +24,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::cli::plugin::PluginScopeArg;
-use crate::commands::plugin::common::{print_enable_hint, scope_root};
+use crate::commands::plugin::common::{existing_plugin_dir, print_enable_hint, scope_root};
 use crate::config::Resolved;
 use crate::plugins::manifest::PluginManifest;
 
@@ -46,11 +46,11 @@ pub(super) fn run_install(resolved: &Resolved, source: &str, scope: PluginScopeA
     let target_root = scope_root(&resolved.repo_root, scope)?;
     let target_dir = target_root.join(&manifest.id);
 
-    if target_dir.exists() {
+    if let Some(existing_dir) = existing_plugin_dir(&resolved.repo_root, scope, &manifest.id)? {
         bail!(
             "Plugin {} is already installed at {}. Use uninstall first.",
             manifest.id,
-            target_dir.display()
+            existing_dir.display()
         );
     }
 

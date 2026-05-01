@@ -19,6 +19,7 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use std::path::Path;
 
@@ -33,9 +34,9 @@ fn write_done_empty(dir: &Path) -> Result<()> {
         version: 1,
         tasks: vec![],
     };
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
-    let done_path = ralph_dir.join("done.json");
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir)?;
+    let done_path = runtime_dir.join("done.json");
     let json = serde_json::to_string_pretty(&done)?;
     std::fs::write(&done_path, json).context("write done.json")?;
     Ok(())

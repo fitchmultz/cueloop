@@ -113,7 +113,7 @@ fn render_task_builder_prompt_uses_default_queue_file_when_unset() -> Result<()>
         ProjectType::Code,
         &config,
     )?;
-    assert!(rendered.contains("Queue: .ralph/queue.jsonc"));
+    assert!(rendered.contains("Queue: .cueloop/queue.jsonc"));
     assert!(!rendered.contains("{{config.queue.file}}"));
     Ok(())
 }
@@ -138,8 +138,8 @@ fn render_task_updater_prompt_uses_default_queue_and_done_when_unset() -> Result
         "Queue: {{config.queue.file}}\nDone: {{config.queue.done_file}}\nTask: {{TASK_ID}}";
     let config = default_config();
     let rendered = render_task_updater_prompt(template, "RQ-0001", ProjectType::Code, &config)?;
-    assert!(rendered.contains("Queue: .ralph/queue.jsonc"));
-    assert!(rendered.contains("Done: .ralph/done.jsonc"));
+    assert!(rendered.contains("Queue: .cueloop/queue.jsonc"));
+    assert!(rendered.contains("Done: .cueloop/done.jsonc"));
     assert!(!rendered.contains("{{config.queue.file}}"));
     assert!(!rendered.contains("{{config.queue.done_file}}"));
     assert!(rendered.contains("Task: RQ-0001"));

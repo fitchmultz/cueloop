@@ -20,6 +20,7 @@
 
 use super::test_support;
 use super::*;
+use ralph::config::project_runtime_dir;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
@@ -85,10 +86,10 @@ const TWO_TASK_QUEUE_JSON: &str = r#"{
 }"#;
 
 fn write_queue_files(dir: &Path, queue_json: &str, done_json: &str) -> Result<()> {
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
-    std::fs::write(ralph_dir.join("queue.jsonc"), queue_json).context("write queue.jsonc")?;
-    std::fs::write(ralph_dir.join("done.jsonc"), done_json).context("write done.jsonc")?;
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir).context("create runtime dir")?;
+    std::fs::write(runtime_dir.join("queue.jsonc"), queue_json).context("write queue.jsonc")?;
+    std::fs::write(runtime_dir.join("done.jsonc"), done_json).context("write done.jsonc")?;
     Ok(())
 }
 

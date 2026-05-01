@@ -99,8 +99,8 @@ Here's a comprehensive example demonstrating all configuration sections:
   
   // Queue configuration
   "queue": {
-    "file": ".ralph/queue.jsonc",
-    "done_file": ".ralph/done.jsonc",
+    "file": ".cueloop/queue.jsonc",
+    "done_file": ".cueloop/done.jsonc",
     "id_prefix": "RQ",
     "id_width": 4,
     "auto_archive_terminal_after_days": 7,

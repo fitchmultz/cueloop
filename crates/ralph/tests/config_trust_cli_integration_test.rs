@@ -138,6 +138,36 @@ fn init_succeeds_with_existing_sensitive_config_before_trust_exists() -> Result<
 }
 
 #[test]
+fn init_ignores_global_queue_file_when_creating_project_runtime() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    let xdg_config = dir.path().join("xdg");
+    let global_dir = xdg_config.join("cueloop");
+    std::fs::create_dir_all(&global_dir)?;
+    std::fs::write(
+        global_dir.join("config.jsonc"),
+        r#"{"version":2,"queue":{"file":"external/queue.jsonc","done_file":"external/done.jsonc"}}"#,
+    )?;
+
+    let output = test_support::ralph_command(dir.path())
+        .env("XDG_CONFIG_HOME", &xdg_config)
+        .args(["init", "--force", "--non-interactive"])
+        .output()
+        .expect("run ralph init");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "ralph init failed\nstderr:\n{stderr}"
+    );
+
+    assert!(dir.path().join(".cueloop/queue.jsonc").exists());
+    assert!(dir.path().join(".cueloop/done.jsonc").exists());
+    assert!(!dir.path().join("external/queue.jsonc").exists());
+    assert!(!dir.path().join("external/done.jsonc").exists());
+    Ok(())
+}
+
+#[test]
 fn init_creates_trust_and_allows_later_sensitive_config() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
@@ -145,15 +175,15 @@ fn init_creates_trust_and_allows_later_sensitive_config() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     assert!(status.success(), "ralph init failed\nstderr:\n{stderr}");
 
-    let trust_path = dir.path().join(".ralph/trust.jsonc");
+    let trust_path = dir.path().join(".cueloop/trust.jsonc");
     assert!(trust_path.exists(), "ralph init should create repo trust");
     let gitignore = std::fs::read_to_string(dir.path().join(".gitignore"))?;
     assert!(
-        gitignore.contains(".ralph/trust.jsonc"),
+        gitignore.contains(".cueloop/trust.jsonc"),
         "init should gitignore repo trust"
     );
 
-    std::fs::write(dir.path().join(".ralph/config.jsonc"), SENSITIVE_CONFIG)?;
+    std::fs::write(dir.path().join(".cueloop/config.jsonc"), SENSITIVE_CONFIG)?;
 
     let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "show"]);
     assert!(

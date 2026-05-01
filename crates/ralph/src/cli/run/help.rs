@@ -23,30 +23,30 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
 Loop limits:\n\
-  - `ralph run loop --max-tasks 0` means unlimited execution until Ralph runs out of runnable work, blocks, or is stopped.\n\
+  - `ralph run loop --max-tasks 0` means unlimited execution until CueLoop runs out of runnable work, blocks, or is stopped.\n\
   - Use a positive `--max-tasks` value to cap successful task iterations.\n\
  \n\
  Resume behavior:\n\
-  - Ralph now narrates whether it is resuming the same session, starting fresh, or refusing to guess.\n\
+  - CueLoop now narrates whether it is resuming the same session, starting fresh, or refusing to guess.\n\
   - `ralph run one` inspects interrupted-session state too; add `--resume` to auto-continue when safe.\n\
   - Timed-out sessions still require explicit confirmation and are refused in non-interactive mode.\n\
  \n\
  Blocking-state diagnosis:\n\
-  - Ralph uses one canonical BlockingState vocabulary everywhere: waiting, blocked, stalled.\n\
-  - Recovery-entry commands (`task mutate`, `task decompose`, `queue validate`, `queue repair`, `undo`) use the same waiting/blocked/stalled narration when Ralph needs operator guidance.\n\
+  - CueLoop uses one canonical BlockingState vocabulary everywhere: waiting, blocked, stalled.\n\
+  - Recovery-entry commands (`task mutate`, `task decompose`, `queue validate`, `queue repair`, `undo`) use the same waiting/blocked/stalled narration when CueLoop needs operator guidance.\n\
   - Canonical reasons are: idle, dependency_blocked, schedule_blocked, lock_blocked, ci_blocked, runner_recovery, operator_recovery, mixed_queue.\n\
-  - Use `ralph doctor` for human-readable diagnosis when Ralph is not making progress.\n\
+  - Use `ralph doctor` for human-readable diagnosis when CueLoop is not making progress.\n\
   - Use `ralph doctor --format json` or `ralph machine doctor report` for machine-readable blocking diagnosis.\n\
  \n\
  Notes:\n\
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids)\n\
   - `--effort` is codex-only and is ignored for other runners.\n\
-  - `--git-revert-mode` controls whether Ralph reverts uncommitted changes on errors (ask, enabled, disabled).\n\
+  - `--git-revert-mode` controls whether CueLoop reverts uncommitted changes on errors (ask, enabled, disabled).\n\
   - `--git-publish-mode` controls post-run git behavior: off, commit, or commit_and_push.\n\
   - `--parallel` is experimental and runs loop tasks concurrently in workspaces (clone-based).\n\
   - Experimental parallel workers push directly to the target branch after phase execution.\n\
-  - Clean-repo checks allow changes to `.ralph/config.jsonc`, `.ralph/queue.jsonc`, and `.ralph/done.jsonc`; use `--force` to bypass entirely.\n\
+  - Clean-repo checks allow changes to `.cueloop/config.jsonc`, `.cueloop/queue.jsonc`, `.cueloop/done.jsonc`, and legacy `.ralph` equivalents; use `--force` to bypass entirely.\n\
  \n\
 Phase-specific overrides:\n\
   Use --runner-phaseN, --model-phaseN, --effort-phaseN to override settings for a specific phase.\n\
@@ -61,7 +61,7 @@ Phase-specific overrides:\n\
     5) Task global override (task.agent.runner/model/model_effort)\n\
     6) Config defaults (agent.*)\n\
  \n\
- To change defaults for this repo, edit .ralph/config.jsonc:\n\
+ To change defaults for this repo, edit .cueloop/config.jsonc (or legacy .ralph/config.jsonc):\n\
   version: 2\n\
   agent:\n\
   runner: codex\n\
@@ -96,9 +96,9 @@ Examples:\n\
  ralph run loop --resume --max-tasks 5";
 
 pub(super) const RESUME_AFTER_LONG_HELP: &str = "Resume behavior:\n\
- - If the saved session is still valid, Ralph resumes the same interrupted task.\n\
- - If the saved session is stale or no longer safe, Ralph says so and starts fresh.\n\
- - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of guessing.\n\
+ - If the saved session is still valid, CueLoop resumes the same interrupted task.\n\
+ - If the saved session is stale or no longer safe, CueLoop says so and starts fresh.\n\
+ - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of guessing.\n\
 \n\
 Examples:\n\
  ralph run resume\n\
@@ -109,16 +109,16 @@ pub(super) const RUN_ONE_AFTER_LONG_HELP: &str = "Runner selection (precedence):
  1) CLI overrides (--runner/--model/--effort)\n\
  2) task.agent in the configured queue file (if present)\n\
  3) selected profile (if --profile specified)\n\
- 4) config defaults (.ralph/config.jsonc then ~/.config/ralph/config.jsonc)\n\
+ 4) config defaults (.cueloop/config.jsonc then ~/.config/cueloop/config.jsonc, with legacy fallbacks)\n\
 \n\
 Resume behavior:\n\
  - `ralph run one` inspects interrupted-session state before selecting work.\n\
- - `ralph run one --resume` auto-resumes the interrupted session when Ralph can do so safely.\n\
- - Explicit `--id <TASK_ID>` beats an unrelated interrupted session, and Ralph says so.\n\
- - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
+ - `ralph run one --resume` auto-resumes the interrupted session when CueLoop can do so safely.\n\
+ - Explicit `--id <TASK_ID>` beats an unrelated interrupted session, and CueLoop says so.\n\
+ - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\
 Blocking-state diagnosis:\n\
- - If Ralph refuses to continue, stalls, or appears blocked, run `ralph doctor`.\n\
+ - If CueLoop refuses to continue, stalls, or appears blocked, run `ralph doctor`.\n\
  - `ralph doctor` uses the same BlockingState explanation shown by run, machine, and app surfaces.\n\
 \n\
 Examples:\n\
@@ -152,8 +152,8 @@ Examples:\n\
 
 pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - `ralph run loop --resume` auto-resumes the interrupted session when safe.\n\
- - Without `--resume`, Ralph still narrates stale/fresh/refusal cases instead of hiding them.\n\
- - If confirmation is required but unavailable (for example `--non-interactive`), Ralph refuses instead of silently guessing.\n\
+ - Without `--resume`, CueLoop still narrates stale/fresh/refusal cases instead of hiding them.\n\
+ - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\
 Loop limits:\n\
  - `--max-tasks 0` means unlimited successful iterations.\n\

@@ -25,6 +25,7 @@ use std::process::ExitStatus;
 
 mod test_support;
 
+use ralph::config::project_runtime_dir;
 use ralph::contracts::{QueueFile, Task, TaskStatus};
 
 fn run_in_dir(dir: &Path, args: &[&str]) -> (ExitStatus, String, String) {
@@ -81,7 +82,7 @@ fn task_show_finds_task_in_queue() {
         make_task("RQ-0001", TaskStatus::Todo, "First task"),
         make_task("RQ-0002", TaskStatus::Doing, "Second task"),
     ]);
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    let queue_path = project_runtime_dir(dir.path()).join("queue.jsonc");
     let json = serde_json::to_string_pretty(&queue).expect("serialize queue");
     std::fs::write(&queue_path, json).expect("write queue.json");
 
@@ -109,7 +110,7 @@ fn task_show_finds_task_in_done() {
         TaskStatus::Done,
         "Completed task",
     )]);
-    let done_path = dir.path().join(".ralph/done.jsonc");
+    let done_path = project_runtime_dir(dir.path()).join("done.jsonc");
     let json = serde_json::to_string_pretty(&done).expect("serialize done");
     std::fs::write(&done_path, json).expect("write done.json");
 
@@ -133,7 +134,7 @@ fn task_show_details_alias_works() {
     assert!(status.success(), "ralph init failed: {}", stderr);
 
     let queue = make_queue_file(vec![make_task("RQ-0001", TaskStatus::Todo, "Alias test")]);
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    let queue_path = project_runtime_dir(dir.path()).join("queue.jsonc");
     let json = serde_json::to_string_pretty(&queue).expect("serialize queue");
     std::fs::write(&queue_path, json).expect("write queue.json");
 

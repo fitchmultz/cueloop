@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-const WEBHOOK_FAILURE_STORE_RELATIVE_PATH: &str = ".ralph/cache/webhooks/failures.json";
+const WEBHOOK_FAILURE_STORE_RELATIVE_PATH: &str = "cache/webhooks/failures.json";
 const MAX_WEBHOOK_FAILURE_RECORDS: usize = 200;
 const MAX_FAILURE_ERROR_CHARS: usize = 400;
 const FAILURE_STORE_LOCK_LABEL: &str = "webhook failure store";
@@ -58,7 +58,7 @@ fn failure_store_lock() -> &'static Mutex<()> {
 }
 
 pub fn failure_store_path(repo_root: &Path) -> PathBuf {
-    repo_root.join(WEBHOOK_FAILURE_STORE_RELATIVE_PATH)
+    crate::config::project_runtime_dir(repo_root).join(WEBHOOK_FAILURE_STORE_RELATIVE_PATH)
 }
 
 fn failure_store_lock_dir(path: &Path) -> PathBuf {

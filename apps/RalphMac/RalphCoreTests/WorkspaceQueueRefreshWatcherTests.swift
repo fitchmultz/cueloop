@@ -68,8 +68,15 @@ extension WorkspaceQueueRefreshTests {
         )
         defer { XCTAssertNoThrow(try WorkspaceTaskCreationTestSupport.removeItemIfExists(replacementURL)) }
 
+        let activeQueueURL = workspace.queueFileURL
+        XCTAssertEqual(
+            activeQueueURL.deletingLastPathComponent().lastPathComponent,
+            ".cueloop",
+            "New `ralph init` workspaces should watch the CueLoop runtime queue path"
+        )
+
         _ = try FileManager.default.replaceItemAt(
-            workspaceURL.appendingPathComponent(".ralph/queue.jsonc", isDirectory: false),
+            activeQueueURL,
             withItemAt: replacementURL
         )
 

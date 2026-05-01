@@ -4,23 +4,28 @@ Owner: Maintainers
 Source of truth: this document for plugin configuration, plugin command references, and configuration profiles
 Parent: [Configuration](../configuration.md)
 
-Purpose: Document Ralph plugin settings and profile-based agent configuration patches.
+Purpose: Document CueLoop plugin settings and profile-based agent configuration patches.
 
 ## Plugin Configuration
 
-`plugins` controls custom runner and processor plugins. Plugins enable extending Ralph with custom runners without modifying the core codebase.
+`plugins` controls custom runner and processor plugins. Plugins enable extending CueLoop with custom runners without modifying the core codebase.
 
 **Security warning:** Plugins are NOT sandboxed. Enabling a plugin is equivalent to trusting it with full system access. Only enable plugins from trusted sources.
 
-Project-local plugin settings and project-scope plugin directories require repo trust (see [Repo execution trust](trust-and-precedence.md#repo-execution-trust)). In untrusted repos, Ralph ignores `.ralph/plugins/*` during runtime discovery.
+Project-local plugin settings and project-scope plugin directories require repo trust (see [Repo execution trust](trust-and-precedence.md#repo-execution-trust)). In untrusted repos, CueLoop ignores project plugins during runtime discovery.
 
 Supported fields:
 - `plugins.plugins.<id>.enabled`: enable/disable the plugin (default: `false`).
 - `plugins.plugins.<id>.config`: opaque configuration blob passed to the plugin.
 
-Plugin directories (searched in order, project overrides global):
-- Project: `.ralph/plugins/<plugin_id>/plugin.json`
-- Global: `~/.config/ralph/plugins/<plugin_id>/plugin.json`
+Plugin directories are discovered with current paths preferred over legacy fallback, and project plugins overriding global plugins with the same id:
+
+1. Legacy global fallback: `~/.config/ralph/plugins/<plugin_id>/plugin.json`
+2. Current global: `~/.config/cueloop/plugins/<plugin_id>/plugin.json`
+3. Legacy project fallback: `.ralph/plugins/<plugin_id>/plugin.json`
+4. Current project: `.cueloop/plugins/<plugin_id>/plugin.json`
+
+New `ralph plugin install` and `ralph plugin init` writes target `.cueloop/plugins` or `~/.config/cueloop/plugins`. Use `ralph migrate runtime-dir --apply` to move legacy project runtime state when ready.
 
 Example:
 
@@ -51,7 +56,7 @@ See [Plugin Development Guide](../plugin-development.md) for creating custom plu
 
 ## Profiles
 
-Ralph always exposes two built-in profiles:
+CueLoop always exposes two built-in profiles:
 
 - `safe`: recommended default. Uses safer approval defaults and `git_publish_mode = "off"`.
 - `power-user`: preserves the higher-autonomy path with `approval_mode = "yolo"` and `git_publish_mode = "commit_and_push"`.
