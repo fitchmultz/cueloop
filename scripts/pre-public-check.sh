@@ -20,7 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/lib/release_policy.sh"
 
 SKIP_CI=0
@@ -54,18 +54,18 @@ EOF
 }
 
 check_required_files() {
-    ralph_log_info "Checking required public-facing files"
+    cueloop_log_info "Checking required public-facing files"
 
     local path
     local missing=0
     for path in "${PUBLIC_REQUIRED_FILES[@]}"; do
         if [ ! -f "$REPO_ROOT/$path" ]; then
-            ralph_log_error "Missing required file: $path"
+            cueloop_log_error "Missing required file: $path"
             missing=1
             continue
         fi
         if [ -L "$REPO_ROOT/$path" ]; then
-            ralph_log_error "Required file must be a regular repo file, not a symlink: $path"
+            cueloop_log_error "Required file must be a regular repo file, not a symlink: $path"
             missing=1
         fi
     done
@@ -82,7 +82,7 @@ require_git_worktree() {
         return 0
     fi
 
-    ralph_log_error "Pre-public checks require a git worktree; source snapshots cannot validate tracked-file or cleanliness invariants"
+    cueloop_log_error "Pre-public checks require a git worktree; source snapshots cannot validate tracked-file or cleanliness invariants"
     return 1
 }
 
@@ -92,7 +92,7 @@ report_path_violations() {
 
     [ "$#" -eq 0 ] && return 0
 
-    ralph_log_error "$message"
+    cueloop_log_error "$message"
     printf '  %s\n' "$@" >&2
     return 1
 }
@@ -149,7 +149,7 @@ collect_tracked_local_only_violations() {
 }
 
 check_source_snapshot_artifacts() {
-    ralph_log_info "Checking source snapshot for local/runtime artifacts"
+    cueloop_log_info "Checking source snapshot for local/runtime artifacts"
 
     local violations=()
     local rel_path
@@ -196,11 +196,11 @@ check_source_snapshot_artifacts() {
             "${violations[@]}" || return 1
     fi
 
-    ralph_log_success "No local/runtime artifacts detected in source snapshot mode"
+    cueloop_log_success "No local/runtime artifacts detected in source snapshot mode"
 }
 
 check_tracked_runtime_artifacts() {
-    ralph_log_info "Checking tracked runtime/build artifacts"
+    cueloop_log_info "Checking tracked runtime/build artifacts"
 
     local tracked_violations=()
     local unexpected=()
@@ -216,11 +216,11 @@ check_tracked_runtime_artifacts() {
         report_path_violations "Tracked runtime state files outside the public allowlist detected" "${unexpected[@]}" || return 1
     fi
 
-    ralph_log_success "No tracked runtime/build artifacts detected"
+    cueloop_log_success "No tracked runtime/build artifacts detected"
 }
 
 check_local_only_tracking() {
-    ralph_log_info "Checking tracked local-only files"
+    cueloop_log_info "Checking tracked local-only files"
 
     local violations=()
 
@@ -229,49 +229,49 @@ check_local_only_tracking() {
         report_path_violations "Tracked local-only files detected" "${violations[@]}" || return 1
     fi
 
-    ralph_log_success "No tracked local-only files detected"
+    cueloop_log_success "No tracked local-only files detected"
 }
 
 check_worktree_clean() {
     if [ "$SKIP_CLEAN" -eq 1 ]; then
-        ralph_log_warn "Skipping clean-worktree check"
+        cueloop_log_warn "Skipping clean-worktree check"
         return 0
     fi
 
-    ralph_log_info "Checking git worktree cleanliness"
+    cueloop_log_info "Checking git worktree cleanliness"
     local collected_dirty
     collected_dirty=$(release_collect_dirty_lines "$REPO_ROOT") || return 1
     local dirty
     dirty=$(release_filter_dirty_lines "$collected_dirty")
     if [ -z "$dirty" ]; then
-        ralph_log_success "Working tree is clean"
+        cueloop_log_success "Working tree is clean"
         return 0
     fi
 
     if [ "$RELEASE_CONTEXT" -eq 1 ] && release_assert_dirty_paths_allowed "$dirty"; then
-        ralph_log_success "Working tree contains release-only metadata drift"
+        cueloop_log_success "Working tree contains release-only metadata drift"
         return 0
     fi
 
-    ralph_log_error "Working tree is not clean"
+    cueloop_log_error "Working tree is not clean"
     echo "$dirty" | sed 's/^/  /' >&2
     return 1
 }
 
 check_public_readiness_content() {
     if [ "$SKIP_SECRETS" -eq 1 ] && [ "$SKIP_LINKS" -eq 1 ]; then
-        ralph_log_warn "Skipping public-readiness content scans"
+        cueloop_log_warn "Skipping public-readiness content scans"
         return 0
     fi
 
     if [ "$SKIP_SECRETS" -eq 1 ]; then
-        ralph_log_warn "Skipping secret-pattern scan"
+        cueloop_log_warn "Skipping secret-pattern scan"
         bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" docs
         return
     fi
 
     if [ "$SKIP_LINKS" -eq 1 ]; then
-        ralph_log_warn "Skipping markdown link checks"
+        cueloop_log_warn "Skipping markdown link checks"
         bash "$SCRIPT_DIR/lib/public_readiness_scan.sh" secrets
         return
     fi
@@ -281,15 +281,15 @@ check_public_readiness_content() {
 
 run_ci_gate() {
     if [ "$SKIP_CI" -eq 1 ]; then
-        ralph_log_warn "Skipping CI gate"
+        cueloop_log_warn "Skipping CI gate"
         return 0
     fi
 
     local make_cmd
-    make_cmd=$(ralph_resolve_make_cmd)
-    ralph_log_info "Running shared release gate via ${make_cmd} release-gate"
+    make_cmd=$(cueloop_resolve_make_cmd)
+    cueloop_log_info "Running shared release gate via ${make_cmd} release-gate"
     "$make_cmd" -C "$REPO_ROOT" release-gate
-    ralph_log_success "Shared release gate passed"
+    cueloop_log_success "Shared release gate passed"
 }
 
 main() {
@@ -318,7 +318,7 @@ main() {
                 exit 0
                 ;;
             *)
-                ralph_log_error "Unknown option: $1"
+                cueloop_log_error "Unknown option: $1"
                 usage
                 exit 2
                 ;;
@@ -335,10 +335,10 @@ main() {
         has_git=1
     elif [ "$ALLOW_NO_GIT" -eq 1 ]; then
         if [ "$SKIP_CI" -ne 1 ] || [ "$SKIP_CLEAN" -ne 1 ]; then
-            ralph_log_error "--allow-no-git requires --skip-ci and --skip-clean because git-backed release and cleanliness checks remain mandatory otherwise"
+            cueloop_log_error "--allow-no-git requires --skip-ci and --skip-clean because git-backed release and cleanliness checks remain mandatory otherwise"
             exit 2
         fi
-        ralph_log_warn "Git worktree unavailable; skipping tracked-file and cleanliness checks in source-snapshot safety mode"
+        cueloop_log_warn "Git worktree unavailable; skipping tracked-file and cleanliness checks in source-snapshot safety mode"
     else
         require_git_worktree
     fi
@@ -358,7 +358,7 @@ main() {
     fi
 
     echo ""
-    ralph_log_success "Pre-public checks passed"
+    cueloop_log_success "Pre-public checks passed"
 }
 
 main "$@"

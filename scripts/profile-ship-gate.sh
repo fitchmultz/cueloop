@@ -20,12 +20,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/ralph-shell.sh
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 cd "$REPO_ROOT"
-ralph_activate_pinned_rust_toolchain
+cueloop_activate_pinned_rust_toolchain
 
 readonly PROFILING_ROOT="target/profiling"
-MAKE_CMD="$(ralph_resolve_make_cmd)"
+MAKE_CMD="$(cueloop_resolve_make_cmd)"
 
 # ---------------------------------------------------------------------------
 # Help

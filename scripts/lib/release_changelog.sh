@@ -60,7 +60,7 @@ release_promote_changelog() {
     local version="$2"
     local today="$3"
     local temp_file
-    temp_file=$(ralph_mktemp_file "ralph-release-changelog")
+    temp_file=$(cueloop_mktemp_file "ralph-release-changelog")
 
     local unreleased_base_version
     unreleased_base_version=$(sed -n -E 's|^\[Unreleased\]: .*compare/v([0-9]+\.[0-9]+\.[0-9]+)\.\.\.HEAD.*|\1|p' "$changelog" | head -1 || true)
@@ -68,7 +68,7 @@ release_promote_changelog() {
         unreleased_base_version=$(sed -n -E 's|^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*|\1|p' "$changelog" | head -1 || true)
     fi
     if [ -z "$unreleased_base_version" ]; then
-        ralph_log_error "Could not determine previous release version from CHANGELOG.md"
+        cueloop_log_error "Could not determine previous release version from CHANGELOG.md"
         rm -f "$temp_file"
         return 1
     fi
@@ -101,7 +101,7 @@ release_promote_changelog() {
     done < "$changelog"
 
     if [ "$found_unreleased" -eq 0 ]; then
-        ralph_log_error "Could not find ## [Unreleased] section in CHANGELOG.md"
+        cueloop_log_error "Could not find ## [Unreleased] section in CHANGELOG.md"
         rm -f "$temp_file"
         return 1
     fi

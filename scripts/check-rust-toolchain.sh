@@ -21,7 +21,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/lib/ralph-shell.sh
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 
 FAIL_ON_GLOBAL_STABLE_DRIFT=0
 
@@ -62,7 +62,7 @@ while [ "$#" -gt 0 ]; do
             exit 0
             ;;
         *)
-            ralph_log_error "unknown option: $1"
+            cueloop_log_error "unknown option: $1"
             usage >&2
             exit 2
             ;;
@@ -94,7 +94,7 @@ channel_minor() {
             printf '%s\n' "${channel%.*}"
             ;;
         *)
-            ralph_log_error "rust-toolchain.toml channel must be an exact stable version like 1.95.0, found: $channel"
+            cueloop_log_error "rust-toolchain.toml channel must be an exact stable version like 1.95.0, found: $channel"
             return 1
             ;;
     esac
@@ -113,7 +113,7 @@ cargo_version_number() {
 require_command() {
     local command_name="$1"
     if ! command -v "$command_name" >/dev/null 2>&1; then
-        ralph_log_error "$command_name is required to verify Ralph's Rust toolchain"
+        cueloop_log_error "$command_name is required to verify Ralph's Rust toolchain"
         return 1
     fi
 }
@@ -122,8 +122,8 @@ require_rustup_component() {
     local component="$1"
     local toolchain="$2"
     if ! rustup component list --toolchain "$toolchain" --installed 2>/dev/null | grep -E "^${component}(-|$)" >/dev/null; then
-        ralph_log_error "pinned Rust toolchain $toolchain is missing required component: $component"
-        ralph_log_error "run: rustup toolchain install $toolchain --component rustfmt --component clippy"
+        cueloop_log_error "pinned Rust toolchain $toolchain is missing required component: $component"
+        cueloop_log_error "run: rustup toolchain install $toolchain --component rustfmt --component clippy"
         return 1
     fi
 }
@@ -137,24 +137,24 @@ compare_global_stable() {
     stable_rustc_output="$(cd "$temp_dir" && rustup run stable rustc --version 2>/dev/null || true)"
     rm -rf "$temp_dir"
     if [ -z "$stable_rustc_output" ]; then
-        ralph_log_error "global rustup stable toolchain is unavailable; run: rustup toolchain install stable"
+        cueloop_log_error "global rustup stable toolchain is unavailable; run: rustup toolchain install stable"
         return 1
     fi
 
     local stable_version
     stable_version="$(rust_version_number "$stable_rustc_output")"
     if [ -z "$stable_version" ]; then
-        ralph_log_error "unable to parse global stable rustc version from: $stable_rustc_output"
+        cueloop_log_error "unable to parse global stable rustc version from: $stable_rustc_output"
         return 1
     fi
 
     if [ "$stable_version" != "$pinned_channel" ]; then
-        ralph_log_error "global rustup stable drift detected: repo pins $pinned_channel but global stable rustc is $stable_version"
-        ralph_log_error "when intentionally adopting a new stable, update rust-toolchain.toml and crates/ralph/Cargo.toml rust-version together"
+        cueloop_log_error "global rustup stable drift detected: repo pins $pinned_channel but global stable rustc is $stable_version"
+        cueloop_log_error "when intentionally adopting a new stable, update rust-toolchain.toml and crates/ralph/Cargo.toml rust-version together"
         return 1
     fi
 
-    ralph_log_success "Global rustup stable matches repo-pinned Rust $pinned_channel"
+    cueloop_log_success "Global rustup stable matches repo-pinned Rust $pinned_channel"
 }
 
 main() {
@@ -169,15 +169,15 @@ main() {
     crate_rust_version="$(read_toml_string_value "$REPO_ROOT/crates/ralph/Cargo.toml" rust-version)"
 
     if [ "$crate_rust_version" != "$pinned_minor" ]; then
-        ralph_log_error "crate rust-version drifted: expected $pinned_minor from rust-toolchain.toml $pinned_channel, found $crate_rust_version"
+        cueloop_log_error "crate rust-version drifted: expected $pinned_minor from rust-toolchain.toml $pinned_channel, found $crate_rust_version"
         return 1
     fi
 
     local pinned_rustc
     pinned_rustc="$(rustup which rustc --toolchain "$pinned_channel" 2>/dev/null || true)"
     if [ -z "$pinned_rustc" ]; then
-        ralph_log_error "pinned Rust toolchain is not installed: $pinned_channel"
-        ralph_log_error "run: rustup toolchain install $pinned_channel --component rustfmt --component clippy"
+        cueloop_log_error "pinned Rust toolchain is not installed: $pinned_channel"
+        cueloop_log_error "run: rustup toolchain install $pinned_channel --component rustfmt --component clippy"
         return 1
     fi
 
@@ -189,7 +189,7 @@ main() {
     case "$repo_active" in
         "$pinned_channel"-*) ;;
         *)
-            ralph_log_error "repo active toolchain drifted: expected $pinned_channel, found ${repo_active:-<missing>}"
+            cueloop_log_error "repo active toolchain drifted: expected $pinned_channel, found ${repo_active:-<missing>}"
             return 1
             ;;
     esac
@@ -197,24 +197,24 @@ main() {
     repo_rustc_output="$(cd "$REPO_ROOT" && rustc --version)"
     repo_rustc_version="$(rust_version_number "$repo_rustc_output")"
     if [ "$repo_rustc_version" != "$pinned_channel" ]; then
-        ralph_log_error "repo rustc drifted: expected $pinned_channel, found ${repo_rustc_version:-$repo_rustc_output}"
+        cueloop_log_error "repo rustc drifted: expected $pinned_channel, found ${repo_rustc_version:-$repo_rustc_output}"
         return 1
     fi
 
     repo_cargo_output="$(cd "$REPO_ROOT" && cargo --version)"
     repo_cargo_version="$(cargo_version_number "$repo_cargo_output")"
     if [ "$repo_cargo_version" != "$pinned_channel" ]; then
-        ralph_log_error "repo cargo drifted: expected $pinned_channel, found ${repo_cargo_version:-$repo_cargo_output}"
+        cueloop_log_error "repo cargo drifted: expected $pinned_channel, found ${repo_cargo_version:-$repo_cargo_output}"
         return 1
     fi
 
-    ralph_log_success "Repo Rust baseline is internally consistent: rust-toolchain.toml $pinned_channel, crate rust-version $crate_rust_version"
-    ralph_log_success "Repo-local rustup, rustc, cargo, rustfmt, and clippy resolve to pinned Rust $pinned_channel"
+    cueloop_log_success "Repo Rust baseline is internally consistent: rust-toolchain.toml $pinned_channel, crate rust-version $crate_rust_version"
+    cueloop_log_success "Repo-local rustup, rustc, cargo, rustfmt, and clippy resolve to pinned Rust $pinned_channel"
 
     if [ "$FAIL_ON_GLOBAL_STABLE_DRIFT" -eq 1 ]; then
         compare_global_stable "$pinned_channel"
     else
-        ralph_log_info "Skipped global stable drift check; run with --fail-on-global-stable-drift for release/public readiness."
+        cueloop_log_info "Skipped global stable drift check; run with --fail-on-global-stable-drift for release/public readiness."
     fi
 }
 

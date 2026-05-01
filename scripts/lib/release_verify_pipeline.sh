@@ -20,12 +20,12 @@ set -euo pipefail
 
 release_run_ship_gate() {
     local make_cmd
-    make_cmd=$(ralph_resolve_make_cmd)
+    make_cmd=$(cueloop_resolve_make_cmd)
 
-    ralph_log_step "Running ship gate"
+    cueloop_log_step "Running ship gate"
     cd "$REPO_ROOT"
 
-    ralph_log_info "Running shared release gate"
+    cueloop_log_info "Running shared release gate"
     "$make_cmd" release-gate
 
     local collected_dirty_lines
@@ -36,7 +36,7 @@ release_run_ship_gate() {
         return 1
     fi
 
-    ralph_log_success "Ship gate passed"
+    cueloop_log_success "Ship gate passed"
 }
 
 release_changelog_has_curated_unreleased_content() {
@@ -59,11 +59,11 @@ release_changelog_has_curated_unreleased_content() {
 }
 
 release_generate_changelog_entries() {
-    ralph_log_step "Generating changelog entries"
+    cueloop_log_step "Generating changelog entries"
     cd "$REPO_ROOT"
 
     if release_changelog_has_curated_unreleased_content "$CHANGELOG"; then
-        ralph_log_info "Preserving curated CHANGELOG.md Unreleased notes"
+        cueloop_log_info "Preserving curated CHANGELOG.md Unreleased notes"
         return 0
     fi
 
@@ -71,7 +71,7 @@ release_generate_changelog_entries() {
 }
 
 release_generate_release_notes() {
-    ralph_log_step "Generating release notes"
+    cueloop_log_step "Generating release notes"
 
     local changelog_section
     changelog_section=$(awk "/## \[$VERSION\] - /{flag=1;next}/## \[/{flag=0}flag" "$CHANGELOG" | sed '/^$/N;/^\n$/D')
@@ -81,8 +81,8 @@ release_generate_release_notes() {
 
     local changelog_tmp
     local checksums_tmp
-    changelog_tmp=$(ralph_mktemp_file "ralph-release-notes-changelog")
-    checksums_tmp=$(ralph_mktemp_file "ralph-release-notes-checksums")
+    changelog_tmp=$(cueloop_mktemp_file "ralph-release-notes-changelog")
+    checksums_tmp=$(cueloop_mktemp_file "ralph-release-notes-checksums")
     printf '%s\n' "$changelog_section" > "$changelog_tmp"
     if [ -d "$RELEASE_ARTIFACTS_DIR" ]; then
         (cd "$RELEASE_ARTIFACTS_DIR" && cat ./*.sha256 2>/dev/null || true) > "$checksums_tmp"
@@ -99,14 +99,14 @@ release_generate_release_notes() {
         "$REPO_HTTP_URL"
 
     rm -f "$changelog_tmp" "$checksums_tmp"
-    ralph_log_success "Generated release notes: $RELEASE_NOTES_FILE"
+    cueloop_log_success "Generated release notes: $RELEASE_NOTES_FILE"
 }
 
 release_prepare_verified_snapshot() {
-    ralph_log_step "Preparing verified release snapshot"
+    cueloop_log_step "Preparing verified release snapshot"
 
     cd "$REPO_ROOT"
-    REPO_HTTP_URL=$(ralph_get_repo_http_url)
+    REPO_HTTP_URL=$(cueloop_get_repo_http_url)
     ./scripts/versioning.sh sync --version "$VERSION"
     ./scripts/versioning.sh check
     release_generate_changelog_entries
@@ -116,5 +116,5 @@ release_prepare_verified_snapshot() {
     ./scripts/build-release-artifacts.sh "$VERSION"
     release_generate_release_notes
     release_verify_record_ready_snapshot
-    ralph_log_success "Verified release snapshot recorded at $VERIFY_DIR"
+    cueloop_log_success "Verified release snapshot recorded at $VERIFY_DIR"
 }

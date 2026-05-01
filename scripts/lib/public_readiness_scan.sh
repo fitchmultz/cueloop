@@ -24,7 +24,7 @@ set -euo pipefail
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="$(cd "$LIB_DIR/.." && pwd)"
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/lib/release_policy.sh"
 
 usage() {
@@ -64,29 +64,29 @@ run_scan() {
 
     case "$mode" in
         links)
-            ralph_log_info "Checking repo-wide working-tree markdown links"
+            cueloop_log_info "Checking repo-wide working-tree markdown links"
             python3 "$scan_py_path" links "$repo_root"
-            ralph_log_success "Markdown links look valid"
+            cueloop_log_success "Markdown links look valid"
             ;;
         session-paths)
-            ralph_log_info "Checking documented session-cache paths"
+            cueloop_log_info "Checking documented session-cache paths"
             python3 "$scan_py_path" session-paths "$repo_root"
-            ralph_log_success "Session-cache path references use session.jsonc"
+            cueloop_log_success "Session-cache path references use session.jsonc"
             ;;
         secrets)
-            ralph_log_info "Scanning repo-wide working-tree text files for high-confidence secret patterns"
+            cueloop_log_info "Scanning repo-wide working-tree text files for high-confidence secret patterns"
             python3 "$scan_py_path" secrets "$repo_root"
-            ralph_log_success "No high-confidence secret patterns found"
+            cueloop_log_success "No high-confidence secret patterns found"
             ;;
         docs)
-            ralph_log_info "Checking repo-wide working-tree markdown links and documented session-cache paths"
+            cueloop_log_info "Checking repo-wide working-tree markdown links and documented session-cache paths"
             python3 "$scan_py_path" docs "$repo_root"
-            ralph_log_success "Markdown links and session-cache path references look valid"
+            cueloop_log_success "Markdown links and session-cache path references look valid"
             ;;
         all)
-            ralph_log_info "Running combined repo-wide public-readiness content scan"
+            cueloop_log_info "Running combined repo-wide public-readiness content scan"
             python3 "$scan_py_path" all "$repo_root"
-            ralph_log_success "Public-readiness content scan passed"
+            cueloop_log_success "Public-readiness content scan passed"
             ;;
         *)
             usage >&2

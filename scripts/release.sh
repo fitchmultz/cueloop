@@ -22,7 +22,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/versioning.sh"
 source "$SCRIPT_DIR/lib/release_policy.sh"
 source "$SCRIPT_DIR/lib/release_state.sh"
@@ -89,7 +89,7 @@ print_execute_summary() {
 
 print_reconcile_hint() {
     echo ""
-    ralph_log_warn "Release transaction recorded for recovery"
+    cueloop_log_warn "Release transaction recorded for recovery"
     echo "  Transaction: $TRANSACTION_DIR"
     if [ "${CRATE_PUBLISHED:-0}" = "1" ]; then
         echo "  crates.io is already published; finish the transaction immediately:"
@@ -105,7 +105,7 @@ run_verify() {
     release_verify_plan
     release_verify_state_init
     release_prepare_verified_snapshot
-    ralph_log_success "Release snapshot prepared for v$VERSION"
+    cueloop_log_success "Release snapshot prepared for v$VERSION"
 }
 
 run_execute() {
@@ -158,19 +158,19 @@ main() {
     fi
 
     if [ -z "$COMMAND" ]; then
-        ralph_log_error "VERSION is required"
+        cueloop_log_error "VERSION is required"
         usage
         exit 2
     fi
 
     if [ -z "$VERSION" ]; then
-        ralph_log_error "VERSION is required"
+        cueloop_log_error "VERSION is required"
         usage
         exit 2
     fi
 
-    if ! ralph_validate_semver "$VERSION"; then
-        ralph_log_error "VERSION must be in semver format (e.g. 0.2.0)"
+    if ! cueloop_validate_semver "$VERSION"; then
+        cueloop_log_error "VERSION must be in semver format (e.g. 0.2.0)"
         exit 2
     fi
 
@@ -191,7 +191,7 @@ main() {
             run_reconcile
             ;;
         *)
-            ralph_log_error "Unknown command: $COMMAND"
+            cueloop_log_error "Unknown command: $COMMAND"
             usage
             exit 2
             ;;

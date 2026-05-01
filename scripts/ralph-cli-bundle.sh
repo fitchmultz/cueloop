@@ -20,7 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 
 CONFIGURATION=""
 BUNDLE_DIR=""
@@ -104,7 +104,7 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         *)
-            ralph_log_error "Unknown option: $1"
+            cueloop_log_error "Unknown option: $1"
             usage
             exit 2
             ;;
@@ -113,12 +113,12 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$CONFIGURATION" ]; then
-    ralph_log_error "--configuration is required"
+    cueloop_log_error "--configuration is required"
     usage
     exit 2
 fi
 
-ralph_activate_pinned_rust_toolchain
+cueloop_activate_pinned_rust_toolchain
 
 profile_dir="debug"
 build_args=(-p ralph-agent-loop --locked --bin "$PRIMARY_BIN_NAME" --bin "$LEGACY_BIN_NAME")
@@ -130,7 +130,7 @@ case "$CONFIGURATION" in
     Debug)
         ;;
     *)
-        ralph_log_error "Unsupported configuration: $CONFIGURATION"
+        cueloop_log_error "Unsupported configuration: $CONFIGURATION"
         exit 2
         ;;
 esac
@@ -155,9 +155,9 @@ if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
 fi
 
 if binary_is_fresh; then
-    ralph_log_info "Reusing fresh CueLoop CLI for $CONFIGURATION" >&2
+    cueloop_log_info "Reusing fresh CueLoop CLI for $CONFIGURATION" >&2
 else
-    ralph_log_info "Building CueLoop CLI for $CONFIGURATION" >&2
+    cueloop_log_info "Building CueLoop CLI for $CONFIGURATION" >&2
     (
         cd "$REPO_ROOT"
         "${CARGO:-cargo}" build "${build_args[@]}"
@@ -165,11 +165,11 @@ else
 fi
 
 if [ ! -x "$binary_path" ]; then
-    ralph_log_error "Built primary CLI binary is missing: $binary_path"
+    cueloop_log_error "Built primary CLI binary is missing: $binary_path"
     exit 1
 fi
 if [ ! -x "$legacy_binary_path" ]; then
-    ralph_log_error "Built legacy CLI binary is missing: $legacy_binary_path"
+    cueloop_log_error "Built legacy CLI binary is missing: $legacy_binary_path"
     exit 1
 fi
 

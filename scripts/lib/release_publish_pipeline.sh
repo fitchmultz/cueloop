@@ -88,7 +88,7 @@ release_upload_github_release_artifacts() {
 
 release_create_commit_and_tag() {
     if [ "$LOCAL_TAG_CREATED" = "1" ]; then
-        ralph_log_info "Local release commit/tag already recorded for v$VERSION"
+        cueloop_log_info "Local release commit/tag already recorded for v$VERSION"
         return 0
     fi
 
@@ -97,11 +97,11 @@ release_create_commit_and_tag() {
         LOCAL_TAG_CREATED=1
         RELEASE_STATUS="prepared"
         release_state_write
-        ralph_log_info "Local tag v$VERSION already exists"
+        cueloop_log_info "Local tag v$VERSION already exists"
         return 0
     fi
 
-    ralph_log_step "Creating release commit and tag"
+    cueloop_log_step "Creating release commit and tag"
     cd "$REPO_ROOT"
 
     git add "${RELEASE_METADATA_PATHS[@]}"
@@ -111,7 +111,7 @@ release_create_commit_and_tag() {
     LOCAL_TAG_CREATED=1
     RELEASE_STATUS="prepared"
     release_state_write
-    ralph_log_success "Created release commit $RELEASE_COMMIT and tag v$VERSION"
+    cueloop_log_success "Created release commit $RELEASE_COMMIT and tag v$VERSION"
 }
 
 release_remote_main_matches_release_commit() {
@@ -125,7 +125,7 @@ release_remote_tag_exists() {
 
 release_push_remote_main() {
     if [ "$REMOTE_MAIN_PUSHED" = "1" ]; then
-        ralph_log_info "Remote main push already recorded for v$VERSION"
+        cueloop_log_info "Remote main push already recorded for v$VERSION"
         return 0
     fi
 
@@ -133,22 +133,22 @@ release_push_remote_main() {
         REMOTE_MAIN_PUSHED=1
         RELEASE_STATUS="main_pushed"
         release_state_write
-        ralph_log_info "Remote main already matches release commit for v$VERSION"
+        cueloop_log_info "Remote main already matches release commit for v$VERSION"
         return 0
     fi
 
-    ralph_log_step "Pushing release commit to origin/main"
+    cueloop_log_step "Pushing release commit to origin/main"
     cd "$REPO_ROOT"
     git push origin main
     REMOTE_MAIN_PUSHED=1
     RELEASE_STATUS="main_pushed"
     release_state_write
-    ralph_log_success "Pushed release commit to origin/main"
+    cueloop_log_success "Pushed release commit to origin/main"
 }
 
 release_push_remote_tag() {
     if [ "$REMOTE_TAG_PUSHED" = "1" ]; then
-        ralph_log_info "Remote tag push already recorded for v$VERSION"
+        cueloop_log_info "Remote tag push already recorded for v$VERSION"
         return 0
     fi
 
@@ -156,23 +156,23 @@ release_push_remote_tag() {
         REMOTE_TAG_PUSHED=1
         RELEASE_STATUS="tag_pushed"
         release_state_write
-        ralph_log_info "Remote tag v$VERSION already exists"
+        cueloop_log_info "Remote tag v$VERSION already exists"
         return 0
     fi
 
-    ralph_log_step "Pushing release tag"
+    cueloop_log_step "Pushing release tag"
     cd "$REPO_ROOT"
     git push origin "v$VERSION"
     REMOTE_TAG_PUSHED=1
     RELEASE_STATUS="tag_pushed"
     release_state_write
-    ralph_log_success "Pushed tag v$VERSION"
+    cueloop_log_success "Pushed tag v$VERSION"
 }
 
 release_create_or_update_github_release_draft() {
     release_sync_github_release_state
     if [ "$GITHUB_RELEASE_PUBLISHED" = "1" ]; then
-        ralph_log_warn "GitHub release v$VERSION is already public"
+        cueloop_log_warn "GitHub release v$VERSION is already public"
         RELEASE_STATUS="completed"
         release_state_write
         return 0
@@ -180,11 +180,11 @@ release_create_or_update_github_release_draft() {
     if [ "$GITHUB_RELEASE_DRAFT_CREATED" = "1" ]; then
         RELEASE_STATUS="github_release_drafted"
         release_state_write
-        ralph_log_info "GitHub draft release already recorded for v$VERSION"
+        cueloop_log_info "GitHub draft release already recorded for v$VERSION"
         return 0
     fi
 
-    ralph_log_step "Preparing GitHub draft release"
+    cueloop_log_step "Preparing GitHub draft release"
     local remote_state
     remote_state=$(release_query_github_release_state)
     if [ "$remote_state" = "missing" ]; then
@@ -199,7 +199,7 @@ release_create_or_update_github_release_draft() {
     GITHUB_RELEASE_DRAFT_CREATED=1
     RELEASE_STATUS="github_release_drafted"
     release_state_write
-    ralph_log_success "GitHub draft release prepared for v$VERSION"
+    cueloop_log_success "GitHub draft release prepared for v$VERSION"
 }
 
 release_publish_crate() {
@@ -207,11 +207,11 @@ release_publish_crate() {
     if [ "$CRATE_PUBLISHED" = "1" ]; then
         RELEASE_STATUS="crate_published"
         release_state_write
-        ralph_log_info "$CRATE_PACKAGE_NAME v$VERSION already exists on crates.io"
+        cueloop_log_info "$CRATE_PACKAGE_NAME v$VERSION already exists on crates.io"
         return 0
     fi
 
-    ralph_log_step "Publishing crate to crates.io"
+    cueloop_log_step "Publishing crate to crates.io"
     cd "$REPO_ROOT"
     cargo package --list -p "$CRATE_PACKAGE_NAME"
     cargo publish --dry-run -p "$CRATE_PACKAGE_NAME" --locked
@@ -219,14 +219,14 @@ release_publish_crate() {
     CRATE_PUBLISHED=1
     RELEASE_STATUS="crate_published"
     release_state_write
-    ralph_log_success "Published $CRATE_PACKAGE_NAME v$VERSION"
+    cueloop_log_success "Published $CRATE_PACKAGE_NAME v$VERSION"
 }
 
 release_publish_github_release() {
     if [ "$GITHUB_RELEASE_PUBLISHED" = "1" ]; then
         RELEASE_STATUS="completed"
         release_state_write
-        ralph_log_info "GitHub release already finalized for v$VERSION"
+        cueloop_log_info "GitHub release already finalized for v$VERSION"
         return 0
     fi
 
@@ -234,20 +234,20 @@ release_publish_github_release() {
     if [ "$GITHUB_RELEASE_PUBLISHED" = "1" ]; then
         RELEASE_STATUS="completed"
         release_state_write
-        ralph_log_success "GitHub release v$VERSION is already public"
+        cueloop_log_success "GitHub release v$VERSION is already public"
         return 0
     fi
 
     if [ "$GITHUB_RELEASE_DRAFT_CREATED" != "1" ]; then
-        ralph_log_error "GitHub draft release is missing for v$VERSION"
+        cueloop_log_error "GitHub draft release is missing for v$VERSION"
         echo "  Re-run: scripts/release.sh reconcile $VERSION" >&2
         return 1
     fi
 
-    ralph_log_step "Publishing GitHub release"
+    cueloop_log_step "Publishing GitHub release"
     gh release edit "v$VERSION" --draft=false --title "v$VERSION" --notes-file "$RELEASE_NOTES_FILE"
     GITHUB_RELEASE_PUBLISHED=1
     RELEASE_STATUS="completed"
     release_state_write
-    ralph_log_success "GitHub release v$VERSION published"
+    cueloop_log_success "GitHub release v$VERSION published"
 }
