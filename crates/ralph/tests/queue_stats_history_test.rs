@@ -17,6 +17,7 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::timeutil;
 use serde_json::Value;
 use std::path::Path;
@@ -37,6 +38,10 @@ fn init_repo(dir: &Path) -> Result<()> {
     Ok(())
 }
 
+fn runtime_file(dir: &Path, file: &str) -> std::path::PathBuf {
+    project_runtime_dir(dir).join(file)
+}
+
 fn write_empty_queue(dir: &Path) -> Result<()> {
     let queue = r#"{
   "version": 1,
@@ -47,8 +52,8 @@ fn write_empty_queue(dir: &Path) -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir, "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir, "done.jsonc"), done).context("write done.json")?;
     Ok(())
 }
 

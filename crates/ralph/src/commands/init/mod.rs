@@ -1,7 +1,7 @@
 //! Initialization command facade.
 //!
 //! Purpose:
-//! - Expose the Ralph initialization workflow from a thin command module.
+//! - Expose the CueLoop initialization workflow from a thin command module.
 //!
 //! Responsibilities:
 //! - Re-export initialization options, result types, and README helpers.

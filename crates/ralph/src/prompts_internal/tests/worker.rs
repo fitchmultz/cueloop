@@ -93,13 +93,38 @@ fn load_worker_single_phase_prompt_falls_back_to_embedded_default_when_missing()
 }
 
 #[test]
-fn load_worker_prompt_uses_override_when_present() -> Result<()> {
+fn load_worker_prompt_uses_current_override_when_present() -> Result<()> {
+    let dir = TempDir::new()?;
+    let overrides = dir.path().join(".cueloop/prompts");
+    fs::create_dir_all(&overrides)?;
+    fs::write(overrides.join("worker.md"), "current override")?;
+    let prompt = load_worker_prompt(dir.path())?;
+    assert_eq!(prompt, "current override");
+    Ok(())
+}
+
+#[test]
+fn load_worker_prompt_falls_back_to_legacy_override() -> Result<()> {
     let dir = TempDir::new()?;
     let overrides = dir.path().join(".ralph/prompts");
     fs::create_dir_all(&overrides)?;
-    fs::write(overrides.join("worker.md"), "override")?;
+    fs::write(overrides.join("worker.md"), "legacy override")?;
     let prompt = load_worker_prompt(dir.path())?;
-    assert_eq!(prompt, "override");
+    assert_eq!(prompt, "legacy override");
+    Ok(())
+}
+
+#[test]
+fn load_worker_prompt_prefers_current_override_over_legacy() -> Result<()> {
+    let dir = TempDir::new()?;
+    let current = dir.path().join(".cueloop/prompts");
+    let legacy = dir.path().join(".ralph/prompts");
+    fs::create_dir_all(&current)?;
+    fs::create_dir_all(&legacy)?;
+    fs::write(current.join("worker.md"), "current override")?;
+    fs::write(legacy.join("worker.md"), "legacy override")?;
+    let prompt = load_worker_prompt(dir.path())?;
+    assert_eq!(prompt, "current override");
     Ok(())
 }
 

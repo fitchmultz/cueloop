@@ -2,18 +2,18 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for configuration navigation; linked chapter docs are source of truth for their stated configuration domains
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 ![Configuration Layers](assets/images/2026-03-10-12-00-08-config-layers.png)
 
-Purpose: Document Ralph's JSON configuration layout, defaults, override precedence, and where to find detailed reference material for each configuration domain.
+Purpose: Document CueLoop's JSON configuration layout, defaults, override precedence, and where to find detailed reference material for each configuration domain.
 
 ## Overview
 
-Ralph reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required:
+CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. In this phase the executable remains `ralph` and the package remains `ralph-agent-loop`.
 
-- Global: `~/.config/ralph/config.jsonc`
-- Project: `.ralph/config.jsonc`
+- Global: `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
+- Project: `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)
 
 CLI flags override both for a single run. Defaults are defined by `schemas/config.schema.json`.
 
@@ -45,8 +45,8 @@ Detailed trust and profile rules live in [Trust and precedence](configuration/tr
 1. CLI flags for the current command.
 2. Task-specific overrides where supported.
 3. Selected profile patches where supported.
-4. Project config (`.ralph/config.jsonc`), subject to repo trust for execution-sensitive values.
-5. Global config (`~/.config/ralph/config.jsonc`).
+4. Project config (`.cueloop/config.jsonc`, with legacy `.ralph/config.jsonc` fallback), subject to repo trust for execution-sensitive values.
+5. Global config (`~/.config/cueloop/config.jsonc`, with legacy `~/.config/ralph/config.jsonc` fallback).
 6. Schema defaults (`schemas/config.schema.json`).
 
 ## Minimal example
@@ -60,8 +60,8 @@ Detailed trust and profile rules live in [Trust and precedence](configuration/tr
     "phases": 3
   },
   "queue": {
-    "file": ".ralph/queue.jsonc",
-    "done_file": ".ralph/done.jsonc"
+    "file": ".cueloop/queue.jsonc",
+    "done_file": ".cueloop/done.jsonc"
   }
 }
 ```

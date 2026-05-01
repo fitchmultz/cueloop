@@ -25,7 +25,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::cli::plugin::PluginInitArgs;
-use crate::commands::plugin::common::{print_enable_hint, scope_root};
+use crate::commands::plugin::common::{existing_plugin_dir, print_enable_hint, scope_root};
 use crate::commands::plugin::templates::{PROCESSOR_SCRIPT_TEMPLATE, RUNNER_SCRIPT_TEMPLATE};
 use crate::config::Resolved;
 use crate::plugins::PLUGIN_API_VERSION;
@@ -37,11 +37,23 @@ pub(super) fn run_init(resolved: &Resolved, args: &PluginInitArgs) -> Result<()>
     let (with_runner, with_processor) = scaffold_capabilities(args);
     let target_dir = target_dir(resolved, args)?;
 
-    if target_dir.exists() && !args.force {
-        bail!(
-            "Plugin directory already exists: {}. Use --force to overwrite.",
-            target_dir.display()
-        );
+    if !args.force {
+        if target_dir.exists() {
+            bail!(
+                "Plugin directory already exists: {}. Use --force to overwrite.",
+                target_dir.display()
+            );
+        }
+        if args.path.is_none()
+            && let Some(existing_dir) =
+                existing_plugin_dir(&resolved.repo_root, args.scope, &args.id)?
+        {
+            bail!(
+                "Plugin {} already exists at {}. Use --force to create a current-path override.",
+                args.id,
+                existing_dir.display()
+            );
+        }
     }
 
     let manifest = build_manifest(args, with_runner, with_processor)?;

@@ -1,7 +1,7 @@
-//! Centralized constants for the Ralph CLI.
+//! Centralized constants for CueLoop's transitional `ralph` CLI.
 //!
 //! Purpose:
-//! - Centralized constants for the Ralph CLI.
+//! - Centralized constants for CueLoop's transitional `ralph` CLI.
 //!
 //! This module consolidates all magic numbers, limits, and default values
 //! to improve maintainability and prevent drift between duplicated values.
@@ -95,10 +95,10 @@ pub mod limits {
     /// Maximum LFS pointer file size (bytes).
     pub const MAX_POINTER_SIZE: u64 = 1024;
 
-    /// Maximum number of queue backup files to retain in `.ralph/cache`.
+    /// Maximum number of queue backup files to retain in the active runtime cache.
     pub const MAX_QUEUE_BACKUP_FILES: usize = 50;
 
-    /// Maximum number of undo snapshots to retain in `.ralph/cache/undo`.
+    /// Maximum number of undo snapshots to retain in the active runtime undo cache.
     pub const MAX_UNDO_SNAPSHOTS: usize = 20;
 }
 
@@ -184,19 +184,58 @@ pub mod ui {
     pub const TASK_BUILDER_FIELD_COUNT: usize = 7;
 }
 
+/// Product identity and runtime layout constants.
+pub mod identity {
+    /// Current user-facing product name.
+    pub const DISPLAY_NAME: &str = "CueLoop";
+
+    /// Legacy user-facing product name retained for compatibility messaging.
+    pub const LEGACY_DISPLAY_NAME: &str = "Ralph";
+
+    /// Transitional CLI executable name. Package, lib, and bin names stay unchanged.
+    pub const CLI_BIN_NAME: &str = "ralph";
+
+    /// Current repo-local runtime directory.
+    pub const PROJECT_RUNTIME_DIR: &str = ".cueloop";
+
+    /// Legacy repo-local runtime directory.
+    pub const LEGACY_PROJECT_RUNTIME_DIR: &str = ".ralph";
+
+    /// Current per-user config directory under XDG_CONFIG_HOME or ~/.config.
+    pub const GLOBAL_CONFIG_DIR: &str = "cueloop";
+
+    /// Legacy per-user config directory under XDG_CONFIG_HOME or ~/.config.
+    pub const LEGACY_GLOBAL_CONFIG_DIR: &str = "ralph";
+
+    /// Current generated runtime README version marker.
+    pub const README_MARKER: &str = "CUELOOP_README_VERSION";
+
+    /// Legacy generated runtime README version marker.
+    pub const LEGACY_README_MARKER: &str = "RALPH_README_VERSION";
+}
+
 /// Queue configuration constants.
 pub mod queue {
     /// Default queue ID prefix.
     pub const DEFAULT_ID_PREFIX: &str = "RQ";
 
-    /// Default queue file path (relative to repo root).
-    pub const DEFAULT_QUEUE_FILE: &str = ".ralph/queue.jsonc";
+    /// Current default queue file path (relative to repo root).
+    pub const DEFAULT_QUEUE_FILE: &str = ".cueloop/queue.jsonc";
 
-    /// Default done file path (relative to repo root).
-    pub const DEFAULT_DONE_FILE: &str = ".ralph/done.jsonc";
+    /// Current default done file path (relative to repo root).
+    pub const DEFAULT_DONE_FILE: &str = ".cueloop/done.jsonc";
 
-    /// Default config file path (relative to repo root).
-    pub const DEFAULT_CONFIG_FILE: &str = ".ralph/config.jsonc";
+    /// Current default config file path (relative to repo root).
+    pub const DEFAULT_CONFIG_FILE: &str = ".cueloop/config.jsonc";
+
+    /// Legacy default queue file path (relative to repo root).
+    pub const LEGACY_DEFAULT_QUEUE_FILE: &str = ".ralph/queue.jsonc";
+
+    /// Legacy default done file path (relative to repo root).
+    pub const LEGACY_DEFAULT_DONE_FILE: &str = ".ralph/done.jsonc";
+
+    /// Legacy default config file path (relative to repo root).
+    pub const LEGACY_DEFAULT_CONFIG_FILE: &str = ".ralph/config.jsonc";
 
     /// Default maximum dependency depth.
     pub const DEFAULT_MAX_DEPENDENCY_DEPTH: u8 = 10;
@@ -263,14 +302,14 @@ pub mod paths {
     /// Ralph temp file prefix.
     pub const RALPH_TEMP_PREFIX: &str = "ralph_";
 
-    /// Worker prompt override path.
-    pub const WORKER_OVERRIDE_PATH: &str = ".ralph/prompts/worker.md";
+    /// Current worker prompt override path.
+    pub const WORKER_OVERRIDE_PATH: &str = ".cueloop/prompts/worker.md";
 
-    /// Scan prompt override path.
-    pub const SCAN_OVERRIDE_PATH: &str = ".ralph/prompts/scan.md";
+    /// Current scan prompt override path.
+    pub const SCAN_OVERRIDE_PATH: &str = ".cueloop/prompts/scan.md";
 
-    /// Task builder prompt override path.
-    pub const TASK_BUILDER_OVERRIDE_PATH: &str = ".ralph/prompts/task_builder.md";
+    /// Current task builder prompt override path.
+    pub const TASK_BUILDER_OVERRIDE_PATH: &str = ".cueloop/prompts/task_builder.md";
 
     /// Environment variable for raw dump mode.
     pub const ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
@@ -290,7 +329,7 @@ pub mod versions {
     pub const CURSOR_SDK_VERSION: &str = "1.0.11";
 
     /// README template version.
-    pub const README_VERSION: u32 = 8;
+    pub const README_VERSION: u32 = 9;
 
     /// Session state schema version.
     pub const SESSION_STATE_VERSION: u32 = 1;
@@ -400,7 +439,8 @@ pub mod custom_fields {
 /// Error message templates for consistent error formatting.
 pub mod error_messages {
     /// Config update instruction suffix.
-    pub const CONFIG_UPDATE_INSTRUCTION: &str = "Update .ralph/config.jsonc";
+    pub const CONFIG_UPDATE_INSTRUCTION: &str =
+        "Update project config (.cueloop/config.jsonc, or legacy .ralph/config.jsonc)";
 
     /// Template for invalid config value errors.
     pub fn invalid_config_value(
@@ -408,7 +448,9 @@ pub mod error_messages {
         value: impl std::fmt::Display,
         reason: &str,
     ) -> String {
-        format!("Invalid {field}: {value}. {reason}. Update .ralph/config.jsonc.")
+        format!(
+            "Invalid {field}: {value}. {reason}. Update project config (.cueloop/config.jsonc, or legacy .ralph/config.jsonc)."
+        )
     }
 }
 

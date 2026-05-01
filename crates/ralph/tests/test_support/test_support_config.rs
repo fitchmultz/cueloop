@@ -16,24 +16,24 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Config helpers assume `ralph init` or equivalent created `.ralph/config.jsonc`.
+//! - Config helpers assume `ralph init` or equivalent created an active project config.
 //! - Mutations are full cutover fixture rewrites for the targeted keys.
 
 use anyhow::{Context, Result};
+use ralph::config::project_config_path;
 use serde_json::Value;
 use std::path::Path;
 
-/// Update `.ralph/config.jsonc` to set `agent.runner`, `agent.model`, and `agent.phases`.
+/// Update the active project config to set `agent.runner`, `agent.model`, and `agent.phases`.
 pub fn configure_agent_runner_model_phases(
     dir: &Path,
     runner: &str,
     model: &str,
     phases: u8,
 ) -> Result<()> {
-    let config_path = dir.join(".ralph/config.jsonc");
-    let config_str = std::fs::read_to_string(&config_path).context("read .ralph/config.jsonc")?;
-    let mut config: Value =
-        serde_json::from_str(&config_str).context("parse .ralph/config.jsonc")?;
+    let config_path = project_config_path(dir);
+    let config_str = std::fs::read_to_string(&config_path).context("read project config")?;
+    let mut config: Value = serde_json::from_str(&config_str).context("parse project config")?;
 
     if config.get("agent").is_none() {
         config["agent"] = serde_json::json!({});
@@ -48,9 +48,9 @@ pub fn configure_agent_runner_model_phases(
 
     std::fs::write(
         &config_path,
-        serde_json::to_string_pretty(&config).context("serialize .ralph/config.jsonc")?,
+        serde_json::to_string_pretty(&config).context("serialize project config")?,
     )
-    .context("write .ralph/config.jsonc")?;
+    .context("write project config")?;
     Ok(())
 }
 
@@ -60,7 +60,7 @@ pub fn configure_runner(
     model: &str,
     bin_path: Option<&Path>,
 ) -> Result<()> {
-    let config_path = dir.join(".ralph/config.jsonc");
+    let config_path = project_config_path(dir);
     let mut config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
             .context("parse config")?;
@@ -112,7 +112,7 @@ pub fn configure_parallel_test_runner(
 }
 
 pub fn configure_ci_gate(dir: &Path, command: Option<&str>, enabled: Option<bool>) -> Result<()> {
-    let config_path = dir.join(".ralph/config.jsonc");
+    let config_path = project_config_path(dir);
     let mut config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
             .context("parse config")?;
@@ -148,7 +148,7 @@ pub fn configure_ci_gate(dir: &Path, command: Option<&str>, enabled: Option<bool
 
 /// Configure parallel mode settings for tests.
 pub fn configure_parallel_disabled(dir: &Path) -> Result<()> {
-    let config_path = dir.join(".ralph/config.jsonc");
+    let config_path = project_config_path(dir);
     let mut config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
             .context("parse config")?;
@@ -171,7 +171,7 @@ pub fn configure_parallel_for_direct_push_with_attempts(
     dir: &Path,
     max_push_attempts: u8,
 ) -> Result<()> {
-    let config_path = dir.join(".ralph/config.jsonc");
+    let config_path = project_config_path(dir);
     let mut config: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&config_path).context("read config")?)
             .context("parse config")?;

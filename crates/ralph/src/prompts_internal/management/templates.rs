@@ -18,10 +18,11 @@
 //! Invariants/assumptions:
 //! - Template file names remain stable across exports and sync.
 
+use crate::constants::identity::{LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR};
 use crate::prompts_internal::registry::{PromptTemplateId, prompt_template};
 use anyhow::{Context, Result};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SyncStatus {
@@ -168,7 +169,6 @@ pub(crate) fn template_file_name(id: PromptTemplateId) -> &'static str {
 }
 
 pub(crate) fn list_templates(repo_root: &Path) -> Vec<TemplateInfo> {
-    let prompts_dir = repo_root.join(".ralph/prompts");
     all_template_ids()
         .into_iter()
         .map(|id| {
@@ -176,7 +176,7 @@ pub(crate) fn list_templates(repo_root: &Path) -> Vec<TemplateInfo> {
             TemplateInfo {
                 name: file_name.to_string(),
                 description: template_description(id).to_string(),
-                has_override: prompts_dir.join(format!("{}.md", file_name)).exists(),
+                has_override: effective_override_path(repo_root, id).is_some(),
             }
         })
         .collect()
@@ -187,14 +187,32 @@ pub(crate) fn get_embedded_content(id: PromptTemplateId) -> &'static str {
 }
 
 pub(crate) fn get_effective_content(repo_root: &Path, id: PromptTemplateId) -> Result<String> {
-    let override_path = repo_root
-        .join(".ralph/prompts")
-        .join(format!("{}.md", template_file_name(id)));
-
-    if override_path.exists() {
+    if let Some(override_path) = effective_override_path(repo_root, id) {
         fs::read_to_string(&override_path)
             .with_context(|| format!("read override file {}", override_path.display()))
     } else {
         Ok(get_embedded_content(id).to_string())
     }
+}
+
+pub(crate) fn current_prompts_dir(repo_root: &Path) -> PathBuf {
+    repo_root.join(PROJECT_RUNTIME_DIR).join("prompts")
+}
+
+pub(crate) fn legacy_prompts_dir(repo_root: &Path) -> PathBuf {
+    repo_root.join(LEGACY_PROJECT_RUNTIME_DIR).join("prompts")
+}
+
+pub(crate) fn current_override_path(repo_root: &Path, id: PromptTemplateId) -> PathBuf {
+    current_prompts_dir(repo_root).join(format!("{}.md", template_file_name(id)))
+}
+
+pub(crate) fn effective_override_path(repo_root: &Path, id: PromptTemplateId) -> Option<PathBuf> {
+    let current = current_override_path(repo_root, id);
+    if current.exists() {
+        return Some(current);
+    }
+
+    let legacy = legacy_prompts_dir(repo_root).join(format!("{}.md", template_file_name(id)));
+    legacy.exists().then_some(legacy)
 }

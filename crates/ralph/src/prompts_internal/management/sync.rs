@@ -25,7 +25,10 @@ use super::{
         PROMPT_VERSION_SCHEMA, PromptVersionInfo, TemplateVersion, load_version_info,
         save_version_info,
     },
-    templates::{SyncStatus, get_embedded_content, template_file_name},
+    templates::{
+        SyncStatus, current_override_path, current_prompts_dir, effective_override_path,
+        get_embedded_content, template_file_name,
+    },
 };
 use crate::prompts_internal::registry::{PromptTemplateId, prompt_template};
 use anyhow::{Context, Result};
@@ -41,15 +44,15 @@ pub(crate) fn export_template(
 ) -> Result<bool> {
     let template = prompt_template(id);
     let file_name = template_file_name(id);
-    let prompts_dir = repo_root.join(".ralph/prompts");
-    let file_path = prompts_dir.join(format!("{}.md", file_name));
+    let prompts_dir = current_prompts_dir(repo_root);
+    let file_path = current_override_path(repo_root, id);
 
     if !prompts_dir.exists() {
         fs::create_dir_all(&prompts_dir)
             .with_context(|| format!("create directory {}", prompts_dir.display()))?;
     }
 
-    if file_path.exists() && !force {
+    if !force && effective_override_path(repo_root, id).is_some() {
         return Ok(false);
     }
 
@@ -60,7 +63,7 @@ pub(crate) fn export_template(
         .unwrap_or_else(|_| "unknown".to_string());
 
     let header = format!(
-        "<!-- Exported from Ralph embedded defaults -->\n\
+        "<!-- Exported from CueLoop embedded defaults -->\n\
          <!-- Template: {} -->\n\
          <!-- Version: {} -->\n\
          <!-- Digest: {} -->\n\
@@ -94,12 +97,9 @@ pub(crate) fn export_template(
 
 pub(crate) fn check_sync_status(repo_root: &Path, id: PromptTemplateId) -> Result<SyncStatus> {
     let file_name = template_file_name(id);
-    let file_path = repo_root
-        .join(".ralph/prompts")
-        .join(format!("{}.md", file_name));
-    if !file_path.exists() {
+    let Some(file_path) = effective_override_path(repo_root, id) else {
         return Ok(SyncStatus::Missing);
-    }
+    };
 
     let file_content = fs::read_to_string(&file_path)
         .with_context(|| format!("read prompt file {}", file_path.display()))?;
@@ -140,10 +140,7 @@ pub(crate) fn sync_template(
         )),
         SyncStatus::Outdated => Ok((export_template(repo_root, id, true, ralph_version)?, status)),
         SyncStatus::Unknown | SyncStatus::UserModified if force => {
-            let file_path = repo_root
-                .join(".ralph/prompts")
-                .join(format!("{}.md", template_file_name(id)));
-            if file_path.exists() {
+            if let Some(file_path) = effective_override_path(repo_root, id) {
                 let backup_path = file_path.with_extension("md.backup");
                 fs::copy(&file_path, &backup_path)
                     .with_context(|| format!("create backup {}", backup_path.display()))?;
@@ -156,12 +153,9 @@ pub(crate) fn sync_template(
 
 pub(crate) fn generate_diff(repo_root: &Path, id: PromptTemplateId) -> Result<Option<String>> {
     let file_name = template_file_name(id);
-    let file_path = repo_root
-        .join(".ralph/prompts")
-        .join(format!("{}.md", file_name));
-    if !file_path.exists() {
+    let Some(file_path) = effective_override_path(repo_root, id) else {
         return Ok(None);
-    }
+    };
 
     let user_content = fs::read_to_string(&file_path)
         .with_context(|| format!("read prompt file {}", file_path.display()))?;
@@ -174,7 +168,10 @@ pub(crate) fn generate_diff(repo_root: &Path, id: PromptTemplateId) -> Result<Op
 }
 
 fn extract_content_from_exported(file_content: &str) -> Option<&str> {
-    if !file_content.starts_with("<!-- Exported from Ralph embedded defaults -->") {
+    let exported_header = file_content
+        .starts_with("<!-- Exported from CueLoop embedded defaults -->")
+        || file_content.starts_with("<!-- Exported from Ralph embedded defaults -->");
+    if !exported_header {
         return Some(file_content);
     }
 

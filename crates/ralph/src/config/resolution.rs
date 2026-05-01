@@ -1,12 +1,12 @@
-//! Configuration resolution for Ralph.
+//! Configuration resolution for CueLoop.
 //!
 //! Purpose:
-//! - Configuration resolution for Ralph.
+//! - Configuration resolution for CueLoop's transitional `ralph` CLI.
 //!
 //! Responsibilities:
 //! - Resolve configuration from multiple layers: global, project, and defaults.
-//! - Discover repository root via `.ralph/` directory or `.git/`.
-//! - Resolve queue/done file paths and ID generation settings.
+//! - Discover repository root via current `.cueloop/`, legacy `.ralph/`, or `.git/` markers.
+//! - Resolve active runtime layout and queue/done file paths.
 //! - Apply profile patches after base config resolution.
 //!
 //! Not handled here:
@@ -18,13 +18,21 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Config layers are applied in order: defaults, global, project (later overrides earlier).
+//! - Config layers are applied in order: defaults, legacy global, current global, project.
 //! - Paths are resolved relative to repo root unless absolute.
-//! - Global config resolves from `~/.config/ralph/config.jsonc`.
-//! - Project config resolves from `.ralph/config.jsonc`.
+//! - Current global config resolves from `~/.config/cueloop/config.jsonc`.
+//! - Legacy global config at `~/.config/ralph/config.jsonc` remains a fallback.
+//! - Project config resolves from the active runtime dir: `.cueloop/config.jsonc` for
+//!   current/uninitialized repos, `.ralph/config.jsonc` for legacy repos.
 
 use crate::constants::defaults::DEFAULT_ID_WIDTH;
-use crate::constants::queue::{DEFAULT_DONE_FILE, DEFAULT_ID_PREFIX, DEFAULT_QUEUE_FILE};
+use crate::constants::identity::{
+    GLOBAL_CONFIG_DIR, LEGACY_GLOBAL_CONFIG_DIR, LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR,
+};
+use crate::constants::queue::{
+    DEFAULT_DONE_FILE, DEFAULT_ID_PREFIX, DEFAULT_QUEUE_FILE, LEGACY_DEFAULT_DONE_FILE,
+    LEGACY_DEFAULT_QUEUE_FILE,
+};
 use crate::contracts::Config;
 use crate::fsutil;
 use crate::prompts_internal::validate_instruction_file_paths;
@@ -41,6 +49,43 @@ use super::validation::{
     validate_queue_id_width_override,
 };
 
+const CONFIG_FILE_NAME: &str = "config.jsonc";
+const QUEUE_FILE_NAME: &str = "queue.jsonc";
+const DONE_FILE_NAME: &str = "done.jsonc";
+const TRUST_FILE_NAME: &str = "trust.jsonc";
+const LEGACY_QUEUE_JSON_FILE_NAME: &str = "queue.json";
+const LEGACY_DONE_JSON_FILE_NAME: &str = "done.json";
+const LEGACY_CONFIG_JSON_FILE_NAME: &str = "config.json";
+const RUNTIME_MARKER_FILES: &[&str] = &[
+    QUEUE_FILE_NAME,
+    DONE_FILE_NAME,
+    CONFIG_FILE_NAME,
+    TRUST_FILE_NAME,
+    LEGACY_QUEUE_JSON_FILE_NAME,
+    LEGACY_DONE_JSON_FILE_NAME,
+    LEGACY_CONFIG_JSON_FILE_NAME,
+];
+
+/// Active repo-local runtime layout.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectRuntimeLayout {
+    /// Current CueLoop runtime directory (`.cueloop`).
+    Current,
+    /// Legacy Ralph runtime directory (`.ralph`).
+    Legacy,
+    /// No runtime markers exist yet; new writes should use `.cueloop`.
+    Uninitialized,
+}
+
+impl ProjectRuntimeLayout {
+    fn directory_name(self) -> &'static str {
+        match self {
+            Self::Current | Self::Uninitialized => PROJECT_RUNTIME_DIR,
+            Self::Legacy => LEGACY_PROJECT_RUNTIME_DIR,
+        }
+    }
+}
+
 /// Resolve configuration from the current working directory.
 pub fn resolve_from_cwd() -> Result<Resolved> {
     resolve_from_cwd_internal(true, true, None)
@@ -49,8 +94,8 @@ pub fn resolve_from_cwd() -> Result<Resolved> {
 /// Resolve like `resolve_from_cwd`, but skip project-layer execution trust validation.
 ///
 /// Used when the operator is explicitly opting into trust (for example `ralph init`) so
-/// initialization can proceed before `.ralph/trust.jsonc` exists, then the trust file is written
-/// afterward.
+/// initialization can proceed before the repo-local trust file exists, then the trust file is
+/// written afterward.
 pub fn resolve_from_cwd_skipping_project_execution_trust() -> Result<Resolved> {
     resolve_from_cwd_internal(true, false, None)
 }
@@ -78,18 +123,23 @@ fn resolve_from_cwd_internal(
     let repo_root = find_repo_root(&cwd);
 
     let global_path = global_config_path();
+    let global_layer_paths = global_config_layer_paths();
     let project_path = project_config_path(&repo_root);
     let repo_trust = load_repo_trust(&repo_root)?;
 
     let mut cfg = Config::default();
     let mut project_layer: Option<ConfigLayer> = None;
+    let mut queue_file_explicit = false;
+    let mut done_file_explicit = false;
 
-    if let Some(path) = global_path.as_ref() {
+    for path in &global_layer_paths {
         log::debug!("checking global config at: {}", path.display());
         if path.exists() {
             log::debug!("loading global config: {}", path.display());
             let layer = load_layer(path)
                 .with_context(|| format!("load global config {}", path.display()))?;
+            queue_file_explicit |= layer.queue.file.is_some();
+            done_file_explicit |= layer.queue.done_file.is_some();
             cfg = apply_layer(cfg, layer)
                 .with_context(|| format!("apply global config {}", path.display()))?;
         }
@@ -100,6 +150,8 @@ fn resolve_from_cwd_internal(
         log::debug!("loading project config: {}", project_path.display());
         let layer = load_layer(&project_path)
             .with_context(|| format!("load project config {}", project_path.display()))?;
+        queue_file_explicit |= layer.queue.file.is_some();
+        done_file_explicit |= layer.queue.done_file.is_some();
         project_layer = Some(layer.clone());
         cfg = apply_layer(cfg, layer)
             .with_context(|| format!("apply project config {}", project_path.display()))?;
@@ -124,8 +176,14 @@ fn resolve_from_cwd_internal(
 
     let id_prefix = resolve_id_prefix(&cfg)?;
     let id_width = resolve_id_width(&cfg)?;
-    let queue_path = resolve_queue_path(&repo_root, &cfg)?;
-    let done_path = resolve_done_path(&repo_root, &cfg)?;
+    let queue_path = resolve_queue_path_with_source(&repo_root, &cfg, queue_file_explicit)?;
+    let done_path = resolve_done_path_with_source(&repo_root, &cfg, done_file_explicit)?;
+    let resolved_global_path = global_layer_paths
+        .iter()
+        .rev()
+        .find(|path| path.exists())
+        .cloned()
+        .or(global_path);
 
     log::debug!("resolved repo_root: {}", repo_root.display());
     log::debug!("resolved queue_path: {}", queue_path.display());
@@ -138,7 +196,7 @@ fn resolve_from_cwd_internal(
         done_path,
         id_prefix,
         id_width,
-        global_config_path: global_path,
+        global_config_path: resolved_global_path,
         project_config_path: Some(project_path),
     })
 }
@@ -157,7 +215,7 @@ fn apply_profile_patch(cfg: &mut Config, name: &str) -> Result<()> {
             let names = crate::agent::all_profile_names(cfg.profiles.as_ref());
             if names.is_empty() {
                 anyhow::anyhow!(
-                    "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .ralph/config.jsonc or ~/.config/ralph/config.jsonc."
+                    "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or legacy .ralph/config.jsonc."
                 )
             } else {
                 anyhow::anyhow!(
@@ -186,35 +244,74 @@ pub fn resolve_id_width(cfg: &Config) -> Result<usize> {
 
 /// Resolve the queue file path from config.
 pub fn resolve_queue_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+    resolve_queue_path_with_source(repo_root, cfg, false)
+}
+
+fn resolve_queue_path_with_source(
+    repo_root: &Path,
+    cfg: &Config,
+    queue_file_explicit: bool,
+) -> Result<PathBuf> {
     validate_queue_file_override(cfg.queue.file.as_deref())?;
 
-    // Get the raw path, using default if not specified
-    let raw = cfg
-        .queue
-        .file
-        .clone()
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_QUEUE_FILE));
+    let raw = default_aware_runtime_path(
+        repo_root,
+        cfg.queue.file.as_deref(),
+        queue_file_explicit,
+        QUEUE_FILE_NAME,
+        DEFAULT_QUEUE_FILE,
+        LEGACY_DEFAULT_QUEUE_FILE,
+    );
 
-    let value = fsutil::expand_tilde(&raw);
-    Ok(if value.is_absolute() {
-        value
-    } else {
-        repo_root.join(value)
-    })
+    resolve_repo_path(repo_root, &raw)
 }
 
 /// Resolve the done file path from config.
 pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
+    resolve_done_path_with_source(repo_root, cfg, false)
+}
+
+fn resolve_done_path_with_source(
+    repo_root: &Path,
+    cfg: &Config,
+    done_file_explicit: bool,
+) -> Result<PathBuf> {
     validate_queue_done_file_override(cfg.queue.done_file.as_deref())?;
 
-    // Get the raw path, using default if not specified
-    let raw = cfg
-        .queue
-        .done_file
-        .clone()
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_DONE_FILE));
+    let raw = default_aware_runtime_path(
+        repo_root,
+        cfg.queue.done_file.as_deref(),
+        done_file_explicit,
+        DONE_FILE_NAME,
+        DEFAULT_DONE_FILE,
+        LEGACY_DEFAULT_DONE_FILE,
+    );
 
-    let value = fsutil::expand_tilde(&raw);
+    resolve_repo_path(repo_root, &raw)
+}
+
+fn default_aware_runtime_path(
+    repo_root: &Path,
+    configured: Option<&Path>,
+    configured_explicitly: bool,
+    file_name: &str,
+    current_default: &str,
+    legacy_default: &str,
+) -> PathBuf {
+    match configured {
+        Some(path)
+            if !configured_explicitly
+                && (path == Path::new(current_default) || path == Path::new(legacy_default)) =>
+        {
+            default_runtime_relative_path(repo_root, file_name)
+        }
+        Some(path) => path.to_path_buf(),
+        None => default_runtime_relative_path(repo_root, file_name),
+    }
+}
+
+fn resolve_repo_path(repo_root: &Path, raw: &Path) -> Result<PathBuf> {
+    let value = fsutil::expand_tilde(raw);
     Ok(if value.is_absolute() {
         value
     } else {
@@ -222,42 +319,99 @@ pub fn resolve_done_path(repo_root: &Path, cfg: &Config) -> Result<PathBuf> {
     })
 }
 
-/// Get the path to the global config file.
+fn default_runtime_relative_path(repo_root: &Path, file_name: &str) -> PathBuf {
+    PathBuf::from(project_runtime_layout(repo_root).directory_name()).join(file_name)
+}
+
+/// Get the path to the current global config file.
 pub fn global_config_path() -> Option<PathBuf> {
-    let base = if let Some(value) = env::var_os("XDG_CONFIG_HOME") {
-        PathBuf::from(value)
+    config_base_dir().map(|base| base.join(GLOBAL_CONFIG_DIR).join(CONFIG_FILE_NAME))
+}
+
+/// Get the path to the legacy global config file.
+pub fn legacy_global_config_path() -> Option<PathBuf> {
+    config_base_dir().map(|base| base.join(LEGACY_GLOBAL_CONFIG_DIR).join(CONFIG_FILE_NAME))
+}
+
+fn global_config_layer_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(path) = legacy_global_config_path() {
+        paths.push(path);
+    }
+    if let Some(path) = global_config_path()
+        && !paths.iter().any(|existing| existing == &path)
+    {
+        paths.push(path);
+    }
+    paths
+}
+
+fn config_base_dir() -> Option<PathBuf> {
+    if let Some(value) = env::var_os("XDG_CONFIG_HOME") {
+        Some(PathBuf::from(value))
     } else {
         let home = env::var_os("HOME")?;
-        PathBuf::from(home).join(".config")
-    };
-    let ralph_dir = base.join("ralph");
-    Some(ralph_dir.join("config.jsonc"))
+        Some(PathBuf::from(home).join(".config"))
+    }
 }
 
 /// Get the path to the project config file for a given repo root.
 pub fn project_config_path(repo_root: &Path) -> PathBuf {
-    let ralph_dir = repo_root.join(".ralph");
-    ralph_dir.join("config.jsonc")
+    project_runtime_dir(repo_root).join(CONFIG_FILE_NAME)
+}
+
+/// Get the active repo-local runtime directory for a repository root.
+pub fn project_runtime_dir(repo_root: &Path) -> PathBuf {
+    repo_root.join(project_runtime_layout(repo_root).directory_name())
+}
+
+/// Detect the active repo-local runtime layout.
+pub fn project_runtime_layout(repo_root: &Path) -> ProjectRuntimeLayout {
+    let current_dir = repo_root.join(PROJECT_RUNTIME_DIR);
+    let legacy_dir = repo_root.join(LEGACY_PROJECT_RUNTIME_DIR);
+
+    if has_runtime_marker(&current_dir) {
+        ProjectRuntimeLayout::Current
+    } else if has_runtime_marker(&legacy_dir) {
+        ProjectRuntimeLayout::Legacy
+    } else {
+        ProjectRuntimeLayout::Uninitialized
+    }
+}
+
+fn has_runtime_marker(runtime_dir: &Path) -> bool {
+    runtime_dir.is_dir()
+        && RUNTIME_MARKER_FILES
+            .iter()
+            .any(|name| runtime_dir.join(name).is_file())
 }
 
 /// Find the repository root starting from a given path.
 ///
-/// Searches upward for a `.ralph/` directory with marker files
-/// or a `.git/` directory.
+/// Searches upward for current `.cueloop/` marker files, then legacy `.ralph/` marker files,
+/// then a `.git/` directory.
 pub fn find_repo_root(start: &Path) -> PathBuf {
     log::debug!("searching for repo root starting from: {}", start.display());
     for dir in start.ancestors() {
         log::debug!("checking directory: {}", dir.display());
-        let ralph_dir = dir.join(".ralph");
-        if ralph_dir.is_dir() {
-            let has_ralph_marker = ["queue.jsonc", "config.jsonc", "done.jsonc"]
-                .iter()
-                .any(|name| ralph_dir.join(name).is_file());
-            if has_ralph_marker {
-                log::debug!("found repo root at: {} (via .ralph/)", dir.display());
-                return dir.to_path_buf();
-            }
+        let current_dir = dir.join(PROJECT_RUNTIME_DIR);
+        if has_runtime_marker(&current_dir) {
+            log::debug!(
+                "found repo root at: {} (via {PROJECT_RUNTIME_DIR}/)",
+                dir.display()
+            );
+            return dir.to_path_buf();
         }
+
+        let legacy_dir = dir.join(LEGACY_PROJECT_RUNTIME_DIR);
+        if has_runtime_marker(&legacy_dir) {
+            log::debug!(
+                "found repo root at: {} (via {LEGACY_PROJECT_RUNTIME_DIR}/)",
+                dir.display()
+            );
+            return dir.to_path_buf();
+        }
+
         if dir.join(".git").exists() {
             log::debug!("found repo root at: {} (via .git/)", dir.display());
             return dir.to_path_buf();
@@ -268,4 +422,19 @@ pub fn find_repo_root(start: &Path) -> PathBuf {
         start.display()
     );
     start.to_path_buf()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn default_runtime_relative_path_matches_current_default_queue_constant() {
+        let dir = TempDir::new().expect("temp dir");
+        assert_eq!(
+            default_runtime_relative_path(dir.path(), QUEUE_FILE_NAME),
+            PathBuf::from(crate::constants::queue::DEFAULT_QUEUE_FILE)
+        );
+    }
 }

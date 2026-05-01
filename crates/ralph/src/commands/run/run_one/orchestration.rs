@@ -136,7 +136,7 @@ pub fn run_one_impl(
 
     let resolved_resume_task_id = if resume_options.detect_session {
         let resolution = crate::session::resolve_run_session_decision(
-            &resolved.repo_root.join(".ralph/cache"),
+            &crate::config::project_runtime_dir(&resolved.repo_root).join("cache"),
             &ctx.queue_file,
             crate::session::RunSessionDecisionOptions {
                 timeout_hours: resolved.config.agent.session_timeout_hours,

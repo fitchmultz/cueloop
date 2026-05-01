@@ -103,7 +103,7 @@ fn handle_profiles(args: ConfigProfilesArgs) -> Result<()> {
             if names.is_empty() {
                 println!("No profiles configured.");
                 println!(
-                    "Define profiles under the `profiles` key in .ralph/config.jsonc or ~/.config/ralph/config.jsonc."
+                    "Define profiles under the `profiles` key in .cueloop/config.jsonc or ~/.config/cueloop/config.jsonc (legacy .ralph and ~/.config/ralph are still read)."
                 );
                 return Ok(());
             }
@@ -145,7 +145,7 @@ fn handle_profiles(args: ConfigProfilesArgs) -> Result<()> {
                     let names = agent::all_profile_names(resolved.config.profiles.as_ref());
                     if names.is_empty() {
                         anyhow::bail!(
-                            "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .ralph/config.jsonc or ~/.config/ralph/config.jsonc."
+                            "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or ~/.config/cueloop/config.jsonc (legacy .ralph and ~/.config/ralph are still read)."
                         );
                     }
                     anyhow::bail!(
@@ -232,13 +232,13 @@ pub struct ConfigTrustArgs {
 
 #[derive(Subcommand, Debug, Clone, Copy)]
 pub enum ConfigTrustCommand {
-    /// Create or update `.ralph/trust.jsonc` so execution-sensitive project settings are allowed.
+    /// Create or update active runtime `trust.jsonc` so execution-sensitive project settings are allowed.
     Init,
 }
 
 #[derive(Args)]
 #[command(
-    about = "Inspect and manage Ralph configuration",
+    about = "Inspect and manage CueLoop configuration",
     after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config paths\n  ralph config schema\n  ralph config trust init\n  ralph config profiles list\n  ralph config profiles show fast-local"
 )]
 pub struct ConfigArgs {
@@ -248,7 +248,7 @@ pub struct ConfigArgs {
 
 #[derive(Subcommand)]
 pub enum ConfigCommand {
-    /// Show the resolved Ralph configuration.
+    /// Show the resolved CueLoop configuration.
     #[command(
         after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config show --format yaml"
     )]
@@ -264,7 +264,7 @@ pub enum ConfigCommand {
         after_long_help = "Examples:\n  ralph config profiles list\n  ralph config profiles show fast-local\n  ralph config profiles show deep-review"
     )]
     Profiles(ConfigProfilesArgs),
-    /// Manage repo-local execution trust (`.ralph/trust.jsonc`).
+    /// Manage repo-local execution trust (`.cueloop/trust.jsonc`, with legacy `.ralph/trust.jsonc` support).
     #[command(after_long_help = "Examples:\n  ralph config trust init")]
     Trust(ConfigTrustArgs),
 }

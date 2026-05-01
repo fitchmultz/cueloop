@@ -78,7 +78,8 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueStatsArgs) -> Result<()> {
         .unwrap_or(0);
 
     // Cache directory for execution history
-    let cache_dir: Option<&Path> = Some(&resolved.repo_root.join(".ralph/cache"));
+    let cache_dir = crate::config::project_runtime_dir(&resolved.repo_root).join("cache");
+    let cache_dir: Option<&Path> = Some(cache_dir.as_path());
 
     reports::print_stats(
         &queue_file,

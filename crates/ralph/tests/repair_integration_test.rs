@@ -16,6 +16,7 @@
 //! - Each scenario initializes its own Ralph workspace before replacing fixtures.
 
 use anyhow::Result;
+use ralph::config::project_runtime_dir;
 use std::path::Path;
 use std::process::ExitStatus;
 
@@ -113,8 +114,9 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
   ]
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), broken_queue)?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), broken_done)?;
+    let runtime_dir = project_runtime_dir(dir.path());
+    std::fs::write(runtime_dir.join("queue.jsonc"), broken_queue)?;
+    std::fs::write(runtime_dir.join("done.jsonc"), broken_done)?;
 
     // Run repair
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "repair"]);
@@ -132,8 +134,9 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     assert_repair_undo_snapshot_created(dir.path())?;
 
     // Verify file content
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
-    let done_path = dir.path().join(".ralph/done.jsonc");
+    let runtime_dir = project_runtime_dir(dir.path());
+    let queue_path = runtime_dir.join("queue.jsonc");
+    let done_path = runtime_dir.join("done.jsonc");
 
     let queue_str = std::fs::read_to_string(&queue_path)?;
     let done_str = std::fs::read_to_string(&done_path)?;
@@ -255,7 +258,10 @@ fn repair_remaps_all_relationship_fields_for_invalid_ids() -> Result<()> {
   ]
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), broken_queue)?;
+    std::fs::write(
+        project_runtime_dir(dir.path()).join("queue.jsonc"),
+        broken_queue,
+    )?;
 
     // Run repair
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "repair"]);
@@ -264,7 +270,7 @@ fn repair_remaps_all_relationship_fields_for_invalid_ids() -> Result<()> {
         "ralph queue repair failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
-    let queue_str = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
+    let queue_str = std::fs::read_to_string(project_runtime_dir(dir.path()).join("queue.jsonc"))?;
 
     // Verify that INVALID-1 is gone and replaced by a valid generated ID.
     assert!(
@@ -318,7 +324,7 @@ fn assert_single_id(task: &serde_json::Value, field: &str, expected_id: &str) {
 }
 
 fn assert_repair_undo_snapshot_created(repo_root: &Path) -> Result<()> {
-    let undo_dir = repo_root.join(".ralph/cache/undo");
+    let undo_dir = project_runtime_dir(repo_root).join("cache/undo");
     let snapshots = std::fs::read_dir(&undo_dir)?
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.path())

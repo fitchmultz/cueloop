@@ -16,8 +16,9 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Exported prompts live under `.ralph/prompts/`.
-//! - Prompt version tracking is stored under `.ralph/cache/prompt_versions.json`.
+//! - Exported prompts live under `.cueloop/prompts/`.
+//! - Legacy `.ralph/prompts/` overrides remain readable as fallback.
+//! - Prompt version tracking is stored under `.cueloop/cache/prompt_versions.json` with legacy read fallback.
 //! - Digests use normalized-content SHA-256 with the `sha256:` prefix.
 
 mod hash;

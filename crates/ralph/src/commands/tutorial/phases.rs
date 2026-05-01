@@ -149,7 +149,7 @@ pub fn phase_create_task(
 
 /// Add a tutorial task directly to queue.jsonc.
 fn add_tutorial_task(sandbox: &TutorialSandbox) -> Result<String> {
-    let queue_path = sandbox.path.join(".ralph/queue.jsonc");
+    let queue_path = crate::config::project_runtime_dir(&sandbox.path).join("queue.jsonc");
 
     let task = crate::contracts::Task {
         id: "RQ-0001".to_string(),
@@ -250,7 +250,7 @@ pub fn phase_review(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) 
     prompter.info("");
 
     // Show queue
-    let queue_path = sandbox.path.join(".ralph/queue.jsonc");
+    let queue_path = crate::config::project_runtime_dir(&sandbox.path).join("queue.jsonc");
     let queue = crate::queue::load_queue(&queue_path).context("load queue for review")?;
 
     for task in &queue.tasks {

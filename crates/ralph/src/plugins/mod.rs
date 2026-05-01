@@ -1,7 +1,7 @@
-//! Plugin system for Ralph (runners + task processors).
+//! Plugin system for CueLoop (runners + task processors).
 //!
 //! Purpose:
-//! - Plugin system for Ralph (runners + task processors).
+//! - Plugin system for CueLoop (runners + task processors).
 //!
 //! Responsibilities:
 //! - Define plugin manifest contracts and validation.
@@ -18,12 +18,14 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Plugins are discovered from:
-//!   - Global:  ~/.config/ralph/plugins/<plugin_id>/plugin.json
-//!   - Project: .ralph/plugins/<plugin_id>/plugin.json
-//! - Project plugins override global plugins of the same id.
+//! - Plugins are discovered from current and legacy roots:
+//!   - Current global:  ~/.config/cueloop/plugins/<plugin_id>/plugin.json
+//!   - Legacy global:   ~/.config/ralph/plugins/<plugin_id>/plugin.json
+//!   - Current project: .cueloop/plugins/<plugin_id>/plugin.json
+//!   - Legacy project:  .ralph/plugins/<plugin_id>/plugin.json
+//! - Current roots override legacy roots; project plugins override global plugins of the same id.
 //! - Plugins are disabled unless enabled in config.
-//! - Plugin executables are NOT sandboxed by Ralph; enabling a plugin is equivalent to trusting it.
+//! - Plugin executables are NOT sandboxed by CueLoop; enabling a plugin is equivalent to trusting it.
 
 pub(crate) mod discovery;
 pub(crate) mod manifest;

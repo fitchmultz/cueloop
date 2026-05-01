@@ -20,8 +20,9 @@
 //! - Write-enabled mode auto-updates README without prompting.
 //! - Read-only mode never writes README and only reports drift.
 
-use crate::config::Resolved;
+use crate::config::{self, Resolved};
 use anyhow::{Context, Result};
+use std::path::PathBuf;
 
 /// Check and auto-update README if needed.
 ///
@@ -39,7 +40,7 @@ pub(crate) fn check_and_update_readme(resolved: &Resolved) -> Result<Option<Stri
             current_version,
             embedded_version,
         } => {
-            let readme_path = resolved.repo_root.join(".ralph/README.md");
+            let readme_path = runtime_readme_path(resolved);
             log::info!(
                 "README is outdated (version {} < {}), updating...",
                 current_version,
@@ -62,7 +63,7 @@ pub(crate) fn check_and_update_readme(resolved: &Resolved) -> Result<Option<Stri
             }
         }
         readme::ReadmeCheckResult::Missing => {
-            let readme_path = resolved.repo_root.join(".ralph/README.md");
+            let readme_path = runtime_readme_path(resolved);
             log::info!("README is missing, creating {}", readme_path.display());
             let (status, version) =
                 readme::write_readme(&readme_path, false).context("create missing README")?;
@@ -85,6 +86,19 @@ pub(crate) fn check_and_update_readme(resolved: &Resolved) -> Result<Option<Stri
     }
 }
 
+fn runtime_readme_path(resolved: &Resolved) -> PathBuf {
+    config::project_runtime_dir(&resolved.repo_root).join("README.md")
+}
+
+fn runtime_readme_label(resolved: &Resolved) -> String {
+    let runtime_dir = config::project_runtime_dir(&resolved.repo_root);
+    let runtime_name = runtime_dir
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(crate::constants::identity::PROJECT_RUNTIME_DIR);
+    format!("{runtime_name}/README.md")
+}
+
 /// Check README status without writing changes.
 ///
 /// Returns `Ok(Some(message))` when README is missing/outdated and needs a write-enabled refresh.
@@ -102,14 +116,19 @@ pub(crate) fn check_readme_without_update(resolved: &Resolved) -> Result<Option<
             embedded_version,
         } => {
             let msg = format!(
-                ".ralph/README.md is outdated (version {} < {}). Run `ralph init --non-interactive` or another write-enabled command to refresh it.",
-                current_version, embedded_version
+                "{} is outdated (version {} < {}). Run `ralph init --non-interactive` or another write-enabled command to refresh it.",
+                runtime_readme_label(resolved),
+                current_version,
+                embedded_version
             );
             log::warn!("{}", msg);
             Ok(Some(msg))
         }
         readme::ReadmeCheckResult::Missing => {
-            let msg = ".ralph/README.md is missing. Run `ralph init --non-interactive` or another write-enabled command to create it.".to_string();
+            let msg = format!(
+                "{} is missing. Run `ralph init --non-interactive` or another write-enabled command to create it.",
+                runtime_readme_label(resolved)
+            );
             log::warn!("{}", msg);
             Ok(Some(msg))
         }
@@ -124,16 +143,15 @@ pub(crate) fn check_readme_without_update(resolved: &Resolved) -> Result<Option<
 mod tests {
     use super::*;
     use crate::commands::init::check_readme_current;
-    use crate::config;
     use crate::constants::versions::README_VERSION;
     use crate::contracts::Config;
     use tempfile::TempDir;
 
     fn resolved_for(dir: &TempDir) -> config::Resolved {
         let repo_root = dir.path().to_path_buf();
-        let queue_path = repo_root.join(".ralph/queue.jsonc");
-        let done_path = repo_root.join(".ralph/done.jsonc");
-        let project_config_path = Some(repo_root.join(".ralph/config.jsonc"));
+        let queue_path = repo_root.join(".cueloop/queue.jsonc");
+        let done_path = repo_root.join(".cueloop/done.jsonc");
+        let project_config_path = Some(repo_root.join(".cueloop/config.jsonc"));
         config::Resolved {
             config: Config::default(),
             repo_root,
@@ -159,7 +177,7 @@ mod tests {
             fix
         );
 
-        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        let readme_path = runtime_readme_path(&resolved);
         assert!(readme_path.exists(), "README should be created");
         let check = check_readme_current(&resolved)?;
         assert!(matches!(
@@ -173,7 +191,7 @@ mod tests {
     fn check_and_update_readme_updates_outdated_file() -> Result<()> {
         let dir = TempDir::new()?;
         let resolved = resolved_for(&dir);
-        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        let readme_path = runtime_readme_path(&resolved);
         std::fs::create_dir_all(readme_path.parent().expect("parent"))?;
         std::fs::write(&readme_path, "<!-- RALPH_README_VERSION: 1 -->\n# Old")?;
 
@@ -207,7 +225,7 @@ mod tests {
             warning
         );
 
-        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        let readme_path = runtime_readme_path(&resolved);
         assert!(
             !readme_path.exists(),
             "README should not be created in read-only mode"
@@ -219,7 +237,7 @@ mod tests {
     fn check_readme_without_update_reports_outdated_without_rewriting_file() -> Result<()> {
         let dir = TempDir::new()?;
         let resolved = resolved_for(&dir);
-        let readme_path = resolved.repo_root.join(".ralph/README.md");
+        let readme_path = runtime_readme_path(&resolved);
         std::fs::create_dir_all(readme_path.parent().expect("parent"))?;
         let stale_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old";
         std::fs::write(&readme_path, stale_content)?;

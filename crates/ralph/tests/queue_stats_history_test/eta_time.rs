@@ -37,7 +37,7 @@ fn stats_json_includes_execution_history_eta_when_present() -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue)?;
 
     // Write execution history
     test_support::write_execution_history_v1_single_sample(
@@ -113,7 +113,7 @@ fn stats_json_execution_history_eta_null_when_no_history() -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue)?;
     // No execution history written
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
@@ -155,7 +155,7 @@ fn stats_text_includes_execution_history_eta_section() -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue)?;
     test_support::write_execution_history_v1_single_sample(
         dir.path(),
         "codex",
@@ -210,7 +210,7 @@ fn stats_text_shows_na_when_no_history() -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue)?;
     // No execution history
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats"]);
@@ -265,8 +265,8 @@ fn stats_json_includes_time_tracking_work_time_and_start_lag() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
     anyhow::ensure!(

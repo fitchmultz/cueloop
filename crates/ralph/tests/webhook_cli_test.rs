@@ -21,6 +21,7 @@
 //! - Failure records are stored under `.ralph/cache/webhooks/failures.json`.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::webhook::{WebhookContext, WebhookFailureRecord, WebhookPayload};
 use serde_json::Value;
 
@@ -34,7 +35,7 @@ fn setup_repo() -> Result<tempfile::TempDir> {
 }
 
 fn write_webhook_config(dir: &std::path::Path) -> Result<()> {
-    let config_path = dir.join(".ralph/config.jsonc");
+    let config_path = project_runtime_dir(dir).join("config.jsonc");
     let mut config: Value = serde_json::from_str(
         &std::fs::read_to_string(&config_path)
             .with_context(|| format!("read {}", config_path.display()))?,
@@ -58,7 +59,7 @@ fn write_webhook_config(dir: &std::path::Path) -> Result<()> {
 }
 
 fn failure_store_path(dir: &std::path::Path) -> std::path::PathBuf {
-    dir.join(".ralph/cache/webhooks/failures.json")
+    project_runtime_dir(dir).join("cache/webhooks/failures.json")
 }
 
 fn sample_failure(id: &str, replay_count: u32) -> WebhookFailureRecord {

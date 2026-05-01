@@ -1,12 +1,14 @@
-# Ralph
+# CueLoop
 
 [![crates.io](https://img.shields.io/crates/v/ralph-agent-loop.svg)](https://crates.io/crates/ralph-agent-loop)
 [![docs.rs](https://img.shields.io/docsrs/ralph-agent-loop)](https://docs.rs/ralph-agent-loop)
 [![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/ralph)](https://github.com/fitchmultz/ralph/releases)
 
-Ralph is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
+CueLoop is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
 
-Teams use Ralph when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
+The current executable and package names remain `ralph` and `ralph-agent-loop` during this rebrand phase. New repositories use `.cueloop/` for runtime state; legacy `.ralph/` repositories remain supported and can move with `ralph migrate runtime-dir --apply`.
+
+Teams use CueLoop when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
 
 ## Reviewer Path
 
@@ -19,9 +21,9 @@ If you are evaluating the repo quickly and want the fastest high-signal path:
 
 That path is intentionally local-first and does not require configuring Codex/Claude/Gemini before you can validate the repo.
 
-## What Ralph Is For
+## What CueLoop Is For
 
-Ralph is designed for engineering teams that want repeatable, auditable AI-assisted development workflows.
+CueLoop is designed for engineering teams that want repeatable, auditable AI-assisted development workflows.
 
 It provides:
 
@@ -33,17 +35,17 @@ It provides:
 
 ### Non-goals
 
-- Hosted SaaS orchestration (Ralph is local-first)
-- Hidden black-box state (queue and done files are plain JSONC in `.ralph/`)
-- Replacing your existing developer tooling; Ralph integrates with it
+- Hosted SaaS orchestration (CueLoop is local-first)
+- Hidden black-box state (queue and done files are plain JSONC in `.cueloop/`; legacy `.ralph/` remains supported)
+- Replacing your existing developer tooling; CueLoop integrates with it
 
 ## Core Operating Model
 
-Ralph centers on an operator-started run loop over repo-local tasks:
+CueLoop centers on an operator-started run loop over repo-local tasks:
 
-1. Tasks live in `.ralph/queue.jsonc` and completed work is archived to `.ralph/done.jsonc`.
+1. Tasks live in `.cueloop/queue.jsonc` and completed work is archived to `.cueloop/done.jsonc` by default; legacy `.ralph/queue.jsonc` and `.ralph/done.jsonc` are still read.
 2. A human starts `ralph run one`, `ralph run loop`, or `ralph run loop --parallel <N>`.
-3. Ralph invokes the configured runner through supervised one-, two-, or three-phase execution.
+3. CueLoop invokes the configured runner through supervised one-, two-, or three-phase execution.
 4. In three-phase mode, Phase 3 reviews the implementation, resolves issues, and records completion.
 5. The configured CI gate runs before task completion and before automatic publish behavior.
 6. Post-run supervision validates queue state, archives the task, and commits or pushes according to `git_publish_mode`.
@@ -54,9 +56,9 @@ Ralph centers on an operator-started run loop over repo-local tasks:
 ```mermaid
 flowchart LR
   APP["macOS App<br>SwiftUI"] -->|shells out| CLI["ralph CLI<br>Rust"]
-  CLI -->|reads/writes| QUEUE[.ralph/queue.jsonc]
-  CLI -->|reads/writes| DONE[.ralph/done.jsonc]
-  CLI -->|reads| CONFIG[.ralph/config.jsonc]
+  CLI -->|reads/writes| QUEUE[.cueloop/queue.jsonc]
+  CLI -->|reads/writes| DONE[.cueloop/done.jsonc]
+  CLI -->|reads| CONFIG[.cueloop/config.jsonc]
   CLI -->|spawns| RUNNERS["Runner CLIs<br>Codex / Claude / Gemini / OpenCode / Cursor / Kimi / Pi"]
 ```
 
@@ -106,7 +108,7 @@ ralph run one --profile safe
 ralph queue list
 ```
 
-`ralph init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.ralph/trust.jsonc` (gitignored by init).
+`ralph init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.cueloop/trust.jsonc` for current repos (`.ralph/trust.jsonc` remains supported for legacy repos; both are gitignored by init).
 Interactive init also lets you choose shared-vs-local queue tracking and opt into additional ignored local files for parallel worker sync; non-interactive init keeps the deterministic `.env*` sync default only.
 Use `--profile power-user` only when you explicitly want the higher-blast-radius behavior, including commit_and_push automation.
 On macOS, app-launched runs remain noninteractive: the app can supervise and disclose safety posture, but interactive approvals are still terminal-only.
@@ -119,7 +121,7 @@ That gives you a deterministic way to verify the CLI and repo health without any
 Here is a concrete repo workflow for a team using Codex or Claude Code in a normal feature branch:
 
 ```bash
-# install Ralph in your application repo
+# install CueLoop in your application repo (the command is still `ralph`)
 cargo install ralph-agent-loop
 cd your-service
 ralph init
@@ -127,7 +129,7 @@ ralph init
 # turn a real request into queued work
 ralph task "Add retry coverage for webhook delivery failures"
 
-# inspect the task Ralph just created
+# inspect the task CueLoop just created
 ralph queue list
 ralph queue show RQ-0001
 
@@ -169,10 +171,10 @@ Full scripted version: [docs/guides/local-smoke-test.md](docs/guides/local-smoke
 
 ## Security & Data Handling
 
-Ralph is local-first, but selected runner CLIs may transmit prompts/context to external APIs depending on your runner configuration.
+CueLoop is local-first, but selected runner CLIs may transmit prompts/context to external APIs depending on your runner configuration.
 
 - Do not place secrets in task text, notes, or tracked config
-- Keep runtime artifacts local (`.ralph/cache/`, `.ralph/logs/`, `.ralph/workspaces/`, `.ralph/undo/`, `.ralph/webhooks/`)
+- Keep runtime artifacts local (`.cueloop/cache/`, `.cueloop/logs/`, `.cueloop/workspaces/`, `.cueloop/undo/`, `.cueloop/webhooks/`; legacy `.ralph/` paths remain supported)
 - Use `make pre-public-check` before public release windows
 
 Security references:
@@ -188,7 +190,7 @@ Security references:
 
 ## Versioning & Compatibility
 
-Ralph follows semantic versioning.
+CueLoop follows semantic versioning for the product; the crate/package remains `ralph-agent-loop` in this phase.
 
 - Minor/patch releases preserve existing behavior unless explicitly documented
 - Breaking CLI/config behavior changes are called out in changelog and migration notes
@@ -221,8 +223,8 @@ Policies:
 
 ## Repository Runtime State
 
-This repository intentionally keeps a small sanitized `.ralph/` state for reproducible examples and documentation.
-In most consumer repositories, `.ralph/` is project-local runtime state managed by `ralph init`, including the generated `.ralph/README.md` guidance file that Ralph refreshes when its embedded template changes.
+This repository may keep small sanitized runtime state for reproducible examples and documentation.
+In most consumer repositories, `.cueloop/` is project-local runtime state managed by `ralph init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Legacy `.ralph/` state is still supported; use `ralph migrate runtime-dir --apply` when ready to move it.
 
 ## Development
 

@@ -47,7 +47,7 @@ exit 2
     test_support::configure_ci_gate(dir.path(), Some("./ci-gate.sh"), Some(true))?;
     test_support::trust_project_commands(dir.path())?;
 
-    let resume_args_file = dir.path().join(".ralph/continue_resume_args.txt");
+    let resume_args_file = dir.path().join(".cueloop/continue_resume_args.txt");
 
     let runner_script = format!(
         r#"#!/bin/sh
@@ -137,7 +137,7 @@ exit 1
     test_support::configure_ci_gate(dir.path(), Some("./custom-ci.sh"), Some(true))?;
     test_support::trust_project_commands(dir.path())?;
 
-    let resume_args_file = dir.path().join(".ralph/custom_ci_resume_args.txt");
+    let resume_args_file = dir.path().join(".cueloop/custom_ci_resume_args.txt");
     let runner_script = format!(
         r#"#!/bin/sh
 echo "$@" >> {args_file}
@@ -207,7 +207,7 @@ exit 2
     test_support::configure_ci_gate(dir.path(), Some("./ci-gate.sh"), Some(true))?;
     test_support::trust_project_commands(dir.path())?;
 
-    let resume_count_file = dir.path().join(".ralph/escalation_resume_count.txt");
+    let resume_count_file = dir.path().join(".cueloop/escalation_resume_count.txt");
 
     let runner_script = format!(
         r#"#!/bin/sh

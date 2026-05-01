@@ -18,6 +18,7 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
+use ralph::config::project_runtime_dir;
 mod test_support;
 
 #[test]
@@ -64,7 +65,7 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     );
 
     // Verify task was actually marked done and archived (supervisor logic)
-    let done_content = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let done_content = std::fs::read_to_string(project_runtime_dir(dir.path()).join("done.jsonc"))?;
     anyhow::ensure!(
         done_content.contains("RQ-0001"),
         "task should be moved to done"

@@ -17,6 +17,7 @@
 //! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use std::path::Path;
 use std::process::ExitStatus;
 
@@ -61,8 +62,10 @@ fn queue_next_reports_empty_queue_with_done_tasks() -> Result<()> {
   ]
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(project_runtime_dir(dir.path()).join("queue.jsonc"), queue)
+        .context("write queue.json")?;
+    std::fs::write(project_runtime_dir(dir.path()).join("done.jsonc"), done)
+        .context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "next"]);
     anyhow::ensure!(

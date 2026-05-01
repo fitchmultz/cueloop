@@ -22,6 +22,7 @@
 //! - Task ID extraction assumes `queue list` tab-separated output.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 use std::collections::HashMap;
 use std::path::Path;
@@ -125,9 +126,9 @@ pub fn write_queue_file(dir: &Path, tasks: impl IntoIterator<Item = Task>) -> Re
         version: 1,
         tasks: tasks.into_iter().collect(),
     };
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
-    let queue_path = ralph_dir.join("queue.jsonc");
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir).context("create runtime dir")?;
+    let queue_path = runtime_dir.join("queue.jsonc");
     std::fs::write(
         &queue_path,
         serde_json::to_string_pretty(&queue).context("serialize queue fixture")?,
@@ -137,7 +138,7 @@ pub fn write_queue_file(dir: &Path, tasks: impl IntoIterator<Item = Task>) -> Re
 }
 
 pub fn read_queue_task_ids(dir: &Path) -> Result<Vec<String>> {
-    let queue_path = dir.join(".ralph/queue.jsonc");
+    let queue_path = project_runtime_dir(dir).join("queue.jsonc");
     let raw = std::fs::read_to_string(&queue_path)
         .with_context(|| format!("read {}", queue_path.display()))?;
     let queue: QueueFile =

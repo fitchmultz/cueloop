@@ -20,6 +20,7 @@
 //! - Snapshot helpers compare raw JSON strings, not semantic task equality.
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::contracts::{QueueFile, Task, TaskPriority, TaskStatus};
 
 /// Helper to create a test task.
@@ -96,7 +97,7 @@ pub fn make_render_test_queue() -> QueueFile {
     }
 }
 
-/// Write `.ralph/cache/execution_history.json` with a single v1 entry.
+/// Write the active runtime `cache/execution_history.json` with a single v1 entry.
 pub fn write_execution_history_v1_single_sample(
     dir: &std::path::Path,
     runner: &str,
@@ -125,8 +126,8 @@ pub fn write_execution_history_v1_single_sample(
       ]
     });
 
-    let cache_dir = dir.join(".ralph/cache");
-    std::fs::create_dir_all(&cache_dir).context("create .ralph/cache")?;
+    let cache_dir = project_runtime_dir(dir).join("cache");
+    std::fs::create_dir_all(&cache_dir).context("create runtime cache")?;
     std::fs::write(
         cache_dir.join("execution_history.json"),
         serde_json::to_string_pretty(&history).context("serialize execution_history.json")?,
@@ -136,10 +137,10 @@ pub fn write_execution_history_v1_single_sample(
 }
 
 pub fn write_valid_single_todo_queue(dir: &std::path::Path) -> Result<()> {
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).context("create .ralph dir")?;
-    let queue_path = ralph_dir.join("queue.jsonc");
-    let done_path = ralph_dir.join("done.jsonc");
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir).context("create runtime dir")?;
+    let queue_path = runtime_dir.join("queue.jsonc");
+    let done_path = runtime_dir.join("done.jsonc");
 
     let queue = r#"{
   "version": 1,
@@ -175,9 +176,9 @@ pub fn write_queue(dir: &std::path::Path, tasks: &[Task]) -> Result<()> {
         version: 1,
         tasks: tasks.to_vec(),
     };
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
-    let queue_path = ralph_dir.join("queue.jsonc");
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir)?;
+    let queue_path = runtime_dir.join("queue.jsonc");
     let json = serde_json::to_string_pretty(&queue)?;
     std::fs::write(&queue_path, json).with_context(|| "write queue.jsonc".to_string())?;
     Ok(())
@@ -189,9 +190,9 @@ pub fn write_done(dir: &std::path::Path, tasks: &[Task]) -> Result<()> {
         version: 1,
         tasks: tasks.to_vec(),
     };
-    let ralph_dir = dir.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
-    let done_path = ralph_dir.join("done.jsonc");
+    let runtime_dir = project_runtime_dir(dir);
+    std::fs::create_dir_all(&runtime_dir)?;
+    let done_path = runtime_dir.join("done.jsonc");
     let json = serde_json::to_string_pretty(&done)?;
     std::fs::write(&done_path, json).with_context(|| "write done.jsonc".to_string())?;
     Ok(())
@@ -199,14 +200,14 @@ pub fn write_done(dir: &std::path::Path, tasks: &[Task]) -> Result<()> {
 
 /// Read the queue file from the given directory.
 pub fn read_queue(dir: &std::path::Path) -> Result<QueueFile> {
-    let queue_path = dir.join(".ralph/queue.jsonc");
+    let queue_path = project_runtime_dir(dir).join("queue.jsonc");
     let raw = std::fs::read_to_string(&queue_path).context("read queue.jsonc")?;
     serde_json::from_str(&raw).context("parse queue.jsonc")
 }
 
 /// Read the done file from the given directory.
 pub fn read_done(dir: &std::path::Path) -> Result<QueueFile> {
-    let done_path = dir.join(".ralph/done.jsonc");
+    let done_path = project_runtime_dir(dir).join("done.jsonc");
     let raw = std::fs::read_to_string(&done_path).context("read done.jsonc")?;
     serde_json::from_str(&raw).context("parse done.jsonc")
 }
@@ -220,8 +221,9 @@ pub struct QueueDoneSnapshot {
 
 /// Snapshot queue and done files for later comparison.
 pub fn snapshot_queue_done(dir: &std::path::Path) -> Result<QueueDoneSnapshot> {
-    let queue_path = dir.join(".ralph/queue.jsonc");
-    let done_path = dir.join(".ralph/done.jsonc");
+    let runtime_dir = project_runtime_dir(dir);
+    let queue_path = runtime_dir.join("queue.jsonc");
+    let done_path = runtime_dir.join("done.jsonc");
     let queue_json = std::fs::read_to_string(&queue_path).context("read queue.jsonc")?;
     let done_json = std::fs::read_to_string(&done_path).context("read done.jsonc")?;
     Ok(QueueDoneSnapshot {

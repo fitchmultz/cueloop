@@ -135,7 +135,7 @@ pub(crate) fn setup_task_execution<'a>(
         mark_task_doing(resolved, &task.id)?;
     }
 
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = crate::config::project_runtime_dir(&resolved.repo_root).join("cache");
     let session = create_session_for_task(
         &task.id,
         resolved,

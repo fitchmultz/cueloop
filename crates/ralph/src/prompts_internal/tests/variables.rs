@@ -147,7 +147,7 @@ fn expand_variables_uses_default_config_queue_file_when_unset() -> Result<()> {
     let template = "Queue file: {{config.queue.file}}";
     let config = default_config();
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("Queue file: .ralph/queue.jsonc"));
+    assert!(result.contains("Queue file: .cueloop/queue.jsonc"));
     assert!(!result.contains("{{config.queue.file}}"));
     Ok(())
 }
@@ -167,7 +167,7 @@ fn expand_variables_uses_default_config_done_file_when_unset() -> Result<()> {
     let template = "Done file: {{config.queue.done_file}}";
     let config = default_config();
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("Done file: .ralph/done.jsonc"));
+    assert!(result.contains("Done file: .cueloop/done.jsonc"));
     assert!(!result.contains("{{config.queue.done_file}}"));
     Ok(())
 }

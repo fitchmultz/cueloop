@@ -23,6 +23,7 @@
 mod test_support;
 
 use anyhow::{Context, Result};
+use ralph::config::project_runtime_dir;
 use ralph::contracts::{Task, TaskStatus};
 use std::path::Path;
 use std::process::Command;
@@ -60,12 +61,12 @@ fn assert_repo_clean_and_files_unchanged(
     Ok(())
 }
 
-fn list_ralph_entries(dir: &Path) -> Result<Vec<String>> {
-    let mut names = std::fs::read_dir(dir.join(".ralph"))?
+fn list_runtime_entries(dir: &Path) -> Result<Vec<String>> {
+    let mut names = std::fs::read_dir(project_runtime_dir(dir))?
         .map(|entry| {
             entry
                 .map(|value| value.file_name().to_string_lossy().into_owned())
-                .context("read .ralph entry")
+                .context("read runtime entry")
         })
         .collect::<Result<Vec<_>>>()?;
     names.sort();
@@ -152,10 +153,11 @@ fn queue_validate_stays_clean_without_startup_readme_sanity() -> Result<()> {
     write_valid_single_todo_queue(dir.path())?;
     git_add_all_commit(dir.path(), "seed minimal queue repo")?;
 
-    let readme_path = dir.path().join(".ralph/README.md");
+    let runtime_dir = project_runtime_dir(dir.path());
+    let readme_path = runtime_dir.join("README.md");
     assert!(
         !readme_path.exists(),
-        "fixture should start without .ralph/README.md"
+        "fixture should start without runtime README.md"
     );
 
     for args in [
@@ -163,7 +165,7 @@ fn queue_validate_stays_clean_without_startup_readme_sanity() -> Result<()> {
         &["--auto-fix", "queue", "validate"][..],
     ] {
         let before_snapshot = snapshot_queue_done(dir.path())?;
-        let before_entries = list_ralph_entries(dir.path())?;
+        let before_entries = list_runtime_entries(dir.path())?;
 
         let (status, _stdout, stderr) = run_in_dir(dir.path(), args);
         anyhow::ensure!(
@@ -174,13 +176,13 @@ fn queue_validate_stays_clean_without_startup_readme_sanity() -> Result<()> {
 
         assert!(
             !readme_path.exists(),
-            "queue validate must not create .ralph/README.md for {:?}",
+            "queue validate must not create runtime README.md for {:?}",
             args
         );
-        let after_entries = list_ralph_entries(dir.path())?;
+        let after_entries = list_runtime_entries(dir.path())?;
         assert_eq!(
             before_entries, after_entries,
-            "queue validate must not add .ralph files for {:?}",
+            "queue validate must not add runtime files for {:?}",
             args
         );
         assert!(

@@ -15,13 +15,17 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Current CueLoop plugin roots override legacy Ralph roots with the same plugin id.
+//! - Project plugins override global plugins with the same plugin id.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 
+use crate::constants::identity::{
+    GLOBAL_CONFIG_DIR, LEGACY_GLOBAL_CONFIG_DIR, LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR,
+};
 use crate::plugins::manifest::PluginManifest;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,16 +48,27 @@ pub(crate) struct DiscoveredPlugin {
 pub(crate) fn plugin_roots(repo_root: &Path) -> Vec<(PluginScope, PathBuf)> {
     let mut roots = Vec::new();
 
-    // Project: <repo>/.ralph/plugins
-    roots.push((PluginScope::Project, repo_root.join(".ralph/plugins")));
-
-    // Global: ~/.config/ralph/plugins
+    // Scan low-to-high precedence so later roots override earlier plugins with the same id.
     if let Some(home) = std::env::var_os("HOME") {
+        let config_dir = PathBuf::from(home).join(".config");
         roots.push((
             PluginScope::Global,
-            PathBuf::from(home).join(".config/ralph/plugins"),
+            config_dir.join(LEGACY_GLOBAL_CONFIG_DIR).join("plugins"),
+        ));
+        roots.push((
+            PluginScope::Global,
+            config_dir.join(GLOBAL_CONFIG_DIR).join("plugins"),
         ));
     }
+
+    roots.push((
+        PluginScope::Project,
+        repo_root.join(LEGACY_PROJECT_RUNTIME_DIR).join("plugins"),
+    ));
+    roots.push((
+        PluginScope::Project,
+        repo_root.join(PROJECT_RUNTIME_DIR).join("plugins"),
+    ));
 
     roots
 }
@@ -98,13 +113,8 @@ pub(crate) fn discover_plugins(
                 manifest,
             };
 
-            // Precedence: Project overrides Global.
-            match (by_id.get(&id).map(|d| d.scope), scope) {
-                (Some(PluginScope::Project), PluginScope::Global) => {}
-                _ => {
-                    by_id.insert(id, discovered);
-                }
-            }
+            // `plugin_roots` scans from lowest to highest precedence.
+            by_id.insert(id, discovered);
         }
     }
 
@@ -150,7 +160,23 @@ mod tests {
     }
 
     #[test]
-    fn discover_finds_project_plugin() {
+    fn discover_finds_current_project_plugin() {
+        let tmp = TempDir::new().unwrap();
+        let plugin_dir = tmp.path().join(".cueloop/plugins/my.plugin");
+        std::fs::create_dir_all(&plugin_dir).unwrap();
+        write_manifest(&plugin_dir, "my.plugin").unwrap();
+
+        let discovered = discover_plugins(tmp.path()).unwrap();
+        assert_eq!(discovered.len(), 1);
+        assert!(discovered.contains_key("my.plugin"));
+        assert_eq!(
+            discovered.get("my.plugin").unwrap().scope,
+            PluginScope::Project
+        );
+    }
+
+    #[test]
+    fn discover_falls_back_to_legacy_project_plugin() {
         let tmp = TempDir::new().unwrap();
         let plugin_dir = tmp.path().join(".ralph/plugins/my.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
@@ -167,26 +193,69 @@ mod tests {
 
     #[test]
     #[serial]
-    fn project_overrides_global() {
+    fn current_project_overrides_current_global() {
         let tmp = TempDir::new().unwrap();
         let fake_home = tmp.path().join("home");
-        let global_plugin = fake_home.join(".config/ralph/plugins/shared.plugin");
+        let global_plugin = fake_home.join(".config/cueloop/plugins/shared.plugin");
         std::fs::create_dir_all(&global_plugin).unwrap();
         write_manifest_named(&global_plugin, "shared.plugin", "global-plugin").unwrap();
 
-        let project_plugin = tmp.path().join(".ralph/plugins/shared.plugin");
+        let project_plugin = tmp.path().join(".cueloop/plugins/shared.plugin");
         std::fs::create_dir_all(&project_plugin).unwrap();
         write_manifest_named(&project_plugin, "shared.plugin", "project-plugin").unwrap();
 
+        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
+
+        assert_eq!(discovered.len(), 1);
+        let got = discovered.get("shared.plugin").unwrap();
+        assert_eq!(got.scope, PluginScope::Project);
+        assert_eq!(got.manifest.name, "project-plugin");
+    }
+
+    #[test]
+    #[serial]
+    fn current_roots_override_legacy_roots_with_same_scope() {
+        let tmp = TempDir::new().unwrap();
+        let fake_home = tmp.path().join("home");
+        let legacy_global_plugin = fake_home.join(".config/ralph/plugins/shared.plugin");
+        let current_global_plugin = fake_home.join(".config/cueloop/plugins/shared.plugin");
+        std::fs::create_dir_all(&legacy_global_plugin).unwrap();
+        std::fs::create_dir_all(&current_global_plugin).unwrap();
+        write_manifest_named(&legacy_global_plugin, "shared.plugin", "legacy-global").unwrap();
+        write_manifest_named(&current_global_plugin, "shared.plugin", "current-global").unwrap();
+
+        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
+
+        assert_eq!(discovered.len(), 1);
+        let got = discovered.get("shared.plugin").unwrap();
+        assert_eq!(got.scope, PluginScope::Global);
+        assert_eq!(got.manifest.name, "current-global");
+
+        let legacy_project_plugin = tmp.path().join(".ralph/plugins/shared.plugin");
+        let current_project_plugin = tmp.path().join(".cueloop/plugins/shared.plugin");
+        std::fs::create_dir_all(&legacy_project_plugin).unwrap();
+        std::fs::create_dir_all(&current_project_plugin).unwrap();
+        write_manifest_named(&legacy_project_plugin, "shared.plugin", "legacy-project").unwrap();
+        write_manifest_named(&current_project_plugin, "shared.plugin", "current-project").unwrap();
+
+        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
+
+        assert_eq!(discovered.len(), 1);
+        let got = discovered.get("shared.plugin").unwrap();
+        assert_eq!(got.scope, PluginScope::Project);
+        assert_eq!(got.manifest.name, "current-project");
+    }
+
+    fn with_home<T>(home: &Path, f: impl FnOnce() -> T) -> T {
         let original_home = std::env::var_os("HOME");
-        let fake_home_str = fake_home.to_str().expect("tempdir path is utf-8");
+        let fake_home_str = home.to_str().expect("tempdir path is utf-8");
         // SAFETY: Mutates process-global environment. `#[serial]` matches crate convention
         // for HOME tests so this does not run concurrently with other tests that touch `HOME`.
         unsafe {
             std::env::set_var("HOME", fake_home_str);
         }
 
-        let discovered = discover_plugins(tmp.path()).unwrap();
+        let result = f();
 
         if let Some(h) = original_home.as_ref() {
             // SAFETY: paired restore after `set_var` above; still under `#[serial]`.
@@ -199,9 +268,6 @@ mod tests {
             }
         }
 
-        assert_eq!(discovered.len(), 1);
-        let got = discovered.get("shared.plugin").unwrap();
-        assert_eq!(got.scope, PluginScope::Project);
-        assert_eq!(got.manifest.name, "project-plugin");
+        result
     }
 }

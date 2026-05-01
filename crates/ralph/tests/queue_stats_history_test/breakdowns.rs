@@ -73,8 +73,8 @@ fn stats_json_includes_velocity_breakdowns_by_tag_and_runner() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
     anyhow::ensure!(
@@ -163,8 +163,8 @@ fn stats_json_includes_slow_groups_by_tag_and_runner() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats", "--format", "json"]);
     anyhow::ensure!(
@@ -263,8 +263,8 @@ fn stats_tag_filtering_filters_results() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     // Filter by tag-a
     let (status, stdout, stderr) = run_in_dir(
@@ -361,8 +361,8 @@ fn stats_text_shows_all_sections() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "stats"]);
     anyhow::ensure!(

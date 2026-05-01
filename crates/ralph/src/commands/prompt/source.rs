@@ -24,25 +24,31 @@ use crate::constants::paths::{
     SCAN_OVERRIDE_PATH, TASK_BUILDER_OVERRIDE_PATH, WORKER_OVERRIDE_PATH,
 };
 
+const LEGACY_WORKER_OVERRIDE_PATH: &str = ".ralph/prompts/worker.md";
+const LEGACY_SCAN_OVERRIDE_PATH: &str = ".ralph/prompts/scan.md";
+const LEGACY_TASK_BUILDER_OVERRIDE_PATH: &str = ".ralph/prompts/task_builder.md";
+
 pub(super) fn worker_template_source(repo_root: &Path) -> &'static str {
-    if repo_root.join(WORKER_OVERRIDE_PATH).exists() {
-        WORKER_OVERRIDE_PATH
-    } else {
-        "(embedded default)"
-    }
+    template_source(repo_root, WORKER_OVERRIDE_PATH, LEGACY_WORKER_OVERRIDE_PATH)
 }
 
 pub(super) fn scan_template_source(repo_root: &Path) -> &'static str {
-    if repo_root.join(SCAN_OVERRIDE_PATH).exists() {
-        SCAN_OVERRIDE_PATH
-    } else {
-        "(embedded default)"
-    }
+    template_source(repo_root, SCAN_OVERRIDE_PATH, LEGACY_SCAN_OVERRIDE_PATH)
 }
 
 pub(super) fn task_builder_template_source(repo_root: &Path) -> &'static str {
-    if repo_root.join(TASK_BUILDER_OVERRIDE_PATH).exists() {
-        TASK_BUILDER_OVERRIDE_PATH
+    template_source(
+        repo_root,
+        TASK_BUILDER_OVERRIDE_PATH,
+        LEGACY_TASK_BUILDER_OVERRIDE_PATH,
+    )
+}
+
+fn template_source(repo_root: &Path, current: &'static str, legacy: &'static str) -> &'static str {
+    if repo_root.join(current).exists() {
+        current
+    } else if repo_root.join(legacy).exists() {
+        legacy
     } else {
         "(embedded default)"
     }

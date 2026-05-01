@@ -338,5 +338,5 @@ fn undo_cache_dir_creates_correct_path() {
     let repo_root = temp.path();
 
     let dir = undo_cache_dir(repo_root);
-    assert!(dir.to_string_lossy().contains(".ralph/cache/undo"));
+    assert!(dir.to_string_lossy().contains(".cueloop/cache/undo"));
 }

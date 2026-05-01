@@ -1,10 +1,10 @@
-# Ralph Configuration Feature Guide
+# CueLoop Configuration Feature Guide
 Status: Active
 Owner: Maintainers
 Source of truth: this document for feature-level configuration navigation and operator workflows
 Parent: [Feature Documentation](README.md)
 
-Ralph configuration is documented in two layers:
+CueLoop configuration is documented in two layers:
 
 - [Main Configuration Reference](../configuration.md): canonical schema, defaults, exact precedence, and validation details.
 - This feature guide: how operators choose the right configuration surface and where feature-specific guidance lives.
@@ -27,11 +27,11 @@ Use this page to decide where a setting belongs. Use the main reference when you
 
 ## Config Files and Locations
 
-Ralph loads configuration from global and project scopes:
+CueLoop loads configuration from global and project scopes. The executable remains `ralph` in this phase.
 
-- Global (user): `~/.config/ralph/config.jsonc` (or `$XDG_CONFIG_HOME/ralph/config.jsonc`)
-- Project (repo): `.ralph/config.jsonc`
-- Local trust gate (repo): `.ralph/trust.jsonc` (must remain untracked)
+- Global (user): `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
+- Project (repo): `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)
+- Local trust gate (repo): `.cueloop/trust.jsonc` (legacy fallback: `.ralph/trust.jsonc`; must remain untracked)
 
 Useful commands:
 
@@ -60,9 +60,9 @@ For exact behavior and edge cases, see:
 
 Project-local execution settings are applied only after explicit local trust opt-in.
 
-- Use `ralph init` while bootstrapping; it creates or updates `.ralph/trust.jsonc` by default.
+- Use `ralph init` while bootstrapping; it creates or updates `.cueloop/trust.jsonc` by default.
 - Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
-- Do not commit `.ralph/trust.jsonc`.
+- Do not commit `.cueloop/trust.jsonc` or legacy `.ralph/trust.jsonc`.
 
 Execution-sensitive project settings include:
 
@@ -82,10 +82,10 @@ Canonical details: [Repo execution trust](../configuration/trust-and-precedence.
 
 ## JSONC and Validation Basics
 
-Ralph supports JSONC (`.jsonc`) for runtime config and queue files:
+CueLoop supports JSONC (`.jsonc`) for runtime config and queue files:
 
 - Comments and trailing commas are accepted on load.
-- Ralph may rewrite files as standard JSON formatting when saving.
+- CueLoop may rewrite files as standard JSON formatting when saving.
 - Use `ralph config show` and `ralph config schema` to verify effective values.
 
 Current configuration version is `2`. Prefer canonical validation/error details from [Configuration](../configuration.md).

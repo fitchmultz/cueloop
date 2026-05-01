@@ -39,7 +39,7 @@ fn git_init(dir: &Path) -> Result<()> {
     let gitignore_path = dir.join(".gitignore");
     std::fs::write(
         &gitignore_path,
-        ".ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
+        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
     )?;
 
     Ok(())
@@ -90,7 +90,7 @@ fn plugin_init_scaffold_default_and_validate() -> Result<()> {
     );
 
     // Verify files exist
-    let plugin_dir = temp_dir.path().join(".ralph/plugins/acme.test_plugin");
+    let plugin_dir = temp_dir.path().join(".cueloop/plugins/acme.test_plugin");
     assert!(plugin_dir.exists(), "plugin directory should exist");
     assert!(
         plugin_dir.join("plugin.json").exists(),
@@ -134,7 +134,7 @@ fn plugin_init_dry_run_writes_nothing() -> Result<()> {
     assert!(stdout.contains("Would create"), "expected dry-run output");
 
     // Verify directory was NOT created
-    let plugin_dir = temp_dir.path().join(".ralph/plugins/dry.plugin");
+    let plugin_dir = temp_dir.path().join(".cueloop/plugins/dry.plugin");
     assert!(
         !plugin_dir.exists(),
         "plugin directory should not exist in dry-run mode"
@@ -204,6 +204,47 @@ fn plugin_init_target_exists_requires_force() -> Result<()> {
 }
 
 #[test]
+fn plugin_init_legacy_plugin_collision_requires_force() -> Result<()> {
+    let temp_dir = test_support::temp_dir_outside_repo();
+    git_init(temp_dir.path())?;
+    ralph_init(temp_dir.path())?;
+
+    let legacy_dir = temp_dir.path().join(".ralph/plugins/legacy.shadow");
+    std::fs::create_dir_all(&legacy_dir)?;
+    std::fs::write(
+        legacy_dir.join("plugin.json"),
+        r#"{
+  "api_version": 1,
+  "id": "legacy.shadow",
+  "version": "0.1.0",
+  "name": "Legacy Shadow",
+  "runner": { "bin": "runner.sh", "supports_resume": false }
+}"#,
+    )?;
+
+    let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "legacy.shadow"]);
+
+    assert!(
+        !status.success(),
+        "legacy collision should fail without --force"
+    );
+    assert!(
+        stderr.contains("already exists") && stderr.contains(".ralph/plugins/legacy.shadow"),
+        "expected legacy collision error, got: {}",
+        stderr
+    );
+    assert!(
+        !temp_dir
+            .path()
+            .join(".cueloop/plugins/legacy.shadow")
+            .exists(),
+        "current-path plugin should not be created without --force"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn plugin_init_global_scope_requires_home() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
@@ -242,7 +283,7 @@ fn plugin_init_with_runner_only() -> Result<()> {
     assert!(status.success(), "plugin init failed: {}", stderr);
 
     // Verify runner.sh exists but processor.sh does not
-    let plugin_dir = temp_dir.path().join(".ralph/plugins/runner.only");
+    let plugin_dir = temp_dir.path().join(".cueloop/plugins/runner.only");
     assert!(plugin_dir.join("plugin.json").exists());
     assert!(plugin_dir.join("runner.sh").exists());
     assert!(!plugin_dir.join("processor.sh").exists());
@@ -275,7 +316,7 @@ fn plugin_init_with_processor_only() -> Result<()> {
     assert!(status.success(), "plugin init failed: {}", stderr);
 
     // Verify processor.sh exists but runner.sh does not
-    let plugin_dir = temp_dir.path().join(".ralph/plugins/processor.only");
+    let plugin_dir = temp_dir.path().join(".cueloop/plugins/processor.only");
     assert!(plugin_dir.join("plugin.json").exists());
     assert!(!plugin_dir.join("runner.sh").exists());
     assert!(plugin_dir.join("processor.sh").exists());
@@ -357,7 +398,9 @@ fn plugin_init_with_custom_metadata() -> Result<()> {
     );
 
     // Verify manifest content
-    let manifest_path = temp_dir.path().join(".ralph/plugins/meta.test/plugin.json");
+    let manifest_path = temp_dir
+        .path()
+        .join(".cueloop/plugins/meta.test/plugin.json");
     let manifest_content = std::fs::read_to_string(&manifest_path)?;
 
     assert!(

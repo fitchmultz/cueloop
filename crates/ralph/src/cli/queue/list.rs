@@ -319,7 +319,7 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueListArgs) -> Result<()> {
 
     // Load ETA calculator if needed (only for text formats)
     let eta_calculator = if args.with_eta && args.format != QueueListFormat::Json {
-        let cache_dir = resolved.repo_root.join(".ralph/cache");
+        let cache_dir = crate::config::project_runtime_dir(&resolved.repo_root).join("cache");
         Some(EtaCalculator::load(&cache_dir))
     } else {
         None

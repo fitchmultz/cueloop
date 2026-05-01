@@ -82,13 +82,13 @@ fn rendered_prompt_includes_queue_guidance_with_queue_conflicts() -> Result<()> 
     let template_meta = prompt_template(PromptTemplateId::MergeConflicts);
     let template = template_meta.embedded_default;
 
-    let files = vec![".ralph/queue.jsonc".to_string(), "src/lib.rs".to_string()];
+    let files = vec![".cueloop/queue.jsonc".to_string(), "src/lib.rs".to_string()];
     let config = default_config();
     let rendered = render_merge_conflict_prompt(template, &files, &config)?;
 
     // Check that conflict files are listed
     assert!(
-        rendered.contains("- .ralph/queue.jsonc"),
+        rendered.contains("- .cueloop/queue.jsonc"),
         "Rendered prompt should list queue.jsonc"
     );
     assert!(
@@ -98,7 +98,7 @@ fn rendered_prompt_includes_queue_guidance_with_queue_conflicts() -> Result<()> 
 
     // Check that queue guidance is included
     assert!(
-        rendered.contains("Special Guidance for `.ralph/queue.jsonc` / `.ralph/done.jsonc`"),
+        rendered.contains("Special Guidance for `.cueloop/queue.jsonc` / `.cueloop/done.jsonc`"),
         "Rendered prompt should include queue guidance section"
     );
     assert!(

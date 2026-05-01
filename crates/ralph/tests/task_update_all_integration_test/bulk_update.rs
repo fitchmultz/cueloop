@@ -29,7 +29,7 @@ fn task_update_without_id_updates_all_tasks() -> Result<()> {
 
     write_queue_with_two_tasks(dir.path())?;
 
-    let script = "#!/bin/sh\ncat >/dev/null\necho run >> .ralph/runner_calls.txt\nexit 0\n";
+    let script = "#!/bin/sh\ncat >/dev/null\necho run >> .cueloop/runner_calls.txt\nexit 0\n";
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
     configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
 
@@ -39,7 +39,7 @@ fn task_update_without_id_updates_all_tasks() -> Result<()> {
         "expected task update to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
-    let calls_path = dir.path().join(".ralph/runner_calls.txt");
+    let calls_path = dir.path().join(".cueloop/runner_calls.txt");
     let calls = std::fs::read_to_string(&calls_path).context("read runner calls")?;
     let call_count = calls.lines().count();
     anyhow::ensure!(

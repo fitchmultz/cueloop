@@ -66,8 +66,8 @@ fn history_json_returns_window_and_days() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(
         dir.path(),
@@ -232,8 +232,8 @@ fn burndown_zero_count_day_renders_empty_bar() -> Result<()> {
   "tasks": []
 }"#;
 
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), queue).context("write queue.json")?;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), done).context("write done.json")?;
+    std::fs::write(runtime_file(dir.path(), "queue.jsonc"), queue).context("write queue.json")?;
+    std::fs::write(runtime_file(dir.path(), "done.jsonc"), done).context("write done.json")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "burndown", "--days", "2"]);
     anyhow::ensure!(

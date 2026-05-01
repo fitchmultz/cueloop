@@ -31,15 +31,15 @@ use super::{
 
 #[derive(Parser)]
 #[command(name = "ralph")]
-#[command(about = "Ralph")]
+#[command(about = "CueLoop (transitional executable: ralph)")]
 #[command(version)]
 #[command(after_long_help = r#"Runner selection:
   - CLI flags override project config, which overrides global config, which overrides built-in defaults.
-  - Default runner/model come from config files: project config (.ralph/config.jsonc) > global config (~/.config/ralph/config.jsonc) > built-in.
+  - Default runner/model come from config files: project config (.cueloop/config.jsonc, with .ralph fallback) > global config (~/.config/cueloop/config.jsonc, with ~/.config/ralph fallback) > built-in.
   - `task` and `scan` accept --runner/--model/--effort as one-off overrides.
   - `run one` and `run loop` accept --runner/--model/--effort as one-off overrides; otherwise they use task.agent overrides when present; otherwise config agent defaults.
 
-Config example (.ralph/config.jsonc):
+Config example (.cueloop/config.jsonc):
   {
     "version": 2,
     "agent": {
@@ -54,7 +54,9 @@ Config example (.ralph/config.jsonc):
 Notes:
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
-  - On macOS: use `ralph app open` to launch the GUI (requires an installed Ralph.app)
+  - CueLoop is the product name; the executable and package remain `ralph` / `ralph-agent-loop` in this phase.
+  - New repos default to `.cueloop/`; legacy `.ralph/` remains supported. Use `ralph migrate runtime-dir --apply` when ready.
+  - On macOS: use `ralph app open` to launch the GUI (app bundle rename is out of scope for this phase).
   - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only.
 
 Examples:
@@ -124,10 +126,10 @@ pub enum Command {
     /// Versioned machine-facing JSON API for the macOS app.
     #[command(hide = true)]
     Machine(Box<machine::MachineArgs>),
-    /// Render and print the final compiled prompts used by Ralph (for debugging/auditing).
+    /// Render and print the final compiled prompts used by CueLoop (for debugging/auditing).
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph prompt worker --phase 1 --repo-prompt plan\n  ralph prompt worker --phase 2 --task-id RQ-0001 --plan-file .ralph/cache/plans/RQ-0001.md\n  ralph prompt scan --focus \"CI gaps\" --repo-prompt off\n  ralph prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/ralph --repo-prompt tools\n"
+        after_long_help = "Examples:\n  ralph prompt worker --phase 1 --repo-prompt plan\n  ralph prompt worker --phase 2 --task-id RQ-0001 --plan-file .cueloop/cache/plans/RQ-0001.md\n  ralph prompt scan --focus \"CI gaps\" --repo-prompt off\n  ralph prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/ralph --repo-prompt tools\n"
     )]
     Prompt(prompt::PromptArgs),
     /// Verify environment readiness and configuration.
@@ -142,7 +144,7 @@ pub enum Command {
         after_long_help = "Examples:\n  ralph context init\n  ralph context init --project-type rust\n  ralph context update --section troubleshooting\n  ralph context validate\n  ralph context update --dry-run"
     )]
     Context(context::ContextArgs),
-    /// Manage Ralph daemon (background service).
+    /// Manage the CueLoop daemon (background service).
     #[command(
         hide = true,
         after_long_help = "Examples:\n  ralph daemon start\n  ralph daemon start --empty-poll-ms 5000\n  ralph daemon stop\n  ralph daemon status"
@@ -163,13 +165,13 @@ pub enum Command {
     /// Check and apply migrations for config and project files.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph migrate              # Check for pending migrations\n  ralph migrate --check      # Exit with error code if migrations pending (CI)\n  ralph migrate --apply      # Apply all pending migrations\n  ralph migrate --list       # List all migrations and their status\n  ralph migrate status       # Show detailed migration status"
+        after_long_help = "Examples:\n  ralph migrate              # Check for pending config/file migrations\n  ralph migrate --check      # Exit with error code if migrations pending (CI)\n  ralph migrate --apply      # Apply all pending config/file migrations\n  ralph migrate --list       # List all migrations and their status\n  ralph migrate status       # Show detailed migration status\n  ralph migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop\n  ralph migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop"
     )]
     Migrate(migrate::MigrateArgs),
-    /// Clean up temporary files created by Ralph.
+    /// Clean up temporary files created by CueLoop.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph cleanup              # Clean temp files older than 7 days\n  ralph cleanup --force      # Clean all ralph temp files\n  ralph cleanup --dry-run    # Show what would be deleted without deleting"
+        after_long_help = "Examples:\n  ralph cleanup              # Clean temp files older than 7 days\n  ralph cleanup --force      # Clean all CueLoop and legacy Ralph temp files\n  ralph cleanup --dry-run    # Show what would be deleted without deleting"
     )]
     Cleanup(cleanup::CleanupArgs),
     /// Display version information.
@@ -209,7 +211,7 @@ pub enum Command {
     )]
     Runner(runner::RunnerArgs),
 
-    /// Run interactive tutorial for Ralph onboarding.
+    /// Run the interactive CueLoop onboarding tutorial.
     #[command(
         hide = true,
         after_long_help = "Examples:\n  ralph tutorial\n  ralph tutorial --keep-sandbox\n  ralph tutorial --non-interactive"
@@ -218,7 +220,7 @@ pub enum Command {
 
     /// Restore or preview an earlier continuation checkpoint.
     #[command(
-        after_long_help = "Continuation workflow:\n  - `ralph undo --list` shows the checkpoints Ralph created before queue-changing operations.\n  - `ralph undo --dry-run` previews the restore path without modifying queue files.\n  - `ralph undo` restores the most recent checkpoint; `--id` restores a specific one.\n  - After restoring, run `ralph queue validate` and then continue normal work.\n\nExamples:\n  ralph undo\n  ralph undo --list\n  ralph undo --dry-run\n  ralph undo --id undo-20260215073000000000\n\nCheckpoints are created automatically before queue mutations such as:\n  - ralph task mutate / task decompose --write\n  - ralph task done/reject/start/ready/schedule\n  - ralph task edit/field/clone/split\n  - ralph task relate/blocks/mark-duplicate\n  - ralph queue archive/prune/sort/import/repair\n  - ralph queue issue publish/publish-many\n  - ralph task batch operations"
+        after_long_help = "Continuation workflow:\n  - `ralph undo --list` shows the checkpoints CueLoop created before queue-changing operations.\n  - `ralph undo --dry-run` previews the restore path without modifying queue files.\n  - `ralph undo` restores the most recent checkpoint; `--id` restores a specific one.\n  - After restoring, run `ralph queue validate` and then continue normal work.\n\nExamples:\n  ralph undo\n  ralph undo --list\n  ralph undo --dry-run\n  ralph undo --id undo-20260215073000000000\n\nCheckpoints are created automatically before queue mutations such as:\n  - ralph task mutate / task decompose --write\n  - ralph task done/reject/start/ready/schedule\n  - ralph task edit/field/clone/split\n  - ralph task relate/blocks/mark-duplicate\n  - ralph queue archive/prune/sort/import/repair\n  - ralph queue issue publish/publish-many\n  - ralph task batch operations"
     )]
     Undo(undo::UndoArgs),
 

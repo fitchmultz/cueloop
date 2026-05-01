@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical `ralph` CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use ralph::commands::init::{
@@ -65,6 +65,7 @@ fn check_readme_current_propagates_malformed_marker_error() -> Result<()> {
 
     // Create the .ralph directory and prompts that reference README
     fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
+    fs::write(repo_root.join(".ralph/config.jsonc"), r#"{"version":2}"#)?;
     let prompt_content = "This prompt references .ralph/README.md for context";
     fs::write(repo_root.join(".ralph/prompts/worker.md"), prompt_content)?;
 
@@ -92,6 +93,7 @@ fn check_readme_current_handles_legacy_no_marker() -> Result<()> {
 
     // Create the .ralph directory and prompts that reference README
     fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
+    fs::write(repo_root.join(".ralph/config.jsonc"), r#"{"version":2}"#)?;
     let prompt_content = "This prompt references .ralph/README.md for context";
     fs::write(repo_root.join(".ralph/prompts/worker.md"), prompt_content)?;
 

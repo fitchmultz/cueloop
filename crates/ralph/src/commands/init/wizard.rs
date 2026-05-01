@@ -1,7 +1,7 @@
-//! Interactive onboarding wizard for Ralph initialization.
+//! Interactive onboarding wizard for CueLoop initialization.
 //!
 //! Purpose:
-//! - Interactive onboarding wizard for Ralph initialization.
+//! - Interactive onboarding wizard for CueLoop initialization.
 //!
 //! Responsibilities:
 //! - Display welcome screen and collect user preferences.
@@ -22,6 +22,7 @@
 //! - User inputs are validated before returning WizardAnswers.
 
 use crate::commands::init::parallel_sync;
+use crate::config;
 use crate::contracts::{Runner, TaskPriority};
 use anyhow::{Context, Result};
 use dialoguer::{Confirm, Input, MultiSelect, Select};
@@ -127,7 +128,7 @@ pub fn run_wizard(repo_root: &Path) -> Result<WizardAnswers> {
     let phases = select_phases()?;
 
     // Queue and parallel-worker setup choices
-    let queue_tracking_mode = select_queue_tracking_mode()?;
+    let queue_tracking_mode = select_queue_tracking_mode(repo_root)?;
     let parallel_ignored_file_allowlist = select_parallel_sync_allowlist(repo_root)?;
 
     // First task creation
@@ -184,7 +185,7 @@ pub fn run_wizard(repo_root: &Path) -> Result<WizardAnswers> {
         first_task_priority,
     };
 
-    print_summary(&answers);
+    print_summary(repo_root, &answers);
 
     let proceed = Confirm::new()
         .with_prompt("Proceed with setup?")
@@ -202,31 +203,12 @@ pub fn run_wizard(repo_root: &Path) -> Result<WizardAnswers> {
 /// Print the welcome screen with ASCII art.
 fn print_welcome() {
     println!();
-    println!(
-        "{}",
-        colored::Colorize::bright_cyan(r"    ____       __        __")
-    );
-    println!(
-        "{}",
-        colored::Colorize::bright_cyan(r"   / __ \___  / /_____  / /_____ ___")
-    );
-    println!(
-        "{}",
-        colored::Colorize::bright_cyan(r"  / /_/ / _ \/ __/ __ \/ __/ __ `__ \ ")
-    );
-    println!(
-        "{}",
-        colored::Colorize::bright_cyan(r" / _, _/  __/ /_/ /_/ / /_/ / / / / /")
-    );
-    println!(
-        "{}",
-        colored::Colorize::bright_cyan(r"/_/ |_|\___/\__/ .___/\__/_/ /_/ /_/")
-    );
-    println!("{}", colored::Colorize::bright_cyan(r"             /_/"));
+    println!("{}", colored::Colorize::bright_cyan("CueLoop"));
+    println!("{}", colored::Colorize::bright_black("───────"));
     println!();
-    println!("{}", colored::Colorize::bold("Welcome to Ralph!"));
+    println!("{}", colored::Colorize::bold("Welcome to CueLoop!"));
     println!();
-    println!("Ralph is an AI task queue for structured agent workflows.");
+    println!("CueLoop is an AI task queue for structured agent workflows.");
     println!("This wizard will help you set up your project and create your first task.");
     println!();
 }
@@ -342,13 +324,22 @@ fn select_phases() -> Result<u8> {
     })
 }
 
+fn runtime_dir_name(repo_root: &Path) -> String {
+    config::project_runtime_dir(repo_root)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(crate::constants::identity::PROJECT_RUNTIME_DIR)
+        .to_string()
+}
+
 /// Select how queue/done files should be tracked.
-fn select_queue_tracking_mode() -> Result<QueueTrackingMode> {
+fn select_queue_tracking_mode(repo_root: &Path) -> Result<QueueTrackingMode> {
+    let runtime_name = runtime_dir_name(repo_root);
+    let tracked_desc = format!(
+        "Commit {runtime_name}/queue.jsonc and {runtime_name}/done.jsonc so the team shares task state [Recommended]"
+    );
     let options = [
-        (
-            "Tracked shared queue",
-            "Commit .ralph/queue.jsonc and .ralph/done.jsonc so the team shares task state [Recommended]",
-        ),
+        ("Tracked shared queue", tracked_desc.as_str()),
         (
             "Local private queue",
             "Gitignore queue/done so task state stays local to this checkout",
@@ -359,7 +350,7 @@ fn select_queue_tracking_mode() -> Result<QueueTrackingMode> {
         .map(|(name, desc)| format!("{name} - {desc}"))
         .collect::<Vec<_>>();
     let idx = Select::new()
-        .with_prompt("How should Ralph queue files be tracked?")
+        .with_prompt("How should CueLoop queue files be tracked?")
         .items(&items)
         .default(0)
         .interact()
@@ -381,7 +372,7 @@ fn select_parallel_sync_allowlist(repo_root: &Path) -> Result<Vec<String>> {
             "Parallel sync: no extra ignored local files found. .env and .env.* are synced by default."
         );
         println!(
-            "To sync another small ignored file later, set trusted parallel.ignored_file_allowlist in .ralph/config.jsonc (for example \"local/tool-config.json\"). Directory trees such as \"node_modules/*\" or entries ending in \"/\" are rejected. See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
+            "To sync another small ignored file later, set trusted parallel.ignored_file_allowlist in the active runtime config (for example \"local/tool-config.json\"). Directory trees such as \"node_modules/*\" or entries ending in \"/\" are rejected. See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
         );
         return Ok(Vec::new());
     }
@@ -407,7 +398,8 @@ fn select_parallel_sync_allowlist(repo_root: &Path) -> Result<Vec<String>> {
 }
 
 /// Print a summary of the wizard answers.
-fn print_summary(answers: &WizardAnswers) {
+fn print_summary(repo_root: &Path, answers: &WizardAnswers) {
+    let runtime_name = runtime_dir_name(repo_root);
     println!();
     println!("{}", colored::Colorize::bold("Setup Summary:"));
     println!("{}", colored::Colorize::bright_black("──────────────"));
@@ -455,28 +447,33 @@ fn print_summary(answers: &WizardAnswers) {
 
     println!();
     println!("Files to create:");
-    println!("  - .ralph/config.jsonc");
-    println!("  - .ralph/queue.jsonc");
-    println!("  - .ralph/done.jsonc");
+    println!("  - {runtime_name}/config.jsonc");
+    println!("  - {runtime_name}/queue.jsonc");
+    println!("  - {runtime_name}/done.jsonc");
     println!();
 }
 
 /// Print completion message with next steps.
-pub fn print_completion_message(answers: Option<&WizardAnswers>, _queue_path: &Path) {
+pub fn print_completion_message(answers: Option<&WizardAnswers>, queue_path: &Path) {
+    let runtime_name = queue_path
+        .parent()
+        .and_then(|path| path.file_name())
+        .and_then(|name| name.to_str())
+        .unwrap_or(crate::constants::identity::PROJECT_RUNTIME_DIR);
     println!();
     println!(
         "{}",
-        colored::Colorize::bright_green("✓ Ralph initialized successfully!")
+        colored::Colorize::bright_green("✓ CueLoop initialized successfully!")
     );
     println!();
     println!("{}", colored::Colorize::bold("Next steps:"));
     println!("  1. Run 'ralph app open' to open the macOS app (optional)");
     println!("  2. Run 'ralph run one' to execute your first task");
-    println!("  3. Edit .ralph/config.jsonc to customize settings");
+    println!("  3. Edit {runtime_name}/config.jsonc to customize settings");
     println!(
         "     - Parallel sync extras use trusted parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\"); see docs/configuration/queue-and-parallel.md#ignored-local-file-sync"
     );
-    println!("  4. Keep .ralph/trust.jsonc untracked; init adds it to .gitignore");
+    println!("  4. Keep {runtime_name}/trust.jsonc untracked; init adds it to .gitignore");
 
     if let Some(answers) = answers
         && answers.create_first_task

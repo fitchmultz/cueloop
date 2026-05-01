@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for feature-level queue and parallel configuration guidance
 Parent: [Configuration Feature Guide](configuration.md)
 
-Use this guide when configuring Ralph queue files, task aging, archive behavior, and parallel worker workspaces. Exact fields and defaults live in [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration) and [Parallel Configuration](../configuration/queue-and-parallel.md#parallel-configuration).
+Use this guide when configuring CueLoop queue files, task aging, archive behavior, and parallel worker workspaces. Exact fields and defaults live in [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration) and [Parallel Configuration](../configuration/queue-and-parallel.md#parallel-configuration).
 
 ---
 
@@ -12,8 +12,8 @@ Use this guide when configuring Ralph queue files, task aging, archive behavior,
 
 Default queue paths:
 
-- `queue.file`: `.ralph/queue.jsonc`
-- `queue.done_file`: `.ralph/done.jsonc`
+- `queue.file`: `.cueloop/queue.jsonc` (legacy fallback: `.ralph/queue.jsonc`)
+- `queue.done_file`: `.cueloop/done.jsonc` (legacy fallback: `.ralph/done.jsonc`)
 
 Notes:
 
@@ -74,8 +74,8 @@ Current parallel mode does not use legacy PR-era keys; prefer the direct-push mo
 {
   "version": 2,
   "queue": {
-    "file": ".ralph/queue.jsonc",
-    "done_file": ".ralph/done.jsonc",
+    "file": ".cueloop/queue.jsonc",
+    "done_file": ".cueloop/done.jsonc",
     "auto_archive_terminal_after_days": 7
   },
   "parallel": {

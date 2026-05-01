@@ -111,12 +111,12 @@ fn config_paths_ignores_queue_and_done_override_env() -> Result<()> {
 
     assert_eq!(
         canonical_or_self(Path::new(&queue)),
-        workspace_root.join(".ralph/queue.jsonc"),
+        workspace_root.join(".cueloop/queue.jsonc"),
         "queue path should ignore RALPH_QUEUE_PATH_OVERRIDE"
     );
     assert_eq!(
         canonical_or_self(Path::new(&done)),
-        workspace_root.join(".ralph/done.jsonc"),
+        workspace_root.join(".cueloop/done.jsonc"),
         "done path should ignore RALPH_DONE_PATH_OVERRIDE"
     );
 

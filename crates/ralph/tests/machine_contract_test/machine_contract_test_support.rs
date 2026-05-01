@@ -39,7 +39,7 @@ pub(super) fn setup_git_repo() -> Result<TempDir> {
 
 pub(super) fn setup_ralph_repo() -> Result<TempDir> {
     let dir = setup_git_repo()?;
-    test_support::ralph_init(dir.path())?;
+    test_support::seed_ralph_dir(dir.path())?;
     Ok(dir)
 }
 

@@ -30,26 +30,41 @@ use test_support::env_lock;
 
 mod test_support;
 
-// Helper to create a minimal .ralph directory
+// Helper to create a minimal current runtime directory.
+fn setup_cueloop_dir(dir: &TempDir) -> PathBuf {
+    let cueloop_dir = dir.path().join(".cueloop");
+    fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
+    cueloop_dir
+}
+
+// Helper to create a minimal legacy runtime directory.
 fn setup_ralph_dir(dir: &TempDir) -> PathBuf {
     let ralph_dir = dir.path().join(".ralph");
     fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
     ralph_dir
 }
 
-// Helper to create a queue.jsonc file
+// Helper to create a queue.jsonc file in the current runtime directory.
 fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let cueloop_dir = setup_cueloop_dir(dir);
+    let queue_path = cueloop_dir.join("queue.jsonc");
+    fs::write(&queue_path, content).expect("write queue.jsonc");
+    queue_path
+}
+
+// Helper to create a queue.jsonc file in the legacy runtime directory.
+fn create_legacy_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     let ralph_dir = setup_ralph_dir(dir);
     let queue_path = ralph_dir.join("queue.jsonc");
-    fs::write(&queue_path, content).expect("write queue.jsonc");
+    fs::write(&queue_path, content).expect("write legacy queue.jsonc");
     queue_path
 }
 
 // Helper to create a done.json file
 #[allow(dead_code)]
 fn create_done_json(dir: &TempDir, content: &str) -> PathBuf {
-    let ralph_dir = setup_ralph_dir(dir);
-    let done_path = ralph_dir.join("done.json");
+    let cueloop_dir = setup_cueloop_dir(dir);
+    let done_path = cueloop_dir.join("done.json");
     fs::write(&done_path, content).expect("write done.json");
     done_path
 }
@@ -57,17 +72,25 @@ fn create_done_json(dir: &TempDir, content: &str) -> PathBuf {
 // Helper to create a done.jsonc file
 #[allow(dead_code)]
 fn create_done_jsonc(dir: &TempDir, content: &str) -> PathBuf {
-    let ralph_dir = setup_ralph_dir(dir);
-    let done_path = ralph_dir.join("done.jsonc");
+    let cueloop_dir = setup_cueloop_dir(dir);
+    let done_path = cueloop_dir.join("done.jsonc");
     fs::write(&done_path, content).expect("write done.jsonc");
     done_path
 }
 
-// Helper to create a config.jsonc file
+// Helper to create a config.jsonc file in the current runtime directory.
 fn create_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
+    let cueloop_dir = setup_cueloop_dir(dir);
+    let config_path = cueloop_dir.join("config.jsonc");
+    fs::write(&config_path, content).expect("write config.jsonc");
+    config_path
+}
+
+// Helper to create a config.jsonc file in the legacy runtime directory.
+fn create_legacy_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     let ralph_dir = setup_ralph_dir(dir);
     let config_path = ralph_dir.join("config.jsonc");
-    fs::write(&config_path, content).expect("write config.jsonc");
+    fs::write(&config_path, content).expect("write legacy config.jsonc");
     config_path
 }
 

@@ -15,7 +15,7 @@
 //! Usage:
 //! - Used through the crate module tree or integration test harness.
 //!
-//! Invariants/assumptions: templates live under `.ralph/prompts/`, embedded defaults are compile-time
+//! Invariants/assumptions: templates live under `.cueloop/prompts/`, embedded defaults are compile-time
 //! `include_str!` values, and required placeholder tokens include braces (e.g., `{{TASK_ID}}`).
 
 use super::util::{RequiredPlaceholder, load_prompt_with_fallback};
@@ -81,7 +81,7 @@ const SCAN_V2_REQUIRED: &[RequiredPlaceholder] = &[
 const TASK_BUILDER_REQUIRED: &[RequiredPlaceholder] = &[
     RequiredPlaceholder {
         token: "{{USER_REQUEST}}",
-        error_message: "Template error: task builder prompt template is missing the required '{{USER_REQUEST}}' placeholder. Ensure the template in .ralph/prompts/task_builder.md includes this placeholder.",
+        error_message: "Template error: task builder prompt template is missing the required '{{USER_REQUEST}}' placeholder. Ensure the template in .cueloop/prompts/task_builder.md includes this placeholder.",
     },
     RequiredPlaceholder {
         token: "{{HINT_TAGS}}",
@@ -95,7 +95,7 @@ const TASK_BUILDER_REQUIRED: &[RequiredPlaceholder] = &[
 
 const TASK_UPDATER_REQUIRED: &[RequiredPlaceholder] = &[RequiredPlaceholder {
     token: "{{TASK_ID}}",
-    error_message: "Template error: task updater prompt template is missing required '{{TASK_ID}}' placeholder. Ensure template in .ralph/prompts/task_updater.md includes this placeholder.",
+    error_message: "Template error: task updater prompt template is missing required '{{TASK_ID}}' placeholder. Ensure template in .cueloop/prompts/task_updater.md includes this placeholder.",
 }];
 
 const TASK_DECOMPOSE_REQUIRED: &[RequiredPlaceholder] = &[
@@ -150,7 +150,7 @@ const MERGE_CONFLICT_REQUIRED: &[RequiredPlaceholder] = &[RequiredPlaceholder {
 pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
     match id {
         PromptTemplateId::Worker => PromptTemplate {
-            rel_path: ".ralph/prompts/worker.md",
+            rel_path: ".cueloop/prompts/worker.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/worker.md"
@@ -160,7 +160,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::WorkerPhase1 => PromptTemplate {
-            rel_path: ".ralph/prompts/worker_phase1.md",
+            rel_path: ".cueloop/prompts/worker_phase1.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/worker_phase1.md"
@@ -170,7 +170,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::WorkerPhase2 => PromptTemplate {
-            rel_path: ".ralph/prompts/worker_phase2.md",
+            rel_path: ".cueloop/prompts/worker_phase2.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/worker_phase2.md"
@@ -180,7 +180,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::WorkerPhase2Handoff => PromptTemplate {
-            rel_path: ".ralph/prompts/worker_phase2_handoff.md",
+            rel_path: ".cueloop/prompts/worker_phase2_handoff.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/worker_phase2_handoff.md"
@@ -190,7 +190,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::WorkerPhase3 => PromptTemplate {
-            rel_path: ".ralph/prompts/worker_phase3.md",
+            rel_path: ".cueloop/prompts/worker_phase3.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/worker_phase3.md"
@@ -200,7 +200,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::WorkerSinglePhase => PromptTemplate {
-            rel_path: ".ralph/prompts/worker_single_phase.md",
+            rel_path: ".cueloop/prompts/worker_single_phase.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/worker_single_phase.md"
@@ -210,7 +210,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::TaskBuilder => PromptTemplate {
-            rel_path: ".ralph/prompts/task_builder.md",
+            rel_path: ".cueloop/prompts/task_builder.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/task_builder.md"
@@ -220,7 +220,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::TaskDecompose => PromptTemplate {
-            rel_path: ".ralph/prompts/task_decompose.md",
+            rel_path: ".cueloop/prompts/task_decompose.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/task_decompose.md"
@@ -230,7 +230,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::TaskUpdater => PromptTemplate {
-            rel_path: ".ralph/prompts/task_updater.md",
+            rel_path: ".cueloop/prompts/task_updater.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/task_updater.md"
@@ -240,7 +240,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::ScanMaintenanceV1 => PromptTemplate {
-            rel_path: ".ralph/prompts/scan_maintenance_v1.md",
+            rel_path: ".cueloop/prompts/scan_maintenance_v1.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/scan_maintenance_v1.md"
@@ -250,7 +250,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::ScanMaintenanceV2 => PromptTemplate {
-            rel_path: ".ralph/prompts/scan_maintenance_v2.md",
+            rel_path: ".cueloop/prompts/scan_maintenance_v2.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/scan_maintenance_v2.md"
@@ -260,7 +260,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::ScanInnovationV1 => PromptTemplate {
-            rel_path: ".ralph/prompts/scan_innovation_v1.md",
+            rel_path: ".cueloop/prompts/scan_innovation_v1.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/scan_innovation_v1.md"
@@ -270,7 +270,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::ScanInnovationV2 => PromptTemplate {
-            rel_path: ".ralph/prompts/scan_innovation_v2.md",
+            rel_path: ".cueloop/prompts/scan_innovation_v2.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/scan_innovation_v2.md"
@@ -280,7 +280,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::ScanGeneralV2 => PromptTemplate {
-            rel_path: ".ralph/prompts/scan_general_v2.md",
+            rel_path: ".cueloop/prompts/scan_general_v2.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/scan_general_v2.md"
@@ -290,7 +290,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::MergeConflicts => PromptTemplate {
-            rel_path: ".ralph/prompts/merge_conflicts.md",
+            rel_path: ".cueloop/prompts/merge_conflicts.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/merge_conflicts.md"
@@ -300,7 +300,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::CodeReview => PromptTemplate {
-            rel_path: ".ralph/prompts/code_review.md",
+            rel_path: ".cueloop/prompts/code_review.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/code_review.md"
@@ -310,7 +310,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: true,
         },
         PromptTemplateId::CompletionChecklist => PromptTemplate {
-            rel_path: ".ralph/prompts/completion_checklist.md",
+            rel_path: ".cueloop/prompts/completion_checklist.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/completion_checklist.md"
@@ -320,7 +320,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::Phase2HandoffChecklist => PromptTemplate {
-            rel_path: ".ralph/prompts/phase2_handoff_checklist.md",
+            rel_path: ".cueloop/prompts/phase2_handoff_checklist.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/phase2_handoff_checklist.md"
@@ -330,7 +330,7 @@ pub(crate) fn prompt_template(id: PromptTemplateId) -> PromptTemplate {
             project_type_guidance: false,
         },
         PromptTemplateId::IterationChecklist => PromptTemplate {
-            rel_path: ".ralph/prompts/iteration_checklist.md",
+            rel_path: ".cueloop/prompts/iteration_checklist.md",
             embedded_default: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/assets/prompts/iteration_checklist.md"

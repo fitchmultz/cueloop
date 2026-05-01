@@ -43,7 +43,7 @@ fn test_resolve_queue_path_expands_tilde_to_home() {
 // Tests for .jsonc file format support (RQ-0807)
 
 #[test]
-fn test_find_repo_root_via_ralph_queue_jsonc() {
+fn test_find_repo_root_via_cueloop_queue_jsonc() {
     let dir = TempDir::new().expect("create temp dir");
     create_queue_jsonc(&dir, r#"{"version":1,"tasks":[]}"#);
 
@@ -52,7 +52,7 @@ fn test_find_repo_root_via_ralph_queue_jsonc() {
 }
 
 #[test]
-fn test_find_repo_root_via_ralph_config_jsonc() {
+fn test_find_repo_root_via_cueloop_config_jsonc() {
     let dir = TempDir::new().expect("create temp dir");
     create_config_jsonc(&dir, r#"{"version":2}"#);
 
@@ -63,31 +63,35 @@ fn test_find_repo_root_via_ralph_config_jsonc() {
 #[test]
 fn test_resolve_queue_path_uses_jsonc_default_path() {
     let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-    fs::write(ralph_dir.join("queue.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
+    let cueloop_dir = setup_cueloop_dir(&dir);
+    fs::write(
+        cueloop_dir.join("queue.json"),
+        r#"{"version":1,"tasks":[]}"#,
+    )
+    .unwrap();
 
     let queue_path = config::resolve_queue_path(dir.path(), &Config::default()).unwrap();
-    assert_eq!(queue_path, ralph_dir.join("queue.jsonc"));
+    assert_eq!(queue_path, cueloop_dir.join("queue.jsonc"));
 }
 
 #[test]
 fn test_resolve_done_path_uses_jsonc_default_path() {
     let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-    fs::write(ralph_dir.join("done.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
+    let cueloop_dir = setup_cueloop_dir(&dir);
+    fs::write(cueloop_dir.join("done.json"), r#"{"version":1,"tasks":[]}"#).unwrap();
 
     let done_path = config::resolve_done_path(dir.path(), &Config::default()).unwrap();
-    assert_eq!(done_path, ralph_dir.join("done.jsonc"));
+    assert_eq!(done_path, cueloop_dir.join("done.jsonc"));
 }
 
 #[test]
 fn test_project_config_path_uses_jsonc_path() {
     let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-    fs::write(ralph_dir.join("config.json"), r#"{"version":2}"#).unwrap();
+    let cueloop_dir = setup_cueloop_dir(&dir);
+    fs::write(cueloop_dir.join("config.json"), r#"{"version":2}"#).unwrap();
 
     let config_path = config::project_config_path(dir.path());
-    assert_eq!(config_path, ralph_dir.join("config.jsonc"));
+    assert_eq!(config_path, cueloop_dir.join("config.jsonc"));
 }
 
 #[test]
@@ -96,15 +100,15 @@ fn test_global_config_path_uses_jsonc_path() {
     let _guard = env_lock().lock().expect("env lock");
     let dir = TempDir::new().expect("create temp dir");
     let xdg_config = dir.path().join(".config");
-    let ralph_dir = xdg_config.join("ralph");
-    fs::create_dir_all(&ralph_dir).expect("create xdg config dir");
-    fs::write(ralph_dir.join("config.json"), r#"{"version":2}"#).unwrap();
+    let cueloop_dir = xdg_config.join("cueloop");
+    fs::create_dir_all(&cueloop_dir).expect("create xdg config dir");
+    fs::write(cueloop_dir.join("config.json"), r#"{"version":2}"#).unwrap();
 
     unsafe { env::set_var("XDG_CONFIG_HOME", &xdg_config) };
     let config_path = config::global_config_path();
     unsafe { env::remove_var("XDG_CONFIG_HOME") };
 
-    assert_eq!(config_path, Some(ralph_dir.join("config.jsonc")));
+    assert_eq!(config_path, Some(cueloop_dir.join("config.jsonc")));
 }
 
 #[test]

@@ -10,8 +10,8 @@
 //! - Limited to this file's owning feature boundary.
 //!
 //! This module provides functions for validating that a repository is in a clean
-//! state, with support for allowing specific paths to be dirty (e.g., Ralph's
-//! own configuration files).
+//! state, with support for allowing specific paths to be dirty (for example,
+//! CueLoop/Ralph runtime files).
 //!
 //! # Invariants
 //! - Allowed paths must be normalized before comparison
@@ -30,11 +30,15 @@ use crate::git::error::GitError;
 use crate::git::status::{parse_porcelain_z_entries, status_porcelain};
 use std::path::Path;
 
-/// Paths that are allowed to be dirty during Ralph runs.
+/// Paths that are allowed to be dirty during CLI runs.
 ///
-/// These are Ralph's own configuration and state files that may change
-/// during normal operation.
+/// These are CueLoop's current runtime files plus legacy Ralph runtime files that
+/// may change during normal operation.
 pub const RALPH_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
+    ".cueloop/queue.jsonc",
+    ".cueloop/done.jsonc",
+    ".cueloop/config.jsonc",
+    ".cueloop/cache/",
     ".ralph/queue.jsonc",
     ".ralph/done.jsonc",
     ".ralph/config.jsonc",
@@ -213,8 +217,12 @@ mod clean_repo_tests {
     use tempfile::TempDir;
 
     #[test]
-    fn run_clean_allowed_paths_include_jsonc_runtime_paths() {
+    fn run_clean_allowed_paths_include_current_and_legacy_jsonc_runtime_paths() {
         for required in [
+            ".cueloop/queue.jsonc",
+            ".cueloop/done.jsonc",
+            ".cueloop/config.jsonc",
+            ".cueloop/cache/",
             ".ralph/queue.jsonc",
             ".ralph/done.jsonc",
             ".ralph/config.jsonc",
@@ -247,13 +255,14 @@ mod clean_repo_tests {
     }
 
     #[test]
-    fn repo_dirty_only_allowed_paths_detects_config_jsonc_only_changes() -> anyhow::Result<()> {
+    fn repo_dirty_only_allowed_paths_detects_current_config_jsonc_only_changes()
+    -> anyhow::Result<()> {
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
-        std::fs::create_dir_all(temp.path().join(".ralph"))?;
-        let config_path = temp.path().join(".ralph/config.jsonc");
+        std::fs::create_dir_all(temp.path().join(".cueloop"))?;
+        let config_path = temp.path().join(".cueloop/config.jsonc");
         std::fs::write(&config_path, "{ \"version\": 1 }")?;
-        git_test::git_run(temp.path(), &["add", "-f", ".ralph/config.jsonc"])?;
+        git_test::git_run(temp.path(), &["add", "-f", ".cueloop/config.jsonc"])?;
         git_test::git_run(temp.path(), &["commit", "-m", "init config jsonc"])?;
 
         std::fs::write(&config_path, "{ \"version\": 2 }")?;

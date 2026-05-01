@@ -15,7 +15,7 @@
 //!
 //! Invariants/Assumptions:
 //! - Re-exported entrypoints remain the canonical internal surface for moved helpers.
-//! - `.ralph/prompts` overrides may be absent.
+//! - `.cueloop/prompts` and legacy `.ralph/prompts` overrides may be absent.
 
 mod instructions;
 pub(crate) mod iteration;
@@ -75,19 +75,23 @@ pub(crate) fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
     let phase2_handoff = load_phase2_handoff_checklist(repo_root)?;
     let iteration_checklist = load_iteration_checklist(repo_root)?;
 
-    Ok(worker.contains(".ralph/README.md")
-        || worker_phase1.contains(".ralph/README.md")
-        || worker_phase2.contains(".ralph/README.md")
-        || worker_phase2_handoff.contains(".ralph/README.md")
-        || worker_phase3.contains(".ralph/README.md")
-        || worker_single_phase.contains(".ralph/README.md")
-        || task_builder.contains(".ralph/README.md")
-        || task_decompose.contains(".ralph/README.md")
-        || task_updater.contains(".ralph/README.md")
-        || merge_conflicts.contains(".ralph/README.md")
-        || scan.contains(".ralph/README.md")
-        || completion_checklist.contains(".ralph/README.md")
-        || code_review.contains(".ralph/README.md")
-        || phase2_handoff.contains(".ralph/README.md")
-        || iteration_checklist.contains(".ralph/README.md"))
+    Ok(prompt_references_runtime_readme(&worker)
+        || prompt_references_runtime_readme(&worker_phase1)
+        || prompt_references_runtime_readme(&worker_phase2)
+        || prompt_references_runtime_readme(&worker_phase2_handoff)
+        || prompt_references_runtime_readme(&worker_phase3)
+        || prompt_references_runtime_readme(&worker_single_phase)
+        || prompt_references_runtime_readme(&task_builder)
+        || prompt_references_runtime_readme(&task_decompose)
+        || prompt_references_runtime_readme(&task_updater)
+        || prompt_references_runtime_readme(&merge_conflicts)
+        || prompt_references_runtime_readme(&scan)
+        || prompt_references_runtime_readme(&completion_checklist)
+        || prompt_references_runtime_readme(&code_review)
+        || prompt_references_runtime_readme(&phase2_handoff)
+        || prompt_references_runtime_readme(&iteration_checklist))
+}
+
+fn prompt_references_runtime_readme(prompt: &str) -> bool {
+    prompt.contains(".cueloop/README.md") || prompt.contains(".ralph/README.md")
 }
