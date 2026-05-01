@@ -99,7 +99,7 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "RALPH_BIN_PATH"
-            value = "$(BUILT_PRODUCTS_DIR)/RalphMac.app/Contents/MacOS/ralph"
+            value = "$(BUILT_PRODUCTS_DIR)/RalphMac.app/Contents/MacOS/cueloop"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

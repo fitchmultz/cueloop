@@ -2,7 +2,7 @@
  RalphCLIClient
 
  Purpose:
- - Spawn the bundled `ralph` CLI (or an injected executable) using `Process`.
+ - Spawn the bundled `cueloop` CLI (or an injected executable) using `Process`.
 
  Responsibilities:
  - Expose the core streaming and collected-output APIs shared by the app.

@@ -15,7 +15,7 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - A deterministic `ralph` binary is available via `RALPH_BIN_PATH` or the bundled app binary.
+ - A deterministic `cueloop` binary is available via `RALPH_BIN_PATH` or the bundled app binary.
  */
 
 import Foundation
@@ -80,20 +80,22 @@ enum WorkspaceTaskCreationTestSupport {
             return overrideURL
         }
 
-        let bundledURL = Bundle(for: RalphCoreTestCase.self).bundleURL
+        let executableDirectory = Bundle(for: RalphCoreTestCase.self).bundleURL
             .deletingLastPathComponent()
             .appendingPathComponent("RalphMac.app", isDirectory: true)
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("MacOS", isDirectory: true)
-            .appendingPathComponent("ralph", isDirectory: false)
-        if FileManager.default.isExecutableFile(atPath: bundledURL.path) {
-            return bundledURL
+        for executableName in ["cueloop", "ralph"] {
+            let bundledURL = executableDirectory.appendingPathComponent(executableName, isDirectory: false)
+            if FileManager.default.isExecutableFile(atPath: bundledURL.path) {
+                return bundledURL
+            }
         }
 
         throw NSError(
             domain: "WorkspaceTaskCreationTests",
             code: 2,
-            userInfo: [NSLocalizedDescriptionKey: "Failed to locate a usable ralph binary for WorkspaceTaskCreationTests"]
+            userInfo: [NSLocalizedDescriptionKey: "Failed to locate a usable cueloop binary for WorkspaceTaskCreationTests"]
         )
     }
 

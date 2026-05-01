@@ -58,7 +58,7 @@ enum RalphMachineContract {
         message:
           "Unsupported \(document) version \(actual). RalphMac requires version \(expected).",
         operation: operation,
-        suggestions: ["Rebuild RalphMac and the bundled CLI from the same revision."]
+        suggestions: ["Rebuild the macOS app and the bundled CueLoop CLI from the same revision."]
       )
     }
   }
