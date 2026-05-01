@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Build and package Ralph release artifacts for supported platforms.
+# Purpose: Build and package CueLoop release artifacts for supported platforms.
 # Responsibilities:
 # - Build the canonical CLI binary through the shared bundling entrypoint for native artifacts.
 # - Build optional cross-target artifacts through that same entrypoint.
@@ -55,10 +55,10 @@ build_native_release_artifact() {
     target_triple=$(ralph_get_rust_host_target)
     local platform_name
     platform_name=$(target_to_platform "$target_triple")
-    local tarball_name="ralph-${version}-${platform_name}.tar.gz"
+    local tarball_name="cueloop-${version}-${platform_name}.tar.gz"
 
     mkdir -p "$RELEASE_ARTIFACTS_DIR"
-    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" ralph
+    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
     (
         cd "$RELEASE_ARTIFACTS_DIR"
         ralph_sha256_file "$tarball_name" > "$tarball_name.sha256"
@@ -71,14 +71,14 @@ build_cross_target() {
     local platform_name
     platform_name=$(target_to_platform "$target")
     local binary_path
-    local tarball_name="ralph-${version}-${platform_name}.tar.gz"
+    local tarball_name="cueloop-${version}-${platform_name}.tar.gz"
 
     if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
         binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --target "$target" --jobs "$JOBS" --print-path)
     else
         binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --target "$target" --print-path)
     fi
-    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" ralph
+    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
     (
         cd "$RELEASE_ARTIFACTS_DIR"
         ralph_sha256_file "$tarball_name" > "$tarball_name.sha256"

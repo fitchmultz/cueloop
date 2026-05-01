@@ -192,8 +192,11 @@ pub mod identity {
     /// Legacy user-facing product name retained for compatibility messaging.
     pub const LEGACY_DISPLAY_NAME: &str = "Ralph";
 
-    /// Transitional CLI executable name. Package, lib, and bin names stay unchanged.
-    pub const CLI_BIN_NAME: &str = "ralph";
+    /// Current primary CLI executable name.
+    pub const CLI_BIN_NAME: &str = "cueloop";
+
+    /// Legacy CLI executable name retained as a compatibility alias.
+    pub const LEGACY_CLI_BIN_NAME: &str = "ralph";
 
     /// Current repo-local runtime directory.
     pub const PROJECT_RUNTIME_DIR: &str = ".cueloop";

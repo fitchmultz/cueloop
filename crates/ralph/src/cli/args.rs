@@ -1,7 +1,7 @@
-//! Top-level Clap argument definitions for `ralph`.
+//! Top-level Clap argument definitions for CueLoop CLI binaries.
 //!
 //! Purpose:
-//! - Top-level Clap argument definitions for `ralph`.
+//! - Top-level Clap argument definitions for `cueloop` and the legacy `ralph` alias.
 //!
 //! Responsibilities:
 //! - Define the root `Cli` parser and the top-level command enum.
@@ -30,8 +30,8 @@ use super::{
 };
 
 #[derive(Parser)]
-#[command(name = "ralph")]
-#[command(about = "CueLoop (transitional executable: ralph)")]
+#[command(name = "cueloop")]
+#[command(about = "CueLoop CLI (legacy alias: ralph)")]
 #[command(version)]
 #[command(after_long_help = r#"Runner selection:
   - CLI flags override project config, which overrides global config, which overrides built-in defaults.
@@ -54,32 +54,32 @@ Config example (.cueloop/config.jsonc):
 Notes:
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
-  - CueLoop is the product name; the executable and package remain `ralph` / `ralph-agent-loop` in this phase.
-  - New repos default to `.cueloop/`; legacy `.ralph/` remains supported. Use `ralph migrate runtime-dir --apply` when ready.
-  - On macOS: use `ralph app open` to launch the GUI (app bundle rename is out of scope for this phase).
+  - CueLoop is the product and primary executable name; `ralph` remains a compatibility alias in this phase.
+  - New repos default to `.cueloop/`; legacy `.ralph/` remains supported. Use `cueloop migrate runtime-dir --apply` when ready.
+  - On macOS: use `cueloop app open` to launch the GUI (app bundle rename is out of scope for this phase).
   - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only.
 
 Examples:
-  ralph app open
-  ralph queue list
-  ralph queue show RQ-0008
-  ralph queue next --with-title
-  ralph scan --runner opencode --model gpt-5.3 --focus "CI gaps"
-  ralph task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
-  ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
-  ralph scan --runner claude --model sonnet --focus "risk audit"
-  ralph task --runner claude --model opus "Add tests for X"
-  ralph scan --runner cursor --model claude-opus-4-5-20251101 --focus "risk audit"
-  ralph task --runner cursor --model claude-opus-4-5-20251101 "Add tests for X"
-  ralph scan --runner kimi --focus "risk audit"
-  ralph task --runner kimi --model kimi-for-coding "Add tests for X"
-  ralph run one
-  ralph run loop --max-tasks 1
-  ralph run loop
+  cueloop app open
+  cueloop queue list
+  cueloop queue show RQ-0008
+  cueloop queue next --with-title
+  cueloop scan --runner opencode --model gpt-5.3 --focus "CI gaps"
+  cueloop task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
+  cueloop scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
+  cueloop scan --runner claude --model sonnet --focus "risk audit"
+  cueloop task --runner claude --model opus "Add tests for X"
+  cueloop scan --runner cursor --model claude-opus-4-5-20251101 --focus "risk audit"
+  cueloop task --runner cursor --model claude-opus-4-5-20251101 "Add tests for X"
+  cueloop scan --runner kimi --focus "risk audit"
+  cueloop task --runner kimi --model kimi-for-coding "Add tests for X"
+  cueloop run one
+  cueloop run loop --max-tasks 1
+  cueloop run loop
 
 More help:
   - Default help shows core commands only.
-  - Run `ralph help-all` to see advanced and experimental commands."#)]
+  - Run `cueloop help-all` to see advanced and experimental commands."#)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

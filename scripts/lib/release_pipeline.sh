@@ -129,7 +129,7 @@ release_verify_plan() {
     preview_changelog=$(ralph_mktemp_file "ralph-release-preview-changelog")
     preview_checksums=$(ralph_mktemp_file "ralph-release-preview-checksums")
     printf 'Preview changelog entry\n' > "$preview_changelog"
-    printf 'ralph-%s-sample.tar.gz  abcdef\n' "$VERSION" > "$preview_checksums"
+    printf 'cueloop-%s-sample.tar.gz  abcdef\n' "$VERSION" > "$preview_checksums"
 
     local preview_repo_url
     preview_repo_url=$(ralph_get_repo_http_url)

@@ -18,8 +18,12 @@ name = "ralph"
 path = "src/lib.rs"
 
 [[bin]]
+name = "cueloop"
+path = "src/bin/cueloop.rs"
+
+[[bin]]
 name = "ralph"
-path = "src/main.rs"
+path = "src/bin/ralph.rs"
 
 [dependencies]
 anyhow = "1.0.102"

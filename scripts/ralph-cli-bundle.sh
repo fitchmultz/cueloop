@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Purpose: Build or resolve the canonical Ralph CLI binary for app bundling.
+# Purpose: Build or resolve the canonical CueLoop CLI binaries for app bundling.
 # Responsibilities:
 # - Select the correct Cargo profile for Debug/Release consumers.
 # - Optionally build for an explicit Rust target triple and bounded job count.
 # - Reuse the pinned rustup toolchain when available.
-# - Print the canonical binary path and optionally copy it into an app bundle destination.
+# - Print the primary binary path and optionally copy primary plus legacy binaries into an app bundle destination.
 # Scope:
 # - CLI binary preparation only; Xcode and Makefile invoke this as the single bundling entrypoint.
 # Usage:
@@ -14,7 +14,7 @@
 # - scripts/ralph-cli-bundle.sh --configuration Release --target x86_64-unknown-linux-gnu --jobs 4 --print-path
 # Invariants/assumptions:
 # - Cargo and the Ralph workspace are available locally.
-# - The output executable is always named `ralph`.
+# - The primary output executable is `cueloop`; legacy `ralph` is built and bundled as a compatibility alias.
 
 set -euo pipefail
 
@@ -27,6 +27,8 @@ BUNDLE_DIR=""
 TARGET_TRIPLE=""
 JOBS=""
 PRINT_PATH=0
+PRIMARY_BIN_NAME="cueloop"
+LEGACY_BIN_NAME="ralph"
 
 input_paths() {
     printf '%s\n' \
@@ -45,6 +47,7 @@ input_paths() {
 
 binary_is_fresh() {
     [ -x "$binary_path" ] || return 1
+    [ -x "$legacy_binary_path" ] || return 1
     while IFS= read -r input_path; do
         [ -n "$input_path" ] || continue
         [ -e "$input_path" ] || continue
@@ -64,8 +67,8 @@ Options:
   --configuration  Xcode-style configuration name used to choose Cargo profile
   --target         Optional Rust target triple for cross/native builds
   --jobs           Optional cargo build job cap
-  --print-path     Print the resolved executable path to stdout
-  --bundle-dir     Copy the resolved executable into DIR/ralph
+  --print-path     Print the resolved primary executable path to stdout
+  --bundle-dir     Copy the resolved executables into DIR/cueloop and DIR/ralph
   -h, --help       Show this help
 
 Exit codes:
@@ -118,7 +121,7 @@ fi
 ralph_activate_pinned_rust_toolchain
 
 profile_dir="debug"
-build_args=(-p ralph-agent-loop --locked)
+build_args=(-p ralph-agent-loop --locked --bin "$PRIMARY_BIN_NAME" --bin "$LEGACY_BIN_NAME")
 case "$CONFIGURATION" in
     Release)
         profile_dir="dist"
@@ -140,9 +143,11 @@ esac
 
 if [ -n "$TARGET_TRIPLE" ]; then
     build_args+=(--target "$TARGET_TRIPLE")
-    binary_path="$target_root/$TARGET_TRIPLE/$profile_dir/ralph"
+    binary_path="$target_root/$TARGET_TRIPLE/$profile_dir/$PRIMARY_BIN_NAME"
+    legacy_binary_path="$target_root/$TARGET_TRIPLE/$profile_dir/$LEGACY_BIN_NAME"
 else
-    binary_path="$target_root/$profile_dir/ralph"
+    binary_path="$target_root/$profile_dir/$PRIMARY_BIN_NAME"
+    legacy_binary_path="$target_root/$profile_dir/$LEGACY_BIN_NAME"
 fi
 
 if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
@@ -150,9 +155,9 @@ if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
 fi
 
 if binary_is_fresh; then
-    ralph_log_info "Reusing fresh Ralph CLI for $CONFIGURATION" >&2
+    ralph_log_info "Reusing fresh CueLoop CLI for $CONFIGURATION" >&2
 else
-    ralph_log_info "Building Ralph CLI for $CONFIGURATION" >&2
+    ralph_log_info "Building CueLoop CLI for $CONFIGURATION" >&2
     (
         cd "$REPO_ROOT"
         "${CARGO:-cargo}" build "${build_args[@]}"
@@ -160,14 +165,19 @@ else
 fi
 
 if [ ! -x "$binary_path" ]; then
-    ralph_log_error "Built CLI binary is missing: $binary_path"
+    ralph_log_error "Built primary CLI binary is missing: $binary_path"
+    exit 1
+fi
+if [ ! -x "$legacy_binary_path" ]; then
+    ralph_log_error "Built legacy CLI binary is missing: $legacy_binary_path"
     exit 1
 fi
 
 if [ -n "$BUNDLE_DIR" ]; then
     mkdir -p "$BUNDLE_DIR"
-    cp -f "$binary_path" "$BUNDLE_DIR/ralph"
-    chmod +x "$BUNDLE_DIR/ralph"
+    cp -f "$binary_path" "$BUNDLE_DIR/$PRIMARY_BIN_NAME"
+    cp -f "$legacy_binary_path" "$BUNDLE_DIR/$LEGACY_BIN_NAME"
+    chmod +x "$BUNDLE_DIR/$PRIMARY_BIN_NAME" "$BUNDLE_DIR/$LEGACY_BIN_NAME"
 fi
 
 if [ "$PRINT_PATH" = "1" ]; then

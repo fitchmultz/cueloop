@@ -30,9 +30,14 @@ rust-toolchain-drift-check:
 
 install-verify: $(RALPH_RELEASE_BUILD_STAMP)
 	@$(RALPH_ENV_RESET); \
-	ralph_bin_path="$$(scripts/ralph-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
-	if [ ! -x "$$ralph_bin_path" ]; then \
-		echo "install-verify: missing release binary at $$ralph_bin_path (run make build first)" >&2; \
+	cueloop_bin_path="$$(scripts/ralph-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
+	legacy_bin_path="$$(dirname "$$cueloop_bin_path")/$(LEGACY_BIN_NAME)"; \
+	if [ ! -x "$$cueloop_bin_path" ]; then \
+		echo "install-verify: missing release binary at $$cueloop_bin_path (run make build first)" >&2; \
+		exit 1; \
+	fi; \
+	if [ ! -x "$$legacy_bin_path" ]; then \
+		echo "install-verify: missing legacy release binary at $$legacy_bin_path (run make build first)" >&2; \
 		exit 1; \
 	fi; \
 	bin_dir="$(BIN_DIR)"; \
@@ -41,8 +46,14 @@ install-verify: $(RALPH_RELEASE_BUILD_STAMP)
 		echo "install-verify: $(BIN_DIR) not writable; using $$bin_dir"; \
 	fi; \
 	mkdir -p "$$bin_dir"; \
-	install -m 0755 "$$ralph_bin_path" "$$bin_dir/$(BIN_NAME)"; \
-	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
+	install -m 0755 "$$cueloop_bin_path" "$$bin_dir/$(BIN_NAME)"; \
+	if [ "$(LEGACY_BIN_NAME)" != "$(BIN_NAME)" ]; then \
+		install -m 0755 "$$legacy_bin_path" "$$bin_dir/$(LEGACY_BIN_NAME)"; \
+	fi; \
+	"$$bin_dir/$(BIN_NAME)" --help >/dev/null; \
+	if [ "$(LEGACY_BIN_NAME)" != "$(BIN_NAME)" ]; then \
+		"$$bin_dir/$(LEGACY_BIN_NAME)" --help >/dev/null; \
+	fi
 
 install: install-verify
 	@if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
@@ -171,10 +182,10 @@ generate: $(RALPH_RELEASE_BUILD_STAMP)
 	@echo "→ Generating schemas (via dist binary)..."
 	@$(RALPH_ENV_RESET); \
 	mkdir -p schemas; \
-	ralph_bin_path="$$(scripts/ralph-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
-	"$$ralph_bin_path" config schema > schemas/config.schema.json; \
-	"$$ralph_bin_path" queue schema > schemas/queue.schema.json; \
-	"$$ralph_bin_path" machine schema > schemas/machine.schema.json
+	cueloop_bin_path="$$(scripts/ralph-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
+	"$$cueloop_bin_path" config schema > schemas/config.schema.json; \
+	"$$cueloop_bin_path" queue schema > schemas/queue.schema.json; \
+	"$$cueloop_bin_path" machine schema > schemas/machine.schema.json
 	@echo "  ✓ Schemas generated"
 
 docs:

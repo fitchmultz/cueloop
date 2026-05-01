@@ -80,7 +80,7 @@ release_sync_crate_publication_state() {
 
 release_upload_github_release_artifacts() {
     local artifact
-    for artifact in "$RELEASE_ARTIFACTS_DIR"/ralph-"${VERSION}"-*.tar.gz; do
+    for artifact in "$RELEASE_ARTIFACTS_DIR"/cueloop-"${VERSION}"-*.tar.gz; do
         [ -f "$artifact" ] || continue
         gh release upload "v$VERSION" "$artifact" "${artifact}.sha256" --clobber
     done

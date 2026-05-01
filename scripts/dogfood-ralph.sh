@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Purpose: Repeatably dogfood Ralph against a disposable git project.
-# Responsibilities: Create an isolated fixture repo, exercise Ralph setup/task/queue surfaces, and run one real three-phase agent task.
+# Purpose: Repeatably dogfood CueLoop against a disposable git project.
+# Responsibilities: Create an isolated fixture repo, exercise CueLoop setup/task/queue surfaces, and run one real three-phase agent task.
 # Scope: Local dogfood automation only; it does not mutate the Ralph source repo except for writing ignored artifacts under target/.
 # Usage: Run from the Ralph repo with `scripts/dogfood-ralph.sh`; use `--help` for options and examples.
-# Invariants/Assumptions: Requires git, python3, and a Ralph binary; full Phase 3 requires the configured runner/model to be available.
+# Invariants/Assumptions: Requires git, python3, and a CueLoop/Ralph binary; full Phase 3 requires the configured runner/model to be available.
 
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RALPH_BIN="${RALPH_BIN:-$ROOT_DIR/target/debug/ralph}"
+RALPH_BIN="${RALPH_BIN:-$ROOT_DIR/target/debug/cueloop}"
 OUT_ROOT="$ROOT_DIR/target/dogfood-ralph"
 RUNNER="pi"
 MODEL="zai-glm-5.1"
@@ -21,18 +21,18 @@ GITHUB_PRIVATE=0
 
 usage() {
   cat <<'USAGE'
-Repeatably dogfood Ralph against a disposable test project.
+Repeatably dogfood CueLoop against a disposable test project.
 
 Usage:
   scripts/dogfood-ralph.sh [options]
 
 Options:
-  --ralph-bin PATH       Ralph binary to test (default: target/debug/ralph or $RALPH_BIN)
+  --ralph-bin PATH       CueLoop/Ralph binary to test (default: target/debug/cueloop or $RALPH_BIN)
   --out-root DIR         Artifact root (default: target/dogfood-ralph)
   --runner NAME          Runner for Phase 3 real execution (default: pi)
   --model ID             Model for Phase 3 real execution (default: zai-glm-5.1;
                          normalized to zai/glm-5.1 for the pi CLI on this machine)
-  --phases N             Ralph run phases for Phase 3 (default: 3)
+  --phases N             CueLoop run phases for Phase 3 (default: 3)
   --skip-real-agent      Run setup/workflow checks but skip `ralph run one`
   --github-private       Create a private GitHub repo for the fixture with gh, then push initial state
   --project-name NAME    Fixture project/repo name (default: ralph-dogfood-fixture)
@@ -40,7 +40,7 @@ Options:
 Examples:
   scripts/dogfood-ralph.sh
   scripts/dogfood-ralph.sh --skip-real-agent
-  RALPH_BIN=target/release/ralph scripts/dogfood-ralph.sh --github-private
+  RALPH_BIN=target/release/cueloop scripts/dogfood-ralph.sh --github-private
 
 Exit codes: 0 success; 1 dogfood failure; 2 invalid usage.
 USAGE
@@ -61,8 +61,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ! -x "$RALPH_BIN" ]]; then
-  echo "Ralph binary not found or not executable: $RALPH_BIN" >&2
-  echo "Build one first, for example: cargo build -p ralph" >&2
+  echo "CueLoop/Ralph binary not found or not executable: $RALPH_BIN" >&2
+  echo "Build one first, for example: cargo build -p ralph-agent-loop --bin cueloop" >&2
   exit 1
 fi
 

@@ -19,8 +19,10 @@ This release attaches the artifacts built locally for the release host. Download
 Download the appropriate release asset for your platform, then extract and install it:
 
 ```bash
-curl -LO {{REPO_URL}}/releases/download/v{{VERSION}}/ralph-{{VERSION}}-<platform>.tar.gz
-tar -xzf ralph-{{VERSION}}-<platform>.tar.gz
+curl -LO {{REPO_URL}}/releases/download/v{{VERSION}}/cueloop-{{VERSION}}-<platform>.tar.gz
+tar -xzf cueloop-{{VERSION}}-<platform>.tar.gz
+mv cueloop ~/.local/bin/
+# Optional legacy alias during the compatibility window:
 mv ralph ~/.local/bin/
 ```
 
@@ -30,10 +32,10 @@ Before using the binary, verify its integrity:
 
 ```bash
 # macOS
-shasum -a 256 -c ralph-{{VERSION}}-<platform>.tar.gz.sha256
+shasum -a 256 -c cueloop-{{VERSION}}-<platform>.tar.gz.sha256
 
 # Linux
-sha256sum -c ralph-{{VERSION}}-<platform>.tar.gz.sha256
+sha256sum -c cueloop-{{VERSION}}-<platform>.tar.gz.sha256
 ```
 
 ### Build from Source

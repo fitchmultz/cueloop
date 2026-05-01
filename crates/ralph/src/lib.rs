@@ -32,6 +32,7 @@ pub(crate) mod reports;
 // --- Commands ----------------------------------------------------------------
 
 pub mod cli;
+pub mod cli_entrypoint;
 #[path = "cli/spec.rs"]
 pub mod cli_spec;
 pub mod commands;
