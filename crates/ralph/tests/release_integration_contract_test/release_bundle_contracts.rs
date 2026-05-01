@@ -51,12 +51,16 @@ fn xcode_build_phase_uses_shared_cli_bundle_entrypoint() {
         "Xcode project should call the shared CLI bundling script"
     );
     assert!(
-        !project.contains("cargo ${BUILD_ARGS}") && !project.contains("target/debug/ralph"),
+        !project.contains("cargo ${BUILD_ARGS}")
+            && !project.contains("target/debug/ralph")
+            && !project.contains("target/debug/cueloop"),
         "Xcode project should not embed its own Cargo invocation policy or debug hardcoded CLI paths"
     );
     assert!(
-        project.contains("ralph-cli-bundle.sh") && !project.contains("target/release/ralph"),
-        "Release should always route through ralph-cli-bundle.sh instead of copying a possibly stale target/release/ralph"
+        project.contains("ralph-cli-bundle.sh")
+            && !project.contains("target/release/ralph")
+            && !project.contains("target/release/cueloop"),
+        "Release should always route through ralph-cli-bundle.sh instead of copying a possibly stale target/release CLI"
     );
     assert!(
         project.contains("alwaysOutOfDate = 1;"),
@@ -70,6 +74,11 @@ fn shared_cli_bundle_script_supports_configuration_and_bundle_dir() {
     assert!(
         script.contains("--configuration") && script.contains("--bundle-dir"),
         "shared CLI bundle script should accept configuration and bundle destination inputs"
+    );
+    assert!(
+        script.contains("PRIMARY_BIN_NAME=\"cueloop\"")
+            && script.contains("LEGACY_BIN_NAME=\"ralph\""),
+        "shared CLI bundle script should build the primary cueloop binary and legacy ralph alias"
     );
     assert!(
         script.contains("ralph_activate_pinned_rust_toolchain"),

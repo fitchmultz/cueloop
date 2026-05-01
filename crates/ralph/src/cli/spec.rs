@@ -211,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn cli_spec_json_is_deterministic_for_ralph_cli() -> anyhow::Result<()> {
+    fn cli_spec_json_is_deterministic_for_cueloop_cli() -> anyhow::Result<()> {
         use clap::CommandFactory;
 
         let cmd1 = crate::cli::Cli::command();
@@ -232,8 +232,8 @@ mod tests {
         let spec = cli_spec_from_command(&command);
 
         assert_eq!(spec.version, CLI_SPEC_VERSION);
-        assert_eq!(spec.root.name, "ralph");
-        assert_eq!(spec.root.path, vec!["ralph".to_string()]);
+        assert_eq!(spec.root.name, "cueloop");
+        assert_eq!(spec.root.path, vec!["cueloop".to_string()]);
 
         assert_sorted(&spec.root);
     }
@@ -245,7 +245,7 @@ mod tests {
         let command = crate::cli::Cli::command();
         let spec = cli_spec_from_command(&command);
 
-        let serve = find_command_by_path(&spec.root, &["ralph", "daemon", "serve"])
+        let serve = find_command_by_path(&spec.root, &["cueloop", "daemon", "serve"])
             .expect("expected hidden daemon serve command to exist in spec");
         assert!(serve.hidden, "expected daemon serve to be marked hidden");
     }
@@ -257,7 +257,7 @@ mod tests {
         let command = crate::cli::Cli::command();
         let spec = cli_spec_from_command(&command);
 
-        let run_one = find_command_by_path(&spec.root, &["ralph", "run", "one"])
+        let run_one = find_command_by_path(&spec.root, &["cueloop", "run", "one"])
             .expect("expected run one command to exist in spec");
         let arg = find_arg(run_one, "parallel_worker")
             .expect("expected parallel_worker arg to exist in spec");

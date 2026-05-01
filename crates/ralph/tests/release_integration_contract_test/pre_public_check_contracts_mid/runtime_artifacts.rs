@@ -1,7 +1,7 @@
 //! Mid-suite `pre-public-check.sh` runtime-artifact contracts.
 //!
 //! Purpose:
-//! - Keep target and `.ralph` runtime-artifact regressions grouped together.
+//! - Keep target and runtime-state artifact regressions grouped together.
 //!
 //! Responsibilities:
 //! - Verify source-snapshot and tracked runtime-artifact failures, including control-character paths.
@@ -66,7 +66,7 @@ fn pre_public_check_rejects_tracked_target_artifacts() {
 
     copy_pre_public_check_fixture(repo_root);
     write_file(
-        &repo_root.join("target/debug/ralph"),
+        &repo_root.join("target/debug/cueloop"),
         "built binary placeholder\n",
     );
 
@@ -94,7 +94,7 @@ fn pre_public_check_rejects_tracked_target_artifacts() {
     );
     assert!(
         combined.contains("Tracked runtime/build artifacts detected")
-            && combined.contains("target/debug/ralph"),
+            && combined.contains("target/debug/cueloop"),
         "tracked target artifact rejection should explain the offending path\noutput:\n{}",
         combined
     );

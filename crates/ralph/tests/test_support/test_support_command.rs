@@ -1,7 +1,7 @@
 //! Purpose: shared command and repo helpers for integration tests.
 //!
 //! Responsibilities:
-//! - Resolve the built `ralph` binary and run isolated subprocesses for tests.
+//! - Resolve the built `cueloop`/`ralph` binaries and run isolated subprocesses for tests.
 //! - Initialize disposable git repos and executable fixtures.
 //! - Seed reusable runtime scaffolding and cached git+runtime repo templates.
 //! - Provide scoped PATH mutation utilities for fake toolchains.
@@ -29,12 +29,14 @@ const TEST_GIT_USER_NAME: &str = "Ralph Test";
 const TEST_GIT_USER_EMAIL: &str = "ralph-tests@example.invalid";
 
 static RALPH_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
+static CUELOOP_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
 static EMPTY_GIT_CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 static RALPH_INIT_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
 static SEEDED_GIT_RALPH_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
-fn resolve_ralph_bin() -> PathBuf {
-    if let Some(path) = std::env::var_os("CARGO_BIN_EXE_ralph") {
+fn resolve_cli_bin(bin_name: &str) -> PathBuf {
+    let env_key = format!("CARGO_BIN_EXE_{bin_name}");
+    if let Some(path) = std::env::var_os(&env_key) {
         return PathBuf::from(path);
     }
 
@@ -50,20 +52,36 @@ fn resolve_ralph_bin() -> PathBuf {
         exe_dir
     };
 
-    let bin_name = if cfg!(windows) { "ralph.exe" } else { "ralph" };
-    let candidate = profile_dir.join(bin_name);
+    let platform_bin_name = if cfg!(windows) {
+        format!("{bin_name}.exe")
+    } else {
+        bin_name.to_owned()
+    };
+    let candidate = profile_dir.join(platform_bin_name);
     if candidate.exists() {
         return candidate;
     }
 
     panic!(
-        "CARGO_BIN_EXE_ralph was not set and fallback binary path does not exist: {}",
+        "{env_key} was not set and fallback binary path does not exist: {}",
         candidate.display()
     );
 }
 
+fn resolve_ralph_bin() -> PathBuf {
+    resolve_cli_bin("ralph")
+}
+
+fn resolve_cueloop_bin() -> PathBuf {
+    resolve_cli_bin("cueloop")
+}
+
 pub fn ralph_bin() -> PathBuf {
     RALPH_BIN_PATH.get_or_init(resolve_ralph_bin).clone()
+}
+
+pub fn cueloop_bin() -> PathBuf {
+    CUELOOP_BIN_PATH.get_or_init(resolve_cueloop_bin).clone()
 }
 
 fn empty_git_config_path() -> &'static PathBuf {

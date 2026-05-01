@@ -1,7 +1,7 @@
-//! CLI help output contract tests for the Ralph binary.
+//! CLI help output contract tests for CueLoop CLI binaries.
 //!
 //! Purpose:
-//! - CLI help output contract tests for the Ralph binary.
+//! - CLI help output contract tests for the primary `cueloop` binary and legacy `ralph` alias.
 //!
 //! Responsibilities:
 //! - Assert key help text snippets remain present for core commands.
@@ -34,6 +34,18 @@ fn run(args: &[&str]) -> (ExitStatus, String, String) {
     )
 }
 
+fn run_cueloop(args: &[&str]) -> (ExitStatus, String, String) {
+    let output = Command::new(test_support::cueloop_bin())
+        .args(args)
+        .output()
+        .expect("failed to execute cueloop binary");
+    (
+        output.status,
+        String::from_utf8_lossy(&output.stdout).to_string(),
+        String::from_utf8_lossy(&output.stderr).to_string(),
+    )
+}
+
 fn assert_contains(haystack: &str, needle: &str) {
     assert!(
         haystack.contains(needle),
@@ -54,6 +66,27 @@ fn assert_occurs_once(haystack: &str, needle: &str) {
         count, 1,
         "expected {needle:?} to appear exactly once, found {count}\n--- output ---\n{haystack}\n--- end ---"
     );
+}
+
+#[test]
+fn primary_and_legacy_binaries_report_invoked_name_in_root_help() {
+    let (primary_status, primary_stdout, primary_stderr) = run_cueloop(&["--help"]);
+    assert!(
+        primary_status.success(),
+        "expected `cueloop --help` to succeed\nstdout:\n{primary_stdout}\nstderr:\n{primary_stderr}"
+    );
+    let primary_combined = format!("{primary_stdout}\n{primary_stderr}");
+    assert_contains(&primary_combined, "Usage: cueloop");
+    assert_contains(&primary_combined, "CueLoop CLI (legacy alias: ralph)");
+
+    let (legacy_status, legacy_stdout, legacy_stderr) = run(&["--help"]);
+    assert!(
+        legacy_status.success(),
+        "expected `ralph --help` to succeed\nstdout:\n{legacy_stdout}\nstderr:\n{legacy_stderr}"
+    );
+    let legacy_combined = format!("{legacy_stdout}\n{legacy_stderr}");
+    assert_contains(&legacy_combined, "Usage: ralph");
+    assert_contains(&legacy_combined, "CueLoop CLI (legacy alias: ralph)");
 }
 
 #[test]

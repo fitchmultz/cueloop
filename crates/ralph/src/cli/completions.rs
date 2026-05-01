@@ -1,7 +1,7 @@
-//! Shell completion script generation for Ralph CLI.
+//! Shell completion script generation for CueLoop CLI.
 //!
 //! Purpose:
-//! - Shell completion script generation for Ralph CLI.
+//! - Shell completion script generation for the primary CueLoop CLI binary.
 //!
 //! Responsibilities:
 //! - Generate shell completion scripts for supported shells (bash, zsh, fish, PowerShell, Elvish).
@@ -134,8 +134,8 @@ mod tests {
         assert!(!output.is_empty(), "completion script should not be empty");
         let output_str = String::from_utf8(output).expect("valid UTF-8");
         assert!(
-            output_str.contains("ralph"),
-            "completion script should reference 'ralph'"
+            output_str.contains("cueloop"),
+            "completion script should reference 'cueloop'"
         );
     }
 }

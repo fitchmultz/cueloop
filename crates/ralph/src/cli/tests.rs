@@ -469,22 +469,22 @@ fn cli_rejects_run_loop_with_id_flag() {
 
 #[test]
 fn cli_supports_top_level_version_flag_long() {
-    let err = Cli::try_parse_from(["ralph", "--version"])
+    let err = Cli::try_parse_from(["cueloop", "--version"])
         .err()
         .expect("expected clap to render version and exit");
     assert_eq!(err.kind(), ErrorKind::DisplayVersion);
     let rendered = err.to_string();
-    assert!(rendered.contains("ralph"));
+    assert!(rendered.contains("cueloop"));
     assert!(rendered.contains(env!("CARGO_PKG_VERSION")));
 }
 
 #[test]
 fn cli_supports_top_level_version_flag_short() {
-    let err = Cli::try_parse_from(["ralph", "-V"])
+    let err = Cli::try_parse_from(["cueloop", "-V"])
         .err()
         .expect("expected clap to render version and exit");
     assert_eq!(err.kind(), ErrorKind::DisplayVersion);
     let rendered = err.to_string();
-    assert!(rendered.contains("ralph"));
+    assert!(rendered.contains("cueloop"));
     assert!(rendered.contains(env!("CARGO_PKG_VERSION")));
 }

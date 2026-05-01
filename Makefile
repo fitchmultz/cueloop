@@ -7,7 +7,8 @@
 RUST_WORKSPACE := .
 PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
-BIN_NAME ?= ralph
+BIN_NAME ?= cueloop
+LEGACY_BIN_NAME ?= ralph
 CARGO_PACKAGE_NAME ?= ralph-agent-loop
 CARGO_HTTP_MULTIPLEXING ?= false
 RUST_JOBS ?= 8
@@ -44,7 +45,7 @@ RALPH_CI_JOBS ?= $(RUST_JOBS)
 RALPH_XCODE_JOBS ?= 0
 # Build stamp path to avoid duplicate release builds in a single make invocation.
 RALPH_STAMP_DIR ?= target/tmp/stamps
-RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/ralph-release-build.stamp
+RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/cueloop-release-build.stamp
 # Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `ralph-cli-bundle.sh`.
 RALPH_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/ralph-cli-bundle.sh
 RALPH_CRATE_SOURCE_FILES := $(shell find crates -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) 2>/dev/null | LC_ALL=C sort)

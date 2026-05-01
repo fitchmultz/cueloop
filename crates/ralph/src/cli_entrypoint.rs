@@ -1,7 +1,7 @@
-//! Ralph CLI entrypoint and command routing.
+//! Shared CueLoop CLI entrypoint and command routing.
 //!
 //! Purpose:
-//! - Ralph CLI entrypoint and command routing.
+//! - Shared entrypoint and command routing for the primary `cueloop` binary and legacy `ralph` alias.
 //!
 //! Responsibilities:
 //! - Load environment defaults, parse CLI args, and dispatch to command handlers.
@@ -19,18 +19,18 @@
 //! - CLI arguments are normalized before Clap parsing.
 //! - Command handlers enforce their own safety checks and validation.
 
+use crate::{cli, redaction, sanity};
 use anyhow::{Context, Result};
-use clap::Parser;
-use ralph::{cli, redaction, sanity};
+use clap::{CommandFactory, FromArgMatches};
 use std::ffi::OsString;
 
-fn main() {
+pub fn main() {
     let args = normalize_repo_prompt_args(std::env::args_os());
     let is_machine_command = is_machine_command_args(&args);
 
     if let Err(err) = run(args, is_machine_command) {
         if is_machine_command {
-            if let Err(print_err) = ralph::cli::machine::print_machine_error(&err) {
+            if let Err(print_err) = crate::cli::machine::print_machine_error(&err) {
                 use colored::Colorize;
                 let msg = format!(
                     "{:#}\nfailed to emit machine error JSON: {print_err:#}",
@@ -66,7 +66,7 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
             eprintln!("{}", redaction::redact_text(&msg));
         }
     }
-    let cli = cli::Cli::parse_from(args);
+    let cli = parse_cli(args);
 
     // Initialize color output settings early, before any colored output
     cli::color::init_color(cli.color, cli.no_color);
@@ -91,7 +91,7 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
 
     // Run temp cleanup on every invocation to catch orphaned files from crashed sessions
     if let Err(err) =
-        ralph::fsutil::cleanup_default_temp_dirs(ralph::constants::timeouts::TEMP_RETENTION)
+        crate::fsutil::cleanup_default_temp_dirs(crate::constants::timeouts::TEMP_RETENTION)
     {
         log::debug!("startup temp cleanup: {:#}", err);
     }
@@ -106,7 +106,7 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
     let should_run_sanity = !matches!(sanity_mode, sanity::StartupSanityMode::None);
     let should_refresh_readme = sanity::should_refresh_readme_for_command(&cli.command);
     if should_refresh_readme && (cli.no_sanity_checks || !should_run_sanity) {
-        let resolved = ralph::config::resolve_from_cwd_for_doctor()?;
+        let resolved = crate::config::resolve_from_cwd_for_doctor()?;
         if let Some(msg) = sanity::refresh_readme_if_needed(&resolved)? {
             log::info!("{}", msg);
         }
@@ -114,7 +114,7 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
 
     // Run full sanity checks before commands that need them
     if should_run_sanity && !cli.no_sanity_checks {
-        let resolved = ralph::config::resolve_from_cwd_for_doctor()?;
+        let resolved = crate::config::resolve_from_cwd_for_doctor()?;
         // Extract non_interactive flag from run commands
         let run_non_interactive = match &cli.command {
             cli::Command::Run(run_args) => match &run_args.command {
@@ -174,13 +174,13 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
         cli::Command::Version(args) => cli::version::handle_version(args),
         cli::Command::Watch(args) => cli::watch::handle_watch(args, cli.force),
         cli::Command::Webhook(args) => {
-            let resolved = ralph::config::resolve_from_cwd()?;
+            let resolved = crate::config::resolve_from_cwd()?;
             cli::webhook::handle_webhook(&args, &resolved)
         }
         cli::Command::Productivity(args) => cli::productivity::handle(args),
         cli::Command::Plugin(args) => {
-            let resolved = ralph::config::resolve_from_cwd()?;
-            ralph::commands::plugin::run(&args, &resolved)
+            let resolved = crate::config::resolve_from_cwd()?;
+            crate::commands::plugin::run(&args, &resolved)
         }
         cli::Command::Runner(args) => match args.command {
             cli::runner::RunnerCommand::Capabilities(cap_args) => {
@@ -221,32 +221,47 @@ fn should_emit_legacy_compat_warnings(cli: &cli::Cli) -> bool {
     }
 }
 
+fn parse_cli(args: Vec<OsString>) -> cli::Cli {
+    let invoked_name = args
+        .first()
+        .and_then(|arg| std::path::Path::new(arg).file_name())
+        .and_then(|name| name.to_str())
+        .map(|name| name.to_owned())
+        .unwrap_or_else(|| crate::constants::identity::CLI_BIN_NAME.to_owned());
+    let matches = cli::Cli::command()
+        .bin_name(invoked_name.clone())
+        .display_name(invoked_name)
+        .get_matches_from(args);
+
+    cli::Cli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit())
+}
+
 fn emit_legacy_compat_warnings() {
     let Ok(cwd) = std::env::current_dir() else {
         return;
     };
-    let repo_root = ralph::config::find_repo_root(&cwd);
-    let current_runtime = repo_root.join(ralph::constants::identity::PROJECT_RUNTIME_DIR);
-    let legacy_runtime = repo_root.join(ralph::constants::identity::LEGACY_PROJECT_RUNTIME_DIR);
+    let repo_root = crate::config::find_repo_root(&cwd);
+    let current_runtime = repo_root.join(crate::constants::identity::PROJECT_RUNTIME_DIR);
+    let legacy_runtime = repo_root.join(crate::constants::identity::LEGACY_PROJECT_RUNTIME_DIR);
 
     if current_runtime.is_dir() && legacy_runtime.is_dir() {
         log::warn!(
             "CueLoop found both .cueloop and legacy .ralph runtime directories. .cueloop takes precedence; resolve or remove .ralph when ready."
         );
     } else if matches!(
-        ralph::config::project_runtime_layout(&repo_root),
-        ralph::config::ProjectRuntimeLayout::Legacy
+        crate::config::project_runtime_layout(&repo_root),
+        crate::config::ProjectRuntimeLayout::Legacy
     ) {
         log::warn!(
-            "CueLoop is using legacy project runtime directory .ralph. This remains supported for now. Run `ralph migrate runtime-dir --apply` to move project state to .cueloop."
+            "CueLoop is using legacy project runtime directory .ralph. This remains supported for now. Run `cueloop migrate runtime-dir --apply` to move project state to .cueloop."
         );
     }
 
-    if let Some(legacy_global) = ralph::config::legacy_global_config_path()
+    if let Some(legacy_global) = crate::config::legacy_global_config_path()
         && legacy_global.exists()
     {
         let current_global_exists =
-            ralph::config::global_config_path().is_some_and(|path| path.exists());
+            crate::config::global_config_path().is_some_and(|path| path.exists());
         let suffix = if current_global_exists {
             " Current ~/.config/cueloop/config.jsonc still takes precedence."
         } else {
