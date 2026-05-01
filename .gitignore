@@ -45,3 +45,4 @@ apps/RalphMac/build/
 !.ralph/queue.jsonc
 !.ralph/done.jsonc
 .repo_ignore
+prompt-exports/
