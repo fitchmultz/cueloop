@@ -39,7 +39,7 @@ fn create_lock_with_pid(dir: &Path, pid: u32) -> Result<()> {
 fn machine_queue_unlock_inspect_reports_clear_when_no_lock_exists() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["machine", "queue", "unlock-inspect"]);
@@ -56,7 +56,7 @@ fn machine_queue_unlock_inspect_reports_clear_when_no_lock_exists() -> Result<()
 fn machine_queue_unlock_inspect_reports_stale_lock() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::ralph_init(dir.path())?;
+    test_support::cueloop_init(dir.path())?;
     create_lock_with_pid(dir.path(), 0xFFFFFFFE)?;
 
     let (status, stdout, stderr) =

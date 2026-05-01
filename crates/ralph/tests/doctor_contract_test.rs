@@ -35,7 +35,7 @@ pub(crate) use support::{
 
 /// Create a ralph command scoped to the given directory.
 fn ralph_cmd_in_dir(dir: &Path) -> Command {
-    test_support::ralph_command(dir)
+    test_support::cueloop_command(dir)
 }
 
 #[path = "doctor_contract_test/auto_fix.rs"]

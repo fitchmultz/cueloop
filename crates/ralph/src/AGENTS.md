@@ -236,7 +236,7 @@ Use `testsupport` helpers for CLI tests:
 ```rust
 let dir = test_support::temp_dir_outside_repo();
 test_support::git_init(dir.path())?;
-test_support::ralph_init(dir.path())?;
+test_support::cueloop_init(dir.path())?;
 
 test_support::write_queue(dir.path(), &tasks)?;
 let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "archive"]);
@@ -246,7 +246,7 @@ anyhow::ensure!(status.success(), "...\nstdout:\n{stdout}\nstderr:\n{stderr}");
 ### Test Isolation
 
 - Tests run in isolated temp directories (`${TMPDIR:-/tmp}/ralph-ci.*`)
-- Use `--non-interactive` flag when calling `ralph init` in tests
+- Use `--non-interactive` flag when calling `cueloop init` in tests
 - Set `RALPH_CI_KEEP_TMP=1` to preserve temp directories for debugging
 - Use `serial_test` for tests that modify global state
 

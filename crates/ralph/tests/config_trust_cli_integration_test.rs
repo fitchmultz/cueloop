@@ -149,7 +149,7 @@ fn init_ignores_global_queue_file_when_creating_project_runtime() -> Result<()> 
         r#"{"version":2,"queue":{"file":"external/queue.jsonc","done_file":"external/done.jsonc"}}"#,
     )?;
 
-    let output = test_support::ralph_command(dir.path())
+    let output = test_support::cueloop_command(dir.path())
         .env("XDG_CONFIG_HOME", &xdg_config)
         .args(["init", "--force", "--non-interactive"])
         .output()

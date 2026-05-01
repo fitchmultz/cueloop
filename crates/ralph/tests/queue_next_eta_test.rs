@@ -34,7 +34,7 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (std::process::ExitStatus, String, S
 }
 
 fn init_repo(dir: &Path) -> Result<()> {
-    test_support::ralph_init(dir)?;
+    test_support::cueloop_init(dir)?;
     Ok(())
 }
 

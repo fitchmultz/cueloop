@@ -23,7 +23,7 @@ mod test_support;
 #[test]
 fn machine_task_build_suppresses_noisy_runner_output_before_json() -> Result<()> {
     let dir = tempfile::tempdir().context("create temp repo")?;
-    test_support::ralph_init(dir.path()).context("init ralph repo")?;
+    test_support::cueloop_init(dir.path()).context("init cueloop repo")?;
 
     let runner_path = test_support::create_fake_runner(
         dir.path(),

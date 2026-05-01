@@ -35,8 +35,8 @@ fn git_init(dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn ralph_init(dir: &Path) -> Result<()> {
-    let output = Command::new(test_support::ralph_bin())
+fn cueloop_init(dir: &Path) -> Result<()> {
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(dir)
         .env_remove("RUST_LOG")
         .args(["init", "--force", "--non-interactive"])
@@ -44,7 +44,7 @@ fn ralph_init(dir: &Path) -> Result<()> {
 
     anyhow::ensure!(
         output.status.success(),
-        "ralph init failed: {}",
+        "cueloop init failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     Ok(())
@@ -73,14 +73,14 @@ fn write_plugin_manifest(dir: &Path, id: &str) -> Result<()> {
 fn plugin_install_legacy_plugin_collision_fails() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
     git_init(temp_dir.path())?;
-    ralph_init(temp_dir.path())?;
+    cueloop_init(temp_dir.path())?;
 
     let source_dir = temp_dir.path().join("source-plugin");
     let legacy_dir = temp_dir.path().join(".ralph/plugins/legacy.install");
     write_plugin_manifest(&source_dir, "legacy.install")?;
     write_plugin_manifest(&legacy_dir, "legacy.install")?;
 
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(temp_dir.path())
         .env_remove("RUST_LOG")
         .args([

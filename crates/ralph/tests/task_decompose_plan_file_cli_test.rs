@@ -53,7 +53,7 @@ const PHASE_TITLES: [&str; 4] = [
 #[test]
 fn plan_file_decompose_preview_write_validate_and_navigate_ordered_plan() -> Result<()> {
     let temp = tempdir()?;
-    test_support::ralph_init(temp.path())?;
+    test_support::cueloop_init(temp.path())?;
     write_ordered_plan(temp.path())?;
     configure_fake_planner(temp.path())?;
 
