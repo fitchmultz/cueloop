@@ -13,7 +13,7 @@ Purpose: Explain Ralph's high-level runtime layout, phases, and prompt override 
 - `.ralph/queue.jsonc`: source of truth for active tasks.
 - `.ralph/done.jsonc`: archive of completed tasks.
 - `.ralph/config.jsonc`: project-level configuration.
-- `.ralph/prompts/*.md`: optional prompt overrides (defaults are embedded in the Rust CLI under `crates/ralph/assets/prompts/`).
+- `.ralph/prompts/*.md`: optional prompt overrides (defaults are embedded in the Rust CLI under `crates/cueloop/assets/prompts/`).
 - `.ralph/cache/parallel/state.json`: parallel run state (in-flight workers and terminal outcomes).
 
 ## Prompt Overrides

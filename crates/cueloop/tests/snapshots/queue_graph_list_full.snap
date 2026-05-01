@@ -1,0 +1,16 @@
+---
+source: crates/cueloop/tests/queue_graph_snapshot_test.rs
+assertion_line: 108
+expression: "test_support::normalize_for_snapshot(&stdout)"
+---
+Task Dependency List
+
+Summary: 4 total, 2 ready, 1 blocked
+
+Doing:
+  RQ-0003: Blocks RQ-0002 (depends on: none)
+
+Todo:
+  RQ-0001: Root (depends on: none)
+  RQ-0002: Depends on RQ-0001 (depends on: RQ-0001)
+  RQ-0004: Relates/duplicates (depends on: none)

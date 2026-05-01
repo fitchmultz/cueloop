@@ -14,7 +14,7 @@
 # Invariants/assumptions:
 # - Run from any location; the script resolves the repo root automatically.
 # - rust-toolchain.toml is the source of truth for the repo-local Rust channel.
-# - crates/ralph/Cargo.toml rust-version follows the same major.minor source-build baseline.
+# - crates/cueloop/Cargo.toml rust-version follows the same major.minor source-build baseline.
 
 set -euo pipefail
 
@@ -150,7 +150,7 @@ compare_global_stable() {
 
     if [ "$stable_version" != "$pinned_channel" ]; then
         cueloop_log_error "global rustup stable drift detected: repo pins $pinned_channel but global stable rustc is $stable_version"
-        cueloop_log_error "when intentionally adopting a new stable, update rust-toolchain.toml and crates/ralph/Cargo.toml rust-version together"
+        cueloop_log_error "when intentionally adopting a new stable, update rust-toolchain.toml and crates/cueloop/Cargo.toml rust-version together"
         return 1
     fi
 
@@ -166,7 +166,7 @@ main() {
     local pinned_channel pinned_minor crate_rust_version
     pinned_channel="$(read_toml_string_value "$REPO_ROOT/rust-toolchain.toml" channel)"
     pinned_minor="$(channel_minor "$pinned_channel")"
-    crate_rust_version="$(read_toml_string_value "$REPO_ROOT/crates/ralph/Cargo.toml" rust-version)"
+    crate_rust_version="$(read_toml_string_value "$REPO_ROOT/crates/cueloop/Cargo.toml" rust-version)"
 
     if [ "$crate_rust_version" != "$pinned_minor" ]; then
         cueloop_log_error "crate rust-version drifted: expected $pinned_minor from rust-toolchain.toml $pinned_channel, found $crate_rust_version"

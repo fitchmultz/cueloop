@@ -223,11 +223,11 @@ def read_text(path: Path, repo_root: Path, excludes: tuple[str, ...]) -> str | N
 
 def allowlisted_secret(rel_path: str, line: str) -> bool:
     stripped = line.strip()
-    if rel_path == "crates/ralph/tests/redaction_expansion_test.rs":
+    if rel_path == "crates/cueloop/tests/redaction_expansion_test.rs":
         return stripped in REDACTION_EXPANSION_ALLOWLIST_LINES
     if rel_path == "docs/features/security.md":
         return stripped == AWS_DOCS_ALLOWLIST_LINE
-    if rel_path == "crates/ralph/src/fsutil/tests.rs":
+    if rel_path == "crates/cueloop/src/fsutil/tests.rs":
         return stripped in FSUTIL_ALLOWLIST_LINES
     return False
 

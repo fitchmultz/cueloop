@@ -34,7 +34,7 @@ Ralph includes comprehensive pattern-based redaction to prevent accidental expos
 The `RedactedString` wrapper type ensures sensitive data is automatically redacted when displayed:
 
 ```rust
-use ralph::redaction::RedactedString;
+use cueloop::redaction::RedactedString;
 
 // Create a redacted string
 let sensitive = RedactedString::from("API_KEY=sk-secret123");
@@ -80,13 +80,13 @@ Exclusions (not redacted):
 
 ```rust
 // Redact text directly
-use ralph::redaction::redact_text;
+use cueloop::redaction::redact_text;
 
 let output = redact_text("password=secret123");
 assert_eq!(output, "password=[REDACTED]");
 
 // Use redaction macros for logging
-use ralph::{rinfo, rwarn, rerror, rdebug, rtrace};
+use cueloop::{rinfo, rwarn, rerror, rdebug, rtrace};
 
 rinfo!("Connecting with API_KEY={}", api_key);  // Redacted automatically
 ```
@@ -96,7 +96,7 @@ rinfo!("Connecting with API_KEY={}", api_key);  // Redacted automatically
 Wrap any logger to automatically redact all log messages:
 
 ```rust
-use ralph::redaction::RedactedLogger;
+use cueloop::redaction::RedactedLogger;
 use log::LevelFilter;
 
 // Wrap an existing logger
@@ -131,7 +131,7 @@ Safeguard dumps are temporary files written for troubleshooting and error recove
 By default, safeguard dumps apply redaction to all sensitive content:
 
 ```rust
-use ralph::fsutil::safeguard_text_dump_redacted;
+use cueloop::fsutil::safeguard_text_dump_redacted;
 
 // Write redacted dump (safe default)
 let path = safeguard_text_dump_redacted("error_context", &content)?;
@@ -159,7 +159,7 @@ ralph run one --debug
 Programmatic usage:
 
 ```rust
-use ralph::fsutil::safeguard_text_dump;
+use cueloop::fsutil::safeguard_text_dump;
 
 // Requires RALPH_RAW_DUMP=1 or debug_mode=true
 let path = safeguard_text_dump("debug_context", &raw_content, is_debug_mode)?;
@@ -310,7 +310,7 @@ Ralph includes git safety features to prevent unintended changes and provide rec
 Before operations, Ralph can verify the repository is in a clean state:
 
 ```rust
-use ralph::git::clean::require_clean_repo_ignoring_paths;
+use cueloop::git::clean::require_clean_repo_ignoring_paths;
 
 // Check repo is clean (ignoring Ralph's own files)
 require_clean_repo_ignoring_paths(
@@ -770,7 +770,7 @@ Use `["*"]` to subscribe to all events.
 - [ ] Remove old safeguard dumps from `/tmp/ralph/`
 - [ ] Rotate webhook secrets
 - [ ] Review and update plugin trust decisions
-- [ ] Keep Ralph updated: `cargo install ralph-agent-loop --force`
+- [ ] Keep Ralph updated: `cargo install cueloop-agent-loop --force`
 
 ---
 

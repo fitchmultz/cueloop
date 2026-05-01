@@ -10,7 +10,7 @@ Purpose: Document CueLoop's JSON configuration layout, defaults, override preced
 
 ## Overview
 
-CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. In this phase the executable remains `ralph` and the package remains `ralph-agent-loop`.
+CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. The primary executable is `cueloop`, the legacy `ralph` executable remains a compatibility alias, and the package is `cueloop-agent-loop`.
 
 - Global: `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
 - Project: `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)

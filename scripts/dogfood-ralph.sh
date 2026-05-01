@@ -62,7 +62,7 @@ done
 
 if [[ ! -x "$RALPH_BIN" ]]; then
   echo "CueLoop/Ralph binary not found or not executable: $RALPH_BIN" >&2
-  echo "Build one first, for example: cargo build -p ralph-agent-loop --bin cueloop" >&2
+  echo "Build one first, for example: cargo build -p cueloop-agent-loop --bin cueloop" >&2
   exit 1
 fi
 

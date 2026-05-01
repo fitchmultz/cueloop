@@ -33,7 +33,7 @@ source "$SCRIPT_DIR/lib/release_pipeline.sh"
 CHANGELOG="$REPO_ROOT/CHANGELOG.md"
 RELEASE_NOTES_TEMPLATE="$REPO_ROOT/.github/release-notes-template.md"
 RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
-CRATE_PACKAGE_NAME="ralph-agent-loop"
+CRATE_PACKAGE_NAME="cueloop-agent-loop"
 
 COMMAND="${1:-}"
 VERSION="${2:-}"

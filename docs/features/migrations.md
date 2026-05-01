@@ -162,7 +162,7 @@ MigrationType::ReadmeUpdate {
 
 ## Migration Registry
 
-All migrations are defined in `crates/ralph/src/migration/registry.rs`.
+All migrations are defined in `crates/cueloop/src/migration/registry.rs`.
 
 ### Registry Structure
 
@@ -191,7 +191,7 @@ Examples:
 
 ### Adding New Migrations
 
-1. Open `crates/ralph/src/migration/registry.rs`
+1. Open `crates/cueloop/src/migration/registry.rs`
 2. Add a new `Migration` entry to the end of `MIGRATIONS`
 3. Use a unique ID following the naming convention
 4. Provide a clear description
@@ -542,7 +542,7 @@ MigrationType::ConfigKeyRename {
 ### Module Structure
 
 ```
-crates/ralph/src/migration/
+crates/cueloop/src/migration/
 ├── mod.rs                 # Core migration logic, context, apply/check functions
 ├── registry.rs            # Migration definitions registry
 ├── history.rs             # Migration history persistence
@@ -611,7 +611,7 @@ Migration functionality includes comprehensive tests:
 
 Run tests:
 ```bash
-cargo test -p ralph-agent-loop migration
+cargo test -p cueloop-agent-loop migration
 ```
 
 ### Safety Features

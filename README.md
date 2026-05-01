@@ -1,12 +1,12 @@
 # CueLoop
 
-[![crates.io](https://img.shields.io/crates/v/ralph-agent-loop.svg)](https://crates.io/crates/ralph-agent-loop)
-[![docs.rs](https://img.shields.io/docsrs/ralph-agent-loop)](https://docs.rs/ralph-agent-loop)
+[![crates.io](https://img.shields.io/crates/v/cueloop-agent-loop.svg)](https://crates.io/crates/cueloop-agent-loop)
+[![docs.rs](https://img.shields.io/docsrs/cueloop-agent-loop)](https://docs.rs/cueloop-agent-loop)
 [![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/ralph)](https://github.com/fitchmultz/ralph/releases)
 
 CueLoop is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
 
-The current executable and package names remain `ralph` and `ralph-agent-loop` during this rebrand phase. New repositories use `.cueloop/` for runtime state; legacy `.ralph/` repositories remain supported and can move with `ralph migrate runtime-dir --apply`.
+The primary executable and package are now `cueloop` and `cueloop-agent-loop`. The legacy `ralph` executable remains available as a compatibility alias during the migration window. New repositories use `.cueloop/` for runtime state; legacy `.ralph/` repositories remain supported and can move with `cueloop migrate runtime-dir --apply`.
 
 Teams use CueLoop when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
 
@@ -67,7 +67,7 @@ flowchart LR
 From crates.io:
 
 ```bash
-cargo install ralph-agent-loop
+cargo install cueloop-agent-loop
 ```
 
 This installs the `ralph` executable.
@@ -122,7 +122,7 @@ Here is a concrete repo workflow for a team using Codex or Claude Code in a norm
 
 ```bash
 # install CueLoop in your application repo (the command is still `ralph`)
-cargo install ralph-agent-loop
+cargo install cueloop-agent-loop
 cd your-service
 ralph init
 
@@ -190,7 +190,7 @@ Security references:
 
 ## Versioning & Compatibility
 
-CueLoop follows semantic versioning for the product; the crate/package remains `ralph-agent-loop` in this phase.
+CueLoop follows semantic versioning for the product and the `cueloop-agent-loop` crate/package.
 
 - Minor/patch releases preserve existing behavior unless explicitly documented
 - Breaking CLI/config behavior changes are called out in changelog and migration notes

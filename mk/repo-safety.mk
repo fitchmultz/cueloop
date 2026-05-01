@@ -8,9 +8,9 @@ check-env-safety:
 	@scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean --allow-no-git
 
 check-backup-artifacts:
-	@bak_files="$$(find crates/ralph/src/ -name '*.bak' -type f 2>/dev/null || true)"; \
+	@bak_files="$$(find crates/cueloop/src/ -name '*.bak' -type f 2>/dev/null || true)"; \
 	if [ -n "$$bak_files" ]; then \
-		echo "ERROR: Backup artifacts found in crates/ralph/src/:"; \
+		echo "ERROR: Backup artifacts found in crates/cueloop/src/:"; \
 		echo "$$bak_files"; \
 		echo "Remove these files before committing."; \
 		exit 1; \

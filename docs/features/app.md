@@ -111,7 +111,7 @@ Practical implications:
 - Native workflows should use versioned `ralph machine ...` JSON contracts,
   not human CLI text or older app-targeted CLI JSON surfaces.
 - Scenario-level parity coverage lives in
-  `crates/ralph/src/cli/app_parity.rs`; every user-visible parity claim should
+  `crates/cueloop/src/cli/app_parity.rs`; every user-visible parity claim should
   point to explicit Rust and RalphMac proof anchors instead of broad command
   family labels alone.
 - Task override and Run Control execution affordances should come from

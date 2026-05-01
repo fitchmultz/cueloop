@@ -53,7 +53,7 @@ Fixes:
 
 - ensure `ralph init --non-interactive` is used in tests
 - rerun with `make test` to use the project harness
-- inspect `crates/ralph/tests/test_support.rs` helpers for deterministic setup
+- inspect `crates/cueloop/tests/test_support.rs` helpers for deterministic setup
 
 ## macOS App Build/Test Failures
 

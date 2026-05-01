@@ -9,7 +9,7 @@ Purpose: record the March 2026 language/toolchain/dependency baseline, note the 
 
 ## Scope
 
-- Rust CLI workspace under `crates/ralph/`
+- Rust CLI workspace under `crates/cueloop/`
 - macOS SwiftUI app under `apps/RalphMac/`
 - Local build/test entrypoints in `Makefile`
 
@@ -20,7 +20,7 @@ Audit date: `2026-03-06`
 ### Languages and Toolchains
 
 - Rust toolchain: `1.94.0` stable (`rust-toolchain.toml`)
-- Cargo manifest MSRV floor: `1.94` (`crates/ralph/Cargo.toml`)
+- Cargo manifest MSRV floor: `1.94` (`crates/cueloop/Cargo.toml`)
 - Rust edition: `2024`
 - Xcode: `26.3`
 - Swift language mode: `6.2`
@@ -77,7 +77,7 @@ Audit date: `2026-03-06`
 Reviewed:
 
 - Rust `1.94.0` release notes
-- Edition `2024` baseline already configured in `crates/ralph/Cargo.toml`
+- Edition `2024` baseline already configured in `crates/cueloop/Cargo.toml`
 
 Current alignment:
 

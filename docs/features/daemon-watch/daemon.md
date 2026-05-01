@@ -110,7 +110,7 @@ Daemon is running
 The daemon uses Unix session management to fully detach from the terminal:
 
 ```rust
-// From crates/ralph/src/commands/daemon/mod.rs
+// From crates/cueloop/src/commands/daemon/mod.rs
 unsafe {
     command.pre_exec(|| {
         libc::setsid();  // Create new session, detach from terminal

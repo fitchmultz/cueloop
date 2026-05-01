@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/ralph",
+  "crates/cueloop",
 ]
 
 [profile.dev]

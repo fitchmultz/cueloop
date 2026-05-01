@@ -20,7 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VERSION_FILE="$REPO_ROOT/VERSION"
-CARGO_TOML="$REPO_ROOT/crates/ralph/Cargo.toml"
+CARGO_TOML="$REPO_ROOT/crates/cueloop/Cargo.toml"
 XCODE_PROJECT="$REPO_ROOT/apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
 VERSION_VALIDATOR_SWIFT="$REPO_ROOT/apps/RalphMac/RalphCore/VersionValidator.swift"
 
@@ -137,7 +137,7 @@ import sys
 expected_version, lockfile_path = sys.argv[1:3]
 text = Path(lockfile_path).read_text(encoding="utf-8")
 match = re.search(
-    r'\[\[package\]\]\nname = "ralph-agent-loop"\nversion = "([0-9]+\.[0-9]+\.[0-9]+)"',
+    r'\[\[package\]\]\nname = "cueloop-agent-loop"\nversion = "([0-9]+\.[0-9]+\.[0-9]+)"',
     text,
     re.MULTILINE,
 )

@@ -59,7 +59,7 @@ make security-audit
 
 `make security-audit` requires `cargo-audit` (`cargo install cargo-audit --locked`) and fails on RustSec advisory warnings for the committed `Cargo.lock`. Keep it separate from the release transaction so advisory database/tool availability issues are resolved before release metadata is dirtied.
 
-The release gate also runs `make rust-toolchain-drift-check`, which compares the repo-local `rust-toolchain.toml` override with global rustup stable outside the workspace. If global stable has advanced, intentionally adopt it by updating `rust-toolchain.toml` and `crates/ralph/Cargo.toml` `rust-version` together before rerunning release verification.
+The release gate also runs `make rust-toolchain-drift-check`, which compares the repo-local `rust-toolchain.toml` override with global rustup stable outside the workspace. If global stable has advanced, intentionally adopt it by updating `rust-toolchain.toml` and `crates/cueloop/Cargo.toml` `rust-version` together before rerunning release verification.
 
 `make release-verify VERSION=<x.y.z>` is the canonical release preflight because it now prepares the exact local release snapshot that `make release` will publish:
 
@@ -91,7 +91,7 @@ The canonical version source is the top-level `VERSION` file. `scripts/versionin
 
 - `VERSION`
 - `Cargo.lock`
-- `crates/ralph/Cargo.toml`
+- `crates/cueloop/Cargo.toml`
 - `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`
 - `apps/RalphMac/RalphCore/VersionValidator.swift`
 

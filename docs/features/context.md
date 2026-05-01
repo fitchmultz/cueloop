@@ -453,11 +453,11 @@ Ralph includes embedded templates for each project type:
 
 | Template | Location |
 |----------|----------|
-| Rust | `crates/ralph/assets/agents_templates/rust.md` |
-| Python | `crates/ralph/assets/agents_templates/python.md` |
-| TypeScript | `crates/ralph/assets/agents_templates/typescript.md` |
-| Go | `crates/ralph/assets/agents_templates/go.md` |
-| Generic | `crates/ralph/assets/agents_templates/generic.md` |
+| Rust | `crates/cueloop/assets/agents_templates/rust.md` |
+| Python | `crates/cueloop/assets/agents_templates/python.md` |
+| TypeScript | `crates/cueloop/assets/agents_templates/typescript.md` |
+| Go | `crates/cueloop/assets/agents_templates/go.md` |
+| Generic | `crates/cueloop/assets/agents_templates/generic.md` |
 
 ### Template Placeholders
 

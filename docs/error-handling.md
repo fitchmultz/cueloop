@@ -73,7 +73,7 @@ pub enum GitError {
 
 ## Current Error Types
 
-### RunnerError (`crates/ralph/src/runner/error.rs`)
+### RunnerError (`crates/cueloop/src/runner/error.rs`)
 
 Runner-specific failures with redaction support for sensitive output.
 
@@ -93,7 +93,7 @@ Runner-specific failures with redaction support for sensitive output.
 - `Io` - General I/O error
 - `Other` - Any other error (from anyhow::Error)
 
-### GitError (`crates/ralph/src/git/error.rs`)
+### GitError (`crates/cueloop/src/git/error.rs`)
 
 Git operation failures with actionable error messages.
 
@@ -101,14 +101,14 @@ Git operation failures with actionable error messages.
 - Actionable error messages with remediation hints
 - Classifies push errors into specific variants (NoUpstream, AuthFailed, etc.)
 
-### TemplateError (`crates/ralph/src/template/loader/types.rs`)
+### TemplateError (`crates/cueloop/src/template/loader/types.rs`)
 
 Template loading and parsing failures.
 
 - Simple 4-variant enum for template operations
 - Clean, user-facing error messages
 
-### RunAbort (`crates/ralph/src/runutil.rs`)
+### RunAbort (`crates/cueloop/src/runutil.rs`)
 
 Flow control errors for runner interruptions. These are not failures but intentional control-flow signals.
 

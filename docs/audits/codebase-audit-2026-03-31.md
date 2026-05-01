@@ -6,7 +6,7 @@ Parent: [Ralph Documentation](../index.md)
 
 
 **Date:** 2026-03-31
-**Scope:** Full codebase (`crates/ralph/src`, `crates/ralph/tests`, `scripts/`, `Makefile`)
+**Scope:** Full codebase (`crates/cueloop/src`, `crates/cueloop/tests`, `scripts/`, `Makefile`)
 **Auditor:** AI Agent (comprehensive-codebase-audit skill)
 
 ---

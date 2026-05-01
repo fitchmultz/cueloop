@@ -11,7 +11,7 @@ Purpose: describe Ralph’s components, runtime data flow, trust boundaries, and
 
 Ralph is a local-first orchestration system for AI-assisted engineering workflows.
 
-- Primary runtime: Rust CLI (`crates/ralph/`)
+- Primary runtime: Rust CLI (`crates/cueloop/`)
 - Optional UI: SwiftUI macOS app (`apps/RalphMac/`) that shells out to the same CLI binary
 - State store: repo-local `.ralph/` files (`queue.jsonc`, `done.jsonc`, optional `config.jsonc`)
 - External dependencies: runner CLIs (Codex/Claude/Gemini/OpenCode/Cursor/Kimi/Pi), git, optional GitHub CLI
@@ -32,11 +32,11 @@ Ralph's primary product loop is an operator-started run over explicit repo-local
 ### 1) Queue + Task Lifecycle
 
 - Task state is explicit (`todo`, `doing`, `done`, `rejected`, etc.)
-- Queue operations (validate, sort, archive, search, graph/tree) live in `crates/ralph/src/queue/` and command modules
+- Queue operations (validate, sort, archive, search, graph/tree) live in `crates/cueloop/src/queue/` and command modules
 
 ### 2) Run Supervision Engine
 
-- `crates/ralph/src/commands/run/` orchestrates plan/implement/review phases
+- `crates/cueloop/src/commands/run/` orchestrates plan/implement/review phases
 - Supports `run one`, `run loop`, resume/recovery, and parallel worker execution
 - Applies CI gating and failure handling to keep repository state coherent
 
@@ -47,9 +47,9 @@ Ralph's primary product loop is an operator-started run over explicit repo-local
 
 ### 4) Safety and Reliability Layers
 
-- Startup sanity checks (`crates/ralph/src/sanity/`)
-- Locking and concurrency controls (`crates/ralph/src/lock.rs`)
-- Redaction and output safety (`crates/ralph/src/redaction/mod.rs`)
+- Startup sanity checks (`crates/cueloop/src/sanity/`)
+- Locking and concurrency controls (`crates/cueloop/src/lock.rs`)
+- Redaction and output safety (`crates/cueloop/src/redaction/mod.rs`)
 
 ### 5) macOS App Bridge
 
