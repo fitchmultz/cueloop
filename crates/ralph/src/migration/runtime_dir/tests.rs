@@ -108,7 +108,7 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     write_minimal_legacy_runtime(temp.path())?;
     fs::write(
         temp.path().join(".gitignore"),
-        ".ralph/logs/\n.ralph/workspaces/\n.ralph/trust.jsonc\n.ralph/cache/\n",
+        ".ralph/logs/\n.ralph/workspaces/\n.ralph/trust.jsonc\n.ralph/trust.json\n.ralph/cache/\n.ralph/undo/\n.ralph/webhooks/\n",
     )?;
     fs::create_dir_all(temp.path().join(".ralph/cache"))?;
     history::save_migration_history(temp.path(), &history::MigrationHistory::default())?;
@@ -132,7 +132,10 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     assert!(gitignore.contains(".cueloop/logs/"));
     assert!(gitignore.contains(".cueloop/workspaces/"));
     assert!(gitignore.contains(".cueloop/trust.jsonc"));
+    assert!(gitignore.contains(".cueloop/trust.json"));
     assert!(gitignore.contains(".cueloop/cache/"));
+    assert!(gitignore.contains(".cueloop/undo/"));
+    assert!(gitignore.contains(".cueloop/webhooks/"));
     assert!(!gitignore.contains(".ralph/"));
 
     let loaded = history::load_migration_history(temp.path())?;

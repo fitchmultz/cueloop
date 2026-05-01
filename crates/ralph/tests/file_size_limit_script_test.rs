@@ -219,11 +219,12 @@ fn check_file_size_limits_ignores_default_generated_path_excludes() {
 }
 
 #[test]
-fn check_file_size_limits_ignores_default_ralph_bookkeeping_excludes() {
+fn check_file_size_limits_ignores_default_runtime_bookkeeping_excludes() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
     write_lines(&repo_path.join(".ralph/done.jsonc"), 1500);
+    write_lines(&repo_path.join(".cueloop/done.jsonc"), 1500);
 
     let output = run_check_script(repo_path, &[]);
     let (stdout, stderr) = output_text(&output);
@@ -231,11 +232,15 @@ fn check_file_size_limits_ignores_default_ralph_bookkeeping_excludes() {
     assert_eq!(
         output.status.code(),
         Some(0),
-        "excluded Ralph bookkeeping path should not fail policy\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "excluded runtime bookkeeping paths should not fail policy\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
         !stdout.contains(".ralph/done.jsonc"),
-        "excluded bookkeeping path should not be listed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "excluded legacy bookkeeping path should not be listed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        !stdout.contains(".cueloop/done.jsonc"),
+        "excluded CueLoop bookkeeping path should not be listed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 }
 

@@ -43,6 +43,13 @@ INCLUDE_BASENAMES = {"AGENTS.md", "Makefile"}
 DEFAULT_EXCLUDE_GLOBS = (
     ".git/**",
     "target/**",
+    ".cueloop/done.jsonc",
+    ".cueloop/queue.jsonc",
+    ".cueloop/config.jsonc",
+    ".cueloop/cache/**",
+    ".cueloop/workspaces/**",
+    ".cueloop/lock/**",
+    ".cueloop/logs/**",
     ".ralph/done.jsonc",
     ".ralph/queue.jsonc",
     ".ralph/config.jsonc",

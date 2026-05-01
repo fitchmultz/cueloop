@@ -59,8 +59,13 @@ const KNOWN_GITIGNORE_RUNTIME_ENTRIES: &[&str] = &[
     ".ralph/workspaces/",
     ".ralph/workspaces",
     ".ralph/trust.jsonc",
+    ".ralph/trust.json",
     ".ralph/cache/",
     ".ralph/cache",
+    ".ralph/undo/",
+    ".ralph/undo",
+    ".ralph/webhooks/",
+    ".ralph/webhooks",
     ".ralph/lock/",
     ".ralph/lock",
 ];
