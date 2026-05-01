@@ -2,10 +2,10 @@
  VersionValidator
 
  Purpose:
- - Parse and validate semantic version strings from the ralph CLI.
+ - Parse and validate semantic version strings from the CueLoop CLI.
 
  Responsibilities:
- - Parse and validate semantic version strings from the ralph CLI.
+ - Parse and validate semantic version strings from the CueLoop CLI.
  - Compare versions against a supported range.
  - Provide clear error messages for version mismatches.
 
@@ -47,7 +47,7 @@ public struct VersionValidator: Sendable, Equatable {
         }
         
         public init?(from string: String) {
-            // Parse version strings like "0.1.0", "ralph 0.1.0", "v0.1.0"
+            // Parse version strings like "0.1.0", "cueloop 0.1.0", "ralph 0.1.0", "v0.1.0"
             let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
             
             // Extract version number pattern (X.Y.Z)
@@ -103,17 +103,17 @@ public struct VersionValidator: Sendable, Equatable {
             case .compatible:
                 return nil
             case .tooOld(let found, let minimum):
-                return "Ralph CLI version \(found.description) is too old. Minimum supported version is \(minimum.description)."
+                return "CueLoop CLI version \(found.description) is too old. Minimum supported version is \(minimum.description)."
             case .tooNew(let found, let maximum):
-                return "Ralph CLI version \(found.description) is newer than supported. Maximum tested version is \(maximum.description)."
+                return "CueLoop CLI version \(found.description) is newer than supported. Maximum tested version is \(maximum.description)."
             case .unparsable(let raw):
-                return "Unable to parse Ralph CLI version from: '\(raw)'"
+                return "Unable to parse CueLoop CLI version from: '\(raw)'"
             }
         }
         
         public var guidanceMessage: String? {
             guard !isCompatible else { return nil }
-            return "Please reinstall Ralph to ensure the CLI and app versions match. The bundled CLI should be in RalphMac.app/Contents/MacOS/ralph"
+            return "Please reinstall CueLoop to ensure the CLI and app versions match. The bundled CLI should be in RalphMac.app/Contents/MacOS/cueloop"
         }
     }
     

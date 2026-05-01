@@ -32,6 +32,7 @@
 		2A8D4CCD7E76823C47CE55D4 /* WorkspaceManager+AppDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B59F7F19FEAA7840EE5B3D /* WorkspaceManager+AppDefaults.swift */; };
 		3845DDDEE8480D652D4F18BF /* ElapsedTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B900514A511EC3E3539F2AA /* ElapsedTimeView.swift */; };
 		3A50AB4D19664FC7A750A366 /* RalphCLIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7496516A44544D58A079C2B6 /* RalphCLIClientTests.swift */; };
+		C0E100000000000000000001 /* RalphCLIExecutableLocatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E000000000000000000001 /* RalphCLIExecutableLocatorTests.swift */; };
 		3A50AB4D19664FC7A750A367 /* NavigationViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7496516A44544D58A079C2B7 /* NavigationViewModelTests.swift */; };
 		3BCD64DD1FD0B5B8CCFD9875 /* CrashReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A24E80C16889B4FDE88205DC /* CrashReporter.swift */; };
 		3CD97ED5492F1998861E643B /* WorkspaceManager+Routing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F41DB5F428B9C899D2DC3B6 /* WorkspaceManager+Routing.swift */; };
@@ -393,6 +394,7 @@
 		7100D4A32B0E1C4AA77D7093 /* TaskDetailEditorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailEditorState.swift; sourceTree = "<group>"; };
 		72D2DCA20E21A3DD0D8E2D7D /* RunControlDetailSections+TaskStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "RunControlDetailSections+TaskStatus.swift"; sourceTree = "<group>"; };
 		7496516A44544D58A079C2B6 /* RalphCLIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIClientTests.swift; sourceTree = "<group>"; };
+		C0E000000000000000000001 /* RalphCLIExecutableLocatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RalphCLIExecutableLocatorTests.swift; sourceTree = "<group>"; };
 		7496516A44544D58A079C2B7 /* NavigationViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationViewModelTests.swift; sourceTree = "<group>"; };
 		777A75CD59CE21353DC20516 /* MenuBarContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
 		77F3126530AB785086AAF51A /* RetryHelperTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RetryHelperTests.swift; sourceTree = "<group>"; };
@@ -739,6 +741,7 @@
 				C2F100000000000000000019 /* ANSIParserControlAndStreamTests.swift */,
 				C2F10000000000000000001A /* ANSIParserEdgeCaseTests.swift */,
 				7496516A44544D58A079C2B6 /* RalphCLIClientTests.swift */,
+				C0E000000000000000000001 /* RalphCLIExecutableLocatorTests.swift */,
 				7496516A44544D58A079C2B7 /* NavigationViewModelTests.swift */,
 				34FD8AC4252040E88FB002F9 /* RalphModelsTests.swift */,
 				F1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift */,
@@ -1024,7 +1027,7 @@
 				6684C2A63A9C4B44B5154781 /* Resources */,
 				0BA70083EF404A3A97703616 /* Frameworks */,
 				8EBDEB3EA80A4DEABC0FC877 /* Embed Frameworks */,
-				32D95DBB511E4ABDA6EFD0C2 /* Build and Bundle ralph */,
+				32D95DBB511E4ABDA6EFD0C2 /* Build and Bundle CueLoop CLI */,
 			);
 			buildRules = (
 			);
@@ -1123,7 +1126,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		32D95DBB511E4ABDA6EFD0C2 /* Build and Bundle ralph */ = {
+		32D95DBB511E4ABDA6EFD0C2 /* Build and Bundle CueLoop CLI */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -1138,10 +1141,11 @@
 				"$(SRCROOT)/../../rust-toolchain.toml",
 				"$(SRCROOT)/../../scripts/ralph-cli-bundle.sh",
 			);
-			name = "Build and Bundle ralph";
+			name = "Build and Bundle CueLoop CLI";
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_FOLDER_PATH)/cueloop",
 				"$(BUILT_PRODUCTS_DIR)/$(EXECUTABLE_FOLDER_PATH)/ralph",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1250,6 +1254,7 @@
 				C2F200000000000000000005 /* WorkspacePerformanceTestCase.swift in Sources */,
 				C2F200000000000000000006 /* WorkspacePerformanceTestSupport.swift in Sources */,
 				3A50AB4D19664FC7A750A366 /* RalphCLIClientTests.swift in Sources */,
+				C0E100000000000000000001 /* RalphCLIExecutableLocatorTests.swift in Sources */,
 				3A50AB4D19664FC7A750A367 /* NavigationViewModelTests.swift in Sources */,
 				4531CFF0D6FF4741BB54C467 /* RalphModelsTests.swift in Sources */,
 				E1E2D3C4B5A6978899AABBCC /* ConfigModelsTests.swift in Sources */,
