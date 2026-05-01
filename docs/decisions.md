@@ -37,7 +37,7 @@ Owner: Maintainers
 
 Context: Ralph is a source-built CLI and macOS app project whose local development, release builds, schema generation, and app bundling all run through the pinned rustup toolchain. The system global stable toolchain moved to Rust `1.95.0`, but the repository still pinned `1.94.1`, which masked the global update and caused release-note research to start from the wrong baseline.
 
-Chosen option: Bump `rust-toolchain.toml` to Rust `1.95.0` and bump `crates/ralph/Cargo.toml` `rust-version` to `1.95` in the same cutover.
+Chosen option: Bump `rust-toolchain.toml` to Rust `1.95.0` and bump `crates/cueloop/Cargo.toml` `rust-version` to `1.95` in the same cutover.
 
 Rejected options: Keep `rust-version = "1.94"` as a lower consumer MSRV while validating contributors and releases only on Rust `1.95.0`; remove the repo-local toolchain override and rely on each contributor's global stable; teach release-version sync scripts to also mutate Rust baseline metadata.
 
@@ -137,7 +137,7 @@ Review date, if any: None.
 ## 2026-04-26: Track RalphMac parity by scenario-level proof
 
 Decision: Treat scenario-level proof entries in
-[crates/ralph/src/cli/app_parity.rs](../crates/ralph/src/cli/app_parity.rs) as
+[crates/cueloop/src/cli/app_parity.rs](../crates/cueloop/src/cli/app_parity.rs) as
 the authoritative RalphMac parity signal, while keeping root-command coverage
 only as a secondary structural guard.
 

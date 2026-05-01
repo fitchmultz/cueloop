@@ -157,7 +157,7 @@ rustup update stable
 make rust-toolchain-drift-check
 ```
 
-If the drift check fails, compare the evidence it prints: global stable is newer than the repo-pinned channel, while commands inside the repository still use `rust-toolchain.toml`. Intentional adoption requires updating `rust-toolchain.toml` and `crates/ralph/Cargo.toml` `rust-version` together, then running `make agent-ci` and the release/public gates for the change surface.
+If the drift check fails, compare the evidence it prints: global stable is newer than the repo-pinned channel, while commands inside the repository still use `rust-toolchain.toml`. Intentional adoption requires updating `rust-toolchain.toml` and `crates/cueloop/Cargo.toml` `rust-version` together, then running `make agent-ci` and the release/public gates for the change surface.
 
 Use `make macos-ui-retest` for interactive iteration. Use `make macos-test-ui-artifacts` when you need a preserved `.xcresult` bundle plus `summary.txt` under a timestamped artifact directory.
 

@@ -26,7 +26,7 @@ surface over the Rust CLI and versioned `ralph machine ...` JSON contracts.
   recovery actions, keyboard access, and clear labels.
 - If a CLI feature changes, update the machine contract, RalphCore decoding,
   native SwiftUI surface, tests, and docs together or record the explicit block
-  in the parity registry (`../crates/ralph/src/cli/app_parity.rs`).
+  in the parity registry (`../crates/cueloop/src/cli/app_parity.rs`).
 
 ## Security Boundaries
 

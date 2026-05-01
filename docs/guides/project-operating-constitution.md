@@ -87,7 +87,7 @@ second project-management system.
 - Configuration: [docs/configuration.md](../configuration.md)
 - CLI reference: [docs/cli.md](../cli.md)
 - Machine/app contract: [docs/machine-contract.md](../machine-contract.md)
-- CLI/app parity registry: [`crates/ralph/src/cli/app_parity.rs`](../../crates/ralph/src/cli/app_parity.rs)
+- CLI/app parity registry: [`crates/cueloop/src/cli/app_parity.rs`](../../crates/cueloop/src/cli/app_parity.rs)
 - Validation gates: [docs/guides/ci-strategy.md](ci-strategy.md)
 - Release and cutover: [docs/guides/release-runbook.md](release-runbook.md)
 - Public readiness: [docs/guides/public-readiness.md](public-readiness.md)

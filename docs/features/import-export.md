@@ -72,7 +72,7 @@ ralph queue export --status todo --status doing
 ralph queue export --tag rust --tag cli
 
 # Filter by scope token (repeatable, substring match)
-ralph queue export --scope "crates/ralph"
+ralph queue export --scope "crates/cueloop"
 
 # Filter by ID pattern (substring match)
 ralph queue export --id_pattern "RQ-000"

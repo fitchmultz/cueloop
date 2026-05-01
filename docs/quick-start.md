@@ -10,7 +10,7 @@ Get Ralph running in a repository in a few minutes.
 ## 1) Install
 
 ```bash
-cargo install ralph-agent-loop
+cargo install cueloop-agent-loop
 ```
 
 This installs the `ralph` executable.

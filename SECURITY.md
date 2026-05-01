@@ -100,7 +100,7 @@ rm -rf .ralph/logs/
 Security updates are provided for the latest released version of Ralph. Users should keep their installation up to date:
 
 ```bash
-cargo install ralph-agent-loop --force
+cargo install cueloop-agent-loop --force
 ```
 
 ## Security Best Practices
@@ -116,8 +116,8 @@ cargo install ralph-agent-loop --force
 
 Redaction logic is implemented in:
 
-- `crates/ralph/src/redaction/mod.rs`: Facade for core redaction patterns and `RedactedString`/`RedactedLogger` helpers.
-- `crates/ralph/src/fsutil.rs`: Safeguard dump functions with redaction by default.
-- `crates/ralph/src/debuglog.rs`: Debug logging for raw runner output.
+- `crates/cueloop/src/redaction/mod.rs`: Facade for core redaction patterns and `RedactedString`/`RedactedLogger` helpers.
+- `crates/cueloop/src/fsutil.rs`: Safeguard dump functions with redaction by default.
+- `crates/cueloop/src/debuglog.rs`: Debug logging for raw runner output.
 
 For questions about security practices, use GitHub private vulnerability reporting when available, or contact the maintainer via <https://github.com/mitchfultz>.

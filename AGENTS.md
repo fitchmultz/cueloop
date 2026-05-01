@@ -28,8 +28,8 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 | Local verification guide | `docs/guides/local-smoke-test.md` |
 | Public audit automation | `scripts/pre-public-check.sh` |
 | GitHub Actions (single allowed workflow) | `.github/workflows/cursor-finish-line-ready.yml` — not canonical CI; see below |
-| Core source | `crates/ralph/src/` |
-| Tests | `crates/ralph/tests/` |
+| Core source | `crates/cueloop/src/` |
+| Tests | `crates/cueloop/tests/` |
 | macOS app | `apps/RalphMac/` |
 
 ---
@@ -263,12 +263,12 @@ Derived summary; `docs/configuration.md` is the configuration source of truth.
 
 ### Testing
 - Unit tests: `#[cfg(test)]` colocated
-- Integration: `crates/ralph/tests/`
+- Integration: `crates/cueloop/tests/`
 - Init tests: Always use `--non-interactive` flag
 - CI temp dirs: `${TMPDIR:-/tmp}/ralph-ci.*` (set `RALPH_CI_KEEP_TMP=1` to keep)
 - Prefer deterministic waits/signals over `sleep` in tests; inject logical time or use condition-style helpers when coordination matters.
 - Portable absolute test paths should come from temp-root helpers (`std::env::temp_dir()` / test-support builders), never hardcoded `/tmp` literals.
-- Rust integration support should stay split into focused `crates/ralph/tests/test_support_*` modules with `test_support.rs` as a thin re-export surface only.
+- Rust integration support should stay split into focused `crates/cueloop/tests/test_support_*` modules with `test_support.rs` as a thin re-export surface only.
 - macOS test fixtures should use `RalphCoreTestSupport` for temp workspaces, readiness polling, and cleanup assertions; do not add per-file sleep/poll helpers.
 - SwiftUI previews that need workspace URLs should derive them from `PreviewWorkspaceSupport`, not hardcoded temp paths.
 - Test cleanup must fail loudly: avoid `try?` for fixture setup/teardown in tests unless the assertion explicitly expects cleanup best-effort behavior.
@@ -295,7 +295,7 @@ Derived operational summary; `docs/releasing.md`, `docs/guides/release-runbook.m
 - crates.io is the final irreversible cutover: execute/reconcile must push `main`, push `v<version>`, and prepare/upload a GitHub draft release before `cargo publish`, then publish the GitHub release immediately after crates.io succeeds.
 - Canonical CLI build orchestration lives in `scripts/ralph-cli-bundle.sh` for Makefile/Xcode/release-artifact consumers; prefer extending that entrypoint over adding new direct Cargo build paths.
 - `scripts/versioning.sh sync` also refreshes `Cargo.lock`; treat lockfile drift as a release/versioning failure, not incidental noise.
-- `scripts/release.sh` is expected to sync `VERSION`, `Cargo.lock`, `crates/ralph/Cargo.toml`, `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`, and `apps/RalphMac/RalphCore/VersionValidator.swift` together.
+- `scripts/release.sh` is expected to sync `VERSION`, `Cargo.lock`, `crates/cueloop/Cargo.toml`, `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`, and `apps/RalphMac/RalphCore/VersionValidator.swift` together.
 - Make targets automatically prefer the rustup-managed toolchain pinned by `rust-toolchain.toml` when available; use the same pinned toolchain explicitly for direct script invocations if your shell resolves an older Homebrew `rustc`.
 - `make rust-toolchain-check` is part of routine `deps`/`agent-ci`; `make release-gate` adds `rust-toolchain-drift-check` to compare the repo override against global rustup stable before release/public windows.
 - `make release-verify` intentionally leaves release metadata dirty in the working tree until `make release` turns that snapshot into the release commit; that drift includes the committed JSON schemas under `schemas/` produced by `make generate` (`schemas/config.schema.json`, `schemas/queue.schema.json`, `schemas/machine.schema.json`), as enumerated in `scripts/lib/release_policy.sh` (`RELEASE_METADATA_PATHS`).

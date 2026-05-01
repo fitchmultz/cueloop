@@ -56,16 +56,16 @@ During development, you can use these commands for rapid iteration:
 
 ```bash
 # Run tests for the ralph crate
-cargo test -p ralph-agent-loop
+cargo test -p cueloop-agent-loop
 
 # Run the CLI locally
-cargo run -p ralph-agent-loop -- <command>
+cargo run -p cueloop-agent-loop -- <command>
 
 # Validate the queue format
-cargo run -p ralph-agent-loop -- queue validate
+cargo run -p cueloop-agent-loop -- queue validate
 
 # List queue contents
-cargo run -p ralph-agent-loop -- queue list
+cargo run -p cueloop-agent-loop -- queue list
 
 # Generate rustdocs for API review
 make docs
@@ -184,7 +184,7 @@ All new or changed behavior must be covered by tests:
 - **Success modes**: Normal operation paths
 - **Failure modes**: Error handling and edge cases
 - **Location**: Prefer tests near the code via `#[cfg(test)]`
-- **Integration tests**: Use `crates/ralph/tests/` for cross-module behavior
+- **Integration tests**: Use `crates/cueloop/tests/` for cross-module behavior
 
 Example:
 
@@ -193,7 +193,7 @@ Example:
 make test
 
 # Run tests for just the ralph crate
-cargo test -p ralph-agent-loop
+cargo test -p cueloop-agent-loop
 ```
 
 ### Code Coverage
@@ -242,11 +242,11 @@ For troubleshooting coverage issues, see [Troubleshooting](docs/troubleshooting.
 ### Integration Testing (CLI)
 
 Ralph's CLI is a user-facing contract. For cross-module behaviors (argument parsing → filesystem IO → queue mutation → output),
-prefer integration tests in `crates/ralph/tests/`.
+prefer integration tests in `crates/cueloop/tests/`.
 
 #### Pattern: Isolated temp repo + CLI invocation
 
-Use `crates/ralph/tests/test_support.rs` helpers to avoid repeating boilerplate:
+Use `crates/cueloop/tests/test_support.rs` helpers to avoid repeating boilerplate:
 
 - `temp_dir_outside_repo()` to isolate state
 - `git_init(dir)` and `ralph_init(dir)` to create a valid repo
@@ -276,10 +276,10 @@ date strings with `<DATE>` to prevent daily churn.
 To update snapshots after an intentional output change:
 
 ```bash
-INSTA_UPDATE=always cargo test -p ralph-agent-loop
+INSTA_UPDATE=always cargo test -p cueloop-agent-loop
 ```
 
-Commit the updated snapshot files under `crates/ralph/tests/snapshots/`.
+Commit the updated snapshot files under `crates/cueloop/tests/snapshots/`.
 
 #### Isolation / flake prevention
 
@@ -298,7 +298,7 @@ User-facing commands and flags MUST have `--help` text with examples. Keep `docs
 Verify help text before committing:
 
 ```bash
-cargo run -p ralph-agent-loop -- <command> --help
+cargo run -p cueloop-agent-loop -- <command> --help
 ```
 
 ## Submitting Changes
@@ -375,7 +375,7 @@ make macos-ci
 Key locations to know:
 
 - `apps/RalphMac/`: macOS SwiftUI app (thin client that shells out to the bundled `ralph` CLI)
-- `crates/ralph/`: Primary Rust CLI crate
+- `crates/cueloop/`: Primary Rust CLI crate
   - `src/`: CLI commands, runner integration, queue management
   - `assets/prompts/`: Embedded prompt templates
 - `docs/`: CLI + workflow + configuration docs (`docs/index.md` is the entry point)

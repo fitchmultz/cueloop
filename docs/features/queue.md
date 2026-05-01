@@ -380,7 +380,7 @@ ralph queue export --format gh  # GitHub issue format
 
 # Filter exports
 ralph queue export --tag rust --tag cli
-ralph queue export --status todo --scope crates/ralph
+ralph queue export --status todo --scope crates/cueloop
 ralph queue export --include-archive  # Include done.json
 ```
 

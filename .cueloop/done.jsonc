@@ -15,22 +15,22 @@
       ],
       "scope": [
         "AGENTS.md",
-        "crates/ralph/src/runutil/shell/wait.rs",
-        "crates/ralph/src/runner/execution/process/wait.rs",
-        "crates/ralph/src/runutil/execution/orchestration/core.rs",
-        "crates/ralph/src/commands/daemon/mod.rs",
-        "crates/ralph/src/commands/daemon/start.rs",
-        "crates/ralph/src/commands/daemon/stop.rs",
-        "crates/ralph/src/commands/daemon/logs.rs",
-        "crates/ralph/src/runutil/",
-        "crates/ralph/tests/",
+        "crates/cueloop/src/runutil/shell/wait.rs",
+        "crates/cueloop/src/runner/execution/process/wait.rs",
+        "crates/cueloop/src/runutil/execution/orchestration/core.rs",
+        "crates/cueloop/src/commands/daemon/mod.rs",
+        "crates/cueloop/src/commands/daemon/start.rs",
+        "crates/cueloop/src/commands/daemon/stop.rs",
+        "crates/cueloop/src/commands/daemon/logs.rs",
+        "crates/cueloop/src/runutil/",
+        "crates/cueloop/tests/",
         "cargo test"
       ],
       "evidence": [
         "Repo guidance in AGENTS.md says managed subprocess and runner wait paths should prefer centralized, event-driven waiters over fixed `try_wait` polling loops.",
-        "`crates/ralph/src/runutil/shell/wait.rs` and `crates/ralph/src/runner/execution/process/wait.rs` both still implement child waiting with `try_wait()` plus `std::thread::sleep(...)`, duplicating timeout and interrupt behavior in two places.",
-        "`crates/ralph/src/runutil/execution/orchestration/core.rs` falls back to raw `std::thread::sleep(delay)` when `ctrlc_state()` is unavailable, bypassing the shared cancellation-aware sleep helper used elsewhere.",
-        "`crates/ralph/src/commands/daemon/mod.rs` waits for daemon readiness by polling `.ralph/cache/daemon.json`, and related daemon paths still rely on fixed sleeps for lifecycle coordination."
+        "`crates/cueloop/src/runutil/shell/wait.rs` and `crates/cueloop/src/runner/execution/process/wait.rs` both still implement child waiting with `try_wait()` plus `std::thread::sleep(...)`, duplicating timeout and interrupt behavior in two places.",
+        "`crates/cueloop/src/runutil/execution/orchestration/core.rs` falls back to raw `std::thread::sleep(delay)` when `ctrlc_state()` is unavailable, bypassing the shared cancellation-aware sleep helper used elsewhere.",
+        "`crates/cueloop/src/commands/daemon/mod.rs` waits for daemon readiness by polling `.ralph/cache/daemon.json`, and related daemon paths still rely on fixed sleeps for lifecycle coordination."
       ],
       "plan": [
         "Design one shared wait abstraction for managed subprocesses and runner child processes so timeout, SIGINT-before-SIGKILL, and cross-platform behavior are implemented once instead of duplicated polling loops.",
@@ -68,10 +68,10 @@
       "scope": [
         "docs/machine-contract.md",
         "schemas/machine.schema.json",
-        "crates/ralph/src/contracts/machine.rs",
-        "crates/ralph/src/contracts/task/types.rs",
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/src/cli/machine/queue.rs",
+        "crates/cueloop/src/contracts/machine.rs",
+        "crates/cueloop/src/contracts/task/types.rs",
+        "crates/cueloop/src/cli/machine/run.rs",
+        "crates/cueloop/src/cli/machine/queue.rs",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController.swift",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift",
@@ -89,7 +89,7 @@
         "apps/RalphMac/RalphCore/Workspace+HealthAndCaching.swift",
         "apps/RalphMac/RalphCore/GraphModels.swift",
         "apps/RalphMac/RalphCoreTests/",
-        "crates/ralph/tests/"
+        "crates/cueloop/tests/"
       ],
       "evidence": [
         "docs/machine-contract.md still documents `machine run parallel-status` as `version: 2`, but Rust emits `MACHINE_PARALLEL_STATUS_VERSION = 3`, Rust tests assert version 3, and RalphMac already hard-codes supported version 3.",
@@ -97,7 +97,7 @@
         "`WorkspaceRunnerController+MachineOutput.swift` maps any unknown blocking `reason.kind` through the default `.mixedQueue(...)` branch, so unsupported machine payloads are silently misreported instead of failing fast with a contract/version error.",
         "`WorkspaceDiagnosticsService.swift` infers queue-lock state by English substring matching against `ralph queue unlock --dry-run` human output (`queue is not locked`, `process status: running`, `process status: not running`), while repo guidance requires machine/app integrations to consume versioned machine recovery documents rather than human CLI text.",
         "`Workspace+QueueLoading.swift` still decides whether to fall back from `machine workspace overview` by matching English stderr such as `unrecognized subcommand`, `unexpected argument`, `unknown command`, `usage:`, and empty-exit-code heuristics instead of a structured machine capability/version signal.",
-        "`RalphTaskModels.swift` is not a full mirror of Rust `Task`: Swift omits fields present in `crates/ralph/src/contracts/task/types.rs` including `scheduled_start`, `duplicates`, and `parent_id`; cached offline tasks in `Workspace+HealthAndCaching.swift` are serialized through that lossy model, so fields can be dropped on round-trip and app-side derived models can drift from Rust.",
+        "`RalphTaskModels.swift` is not a full mirror of Rust `Task`: Swift omits fields present in `crates/cueloop/src/contracts/task/types.rs` including `scheduled_start`, `duplicates`, and `parent_id`; cached offline tasks in `Workspace+HealthAndCaching.swift` are serialized through that lossy model, so fields can be dropped on round-trip and app-side derived models can drift from Rust.",
         "Graph and machine wrapper models are duplicated and loosely coupled across `GraphModels.swift`, `RalphTaskModels.swift`, `ConfigModels.swift`, `WorkspaceTaskMutationModels.swift`, and `DecompositionModels.swift`, increasing drift risk because app decoders are spread across multiple partial copies instead of one shared contract layer.",
         "Rust machine tests already assert the newer parallel-status version and continuation semantics, but there is no equivalent RalphMac fail-fast coverage proving unsupported versions, unknown blocking kinds, or lossy task-cache round trips are rejected rather than silently coerced."
       ],
@@ -150,8 +150,8 @@
         "docs/decisions.md",
         "docs/roadmap.md",
         "docs/queue-and-tasks.md",
-        "crates/ralph/src/",
-        "crates/ralph/tests/",
+        "crates/cueloop/src/",
+        "crates/cueloop/tests/",
         "apps/RalphMac/",
         ".ralph/queue.jsonc",
         ".ralph/cache/followups/RQ-0003.json",
@@ -160,15 +160,15 @@
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
-        "AGENTS.md identifies Ralph as a Rust CLI with architecture docs in `docs/index.md`, core source in `crates/ralph/src/`, tests in `crates/ralph/tests/`, and a macOS app in `apps/RalphMac/`.",
+        "AGENTS.md identifies Ralph as a Rust CLI with architecture docs in `docs/index.md`, core source in `crates/cueloop/src/`, tests in `crates/cueloop/tests/`, and a macOS app in `apps/RalphMac/`.",
         "AGENTS.md says roadmap items should be chunky and dependency-aware, and queue-shaping work should prefer follow-up tasks over tiny fragmented tickets.",
         "`.ralph/README.md` defines `.ralph/queue.jsonc` as the source of truth for active work.",
         "`docs/queue-and-tasks.md:114-156` defines the canonical audit/scan follow-up flow via `.ralph/cache/followups/<TASK_ID>.json` plus `ralph task followups apply`, so remediation tasks should be proposed through that path rather than hand-edited into the queue.",
         "`docs/index.md:20`, `docs/guides/project-operating-constitution.md:79-94`, and `docs/roadmap.md:8-18` currently disagree with lived work: the roadmap is still a 2026-04-01 single-item file-splitting list while the active queue is already driving a broader audit/remediation effort.",
         "`docs/guides/project-operating-constitution.md:62-63` and `:121` require important decisions to be recorded, but `docs/decisions.md` still contains only the constitution-adoption entry while README documents project-level policy such as safe-default init, app noninteractive runs, and `make agent-ci` as the everyday gate.",
-        "`crates/ralph/src/commands/run/parallel/args.rs:19-20`, `:26-130`, and `:266-340` show parallel worker argv strings duplicated by hand with tests that snapshot literals rather than parser round-tripping against the real CLI.",
-        "`crates/ralph/src/contracts/machine.rs:34-45` centralizes many machine document versions in one file, but coverage in `crates/ralph/tests/machine_contract_test.rs` and adjacent tests is uneven across graph/dashboard/decompose/CLI-spec/run-summary surfaces.",
-        "`crates/ralph/src/commands/task/mod.rs:48-273` and `crates/ralph/src/commands/daemon/mod.rs:71-213` still behave like mixed-responsibility command hubs instead of thin facades, increasing cross-cutting edit risk.",
+        "`crates/cueloop/src/commands/run/parallel/args.rs:19-20`, `:26-130`, and `:266-340` show parallel worker argv strings duplicated by hand with tests that snapshot literals rather than parser round-tripping against the real CLI.",
+        "`crates/cueloop/src/contracts/machine.rs:34-45` centralizes many machine document versions in one file, but coverage in `crates/cueloop/tests/machine_contract_test.rs` and adjacent tests is uneven across graph/dashboard/decompose/CLI-spec/run-summary surfaces.",
+        "`crates/cueloop/src/commands/task/mod.rs:48-273` and `crates/cueloop/src/commands/daemon/mod.rs:71-213` still behave like mixed-responsibility command hubs instead of thin facades, increasing cross-cutting edit risk.",
         "`apps/RalphMac/RalphCore/MachineContract.swift:26-45`, `apps/RalphMac/RalphCore/Workspace+CLISpec.swift:156-182`, and `apps/RalphMac/RalphCore/RalphCLIArgumentBuilder.swift:31-107` duplicate CLI/app contract and argv rules across multiple app surfaces.",
         "`apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift:57-260` and the remainder of that 618-line file mix view composition, operator-state precedence, diagnostics orchestration, and run actions, while UI coverage remains shallow for those controls."
       ],
@@ -213,19 +213,19 @@
         "runtime"
       ],
       "scope": [
-        "crates/ralph/src/webhook/worker/runtime/state.rs",
-        "crates/ralph/src/webhook/worker/runtime/dispatcher.rs",
-        "crates/ralph/src/webhook/worker/runtime/",
-        "crates/ralph/src/contracts/config/webhook.rs",
-        "crates/ralph/src/config/validation/",
-        "crates/ralph/src/webhook/tests/",
-        "cargo test -p ralph-agent-loop webhook"
+        "crates/cueloop/src/webhook/worker/runtime/state.rs",
+        "crates/cueloop/src/webhook/worker/runtime/dispatcher.rs",
+        "crates/cueloop/src/webhook/worker/runtime/",
+        "crates/cueloop/src/contracts/config/webhook.rs",
+        "crates/cueloop/src/config/validation/",
+        "crates/cueloop/src/webhook/tests/",
+        "cargo test -p cueloop-agent-loop webhook"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
-        "crates/ralph/src/webhook/worker/runtime/state.rs:72-105 permanently short-circuits dispatcher creation once `disabled_reason` is set after a startup failure.",
-        "crates/ralph/src/webhook/worker/runtime/dispatcher.rs:48-121 spawns worker and scheduler threads during startup, while lines 124-131 only log during `Drop` and do not coordinate teardown.",
-        "crates/ralph/src/contracts/config/webhook.rs:119-140 documents numeric bounds for timeout, retries, backoff, queue capacity, and parallel multiplier, but lines 218-237 only validate enablement and URL safety.",
+        "crates/cueloop/src/webhook/worker/runtime/state.rs:72-105 permanently short-circuits dispatcher creation once `disabled_reason` is set after a startup failure.",
+        "crates/cueloop/src/webhook/worker/runtime/dispatcher.rs:48-121 spawns worker and scheduler threads during startup, while lines 124-131 only log during `Drop` and do not coordinate teardown.",
+        "crates/cueloop/src/contracts/config/webhook.rs:119-140 documents numeric bounds for timeout, retries, backoff, queue capacity, and parallel multiplier, but lines 218-237 only validate enablement and URL safety.",
         "The operability audit also flagged inconsistent runtime handling of webhook settings and late shutdown/noise risk in the retry scheduler path."
       ],
       "plan": [
@@ -260,18 +260,18 @@
         "refactor"
       ],
       "scope": [
-        "crates/ralph/src/commands/task/mod.rs",
-        "crates/ralph/src/commands/task/decompose/",
-        "crates/ralph/src/queue/operations/followups.rs",
-        "crates/ralph/src/queue/operations/",
-        "cargo test -p ralph-agent-loop task",
-        "cargo test -p ralph-agent-loop queue"
+        "crates/cueloop/src/commands/task/mod.rs",
+        "crates/cueloop/src/commands/task/decompose/",
+        "crates/cueloop/src/queue/operations/followups.rs",
+        "crates/cueloop/src/queue/operations/",
+        "cargo test -p cueloop-agent-loop task",
+        "cargo test -p cueloop-agent-loop queue"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
-        "crates/ralph/src/commands/task/mod.rs:1-27 and 48-205 show the facade carrying helper docs, shared option types, runner-setting resolution, request parsing, and other cross-cutting task command responsibilities.",
-        "crates/ralph/src/queue/operations/followups.rs:132-268 and 305-332 allocate follow-up IDs, materialize tasks, pick insertion points, and validate queue writes.",
-        "crates/ralph/src/commands/task/decompose/support.rs:83-189 and 364-389 separately allocate sequential IDs, materialize tasks, and choose queue insertion positions for decomposition output."
+        "crates/cueloop/src/commands/task/mod.rs:1-27 and 48-205 show the facade carrying helper docs, shared option types, runner-setting resolution, request parsing, and other cross-cutting task command responsibilities.",
+        "crates/cueloop/src/queue/operations/followups.rs:132-268 and 305-332 allocate follow-up IDs, materialize tasks, pick insertion points, and validate queue writes.",
+        "crates/cueloop/src/commands/task/decompose/support.rs:83-189 and 364-389 separately allocate sequential IDs, materialize tasks, and choose queue insertion positions for decomposition output."
       ],
       "plan": [
         "Map the current task-creation/write flows across task build/update, follow-up proposal apply, and decomposition so the canonical shared responsibilities are explicit.",
@@ -307,22 +307,22 @@
         "ci"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs",
-        "crates/ralph/src/session/decision.rs",
-        "crates/ralph/src/commands/doctor/runner.rs",
-        "crates/ralph/src/config/validation/ci_gate.rs",
-        "crates/ralph/src/runutil/ci_gate.rs",
-        "crates/ralph/src/webhook/worker/delivery.rs",
-        "crates/ralph/src/session/tests.rs",
-        "crates/ralph/tests/doctor_contract_test/",
-        "cargo test -p ralph-agent-loop parallel",
-        "cargo test -p ralph-agent-loop session",
-        "cargo test -p ralph-agent-loop doctor"
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs",
+        "crates/cueloop/src/session/decision.rs",
+        "crates/cueloop/src/commands/doctor/runner.rs",
+        "crates/cueloop/src/config/validation/ci_gate.rs",
+        "crates/cueloop/src/runutil/ci_gate.rs",
+        "crates/cueloop/src/webhook/worker/delivery.rs",
+        "crates/cueloop/src/session/tests.rs",
+        "crates/cueloop/tests/doctor_contract_test/",
+        "cargo test -p cueloop-agent-loop parallel",
+        "cargo test -p cueloop-agent-loop session",
+        "cargo test -p cueloop-agent-loop doctor"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs:89-174 owns worker completion, blocked-push retention, workspace cleanup, state persistence, and best-effort branch refresh, but the testing audit found only narrower nearby coverage.",
-        "crates/ralph/src/session/decision.rs:152-164, 244-259, 324-341, and 349-353 contain resume/fresh-session branches whose cache-mutation semantics differ between preview and execute modes.",
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs:89-174 owns worker completion, blocked-push retention, workspace cleanup, state persistence, and best-effort branch refresh, but the testing audit found only narrower nearby coverage.",
+        "crates/cueloop/src/session/decision.rs:152-164, 244-259, 324-341, and 349-353 contain resume/fresh-session branches whose cache-mutation semantics differ between preview and execute modes.",
         "The testing audit flagged thinner contract coverage around doctor trust and instruction-file reporting, CI gate shell-launcher parity, and webhook delivery failure paths.",
         "These are operator-visible contracts whose regressions would affect parallel execution, resume safety, blocking diagnostics, or CI gate enforcement."
       ],
@@ -359,17 +359,17 @@
         "machine"
       ],
       "scope": [
-        "crates/ralph/tests/machine_contract_test.rs",
-        "crates/ralph/tests/release_integration_contract_test.rs",
-        "crates/ralph/tests/release_integration_contract_test/",
-        "crates/ralph/tests/test_support/",
-        "cargo test -p ralph-agent-loop machine_contract_test",
-        "cargo test -p ralph-agent-loop release_integration_contract_test"
+        "crates/cueloop/tests/machine_contract_test.rs",
+        "crates/cueloop/tests/release_integration_contract_test.rs",
+        "crates/cueloop/tests/release_integration_contract_test/",
+        "crates/cueloop/tests/test_support/",
+        "cargo test -p cueloop-agent-loop machine_contract_test",
+        "cargo test -p cueloop-agent-loop release_integration_contract_test"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
-        "crates/ralph/tests/machine_contract_test.rs is 608 lines and already mixes queue, task mutation, recovery, parallel-status, and run-start contract coverage.",
-        "crates/ralph/tests/release_integration_contract_test/pre_public_check_contracts_early.rs is 993 lines, well beyond the repo's preferred small-file target.",
+        "crates/cueloop/tests/machine_contract_test.rs is 608 lines and already mixes queue, task mutation, recovery, parallel-status, and run-start contract coverage.",
+        "crates/cueloop/tests/release_integration_contract_test/pre_public_check_contracts_early.rs is 993 lines, well beyond the repo's preferred small-file target.",
         "The architecture audit called out `machine_contract_test.rs` as a monolithic contract suite that repeats repo bootstrap, JSON request assembly, command execution, and response assertions."
       ],
       "plan": [
@@ -407,8 +407,8 @@
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift",
         "apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift",
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/tests/machine_contract_test/"
+        "crates/cueloop/src/cli/machine/run.rs",
+        "crates/cueloop/tests/machine_contract_test/"
       ],
       "evidence": [
         "`apps/RalphMac/RalphCore/WorkspaceRunnerController.swift` resolves a task ID in the app before invoking `machine run one --id <id>`.",
@@ -449,17 +449,17 @@
         "ux"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/src/commands/run/run_loop/orchestration.rs",
-        "crates/ralph/src/contracts/blocking.rs",
-        "crates/ralph/tests/machine_contract_test/",
+        "crates/cueloop/src/cli/machine/run.rs",
+        "crates/cueloop/src/commands/run/run_loop/orchestration.rs",
+        "crates/cueloop/src/contracts/blocking.rs",
+        "crates/cueloop/tests/machine_contract_test/",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift",
         "apps/RalphMac/RalphCoreTests/WorkspaceRunStateResumeBlockingTests.swift",
         "docs/machine-contract.md"
       ],
       "evidence": [
-        "`crates/ralph/src/cli/machine/run.rs` emits a hardcoded loop terminal summary with `outcome: \"completed\"` and `blocking: None` after `run_loop(...)` succeeds.",
-        "`crates/ralph/src/commands/run/run_loop/orchestration.rs` returns `Ok(())` for no initial todo tasks, no runnable candidates, and blocked tasks when not waiting.",
+        "`crates/cueloop/src/cli/machine/run.rs` emits a hardcoded loop terminal summary with `outcome: \"completed\"` and `blocking: None` after `run_loop(...)` succeeds.",
+        "`crates/cueloop/src/commands/run/run_loop/orchestration.rs` returns `Ok(())` for no initial todo tasks, no runnable candidates, and blocked tasks when not waiting.",
         "`apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift` clears live blocking when a terminal run summary has no blocking payload.",
         "Live probe on an empty initialized repo emitted `run_started`, `resume_decision`, then `{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"completed\"}` while stderr said `No todo tasks found.`"
       ],
@@ -500,9 +500,9 @@
         "blocking"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/src/main.rs",
-        "crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs",
+        "crates/cueloop/src/cli/machine/run.rs",
+        "crates/cueloop/src/main.rs",
+        "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift",
         "apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift",
@@ -510,14 +510,14 @@
         "docs/machine-contract.md"
       ],
       "evidence": [
-        "`crates/ralph/src/cli/machine/run.rs` already routes `run_loop(...)` through `emit_loop_run_summary`, but the loop branch emits `run_started` before `agent::resolve_run_agent_overrides(&args.agent)?`, leaving a post-stream-start failure path that bypasses the terminal summary helper entirely.",
-        "`emit_loop_run_summary` plus `crates/ralph/src/main.rs` already define the desired in-stream failure shape for `run_loop` errors: terminal `MachineRunSummaryDocument` on stdout, then `machine_error` on stderr when the command exits non-zero.",
-        "`crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs` covers idle, blocked, parallel, and resume-refusal loop summaries, but it does not assert that a failure after machine output begins still ends with a terminal summary on stdout.",
+        "`crates/cueloop/src/cli/machine/run.rs` already routes `run_loop(...)` through `emit_loop_run_summary`, but the loop branch emits `run_started` before `agent::resolve_run_agent_overrides(&args.agent)?`, leaving a post-stream-start failure path that bypasses the terminal summary helper entirely.",
+        "`emit_loop_run_summary` plus `crates/cueloop/src/main.rs` already define the desired in-stream failure shape for `run_loop` errors: terminal `MachineRunSummaryDocument` on stdout, then `machine_error` on stderr when the command exits non-zero.",
+        "`crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs` covers idle, blocked, parallel, and resume-refusal loop summaries, but it does not assert that a failure after machine output begins still ends with a terminal summary on stdout.",
         "`apps/RalphMac/RalphCore/WorkspaceRunnerController+MachineOutput.swift` applies summaries mainly to `task_id` and `blocking`, while `WorkspaceRunnerController+Execution.swift` finalizes failures from process exit state; existing app tests cover successful loops and launch failures, not summary-driven loop failures after machine mode starts."
       ],
       "plan": [
         "Move or wrap every fallible `machine run loop` step so failures before the first machine event stay startup-only `machine_error`s, while failures after `run_started` always flow through one terminal summary path.",
-        "Refactor the loop branch in `crates/ralph/src/cli/machine/run.rs` to share explicit result-to-summary behavior for recoverable runtime failures, including `failed` versus `stalled` classification and any canonical blocking payload.",
+        "Refactor the loop branch in `crates/cueloop/src/cli/machine/run.rs` to share explicit result-to-summary behavior for recoverable runtime failures, including `failed` versus `stalled` classification and any canonical blocking payload.",
         "Add Rust machine-contract coverage for a loop failure after machine mode starts and assert that the final stdout line remains the versioned run summary even when the process exits non-zero.",
         "Document the startup-versus-in-stream failure contract for `ralph machine run loop` in `docs/machine-contract.md`.",
         "Update RalphMac-side tests and any necessary summary handling so native loop failure state is driven by machine documents instead of inferred from raw stderr or exit code alone."
@@ -560,16 +560,16 @@
         "ux"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/args.rs",
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/cli/machine/handle.rs",
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/src/cli/queue/stop.rs",
-        "crates/ralph/src/contracts/machine.rs",
-        "crates/ralph/src/contracts/mod.rs",
-        "crates/ralph/src/signal.rs",
-        "crates/ralph/src/cli/tests.rs",
-        "crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs",
+        "crates/cueloop/src/cli/machine/args.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
+        "crates/cueloop/src/cli/machine/handle.rs",
+        "crates/cueloop/src/cli/machine/run.rs",
+        "crates/cueloop/src/cli/queue/stop.rs",
+        "crates/cueloop/src/contracts/machine.rs",
+        "crates/cueloop/src/contracts/mod.rs",
+        "crates/cueloop/src/signal.rs",
+        "crates/cueloop/src/cli/tests.rs",
+        "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs",
         "apps/RalphMac/RalphCore/MachineContract.swift",
         "apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift",
         "apps/RalphMac/RalphCore/WorkspaceTaskMutationModels.swift",
@@ -583,7 +583,7 @@
         "`apps/RalphMac/RalphCore/WorkspaceRunnerController+Execution.swift` uses `scheduleLoopStopSignalRequest()` to launch human `ralph queue stop`, pre-prints a success line, streams raw stdout/stderr, and fabricates warning prose on failure.",
         "`apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift` currently codifies the human-path behavior by asserting that `queue stop` is invoked for Stop After Current.",
         "`docs/machine-contract.md` groups live operator/run state under `ralph machine run ...`, while `docs/features/app.md` says native workflows should consume versioned machine JSON instead of human CLI text.",
-        "`crates/ralph/src/cli/queue/stop.rs` and `crates/ralph/src/signal.rs` already implement the stop-marker write path, so the machine change should wrap the same stop signal behavior with a typed contract rather than invent a second stop mechanism."
+        "`crates/cueloop/src/cli/queue/stop.rs` and `crates/cueloop/src/signal.rs` already implement the stop-marker write path, so the machine change should wrap the same stop signal behavior with a typed contract rather than invent a second stop mechanism."
       ],
       "plan": [
         "Add a dedicated `ralph machine run stop` command that reuses the existing stop-marker implementation and returns a versioned success document instead of human CLI output.",
@@ -641,23 +641,23 @@
         "apps/RalphMac/RalphCore/RalphCLISpecModels.swift",
         "apps/RalphMac/RalphCore/MachineContract.swift",
         "apps/RalphMac/RalphCoreTests/RalphMockCLITestSupport.swift",
-        "crates/ralph/src/commands/runner/capabilities.rs",
-        "crates/ralph/src/commands/runner/list.rs",
-        "crates/ralph/src/contracts/machine.rs",
-        "crates/ralph/src/cli/machine/",
-        "crates/ralph/src/agent/args.rs",
-        "crates/ralph/src/plugins/registry.rs",
+        "crates/cueloop/src/commands/runner/capabilities.rs",
+        "crates/cueloop/src/commands/runner/list.rs",
+        "crates/cueloop/src/contracts/machine.rs",
+        "crates/cueloop/src/cli/machine/",
+        "crates/cueloop/src/agent/args.rs",
+        "crates/cueloop/src/plugins/registry.rs",
         "apps/RalphMac/RalphCoreTests/",
         "docs/machine-contract.md",
         "docs/features/app.md"
       ],
       "evidence": [
         "`apps/RalphMac/RalphMac/TaskExecutionOverrideSupport.swift` hardcodes built-in runner ids and effort options, and both task-level and per-phase pickers render directly from those arrays.",
-        "`apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift` limits loop workers to `Auto` plus `2...8` even though `WorkspaceRunnerController` forwards any override value and `crates/ralph/src/cli/machine/args.rs` accepts `--parallel` values from `2` through `u8::MAX` with `default_missing_value = 2`.",
-        "`ralph machine cli-spec` already exposes arg shape, but `--runner` and `--effort` are raw `String` clap args in `crates/ralph/src/agent/args.rs`, so the machine spec emits empty `possible_values` and does not expose a structured runner or effort menu.",
+        "`apps/RalphMac/RalphMac/RunControlDetailSections+Configuration.swift` limits loop workers to `Auto` plus `2...8` even though `WorkspaceRunnerController` forwards any override value and `crates/cueloop/src/cli/machine/args.rs` accepts `--parallel` values from `2` through `u8::MAX` with `default_missing_value = 2`.",
+        "`ralph machine cli-spec` already exposes arg shape, but `--runner` and `--effort` are raw `String` clap args in `crates/cueloop/src/agent/args.rs`, so the machine spec emits empty `possible_values` and does not expose a structured runner or effort menu.",
         "`ralph machine config resolve` already returns the resolved config and trust/safety state, but `WorkspaceRunnerController.applyConfigResolveDocument` drops resolved `agent.runner` and `agent.reasoning_effort`, and the current machine contract does not include execution-control affordances for native pickers.",
-        "`crates/ralph/src/commands/runner/capabilities.rs` contains per-runner feature data, but it is not machine-visible and its current `Runner::Plugin(_)` fallback borrows Claude metadata instead of describing actual plugin runners.",
-        "`crates/ralph/src/commands/runner/list.rs` is still built-in-only, so the app has no machine-visible way to enumerate trusted plugin runners for native override controls."
+        "`crates/cueloop/src/commands/runner/capabilities.rs` contains per-runner feature data, but it is not machine-visible and its current `Runner::Plugin(_)` fallback borrows Claude metadata instead of describing actual plugin runners.",
+        "`crates/cueloop/src/commands/runner/list.rs` is still built-in-only, so the app has no machine-visible way to enumerate trusted plugin runners for native override controls."
       ],
       "plan": [
         "Extend the existing machine config contract so `ralph machine config resolve` carries execution-control metadata for native UI: available runners, runner feature flags, effort options, and the parallel worker numeric contract.",
@@ -854,22 +854,22 @@
         "docs/features/session-management.md",
         "docs/machine-contract.md",
         "apps/RalphMac/RalphCore/Workspace+Decompose.swift",
-        "crates/ralph/src/contracts/machine.rs",
+        "crates/cueloop/src/contracts/machine.rs",
         "scripts/lib/public_readiness_scan.sh",
         "scripts/lib/public_readiness_scan.py",
-        "crates/ralph/tests/release_integration_contract_test/"
+        "crates/cueloop/tests/release_integration_contract_test/"
       ],
       "evidence": [
         "`docs/features/app.md` still says the app calls `ralph task decompose --format json`, but `apps/RalphMac/RalphCore/Workspace+Decompose.swift` shells out to `ralph machine task decompose` for both preview and write flows.",
-        "`docs/features/session-management.md` still shows a `resume_decision` machine run event with `\"version\":2`, but `docs/machine-contract.md` and `crates/ralph/src/contracts/machine.rs` define machine run events at version 3.",
-        "That same session-management page also shows `ralph machine config resolve` output with `\"version\": 3`, while `crates/ralph/src/contracts/machine.rs` and `docs/machine-contract.md` define `machine config resolve` at version 4.",
+        "`docs/features/session-management.md` still shows a `resume_decision` machine run event with `\"version\":2`, but `docs/machine-contract.md` and `crates/cueloop/src/contracts/machine.rs` define machine run events at version 3.",
+        "That same session-management page also shows `ralph machine config resolve` output with `\"version\": 3`, while `crates/cueloop/src/contracts/machine.rs` and `docs/machine-contract.md` define `machine config resolve` at version 4.",
         "`scripts/lib/public_readiness_scan.py` currently guards markdown links and stale `.ralph/cache/session.json` references, but it does not yet catch stale machine-command or machine-event-version snippets in docs.",
         "Leaving the stale snippets in place teaches future RalphMac and automation work to target older human-facing or outdated contract surfaces instead of the current machine API."
       ],
       "plan": [
         "Update `docs/features/app.md` so the decomposition section and app/CLI integration guidance explicitly point contributors at `ralph machine task decompose` and other machine-contract-backed native flows.",
         "Update `docs/features/session-management.md` so the `machine config resolve` example and the `machine run` event example match the current contract versions and payload shapes used by the machine API.",
-        "Cross-check `docs/machine-contract.md` against `crates/ralph/src/contracts/machine.rs` for nearby command-name or version drift in the touched session-management and app-facing sections, then fix any stale examples found in-scope.",
+        "Cross-check `docs/machine-contract.md` against `crates/cueloop/src/contracts/machine.rs` for nearby command-name or version drift in the touched session-management and app-facing sections, then fix any stale examples found in-scope.",
         "Extend the existing public-readiness docs scan path (`scripts/lib/public_readiness_scan.sh` / `.py`) with a lightweight stale-snippet guard for the known bad command/version patterns instead of adding a new workflow.",
         "Add or update focused regression coverage for that docs scan so stale machine-command or machine-event-version snippets fail locally before future drift lands.",
         "In Phase 2, run the docs-relevant local validation for the changed surfaces rather than the full repo CI gate."
@@ -911,9 +911,9 @@
         "run-control"
       ],
       "scope": [
-        "crates/ralph/src/cli/app_parity.rs",
-        "crates/ralph/src/cli/tests.rs",
-        "crates/ralph/tests/machine_contract_test/",
+        "crates/cueloop/src/cli/app_parity.rs",
+        "crates/cueloop/src/cli/tests.rs",
+        "crates/cueloop/tests/machine_contract_test/",
         "apps/RalphMac/RalphCoreTests/",
         "apps/RalphMac/RalphCore/Workspace+RunnerState.swift",
         "docs/features/app.md",
@@ -921,10 +921,10 @@
         "docs/decisions.md"
       ],
       "evidence": [
-        "`crates/ralph/src/cli/app_parity.rs` currently registers top-level command families with a single freeform `tests` string, and `crates/ralph/src/cli/tests.rs` only enforces that every human root command is classified.",
+        "`crates/cueloop/src/cli/app_parity.rs` currently registers top-level command families with a single freeform `tests` string, and `crates/cueloop/src/cli/tests.rs` only enforces that every human root command is classified.",
         "`docs/machine-contract.md` and `/tmp/ralph-report.md` identify scenario-level drift the coarse registry cannot prove: loop summaries must preserve `no_candidates`/`blocked`/`stalled`/`failed`, Stop After Current must use `ralph machine run stop`, continuation documents must carry actionable `next_steps`, and parallel/custom-path behavior must stay machine-backed.",
         "`docs/features/app.md` already says execution controls should come from `ralph machine config resolve.execution_controls`, Stop After Current should avoid human `queue stop` parsing, and continuation cards should prefer structured native actions; parity tracking does not currently assert those expectations against Rust and RalphMac tests.",
-        "Existing tests already cover pieces of these flows, including `crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs`, `crates/ralph/tests/machine_contract_test/machine_contract_test_parallel.rs`, `apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift`, `WorkspaceParallelRunControlTests.swift`, `WorkspaceRunStateResumeBlockingTests.swift`, `WorkspaceDiagnosticsServiceTests.swift`, and `MachineContractTests.swift`, but the parity source does not point to them scenario-by-scenario."
+        "Existing tests already cover pieces of these flows, including `crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs`, `crates/cueloop/tests/machine_contract_test/machine_contract_test_parallel.rs`, `apps/RalphMac/RalphCoreTests/WorkspaceRunCancelAndLoopTests.swift`, `WorkspaceParallelRunControlTests.swift`, `WorkspaceRunStateResumeBlockingTests.swift`, `WorkspaceDiagnosticsServiceTests.swift`, and `MachineContractTests.swift`, but the parity source does not point to them scenario-by-scenario."
       ],
       "plan": [
         "Replace the command-family-only registry with a scenario-level parity source that models the user-visible cases called out in the audit: empty loop queue, blocked loop queue, loop runner failure after `run_started`, Stop After Current, custom queue-path workspace load, plugin runner/native override visibility, configured parallel workers above the current menu default, and continuation next-step actions.",
@@ -1398,7 +1398,7 @@
         "Makefile",
         "scripts/",
         "docs/guides/ci-strategy.md",
-        "crates/ralph/tests/"
+        "crates/cueloop/tests/"
       ],
       "evidence": [
         "path: AGENTS.md:257-260 :: File Size Limits :: target/soft/hard limits are explicit",
@@ -1482,12 +1482,12 @@
         "app-parity"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/cli/machine/handle.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
+        "crates/cueloop/src/cli/machine/handle.rs",
         "docs/machine-contract.md"
       ],
       "evidence": [
-        "path: crates/ralph/src/cli/machine/common.rs:204-206 :: `build_resume_preview` uses `crate::queue::load_queue(&resolved.queue_path)?`",
+        "path: crates/cueloop/src/cli/machine/common.rs:204-206 :: `build_resume_preview` uses `crate::queue::load_queue(&resolved.queue_path)?`",
         "repro: temp repo with `.ralph/config.jsonc` and trust file but no queue file, run `/tmp/ralph-scan-target/debug/ralph machine config resolve` :: expected config/paths document with optional or absent resume preview :: actual exit 1 with machine_error code `queue_corrupted` and message `No Ralph queue file found.`",
         "path: docs/machine-contract.md:62-79 :: `machine config resolve` documents resolved paths/config with optional `resume_preview`"
       ],
@@ -1522,12 +1522,12 @@
         "safety"
       ],
       "scope": [
-        "crates/ralph/src/cli/queue/mod.rs",
-        "crates/ralph/src/sanity/**",
+        "crates/cueloop/src/cli/queue/mod.rs",
+        "crates/cueloop/src/sanity/**",
         "/tmp/ralph-scan-target/debug/ralph queue validate"
       ],
       "evidence": [
-        "path: crates/ralph/src/cli/queue/mod.rs:127 :: QueueCommand::Validate long help declares \"This command is read-only.\"",
+        "path: crates/cueloop/src/cli/queue/mod.rs:127 :: QueueCommand::Validate long help declares \"This command is read-only.\"",
         "repro: create temp repo with only `.ralph/queue.jsonc` and `.ralph/done.jsonc`, run `/tmp/ralph-scan-target/debug/ralph queue validate` :: expected no filesystem mutation :: actual `.ralph/README.md` is created (`before: done+queue`, `after: README+done+queue`)",
         "workflow: /tmp/ralph-scan-target/debug/ralph queue validate :: stderr logs `sanity::readme ... Created README at version 7` while command exits 0"
       ],
@@ -1562,13 +1562,13 @@
         "error-handling"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/error.rs",
-        "crates/ralph/src/config/validation/trust.rs"
+        "crates/cueloop/src/cli/machine/error.rs",
+        "crates/cueloop/src/config/validation/trust.rs"
       ],
       "evidence": [
         "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve in an untrusted repo with project `agent.codex_bin` override :: observed machine stderr JSON `code: parse_error` while detail is trust-policy message (`Project config defines execution-sensitive settings ... repo is not trusted`).",
-        "path: crates/ralph/src/cli/machine/error.rs:118-126 :: parse/decode/json catch-all classification executes for trust message text that includes JSON snippet.",
-        "path: crates/ralph/src/config/validation/trust.rs:26 :: canonical trust violation message identifies project config incompatibility, not parse failure"
+        "path: crates/cueloop/src/cli/machine/error.rs:118-126 :: parse/decode/json catch-all classification executes for trust message text that includes JSON snippet.",
+        "path: crates/cueloop/src/config/validation/trust.rs:26 :: canonical trust violation message identifies project config incompatibility, not parse failure"
       ],
       "plan": [
         "Add trust-specific and config-trust pattern classification ahead of generic parse/decode/json buckets.",
@@ -1601,12 +1601,12 @@
         "app-parity"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/cli/machine/queue.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
+        "crates/cueloop/src/cli/machine/queue.rs",
         "docs/machine-contract.md"
       ],
       "evidence": [
-        "path: crates/ralph/src/cli/machine/common.rs:84-103 :: `build_queue_read_document` loads queue/done and computes runnability without queue validation.",
+        "path: crates/cueloop/src/cli/machine/common.rs:84-103 :: `build_queue_read_document` loads queue/done and computes runnability without queue validation.",
         "repro: temp queue with task missing `created_at`, run `/tmp/ralph-scan-target/debug/ralph queue validate` and `/tmp/ralph-scan-target/debug/ralph machine queue read` :: expected queue-read state to reflect invalid/stalled continuation :: actual validate exits 1 (`Missing created_at`) while machine queue read exits 0 and returns `next_runnable_task_id: RQ-0001`",
         "path: docs/machine-contract.md:206 :: `runnability.summary.blocking` is documented as queue/read source of truth for operator blocking state"
       ],
@@ -1680,12 +1680,12 @@
         "operability"
       ],
       "scope": [
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/contracts/machine.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
+        "crates/cueloop/src/contracts/machine.rs",
         "docs/machine-contract.md"
       ],
       "evidence": [
-        "path: crates/ralph/src/cli/machine/common.rs:137-171 :: plugin-registry load error path logs warning and returns built-in runner list only.",
+        "path: crates/cueloop/src/cli/machine/common.rs:137-171 :: plugin-registry load error path logs warning and returns built-in runner list only.",
         "repro: trusted temp repo with malformed `.ralph/plugins/broken.runner/plugin.json`, run `/tmp/ralph-scan-target/debug/ralph machine config resolve` :: expected structured warning in machine JSON :: actual exit 0, stdout runner ids only built-ins, stderr contains plain text warn log.",
         "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve :: successful machine stdout currently has no field carrying plugin-registry degradation reason."
       ],
@@ -1868,23 +1868,23 @@
         "gitignore"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/parallel/integration/bookkeeping.rs",
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs",
-        "crates/ralph/src/commands/run/parallel/sync/mod.rs",
-        "crates/ralph/src/commands/run/parallel/sync/runtime.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/bookkeeping.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/integration/tests.rs",
-        "crates/ralph/src/commands/run/supervision/runtime_tests/parallel_worker.rs",
+        "crates/cueloop/src/commands/run/parallel/integration/bookkeeping.rs",
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/mod.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/runtime.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/bookkeeping.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/integration/tests.rs",
+        "crates/cueloop/src/commands/run/supervision/runtime_tests/parallel_worker.rs",
         "make agent-ci"
       ],
       "evidence": [
         "user report: \"if .ralph/queue.jsonc and .ralph/done.jsonc are git ignored the files do NOT get updated in the source directory during parallel runs which leads to confusion and repeated tasks. these files need to be kept updated even if git ignored during parallel runs.\"",
         "AGENTS.md:176-179 :: worker workspace setup MUST seed queue/done from coordinator-resolved paths so gitignored `.ralph` repos work in parallel mode, and worker bookkeeping restore must keep queue/done paths coherent.",
-        "crates/ralph/src/commands/run/parallel/sync/mod.rs:35-49 :: `sync_ralph_state` promises explicit queue/done seeding so parallel workers work with gitignored `.ralph` setups.",
-        "crates/ralph/src/commands/run/parallel/sync/runtime.rs:95-103 :: `.ralph` runtime-tree sync intentionally skips top-level `queue.jsonc` / `done.jsonc` and resolved queue/done paths, so bookkeeping depends on separate explicit handling.",
-        "crates/ralph/src/commands/run/parallel/integration/bookkeeping.rs:165-200 :: integration restores queue/done from `origin/<target>`, but when a bookkeeping path is not tracked it leaves the workspace copy intact instead of updating the coordinator/source copy.",
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs:177-184 :: coordinator refresh after worker completion is a best-effort branch fast-forward, which does not by itself guarantee gitignored local bookkeeping files are refreshed."
+        "crates/cueloop/src/commands/run/parallel/sync/mod.rs:35-49 :: `sync_ralph_state` promises explicit queue/done seeding so parallel workers work with gitignored `.ralph` setups.",
+        "crates/cueloop/src/commands/run/parallel/sync/runtime.rs:95-103 :: `.ralph` runtime-tree sync intentionally skips top-level `queue.jsonc` / `done.jsonc` and resolved queue/done paths, so bookkeeping depends on separate explicit handling.",
+        "crates/cueloop/src/commands/run/parallel/integration/bookkeeping.rs:165-200 :: integration restores queue/done from `origin/<target>`, but when a bookkeeping path is not tracked it leaves the workspace copy intact instead of updating the coordinator/source copy.",
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs:177-184 :: coordinator refresh after worker completion is a best-effort branch fast-forward, which does not by itself guarantee gitignored local bookkeeping files are refreshed."
       ],
       "plan": [
         "Add a focused regression that reproduces the stale-source scenario with gitignored resolved queue/done paths during a parallel worker completion or integration flow.",
@@ -1954,13 +1954,13 @@
       ],
       "scope": [
         "docs/features/session-management.md",
-        "crates/ralph/src/cli/machine/common.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
         "/tmp/ralph-scan-target/debug/ralph machine config resolve"
       ],
       "evidence": [
         "path: docs/features/session-management.md:181-189 :: example lists `reasoning_efforts` as low/medium/high and `parallel_workers.max` as 32.",
         "workflow: /tmp/ralph-scan-target/debug/ralph machine config resolve | jq :: observed `reasoning_efforts=[\"low\",\"medium\",\"high\",\"xhigh\"]` and `parallel_workers.max=255`.",
-        "path: crates/ralph/src/cli/machine/common.rs:174-188 :: `execution_controls` builder includes `xhigh` and sets max workers to `u8::MAX`."
+        "path: crates/cueloop/src/cli/machine/common.rs:174-188 :: `execution_controls` builder includes `xhigh` and sets max workers to `u8::MAX`."
       ],
       "plan": [
         "Update the session-management machine config sample payload to match current machine contract values.",
@@ -2023,7 +2023,7 @@
       "id": "RQ-0044",
       "status": "done",
       "title": "Stop webhook shutdown from flushing delayed retries immediately",
-      "description": "Principles violated: F (fail fast appropriately), G (least astonishment), H (operational hygiene). The webhook retry scheduler currently drains every pending retry into the ready queue when shutdown starts, which bypasses the configured backoff and can block teardown on a bounded send. Why it matters: a retry scheduled far into the future can fire immediately during dispatcher rebuilds or process shutdown, creating surprising retry bursts and slower exits exactly when Ralph is trying to stop cleanly. Minimal fix: treat shutdown as cancellation for pending retries, or persist/reclassify them without re-enqueueing them immediately; do not block scheduler teardown on bounded ready-queue sends. Acceptance criteria: shutdown no longer causes delayed retries to execute early, dispatcher teardown remains bounded, focused scheduler tests cover shutdown cancellation behavior, and `cargo test -p ralph-agent-loop webhook` passes.",
+      "description": "Principles violated: F (fail fast appropriately), G (least astonishment), H (operational hygiene). The webhook retry scheduler currently drains every pending retry into the ready queue when shutdown starts, which bypasses the configured backoff and can block teardown on a bounded send. Why it matters: a retry scheduled far into the future can fire immediately during dispatcher rebuilds or process shutdown, creating surprising retry bursts and slower exits exactly when Ralph is trying to stop cleanly. Minimal fix: treat shutdown as cancellation for pending retries, or persist/reclassify them without re-enqueueing them immediately; do not block scheduler teardown on bounded ready-queue sends. Acceptance criteria: shutdown no longer causes delayed retries to execute early, dispatcher teardown remains bounded, focused scheduler tests cover shutdown cancellation behavior, and `cargo test -p cueloop-agent-loop webhook` passes.",
       "priority": "high",
       "tags": [
         "maintenance",
@@ -2031,20 +2031,20 @@
         "retries"
       ],
       "scope": [
-        "crates/ralph/src/webhook/worker/runtime/scheduler.rs",
-        "crates/ralph/src/webhook/worker/runtime/dispatcher.rs",
-        "cargo test -p ralph-agent-loop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact"
+        "crates/cueloop/src/webhook/worker/runtime/scheduler.rs",
+        "crates/cueloop/src/webhook/worker/runtime/dispatcher.rs",
+        "cargo test -p cueloop-agent-loop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact"
       ],
       "evidence": [
-        "path: crates/ralph/src/webhook/worker/runtime/scheduler.rs:63-90 and 141-181 :: retry_scheduler_loop calls flush_pending_retries on shutdown/disconnect and flush_pending_retries does blocking ready_sender.send(...) for every pending retry",
-        "path: crates/ralph/src/webhook/worker/runtime/dispatcher.rs:191-220 :: WebhookDispatcher::drop joins the scheduler before dropping the ready queue, so teardown waits for the retry drain path",
-        "workflow: cargo test -p ralph-agent-loop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact :: current passing test proves a retry scheduled 60 seconds out is delivered immediately once shutdown begins"
+        "path: crates/cueloop/src/webhook/worker/runtime/scheduler.rs:63-90 and 141-181 :: retry_scheduler_loop calls flush_pending_retries on shutdown/disconnect and flush_pending_retries does blocking ready_sender.send(...) for every pending retry",
+        "path: crates/cueloop/src/webhook/worker/runtime/dispatcher.rs:191-220 :: WebhookDispatcher::drop joins the scheduler before dropping the ready queue, so teardown waits for the retry drain path",
+        "workflow: cargo test -p cueloop-agent-loop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact :: current passing test proves a retry scheduled 60 seconds out is delivered immediately once shutdown begins"
       ],
       "plan": [
         "Replace shutdown-time retry draining with explicit cancellation, persistence, or safe failure accounting that does not enqueue delayed retries early.",
         "Ensure scheduler teardown cannot block indefinitely on bounded ready-queue sends while shutdown is in progress.",
         "Update scheduler tests to assert that pending retries are cancelled or recorded safely rather than executed early during shutdown.",
-        "Verify by running `cargo test -p ralph-agent-loop webhook` and confirming delayed retries are not re-enqueued immediately when dispatcher shutdown starts."
+        "Verify by running `cargo test -p cueloop-agent-loop webhook` and confirming delayed retries are not re-enqueued immediately when dispatcher shutdown starts."
       ],
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
@@ -2070,20 +2070,20 @@
         "bookkeeping"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/supervision/parallel_worker/bookkeeping.rs",
-        "crates/ralph/src/commands/run/supervision/parallel_worker/tests.rs",
-        "cargo test -p ralph-agent-loop parallel"
+        "crates/cueloop/src/commands/run/supervision/parallel_worker/bookkeeping.rs",
+        "crates/cueloop/src/commands/run/supervision/parallel_worker/tests.rs",
+        "cargo test -p cueloop-agent-loop parallel"
       ],
       "evidence": [
-        "path: crates/ralph/src/commands/run/supervision/parallel_worker/bookkeeping.rs:25-50 and 74-80 :: RESTORED_BOOKKEEPING_FILES and PARALLEL_BOOKKEEPING_PATHS hardcode default .ralph queue/done paths instead of resolved queue_path/done_path",
-        "path: crates/ralph/src/commands/run/supervision/parallel_worker/tests.rs:81-154 :: restore_bookkeeping_uses_workspace_paths_when_coordinator_paths_are_overridden only changes coordinator paths while the workspace restore still targets hardcoded .ralph/queue.jsonc and .ralph/done.jsonc",
-        "workflow: cargo test -p ralph-agent-loop parallel :: current suite passes without a regression that exercises custom workspace bookkeeping paths during post-run supervision cleanup"
+        "path: crates/cueloop/src/commands/run/supervision/parallel_worker/bookkeeping.rs:25-50 and 74-80 :: RESTORED_BOOKKEEPING_FILES and PARALLEL_BOOKKEEPING_PATHS hardcode default .ralph queue/done paths instead of resolved queue_path/done_path",
+        "path: crates/cueloop/src/commands/run/supervision/parallel_worker/tests.rs:81-154 :: restore_bookkeeping_uses_workspace_paths_when_coordinator_paths_are_overridden only changes coordinator paths while the workspace restore still targets hardcoded .ralph/queue.jsonc and .ralph/done.jsonc",
+        "workflow: cargo test -p cueloop-agent-loop parallel :: current suite passes without a regression that exercises custom workspace bookkeeping paths during post-run supervision cleanup"
       ],
       "plan": [
         "Replace the hardcoded restore and bookkeeping-dirtiness path lists with resolved queue and done paths mapped into the worker workspace.",
         "Keep generated cache cleanup separate from resolved bookkeeping restoration so custom queue/done paths remain the single source of truth.",
         "Add a targeted supervision regression that uses custom queue and done paths and asserts the real bookkeeping files are restored cleanly.",
-        "Verify by running `cargo test -p ralph-agent-loop parallel` and confirming custom queue/done supervision no longer leaves bookkeeping dirtiness behind."
+        "Verify by running `cargo test -p cueloop-agent-loop parallel` and confirming custom queue/done supervision no longer leaves bookkeeping dirtiness behind."
       ],
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
@@ -2101,7 +2101,7 @@
       "id": "RQ-0043",
       "status": "done",
       "title": "Redact secret-bearing webhook payload fields before persisting failures",
-      "description": "Principles violated: I (security baseline), J (consistency/integrity), H (operational hygiene). Persisted webhook failure records sanitize `destination` and `error` but still clone `msg.payload` verbatim, so operator-supplied notes and other payload text leak into `.ralph/cache/webhooks/failures.json`. Why it matters: rejected-task notes and other webhook payload text can contain tokens, customer data, or raw error material, and the failure store keeps that content on disk for replay and local inspection. Minimal fix: sanitize or omit secret-bearing payload fields before writing `WebhookFailureRecord`, while keeping enough safe metadata for diagnostics and replay selection. Acceptance criteria: a failing-webhook regression proves persisted failure records no longer contain raw secret-bearing `payload.note` or equivalent unsanitized payload text, replay remains functional with the retained safe payload shape, and `cargo test -p ralph-agent-loop webhook` passes.",
+      "description": "Principles violated: I (security baseline), J (consistency/integrity), H (operational hygiene). Persisted webhook failure records sanitize `destination` and `error` but still clone `msg.payload` verbatim, so operator-supplied notes and other payload text leak into `.ralph/cache/webhooks/failures.json`. Why it matters: rejected-task notes and other webhook payload text can contain tokens, customer data, or raw error material, and the failure store keeps that content on disk for replay and local inspection. Minimal fix: sanitize or omit secret-bearing payload fields before writing `WebhookFailureRecord`, while keeping enough safe metadata for diagnostics and replay selection. Acceptance criteria: a failing-webhook regression proves persisted failure records no longer contain raw secret-bearing `payload.note` or equivalent unsanitized payload text, replay remains functional with the retained safe payload shape, and `cargo test -p cueloop-agent-loop webhook` passes.",
       "priority": "high",
       "tags": [
         "maintenance",
@@ -2109,20 +2109,20 @@
         "security"
       ],
       "scope": [
-        "crates/ralph/src/webhook/diagnostics/failure_store.rs",
-        "crates/ralph/src/cli/task/status.rs",
-        "cargo test -p ralph-agent-loop webhook"
+        "crates/cueloop/src/webhook/diagnostics/failure_store.rs",
+        "crates/cueloop/src/cli/task/status.rs",
+        "cargo test -p cueloop-agent-loop webhook"
       ],
       "evidence": [
-        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:98-112 :: persist_failed_delivery_at_path stores payload: msg.payload.clone() after only sanitizing destination and error",
-        "path: crates/ralph/src/cli/task/status.rs:134-149 :: handle_reject forwards operator-supplied reject notes into notify_task_failed",
+        "path: crates/cueloop/src/webhook/diagnostics/failure_store.rs:98-112 :: persist_failed_delivery_at_path stores payload: msg.payload.clone() after only sanitizing destination and error",
+        "path: crates/cueloop/src/cli/task/status.rs:134-149 :: handle_reject forwards operator-supplied reject notes into notify_task_failed",
         "workflow: temp path harness using ralph::webhook::send_webhook_payload with note=token=supersecret :: observed .ralph/cache/webhooks/failures.json persisted payload.note=token=supersecret while destination/error were redacted"
       ],
       "plan": [
         "Sanitize or drop secret-bearing payload fields before persisting WebhookFailureRecord entries instead of cloning the raw payload verbatim.",
         "Preserve only the safe payload metadata needed for replay selection and operator triage, or introduce a separately sanitized persisted payload shape.",
         "Add focused tests covering reject notes and other payload text that contain secret-like substrings.",
-        "Verify by running `cargo test -p ralph-agent-loop webhook` and confirming persisted failure-store records no longer contain raw secret-bearing payload text."
+        "Verify by running `cargo test -p cueloop-agent-loop webhook` and confirming persisted failure-store records no longer contain raw secret-bearing payload text."
       ],
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
@@ -2148,15 +2148,15 @@
         "parallel"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/parallel/orchestration/preflight.rs",
-        "crates/ralph/src/webhook/worker/runtime/state.rs",
-        "crates/ralph/src/webhook/worker/runtime/tests.rs"
+        "crates/cueloop/src/commands/run/parallel/orchestration/preflight.rs",
+        "crates/cueloop/src/webhook/worker/runtime/state.rs",
+        "crates/cueloop/src/webhook/worker/runtime/tests.rs"
       ],
       "evidence": [
-        "path: crates/ralph/src/commands/run/parallel/orchestration/preflight.rs:135-149 :: parallel preflight always calls init_worker_for_parallel before any webhook event is emitted",
-        "path: crates/ralph/src/webhook/worker/runtime/state.rs:78-115 :: dispatcher_for_config_with_factory builds a dispatcher from settings without checking enabled/url first",
-        "path: crates/ralph/src/webhook/worker/runtime/tests.rs:120-127 :: thread_spawn_failure_is_recoverable_on_later_attempt uses WebhookConfig::default() and still expects 5 spawned threads on recovery",
-        "workflow: cargo test -p ralph-agent-loop webhook::worker::runtime::tests::thread_spawn_failure_is_recoverable_on_later_attempt -- --exact :: current passing test proves default webhook config still drives dispatcher startup"
+        "path: crates/cueloop/src/commands/run/parallel/orchestration/preflight.rs:135-149 :: parallel preflight always calls init_worker_for_parallel before any webhook event is emitted",
+        "path: crates/cueloop/src/webhook/worker/runtime/state.rs:78-115 :: dispatcher_for_config_with_factory builds a dispatcher from settings without checking enabled/url first",
+        "path: crates/cueloop/src/webhook/worker/runtime/tests.rs:120-127 :: thread_spawn_failure_is_recoverable_on_later_attempt uses WebhookConfig::default() and still expects 5 spawned threads on recovery",
+        "workflow: cargo test -p cueloop-agent-loop webhook::worker::runtime::tests::thread_spawn_failure_is_recoverable_on_later_attempt -- --exact :: current passing test proves default webhook config still drives dispatcher startup"
       ],
       "plan": [
         "Add an explicit resolved-config gate so disabled or URL-less webhook configs do not start the dispatcher in parallel preflight or runtime lookup paths.",
@@ -2188,16 +2188,16 @@
         "diagnostics"
       ],
       "scope": [
-        "crates/ralph/src/webhook/notifications.rs",
-        "crates/ralph/src/commands/run/context.rs",
-        "crates/ralph/src/cli/task/status.rs",
-        "crates/ralph/src/webhook/diagnostics/failure_store.rs"
+        "crates/cueloop/src/webhook/notifications.rs",
+        "crates/cueloop/src/commands/run/context.rs",
+        "crates/cueloop/src/cli/task/status.rs",
+        "crates/cueloop/src/webhook/diagnostics/failure_store.rs"
       ],
       "evidence": [
-        "path: crates/ralph/src/webhook/notifications.rs:29-49 :: send_webhook constructs payloads with WebhookContext::default() for task-level helpers",
-        "path: crates/ralph/src/commands/run/context.rs:56-74 :: mark_task_doing uses notify_task_started without propagating resolved repo context",
-        "path: crates/ralph/src/cli/task/status.rs:107-150 :: handle_done and handle_reject emit task webhooks without repo context even though resolved data is available",
-        "path: crates/ralph/src/webhook/diagnostics/failure_store.rs:216-229 :: resolve_repo_root_from_runtime falls back to current_dir whenever payload.context.repo_root is absent"
+        "path: crates/cueloop/src/webhook/notifications.rs:29-49 :: send_webhook constructs payloads with WebhookContext::default() for task-level helpers",
+        "path: crates/cueloop/src/commands/run/context.rs:56-74 :: mark_task_doing uses notify_task_started without propagating resolved repo context",
+        "path: crates/cueloop/src/cli/task/status.rs:107-150 :: handle_done and handle_reject emit task webhooks without repo context even though resolved data is available",
+        "path: crates/cueloop/src/webhook/diagnostics/failure_store.rs:216-229 :: resolve_repo_root_from_runtime falls back to current_dir whenever payload.context.repo_root is absent"
       ],
       "plan": [
         "Introduce or reuse task-level webhook helpers that accept explicit WebhookContext and thread resolved repo_root, branch, and other cheap context through existing call sites.",
@@ -2229,14 +2229,14 @@
         "investigate"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs",
-        "crates/ralph/src/commands/run/parallel/sync/mod.rs",
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs::tests"
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/mod.rs",
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs::tests"
       ],
       "evidence": [
-        "path: crates/ralph/src/commands/run/parallel/orchestration/events.rs:115-117 and 180-187 :: successful worker completion only does a best-effort fast-forward refresh before syncing bookkeeping back to source",
-        "path: crates/ralph/src/commands/run/parallel/sync/mod.rs:80-85 and 158-166 :: tracked queue/done files are left to git branch updates and are never mirrored back from the workspace on success",
-        "path: crates/ralph/src/commands/run/parallel/orchestration/events.rs:438-467 :: finished_success_tolerates_branch_refresh_failure proves success is still reported when coordinator refresh fails, but there is no assertion that tracked source bookkeeping stays current"
+        "path: crates/cueloop/src/commands/run/parallel/orchestration/events.rs:115-117 and 180-187 :: successful worker completion only does a best-effort fast-forward refresh before syncing bookkeeping back to source",
+        "path: crates/cueloop/src/commands/run/parallel/sync/mod.rs:80-85 and 158-166 :: tracked queue/done files are left to git branch updates and are never mirrored back from the workspace on success",
+        "path: crates/cueloop/src/commands/run/parallel/orchestration/events.rs:438-467 :: finished_success_tolerates_branch_refresh_failure proves success is still reported when coordinator refresh fails, but there is no assertion that tracked source bookkeeping stays current"
       ],
       "plan": [
         "Build a focused temp-repo repro where queue/done are tracked, worker completion succeeds, and local coordinator refresh is forced to fail.",
@@ -2268,14 +2268,14 @@
         "parallel"
       ],
       "scope": [
-        "crates/ralph/src/git/commit/rebase_push.rs",
-        "crates/ralph/src/git/commit/tests.rs",
-        "cargo test -p ralph-agent-loop git"
+        "crates/cueloop/src/git/commit/rebase_push.rs",
+        "crates/cueloop/src/git/commit/tests.rs",
+        "cargo test -p cueloop-agent-loop git"
       ],
       "evidence": [
-        "path: crates/ralph/src/git/commit/rebase_push.rs:42-60 :: the no-upstream path computes ahead against fallback_upstream and returns Ok(()) when HEAD is not ahead, even before checking whether the branch is behind remote",
+        "path: crates/cueloop/src/git/commit/rebase_push.rs:42-60 :: the no-upstream path computes ahead against fallback_upstream and returns Ok(()) when HEAD is not ahead, even before checking whether the branch is behind remote",
         "workflow: temp path harness calling ralph::git::push_upstream_with_rebase on a no-upstream branch after `git fetch origin ralph/RQ-0940` :: observed RESULT=Ok(()) while `git status --short --branch` still reported `## ralph/RQ-0940...origin/ralph/RQ-0940 [behind 1]`",
-        "path: crates/ralph/src/git/commit/tests.rs:25-90 :: current coverage exercises non-fast-forward recovery and remote-existing upstream setup, but not the behind-without-upstream case"
+        "path: crates/cueloop/src/git/commit/tests.rs:25-90 :: current coverage exercises non-fast-forward recovery and remote-existing upstream setup, but not the behind-without-upstream case"
       ],
       "plan": [
         "Update the no-upstream branch path to distinguish clean synced state from behind-or-diverged fallback-upstream state before returning success.",
@@ -2315,22 +2315,22 @@
         "AGENTS.md",
         ".ralph/queue.jsonc",
         ".ralph/done.jsonc",
-        "crates/ralph/src/commands/run/parallel/orchestration/events.rs",
-        "crates/ralph/src/commands/run/parallel/orchestration/loop_runtime.rs",
-        "crates/ralph/src/commands/run/parallel/sync/mod.rs",
-        "crates/ralph/src/commands/run/parallel/sync/common.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/bookkeeping.rs",
-        "crates/ralph/src/commands/run/parallel/integration/bookkeeping.rs",
-        "crates/ralph/src/commands/run/parallel/integration/tests.rs",
-        "crates/ralph/src/commands/run/parallel/worker.rs",
-        "crates/ralph/src/commands/run/parallel/worker_process.rs",
-        "crates/ralph/src/queue/",
-        "crates/ralph/src/fsutil/atomic.rs",
-        "crates/ralph/src/undo/",
-        "crates/ralph/src/runutil/shell/",
-        "crates/ralph/tests/run_parallel_test/",
-        "crates/ralph/tests/parallel_done_json_safety_test/",
-        "crates/ralph/tests/test_support*",
+        "crates/cueloop/src/commands/run/parallel/orchestration/events.rs",
+        "crates/cueloop/src/commands/run/parallel/orchestration/loop_runtime.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/mod.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/common.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/bookkeeping.rs",
+        "crates/cueloop/src/commands/run/parallel/integration/bookkeeping.rs",
+        "crates/cueloop/src/commands/run/parallel/integration/tests.rs",
+        "crates/cueloop/src/commands/run/parallel/worker.rs",
+        "crates/cueloop/src/commands/run/parallel/worker_process.rs",
+        "crates/cueloop/src/queue/",
+        "crates/cueloop/src/fsutil/atomic.rs",
+        "crates/cueloop/src/undo/",
+        "crates/cueloop/src/runutil/shell/",
+        "crates/cueloop/tests/run_parallel_test/",
+        "crates/cueloop/tests/parallel_done_json_safety_test/",
+        "crates/cueloop/tests/test_support*",
         "ralph run loop --parallel 2",
         "cargo test run_parallel",
         "make agent-ci"
@@ -2341,8 +2341,8 @@
         "Repository guidance says worker workspace setup mirrors repo-local `.ralph/` runtime files recursively except ephemeral `.ralph/{cache,workspaces,logs,lock}/`, and must seed queue/done from coordinator-resolved paths including `.jsonc` and custom paths so gitignored `.ralph` repos work in parallel mode.",
         "Repository guidance says parallel worker post-run bookkeeping restore must target workspace-local `.ralph/{queue.json,queue.jsonc,done.json,done.jsonc,cache/productivity.json}` and fail fast if bookkeeping paths remain dirty after restore.",
         "Because queue/done are gitignored, normal worker commit/push propagation cannot update the coordinator source files; the coordinator must explicitly merge worker terminal results into the current coordinator-resolved queue/done files.",
-        "Code finding: `handle_finished_workers` treats a successful worker by fast-forwarding the coordinator branch and then calling `sync::sync_worker_bookkeeping_back_to_source(resolved, &workspace.path)` in `crates/ralph/src/commands/run/parallel/orchestration/events.rs`; it currently has no task-level coordinator reconciliation step.",
-        "Code finding: `sync_worker_bookkeeping_back_to_source` in `crates/ralph/src/commands/run/parallel/sync/mod.rs` delegates queue and done separately to `sync_worker_bookkeeping_file_back_to_source`; tracked paths return early and untracked/gitignored paths copy the entire worker file over the coordinator file with `common::sync_file_if_exists`.",
+        "Code finding: `handle_finished_workers` treats a successful worker by fast-forwarding the coordinator branch and then calling `sync::sync_worker_bookkeeping_back_to_source(resolved, &workspace.path)` in `crates/cueloop/src/commands/run/parallel/orchestration/events.rs`; it currently has no task-level coordinator reconciliation step.",
+        "Code finding: `sync_worker_bookkeeping_back_to_source` in `crates/cueloop/src/commands/run/parallel/sync/mod.rs` delegates queue and done separately to `sync_worker_bookkeeping_file_back_to_source`; tracked paths return early and untracked/gitignored paths copy the entire worker file over the coordinator file with `common::sync_file_if_exists`.",
         "Code finding: `common::sync_file_if_exists` uses direct `fs::copy`; initial seeding may tolerate this, but coordinator source-of-truth queue/done writeback should use validated `queue::save_queue` / `fsutil::write_atomic` and undo snapshots.",
         "Code finding: worker integration rebuilds bookkeeping from `origin/<target>` only if the path exists in the remote ref; if the path is gitignored/untracked, `restore_bookkeeping_path_from_ref` logs that it is not tracked and leaves the worker local copy intact.",
         "Code finding: `archive_current_task` then archives only the current worker task against that worker-local snapshot and saves the worker-local queue/done. With two workers seeded from the same ignored queue, each worker can contain its own completion plus stale state for the sibling task.",
@@ -2362,9 +2362,9 @@
         "Make processing multiple finished workers order-independent: accumulate successful ignored/untracked worker terminal results for the current drain, validate them, and apply to the current coordinator state; never allow a worker stale queue snapshot to resurrect another completed task or overwrite unrelated done entries.",
         "Use the worker done entry for the assigned task id as authoritative completion metadata after validating it is present exactly once, has `TaskStatus::Done`, and has valid terminal fields. Do not accept worker mutations to unrelated sibling tasks through queue/done sync. Treat successful-worker `rejected` as out of scope unless a separate design is added.",
         "Preserve partial-failure semantics: failed or blocked workers must not mutate coordinator queue/done; successful workers should only be marked completed after branch refresh and bookkeeping reconciliation both succeed. On reconciliation failure, keep guard tracking/state consistent enough for retry and surface a loud error.",
-        "Add tests in `crates/ralph/src/commands/run/parallel/orchestration/events.rs` (or the new reconciliation module tests) for two ignored JSONC workers finishing in either order, missing/invalid worker done entries, duplicate done ids, and split tracked/untracked queue-done policy failure.",
+        "Add tests in `crates/cueloop/src/commands/run/parallel/orchestration/events.rs` (or the new reconciliation module tests) for two ignored JSONC workers finishing in either order, missing/invalid worker done entries, duplicate done ids, and split tracked/untracked queue-done policy failure.",
         "Update stale tests in `sync/tests/bookkeeping.rs` and orchestration tests that currently assert ignored/untracked whole-file copyback as desired behavior so they assert the new policy or are replaced by task-level reconciliation tests.",
-        "Add or strengthen end-to-end/integration coverage in `crates/ralph/tests/parallel_done_json_safety_test.rs` or `crates/ralph/tests/run_parallel_test/`: gitignored `.ralph/queue.jsonc`/`.ralph/done.jsonc`, two runnable tasks, `ralph run loop --parallel 2`, root queue drained for completed tasks, root done contains both completions exactly once, queue validation succeeds, and no conflict markers exist.",
+        "Add or strengthen end-to-end/integration coverage in `crates/cueloop/tests/parallel_done_json_safety_test.rs` or `crates/cueloop/tests/run_parallel_test/`: gitignored `.ralph/queue.jsonc`/`.ralph/done.jsonc`, two runnable tasks, `ralph run loop --parallel 2`, root queue drained for completed tasks, root done contains both completions exactly once, queue validation succeeds, and no conflict markers exist.",
         "Update comments and AGENTS guidance that imply ignored queue/done can be copied wholesale from workers. Document the locked contract: tracked queue/done are git-authoritative; untracked/ignored queue/done are coordinator-authoritative and only accept task-level terminal results from successful workers.",
         "Run focused validation during Phase 2/3: targeted unit tests for the reconciliation helper/orchestration events, `cargo test run_parallel`, relevant queue validation tests, and finally `make agent-ci` before claiming completion."
       ],
@@ -2420,7 +2420,7 @@
       ],
       "scope": [
         "rust-toolchain.toml",
-        "crates/ralph/Cargo.toml",
+        "crates/cueloop/Cargo.toml",
         "Cargo.lock",
         "docs/index.md",
         "docs/guides/stack-audit-2026-03.md",
@@ -2484,18 +2484,18 @@
         "docs/configuration.md",
         "docs/guides/advanced.md",
         "docs/guides/ci-strategy.md",
-        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/orchestration/preflight.rs",
-        "crates/ralph/src/config/",
+        "crates/cueloop/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/orchestration/preflight.rs",
+        "crates/cueloop/src/config/",
         "schemas/config.schema.json",
-        "crates/ralph/tests/run_parallel_test.rs",
+        "crates/cueloop/tests/run_parallel_test.rs",
         "ralph run loop --parallel 2",
         "cargo test run_parallel",
         "make agent-ci"
       ],
       "evidence": [
-        "Current implementation: `crates/ralph/src/commands/run/parallel/sync/gitignored.rs` filters ignored paths down to files whose basename is `.env` or starts with `.env.`; directories, caches, `.ralph/cache`, `.ralph/workspaces`, `.ralph/logs`, `.ralph/lock`, `.git`, `target`, `node_modules`, `.venv`, and similar heavy paths are excluded.",
+        "Current implementation: `crates/cueloop/src/commands/run/parallel/sync/gitignored.rs` filters ignored paths down to files whose basename is `.env` or starts with `.env.`; directories, caches, `.ralph/cache`, `.ralph/workspaces`, `.ralph/logs`, `.ralph/lock`, `.git`, `target`, `node_modules`, `.venv`, and similar heavy paths are excluded.",
         "Current tests: `sync/tests/gitignored.rs` verifies `.env*` copy behavior, nested `.env*` allowance, skipped ignored directories, skipped workspace-parent paths, and skipped cache/build prefixes.",
         "Repository guidance currently says gitignored non-`.ralph` sync remains narrow by design (`.env*` only) to avoid copying heavy build/cache directories.",
         "User direction on 2026-04-27: do not ignore this concern; create a task, investigate it, and agree on direction. User also clarified that copying env files is not a security concern since it remains local.",
@@ -2546,11 +2546,11 @@
         "compatibility"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/",
-        "crates/ralph/src/queue/",
-        "crates/ralph/src/runner/",
-        "crates/ralph/src/runutil/",
-        "crates/ralph/tests/",
+        "crates/cueloop/src/commands/run/",
+        "crates/cueloop/src/queue/",
+        "crates/cueloop/src/runner/",
+        "crates/cueloop/src/runutil/",
+        "crates/cueloop/tests/",
         "cargo check --all-targets --all-features",
         "cargo test"
       ],
@@ -2595,12 +2595,12 @@
         "clippy"
       ],
       "scope": [
-        "crates/ralph/src/lock/acquisition.rs",
-        "crates/ralph/src/webhook/",
-        "crates/ralph/src/runutil/",
-        "crates/ralph/src/runner/",
-        "crates/ralph/src/queue/",
-        "crates/ralph/tests/",
+        "crates/cueloop/src/lock/acquisition.rs",
+        "crates/cueloop/src/webhook/",
+        "crates/cueloop/src/runutil/",
+        "crates/cueloop/src/runner/",
+        "crates/cueloop/src/queue/",
+        "crates/cueloop/tests/",
         "cargo clippy --all-targets --all-features -- -D warnings",
         "cargo test"
       ],
@@ -2610,7 +2610,7 @@
         "Ralph's file-scope standards require clear, simple code; new APIs should be adopted only where they reduce boilerplate or safety risk."
       ],
       "plan": [
-        "Search for insert-then-mutate, push-then-last_mut, fetch_update/compare_exchange loops, cfg-heavy platform branches, and cold error-path helpers across `crates/ralph/src` and tests.",
+        "Search for insert-then-mutate, push-then-last_mut, fetch_update/compare_exchange loops, cfg-heavy platform branches, and cold error-path helpers across `crates/cueloop/src` and tests.",
         "Convert only candidates where Rust 1.95 APIs improve clarity, remove duplicated atomic retry loops, or reduce unsafe/manual initialization surface.",
         "Avoid introducing unchecked pointer APIs unless there is already proven unsafe code that becomes clearer and remains justified.",
         "Add or update targeted regression tests for any behavior touched by refactors and run formatting, clippy, and tests."
@@ -2647,16 +2647,16 @@
         "configuration"
       ],
       "scope": [
-        "crates/ralph/src/cli/init.rs",
-        "crates/ralph/src/commands/init/",
-        "crates/ralph/src/config/trust.rs",
-        "crates/ralph/src/config/resolution.rs",
-        "crates/ralph/src/config/validation/trust.rs",
-        "crates/ralph/src/commands/init/gitignore.rs",
-        "crates/ralph/src/commands/init/wizard.rs",
-        "crates/ralph/src/commands/init/tests.rs",
-        "crates/ralph/src/commands/init/writers/tests.rs",
-        "crates/ralph/src/cli/config.rs",
+        "crates/cueloop/src/cli/init.rs",
+        "crates/cueloop/src/commands/init/",
+        "crates/cueloop/src/config/trust.rs",
+        "crates/cueloop/src/config/resolution.rs",
+        "crates/cueloop/src/config/validation/trust.rs",
+        "crates/cueloop/src/commands/init/gitignore.rs",
+        "crates/cueloop/src/commands/init/wizard.rs",
+        "crates/cueloop/src/commands/init/tests.rs",
+        "crates/cueloop/src/commands/init/writers/tests.rs",
+        "crates/cueloop/src/cli/config.rs",
         "docs/cli.md",
         "docs/configuration.md",
         "docs/quick-start.md",
@@ -2669,9 +2669,9 @@
         "make agent-ci"
       ],
       "evidence": [
-        "Current `ralph init` handler only creates `.ralph/trust.jsonc` when `--trust-project-commands` / visible alias `--trust` is passed (`crates/ralph/src/cli/init.rs`).",
-        "Current config trust command exists as `ralph config trust init` (`crates/ralph/src/cli/config.rs`), but the user reports it is not easy/discoverable enough and wants init to create trust automatically.",
-        "`config::initialize_repo_trust_file` is already idempotent: it creates `.ralph/trust.jsonc` with `allow_project_commands: true` and `trusted_at`, or updates/backfills an existing partial trust file (`crates/ralph/src/config/trust.rs`).",
+        "Current `ralph init` handler only creates `.ralph/trust.jsonc` when `--trust-project-commands` / visible alias `--trust` is passed (`crates/cueloop/src/cli/init.rs`).",
+        "Current config trust command exists as `ralph config trust init` (`crates/cueloop/src/cli/config.rs`), but the user reports it is not easy/discoverable enough and wants init to create trust automatically.",
+        "`config::initialize_repo_trust_file` is already idempotent: it creates `.ralph/trust.jsonc` with `allow_project_commands: true` and `trusted_at`, or updates/backfills an existing partial trust file (`crates/cueloop/src/config/trust.rs`).",
         "Current `ralph init` normally calls `config::resolve_from_cwd()`, but only uses `resolve_from_cwd_skipping_project_execution_trust()` when `--trust-project-commands` is passed. If init is changed to always create trust, init should also avoid failing before trust creation when existing project config contains execution-sensitive settings.",
         "Current `.gitignore` init management ensures `.ralph/logs/` and `.ralph/workspaces/` but does not obviously ensure `.ralph/trust.jsonc` is ignored, even though project guidance says `.ralph/trust.jsonc` must remain untracked.",
         "Current interactive init wizard collects runner/model/phases/first-task choices, but it does not scan ignored files or configure parallel-mode local file sync recommendations.",
@@ -2734,9 +2734,9 @@
       "scope": [
         ".cargo/config.toml",
         "Cargo.toml",
-        "crates/ralph/Cargo.toml",
-        "crates/ralph/src/",
-        "crates/ralph/tests/",
+        "crates/cueloop/Cargo.toml",
+        "crates/cueloop/src/",
+        "crates/cueloop/tests/",
         "scripts/",
         "docs/guides/ci-strategy.md",
         "cargo check --all-targets --all-features",
@@ -2787,7 +2787,7 @@
       ],
       "scope": [
         "Cargo.toml",
-        "crates/ralph/Cargo.toml",
+        "crates/cueloop/Cargo.toml",
         "Cargo.lock",
         "Makefile",
         "scripts/pre-public-check.sh",
@@ -2899,12 +2899,12 @@
         "docs"
       ],
       "scope": [
-        "crates/ralph/assets/prompts/completion_checklist.md",
-        "crates/ralph/assets/prompts/phase2_handoff_checklist.md",
-        "crates/ralph/assets/prompts/iteration_checklist.md",
-        "crates/ralph/assets/prompts/worker_phase3.md",
-        "crates/ralph/assets/prompts/code_review.md",
-        "crates/ralph/src/prompts_internal/tests/review.rs",
+        "crates/cueloop/assets/prompts/completion_checklist.md",
+        "crates/cueloop/assets/prompts/phase2_handoff_checklist.md",
+        "crates/cueloop/assets/prompts/iteration_checklist.md",
+        "crates/cueloop/assets/prompts/worker_phase3.md",
+        "crates/cueloop/assets/prompts/code_review.md",
+        "crates/cueloop/src/prompts_internal/tests/review.rs",
         "docs/features/prompts.md",
         "docs/workflow.md",
         "docs/features/phases.md",
@@ -2917,7 +2917,7 @@
         "The embedded completion checklist currently says \"if the CI gate is disabled\" and \"CI-clean only when the CI gate is enabled,\" which names disabled state but does not explicitly say only validation is skipped and task execution continues.",
         "The phase-2 handoff checklist currently combines \"CI gate is disabled\" and \"no changes were made\" into the same \"state that it was skipped\" sentence, which can blur configuration-disabled validation with no-op validation.",
         "The Phase 3 wrapper, code review body, iteration checklist, prompt docs, workflow docs, phases docs, and configuration docs also describe CI-gate-enabled behavior and should stay semantically aligned with the clarified contract.",
-        "Existing regression coverage in crates/ralph/src/prompts_internal/tests/review.rs asserts the ambiguous phrases directly, so the tests should be updated to assert the clearer wording instead."
+        "Existing regression coverage in crates/cueloop/src/prompts_internal/tests/review.rs asserts the ambiguous phrases directly, so the tests should be updated to assert the clearer wording instead."
       ],
       "plan": [
         "Replace ambiguous checklist language with explicit terminology: disabling agent.ci_gate.enabled disables only the configured validation command/CI requirement; it does not disable Ralph task execution, agent work, Phase 2/Phase 3 progression, queue bookkeeping, or git publish behavior.",
@@ -2925,7 +2925,7 @@
         "Update phase2_handoff_checklist.md so Phase 2 handoff wording separates config-disabled validation from no-change validation, and states that Phase 3 still owns review/refinement/bookkeeping even when the CI command is skipped by configuration.",
         "Sweep adjacent embedded prompts (iteration_checklist.md, worker_phase3.md, code_review.md) for the same conditional CI wording and align them where needed without changing the runtime CI behavior.",
         "Update mirrored docs in docs/features/prompts.md, docs/workflow.md, docs/features/phases.md, and docs/configuration/agent-and-runners.md so operator-facing wording uses the same contract and no doc implies that setting agent.ci_gate.enabled=false disables the run itself.",
-        "Adjust crates/ralph/src/prompts_internal/tests/review.rs regression assertions to require the clarified phrases and to reject the most confusing legacy phrases where practical.",
+        "Adjust crates/cueloop/src/prompts_internal/tests/review.rs regression assertions to require the clarified phrases and to reject the most confusing legacy phrases where practical.",
         "Run focused prompt tests first, then run make agent-ci. Triage any failures before completing Phase 2/3 work."
       ],
       "notes": [
@@ -2964,21 +2964,21 @@
         "bug"
       ],
       "scope": [
-        "crates/ralph/src/runner/execution/stream_buffer.rs",
-        "crates/ralph/src/runner/execution/stream.rs",
-        "crates/ralph/src/runner/execution/stream_reader.rs",
-        "crates/ralph/src/runner/execution/process/mod.rs",
-        "crates/ralph/src/runner/execution/builtin_plugins/pi.rs",
-        "crates/ralph/src/runner/execution/tests/stream.rs",
-        "crates/ralph/src/runner/execution/tests/stream/readers.rs",
+        "crates/cueloop/src/runner/execution/stream_buffer.rs",
+        "crates/cueloop/src/runner/execution/stream.rs",
+        "crates/cueloop/src/runner/execution/stream_reader.rs",
+        "crates/cueloop/src/runner/execution/process/mod.rs",
+        "crates/cueloop/src/runner/execution/builtin_plugins/pi.rs",
+        "crates/cueloop/src/runner/execution/tests/stream.rs",
+        "crates/cueloop/src/runner/execution/tests/stream/readers.rs",
         "make agent-ci"
       ],
       "evidence": [
         "User request: suppress the operator-visible warning seen during pi runner sessions: `[2026-04-28T18:18:14Z WARN  ralph::runner::execution::stream::stream_buffer] Runner output buffer exceeded 10MB limit; truncating older content`.",
-        "`crates/ralph/src/runner/execution/stream_buffer.rs` is the single shared buffer truncation helper. `append_to_buffer(...)` enforces `MAX_BUFFER_SIZE` by preserving the newest text, using UTF-8-safe `floor_char_boundary(...)`, and currently emits the noisy `log::warn!` once per reader via `exceeded_logged`.",
-        "`crates/ralph/src/runner/execution/stream_reader.rs` routes both raw stderr (`spawn_reader` -> `handle_raw_text`) and JSON stdout (`spawn_json_reader` -> `handle_json_text`) through `append_to_buffer(...)`; the helper's warning therefore affects pi even though the truncation safeguard is cross-runner shared behavior.",
-        "`crates/ralph/src/runner/execution/process/mod.rs` wires every plugin runner, including pi, to `spawn_json_reader` for stdout and `spawn_reader` for stderr. Pi's built-in plugin (`builtin_plugins/pi.rs`) emits JSON mode output, but does not own the buffer warning.",
-        "Existing reader regression tests live under `crates/ralph/src/runner/execution/tests/stream/readers.rs` and already exercise buffer and line limits; they are the narrowest test surface to extend for tail preservation, warning suppression, and non-warning failure signaling."
+        "`crates/cueloop/src/runner/execution/stream_buffer.rs` is the single shared buffer truncation helper. `append_to_buffer(...)` enforces `MAX_BUFFER_SIZE` by preserving the newest text, using UTF-8-safe `floor_char_boundary(...)`, and currently emits the noisy `log::warn!` once per reader via `exceeded_logged`.",
+        "`crates/cueloop/src/runner/execution/stream_reader.rs` routes both raw stderr (`spawn_reader` -> `handle_raw_text`) and JSON stdout (`spawn_json_reader` -> `handle_json_text`) through `append_to_buffer(...)`; the helper's warning therefore affects pi even though the truncation safeguard is cross-runner shared behavior.",
+        "`crates/cueloop/src/runner/execution/process/mod.rs` wires every plugin runner, including pi, to `spawn_json_reader` for stdout and `spawn_reader` for stderr. Pi's built-in plugin (`builtin_plugins/pi.rs`) emits JSON mode output, but does not own the buffer warning.",
+        "Existing reader regression tests live under `crates/cueloop/src/runner/execution/tests/stream/readers.rs` and already exercise buffer and line limits; they are the narrowest test surface to extend for tail preservation, warning suppression, and non-warning failure signaling."
       ],
       "plan": [
         "Remove or downgrade the `log::warn!` in `append_to_buffer(...)` so bounded-buffer truncation is silent in normal operator-visible logging while retaining the exact 10MB truncation behavior and UTF-8-safe tail preservation.",
@@ -3022,21 +3022,21 @@
         "git"
       ],
       "scope": [
-        "crates/ralph/src/git/status.rs",
-        "crates/ralph/src/git/status/tests.rs",
-        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "cargo test -p ralph-agent-loop git::status::tests::ignored_paths",
-        "cargo test -p ralph-agent-loop commands::run::parallel::sync::tests::gitignored",
+        "crates/cueloop/src/git/status.rs",
+        "crates/cueloop/src/git/status/tests.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
+        "cargo test -p cueloop-agent-loop git::status::tests::ignored_paths",
+        "cargo test -p cueloop-agent-loop commands::run::parallel::sync::tests::gitignored",
         "make agent-ci"
       ],
       "evidence": [
-        "path: crates/ralph/src/git/status.rs:152-166 :: `ignored_paths` currently runs `git ls-files -i -o --exclude-standard -z --directory`; the `--directory` flag intentionally collapses ignored directory trees to entries such as `config/` instead of concrete files such as `config/local.json`.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:73-124 :: preflight compiles allowlist patterns, enumerates `git::ignored_paths`, skips entries ending in `/`, and then requires each pattern to match at least one concrete `source.is_file()` path; a collapsed ignored directory therefore reports `matched no existing gitignored files` even when an allowlisted file exists under it.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:143-172 :: runtime sync uses the same `git::ignored_paths` enumeration and `classify_gitignored_entry`; directory entries are skipped and only `source.is_file()` paths are copied, so worker workspace seeding has the same blind spot as preflight.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:192-239,261-270 :: allowlist validation already rejects directory patterns (`ends_with('/')`), absolute paths, `..`, `.` components, and denied prefixes; the fix should preserve these safety boundaries and avoid converting an allowlisted directory root into broad recursive mirroring.",
-        "path: crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs:65-141 :: current sync coverage includes individually ignored files and same-directory glob matches, but not a `.gitignore` rule like `config/` paired with allowlist entries such as `config/local.json` or `config/local-*.json`.",
-        "path: crates/ralph/src/git/status/tests.rs:47-70 :: existing `ignored_paths_lists_gitignored_entries` asserts the old collapsed `ignored_dir/` behavior; this expectation must be updated if `ignored_paths` is changed to enumerate concrete files.",
+        "path: crates/cueloop/src/git/status.rs:152-166 :: `ignored_paths` currently runs `git ls-files -i -o --exclude-standard -z --directory`; the `--directory` flag intentionally collapses ignored directory trees to entries such as `config/` instead of concrete files such as `config/local.json`.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:73-124 :: preflight compiles allowlist patterns, enumerates `git::ignored_paths`, skips entries ending in `/`, and then requires each pattern to match at least one concrete `source.is_file()` path; a collapsed ignored directory therefore reports `matched no existing gitignored files` even when an allowlisted file exists under it.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:143-172 :: runtime sync uses the same `git::ignored_paths` enumeration and `classify_gitignored_entry`; directory entries are skipped and only `source.is_file()` paths are copied, so worker workspace seeding has the same blind spot as preflight.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:192-239,261-270 :: allowlist validation already rejects directory patterns (`ends_with('/')`), absolute paths, `..`, `.` components, and denied prefixes; the fix should preserve these safety boundaries and avoid converting an allowlisted directory root into broad recursive mirroring.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs:65-141 :: current sync coverage includes individually ignored files and same-directory glob matches, but not a `.gitignore` rule like `config/` paired with allowlist entries such as `config/local.json` or `config/local-*.json`.",
+        "path: crates/cueloop/src/git/status/tests.rs:47-70 :: existing `ignored_paths_lists_gitignored_entries` asserts the old collapsed `ignored_dir/` behavior; this expectation must be updated if `ignored_paths` is changed to enumerate concrete files.",
         "command evidence from task: in a temp repo with `.gitignore` containing `config/` and `config/local.json` on disk, `git ls-files -i -o --exclude-standard -z --directory` outputs `config/`, while the same command without `--directory` outputs `config/local.json`."
       ],
       "plan": [
@@ -3044,7 +3044,7 @@
         "Preserve the existing safety policy in `gitignored.rs`: do not allow allowlist entries ending in `/`, keep denied-prefix filtering, keep workspace-root exclusion, and continue copying only `source.is_file()` entries. The implementation must not recursively mirror an ignored directory just because its parent directory is ignored.",
         "Add regression tests in `commands/run/parallel/sync/tests/gitignored.rs` for an ignored directory root (`config/`) plus an explicit allowlist entry (`config/local.json`) covering both successful preflight and `sync_ralph_state` copying, while confirming an unallowlisted sibling remains absent from the workspace.",
         "Add a second regression for a narrow glob beneath an ignored directory root, such as `.gitignore` = `config/` and allowlist = `config/local-*.json`, proving only matching files copy and nonmatching files under the ignored directory do not copy.",
-        "Run targeted tests first (`cargo test -p ralph-agent-loop git::status::tests::ignored_paths` and `cargo test -p ralph-agent-loop commands::run::parallel::sync::tests::gitignored`), then run `make agent-ci` before claiming completion."
+        "Run targeted tests first (`cargo test -p cueloop-agent-loop git::status::tests::ignored_paths` and `cargo test -p cueloop-agent-loop commands::run::parallel::sync::tests::gitignored`), then run `make agent-ci` before claiming completion."
       ],
       "notes": [
         "Phase 1 planning inspected the relevant implementation and tests only; no source changes or test commands were run in planning mode.",
@@ -3052,7 +3052,7 @@
         "Reviewed Phase 2 diff for RQ-0061; no Phase 3 code refinements required.",
         "Verified git::ignored_paths now enumerates concrete ignored files without --directory.",
         "Confirmed nested explicit and glob allowlist tests cover preflight plus sync and preserve sibling exclusion.",
-        "Targeted tests passed: cargo test -p ralph-agent-loop git::status::tests::ignored_paths; cargo test -p ralph-agent-loop commands::run::parallel::sync::tests::gitignored."
+        "Targeted tests passed: cargo test -p cueloop-agent-loop git::status::tests::ignored_paths; cargo test -p cueloop-agent-loop commands::run::parallel::sync::tests::gitignored."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T00:48:35Z",
@@ -3082,20 +3082,20 @@
         "security"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/common.rs",
-        "crates/ralph/src/commands/run/parallel/sync/mod.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/mod.rs",
-        "cargo test -p ralph-agent-loop sync::tests::gitignored",
+        "crates/cueloop/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/common.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/mod.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/mod.rs",
+        "cargo test -p cueloop-agent-loop sync::tests::gitignored",
         "make agent-ci"
       ],
       "evidence": [
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:65-124 :: preflight enumerates `git::ignored_paths`, matches allowlist patterns, then accepts a match when `source.is_file()` is true; Rust follows symlinks for `is_file`, so an ignored symlink to an external regular file is counted as a safe match.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:144-177 :: runtime sync repeats the `source.is_file()` gate before `sync_file_if_exists`, so it can copy the resolved contents of an ignored symlink into the worker workspace without checking that the target remains under `repo_root`.",
-        "path: crates/ralph/src/commands/run/parallel/sync/common.rs:24-33 :: `sync_file_if_exists` blindly calls `fs::copy(source, target)` after an existence check; for gitignored sync callers this must only be reached after symlink/canonical-path policy has accepted the source.",
-        "path: crates/ralph/src/commands/run/parallel/sync/mod.rs:47-54 and 96-106 :: ignored-file sync is one of the normal parallel workspace state sync phases, while bookkeeping sync also uses the common copy helper and should not inherit gitignored-only allowlist policy accidentally.",
-        "path: crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs:25-394 :: existing coverage verifies env files, explicit allowlist files/globs, ignored directory roots, workspace exclusions, and path filtering, but it does not cover symlinked ignored entries or repo-escape rejection.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:65-124 :: preflight enumerates `git::ignored_paths`, matches allowlist patterns, then accepts a match when `source.is_file()` is true; Rust follows symlinks for `is_file`, so an ignored symlink to an external regular file is counted as a safe match.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:144-177 :: runtime sync repeats the `source.is_file()` gate before `sync_file_if_exists`, so it can copy the resolved contents of an ignored symlink into the worker workspace without checking that the target remains under `repo_root`.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/common.rs:24-33 :: `sync_file_if_exists` blindly calls `fs::copy(source, target)` after an existence check; for gitignored sync callers this must only be reached after symlink/canonical-path policy has accepted the source.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/mod.rs:47-54 and 96-106 :: ignored-file sync is one of the normal parallel workspace state sync phases, while bookkeeping sync also uses the common copy helper and should not inherit gitignored-only allowlist policy accidentally.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs:25-394 :: existing coverage verifies env files, explicit allowlist files/globs, ignored directory roots, workspace exclusions, and path filtering, but it does not cover symlinked ignored entries or repo-escape rejection.",
         "command: tmp=$(mktemp -d) && outside=$(mktemp) && printf 'secret' > \"$outside\" && cd \"$tmp\" && git init -q && printf 'secret-link\\n' > .gitignore && ln -s \"$outside\" secret-link && git ls-files -i -o --exclude-standard -z --directory ... :: reproduced that Git reports `[secret-link]` and shell tests report `islink=yes isfile=yes`, matching the vulnerable classification path."
       ],
       "plan": [
@@ -3111,7 +3111,7 @@
         "Blocked ignored-file sync from copying symlinks resolving outside the repo root.",
         "Phase 3 tightened review finding: resolved symlink targets must also avoid denied runtime/build trees and workspace roots.",
         "Added Unix regressions for external symlinks, safe in-repo symlinks, denied-tree targets, workspace-root targets, and default .env symlink escape.",
-        "Verified with cargo test -p ralph-agent-loop sync::tests::gitignored and make agent-ci."
+        "Verified with cargo test -p cueloop-agent-loop sync::tests::gitignored and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T00:48:35Z",
@@ -3141,20 +3141,20 @@
         "config"
       ],
       "scope": [
-        "crates/ralph/src/commands/run/parallel/orchestration/preflight.rs",
-        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "crates/ralph/src/commands/run/parallel/sync/tests/mod.rs",
+        "crates/cueloop/src/commands/run/parallel/orchestration/preflight.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/tests/mod.rs",
         "docs/configuration/queue-and-parallel.md"
       ],
       "evidence": [
-        "path: crates/ralph/src/commands/run/parallel/orchestration/preflight.rs:107-114 :: prepare_parallel_run resolves parallel settings and invokes preflight_parallel_ignored_file_allowlist before workers are spawned, so any allowlist preflight error blocks the entire parallel run.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:67-130 :: preflight_parallel_ignored_file_allowlist compiles per-entry globsets, scans git ignored paths, validates matching files with safe_ignored_file_source, and currently bails when a pattern has zero safe matches.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:178-231 :: safe_ignored_file_source already preserves hard failures for symlinks resolving outside the repo, denied runtime/build paths, workspace-root overlaps, and matched directories; the zero-match contract can change without weakening these checks.",
-        "path: crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs:346-365 :: existing regression coverage explicitly expects a missing allowlist entry to fail with `matched no existing gitignored files`; this test must be inverted into success-with-diagnostic coverage.",
-        "path: crates/ralph/src/commands/run/parallel/sync/tests/gitignored.rs:188-288 and 368-390 :: focused tests already cover still-fatal external symlink, denied-tree symlink, and workspace-descendant cases; keep or strengthen these while changing only zero-match behavior.",
+        "path: crates/cueloop/src/commands/run/parallel/orchestration/preflight.rs:107-114 :: prepare_parallel_run resolves parallel settings and invokes preflight_parallel_ignored_file_allowlist before workers are spawned, so any allowlist preflight error blocks the entire parallel run.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:67-130 :: preflight_parallel_ignored_file_allowlist compiles per-entry globsets, scans git ignored paths, validates matching files with safe_ignored_file_source, and currently bails when a pattern has zero safe matches.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:178-231 :: safe_ignored_file_source already preserves hard failures for symlinks resolving outside the repo, denied runtime/build paths, workspace-root overlaps, and matched directories; the zero-match contract can change without weakening these checks.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs:346-365 :: existing regression coverage explicitly expects a missing allowlist entry to fail with `matched no existing gitignored files`; this test must be inverted into success-with-diagnostic coverage.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs:188-288 and 368-390 :: focused tests already cover still-fatal external symlink, denied-tree symlink, and workspace-descendant cases; keep or strengthen these while changing only zero-match behavior.",
         "path: docs/configuration/queue-and-parallel.md:48-69 :: canonical docs describe ignored_file_allowlist but currently state configured entries must match existing gitignored files during preflight, which will become stale after optional missing entries are skipped.",
-        "path: crates/ralph/src/config/validation/trust.rs:26-46 :: project-scoped parallel.ignored_file_allowlist remains execution-sensitive and trust-gated, supporting a shared repo config use case where optional local patterns may be absent on some machines."
+        "path: crates/cueloop/src/config/validation/trust.rs:26-46 :: project-scoped parallel.ignored_file_allowlist remains execution-sensitive and trust-gated, supporting a shared repo config use case where optional local patterns may be absent on some machines."
       ],
       "plan": [
         "Change the preflight contract so a syntactically valid allowlist entry with zero safe gitignored matches does not fail parallel startup; instead, emit an explicit operator-visible warning that names the entry index/raw pattern and says it was skipped because it matched no existing gitignored files.",
@@ -3208,20 +3208,20 @@
         "docs/guides/local-smoke-test.md",
         "docs/guides/getting-started.md",
         "docs/quick-start.md",
-        "crates/ralph/src/contracts/config/parallel.rs",
+        "crates/cueloop/src/contracts/config/parallel.rs",
         "schemas/config.schema.json",
         "schemas/machine.schema.json",
-        "crates/ralph/src/commands/init/wizard.rs",
-        "crates/ralph/src/commands/run/parallel/sync/gitignored.rs",
-        "crates/ralph/src/config/validation/trust.rs"
+        "crates/cueloop/src/commands/init/wizard.rs",
+        "crates/cueloop/src/commands/run/parallel/sync/gitignored.rs",
+        "crates/cueloop/src/config/validation/trust.rs"
       ],
       "evidence": [
         "path: docs/configuration/queue-and-parallel.md:16-70 :: the canonical `parallel.*` section names `ignored_file_allowlist` and has valid examples/rules, but it does not clearly say this is a small ignored-file feature (not ignored directory trees) or show concrete invalid examples like `node_modules/*`, `target/**`, `dir/`, absolute paths, and `../...`.",
         "path: docs/configuration/trust-and-precedence.md:16-25 and docs/features/configuration.md:61-76 :: trust docs enumerate execution-sensitive project settings but omit `parallel.ignored_file_allowlist`, while runtime trust validation treats it as trust-gated.",
-        "path: crates/ralph/src/config/validation/trust.rs:26-46 :: the runtime trust error explicitly includes `parallel.ignored_file_allowlist`; docs and onboarding must align with this real contract.",
-        "path: crates/ralph/src/commands/run/parallel/sync/gitignored.rs:35-46 and 308-333 :: validation rejects denied prefixes (`target/`, `node_modules/`, `.venv/`, `.git/`, `.ralph/cache/`, `.ralph/workspaces/`, `.ralph/logs/`, `.ralph/lock/`, caches), trailing slash directory entries, absolute paths, `..`, and `.` components; preflight also rejects unsafe matches and workspace-root overlap.",
-        "path: crates/ralph/src/contracts/config/parallel.rs:35-39 and schemas/config.schema.json:730-739 :: schema text is generated from Rust doc comments and currently mentions only general directory/absolute/`..`/heavy-runtime rejection; it should name trust gating plus valid and invalid examples so generated schemas surface the contract.",
-        "path: crates/ralph/src/commands/init/wizard.rs:375-400 and 466-470 :: interactive init offers discovered-file multiselect and generic `Edit .ralph/config.jsonc` next-step guidance without teaching the exact `parallel.ignored_file_allowlist` key, small-file intent, or valid/invalid examples for manual configuration.",
+        "path: crates/cueloop/src/config/validation/trust.rs:26-46 :: the runtime trust error explicitly includes `parallel.ignored_file_allowlist`; docs and onboarding must align with this real contract.",
+        "path: crates/cueloop/src/commands/run/parallel/sync/gitignored.rs:35-46 and 308-333 :: validation rejects denied prefixes (`target/`, `node_modules/`, `.venv/`, `.git/`, `.ralph/cache/`, `.ralph/workspaces/`, `.ralph/logs/`, `.ralph/lock/`, caches), trailing slash directory entries, absolute paths, `..`, and `.` components; preflight also rejects unsafe matches and workspace-root overlap.",
+        "path: crates/cueloop/src/contracts/config/parallel.rs:35-39 and schemas/config.schema.json:730-739 :: schema text is generated from Rust doc comments and currently mentions only general directory/absolute/`..`/heavy-runtime rejection; it should name trust gating plus valid and invalid examples so generated schemas surface the contract.",
+        "path: crates/cueloop/src/commands/init/wizard.rs:375-400 and 466-470 :: interactive init offers discovered-file multiselect and generic `Edit .ralph/config.jsonc` next-step guidance without teaching the exact `parallel.ignored_file_allowlist` key, small-file intent, or valid/invalid examples for manual configuration.",
         "path: docs/cli.md:59-67, docs/guides/local-smoke-test.md:22-39, docs/guides/getting-started.md:95-102, and docs/quick-start.md:41 :: bootstrap/onboarding flows mention init/trust/parallel sync extras but do not point readers to the manual allowlist contract when discovery is insufficient."
       ],
       "plan": [
@@ -3232,7 +3232,7 @@
         "Verify in Phase 2 with focused content checks for the new trust/valid/invalid examples, run schema generation/checks as needed, then run `make agent-ci` before completion."
       ],
       "notes": [
-        "Do not hand-edit generated schema JSON if the repo generator can produce it; update `crates/ralph/src/contracts/config/parallel.rs` doc comments and regenerate schemas so `schemas/config.schema.json` and `schemas/machine.schema.json` stay consistent.",
+        "Do not hand-edit generated schema JSON if the repo generator can produce it; update `crates/cueloop/src/contracts/config/parallel.rs` doc comments and regenerate schemas so `schemas/config.schema.json` and `schemas/machine.schema.json` stay consistent.",
         "This is documentation/UX text alignment with existing runtime behavior; no runtime allowlist semantics are expected to change.",
         "Documented trust-gated parallel.ignored_file_allowlist contract across canonical docs, schema, and onboarding.",
         "Refined init UX to name the trusted config key, valid/invalid examples, and canonical docs.",
@@ -3268,29 +3268,29 @@
         "recovery"
       ],
       "scope": [
-        "crates/ralph/src/main.rs",
-        "crates/ralph/src/commands/run/mod.rs",
-        "crates/ralph/src/runutil/execution/continue_session.rs",
-        "crates/ralph/src/commands/run/supervision/continue_session.rs",
-        "crates/ralph/src/commands/run/phases/phase1.rs",
-        "crates/ralph/src/commands/run/phases/phase3/finalization.rs",
-        "crates/ralph/src/commands/run/supervision/ci.rs",
-        "crates/ralph/src/commands/run/parallel/integration/driver.rs",
-        "crates/ralph/src/cli/machine/run.rs",
-        "crates/ralph/tests/dotenv_warning_test.rs",
-        "crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs",
-        "crates/ralph/src/commands/run/supervision/runtime_tests/resume_session.rs",
+        "crates/cueloop/src/main.rs",
+        "crates/cueloop/src/commands/run/mod.rs",
+        "crates/cueloop/src/runutil/execution/continue_session.rs",
+        "crates/cueloop/src/commands/run/supervision/continue_session.rs",
+        "crates/cueloop/src/commands/run/phases/phase1.rs",
+        "crates/cueloop/src/commands/run/phases/phase3/finalization.rs",
+        "crates/cueloop/src/commands/run/supervision/ci.rs",
+        "crates/cueloop/src/commands/run/parallel/integration/driver.rs",
+        "crates/cueloop/src/cli/machine/run.rs",
+        "crates/cueloop/tests/dotenv_warning_test.rs",
+        "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs",
+        "crates/cueloop/src/commands/run/supervision/runtime_tests/resume_session.rs",
         "make agent-ci"
       ],
       "evidence": [
-        "crates/ralph/src/main.rs computes is_machine_command before run(args), but run(args) still eprintlns malformed .env warnings at startup before Clap parsing/logging; this can put prose on stderr for machine commands before any structured machine error/reporting path owns output.",
-        "crates/ralph/src/main.rs:is_machine_command_args already supports a lightweight pre-parse of globals and the machine subcommand, so the startup dotenv warning can be gated with that precomputed bool without adding a full early Clap parse.",
-        "crates/ralph/src/runutil/execution/continue_session.rs:continue_or_rerun eprintlns Resume: messages from low-level runner execution while fallback is still self-healing; callers cannot currently opt out for machine output.",
-        "crates/ralph/src/commands/run/supervision/continue_session.rs:resume_continue_session builds a typed ResumeDecision but immediately eprintlns decision.message/detail after successful continuation, even when invoked through machine run handlers.",
-        "crates/ralph/src/commands/run/mod.rs already has RunEvent::ResumeDecision and emit_resume_decision that routes decisions to a machine event handler when present and otherwise prints human-facing eprintln output.",
-        "crates/ralph/src/cli/machine/run.rs maps RunEvent::ResumeDecision into versioned MachineRunEventEnvelope kind resume_decision with a machine_resume_decision_from_runtime payload, so machine mode already has a structured event contract for terminal/non-terminal resume diagnostics.",
+        "crates/cueloop/src/main.rs computes is_machine_command before run(args), but run(args) still eprintlns malformed .env warnings at startup before Clap parsing/logging; this can put prose on stderr for machine commands before any structured machine error/reporting path owns output.",
+        "crates/cueloop/src/main.rs:is_machine_command_args already supports a lightweight pre-parse of globals and the machine subcommand, so the startup dotenv warning can be gated with that precomputed bool without adding a full early Clap parse.",
+        "crates/cueloop/src/runutil/execution/continue_session.rs:continue_or_rerun eprintlns Resume: messages from low-level runner execution while fallback is still self-healing; callers cannot currently opt out for machine output.",
+        "crates/cueloop/src/commands/run/supervision/continue_session.rs:resume_continue_session builds a typed ResumeDecision but immediately eprintlns decision.message/detail after successful continuation, even when invoked through machine run handlers.",
+        "crates/cueloop/src/commands/run/mod.rs already has RunEvent::ResumeDecision and emit_resume_decision that routes decisions to a machine event handler when present and otherwise prints human-facing eprintln output.",
+        "crates/cueloop/src/cli/machine/run.rs maps RunEvent::ResumeDecision into versioned MachineRunEventEnvelope kind resume_decision with a machine_resume_decision_from_runtime payload, so machine mode already has a structured event contract for terminal/non-terminal resume diagnostics.",
         "Current ContinueSession lacks a run_event_handler field; resume_continue_session callers in phase1/phase3 finalization/CI/parallel integration therefore cannot propagate machine handlers down to the resume decision emission point without a small API extension.",
-        "Existing regression homes: crates/ralph/tests/dotenv_warning_test.rs covers human .env warnings; crates/ralph/tests/machine_contract_test/machine_contract_test_run.rs covers machine run NDJSON/error contracts; crates/ralph/src/commands/run/supervision/runtime_tests/resume_session.rs covers resume fallback decisions."
+        "Existing regression homes: crates/cueloop/tests/dotenv_warning_test.rs covers human .env warnings; crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs covers machine run NDJSON/error contracts; crates/cueloop/src/commands/run/supervision/runtime_tests/resume_session.rs covers resume fallback decisions."
       ],
       "plan": [
         "Change main.rs so run(args, is_machine_command) suppresses malformed .env prose for machine commands; keep existing warning behavior for human commands and continue redacting warning text. Add/adjust main unit coverage for is_machine_command_args only if needed by the signature change.",
@@ -3337,27 +3337,27 @@
         "machine"
       ],
       "scope": [
-        "crates/ralph/src/session/persistence.rs",
-        "crates/ralph/src/session/validation.rs",
-        "crates/ralph/src/session/decision.rs",
-        "crates/ralph/src/session/mod.rs",
-        "crates/ralph/src/session/tests.rs",
-        "crates/ralph/src/cli/machine/common.rs",
+        "crates/cueloop/src/session/persistence.rs",
+        "crates/cueloop/src/session/validation.rs",
+        "crates/cueloop/src/session/decision.rs",
+        "crates/cueloop/src/session/mod.rs",
+        "crates/cueloop/src/session/tests.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
         "apps/RalphMac/RalphCore/ConfigModels.swift",
         "apps/RalphMac/RalphCoreTests/WorkspaceRunStateResumeBlockingTests.swift",
         "cargo test -p ralph session::",
         "make agent-ci"
       ],
       "evidence": [
-        "crates/ralph/src/session/persistence.rs:52-60: load_session reads .ralph/cache/session.jsonc with read_to_string and parses with serde_json, returning context-wrapped errors directly on unreadable or malformed cache files.",
-        "crates/ralph/src/session/validation.rs:31-36: SessionValidationResult has Valid/NoSession/Stale/Timeout only; no corrupt/unreadable cache classification exists.",
-        "crates/ralph/src/session/validation.rs:96-106: check_session calls load_session(cache_dir)? before validation, so bad cache IO/parse aborts recovery instead of returning an explicit state.",
-        "crates/ralph/src/session/decision.rs:56-83: ResumeReason and ResumeDecision::blocking_state do not include a corrupt-cache runner recovery reason.",
-        "crates/ralph/src/session/decision.rs:140-146: resolve_run_session_decision calls check_session before constructing ResumeResolution, so corrupt cache bypasses resume/fresh/refusal narration.",
-        "crates/ralph/src/session/decision.rs:336-359: existing maybe_clear_session/fresh_start_resolution seam gates cache mutation behind ResumeDecisionMode::Execute; preview callers must remain non-mutating.",
-        "crates/ralph/src/cli/machine/common.rs:336-361 maps ResumeReason to stable machine reason strings; any new reason must be added.",
+        "crates/cueloop/src/session/persistence.rs:52-60: load_session reads .ralph/cache/session.jsonc with read_to_string and parses with serde_json, returning context-wrapped errors directly on unreadable or malformed cache files.",
+        "crates/cueloop/src/session/validation.rs:31-36: SessionValidationResult has Valid/NoSession/Stale/Timeout only; no corrupt/unreadable cache classification exists.",
+        "crates/cueloop/src/session/validation.rs:96-106: check_session calls load_session(cache_dir)? before validation, so bad cache IO/parse aborts recovery instead of returning an explicit state.",
+        "crates/cueloop/src/session/decision.rs:56-83: ResumeReason and ResumeDecision::blocking_state do not include a corrupt-cache runner recovery reason.",
+        "crates/cueloop/src/session/decision.rs:140-146: resolve_run_session_decision calls check_session before constructing ResumeResolution, so corrupt cache bypasses resume/fresh/refusal narration.",
+        "crates/cueloop/src/session/decision.rs:336-359: existing maybe_clear_session/fresh_start_resolution seam gates cache mutation behind ResumeDecisionMode::Execute; preview callers must remain non-mutating.",
+        "crates/cueloop/src/cli/machine/common.rs:336-361 maps ResumeReason to stable machine reason strings; any new reason must be added.",
         "apps/RalphMac/RalphCore/ConfigModels.swift:301-317 derives preview blocking state for a hardcoded set of runner-recovery reasons; add the new corrupt-cache reason there if config preview should surface blocking.",
-        "crates/ralph/src/session/tests.rs already covers stale, timeout, prompt-required, preview-vs-execute cache clearing, and blocking_state for confirmation-required; add corrupt-cache regression coverage alongside these tests."
+        "crates/cueloop/src/session/tests.rs already covers stale, timeout, prompt-required, preview-vs-execute cache clearing, and blocking_state for confirmation-required; add corrupt-cache regression coverage alongside these tests."
       ],
       "plan": [
         "Add a small session-cache corruption diagnostic type plus load_session_diagnostic/check_session classification so malformed/unreadable session.jsonc returns SessionValidationResult::CorruptCache rather than bubbling an anyhow error.",
@@ -3375,7 +3375,7 @@
         "Classified malformed, unreadable, and uninspectable session caches as recoverable corrupt-cache validation states.",
         "Execute-mode recovery quarantines corrupt session cache files and resumes fresh only when auto-resume is explicitly allowed.",
         "Runner-recovery blocking is emitted only for refusing-to-resume corrupt-cache decisions; fresh fallback no longer surfaces as blocked.",
-        "Validated with cargo test -p ralph-agent-loop session:: and make agent-ci."
+        "Validated with cargo test -p cueloop-agent-loop session:: and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T03:24:54Z",
@@ -3405,21 +3405,21 @@
         "runner-recovery"
       ],
       "scope": [
-        "crates/ralph/src/runutil/execution/orchestration/core.rs",
-        "crates/ralph/src/runutil/execution/retry_policy.rs",
-        "crates/ralph/src/runutil/execution/orchestration/failure_paths.rs",
-        "crates/ralph/src/runutil/execution/orchestration/tests.rs",
-        "crates/ralph/src/runutil/execution/backend.rs",
-        "crates/ralph/src/runutil/retry/policy.rs",
+        "crates/cueloop/src/runutil/execution/orchestration/core.rs",
+        "crates/cueloop/src/runutil/execution/retry_policy.rs",
+        "crates/cueloop/src/runutil/execution/orchestration/failure_paths.rs",
+        "crates/cueloop/src/runutil/execution/orchestration/tests.rs",
+        "crates/cueloop/src/runutil/execution/backend.rs",
+        "crates/cueloop/src/runutil/retry/policy.rs",
         "cargo test -p ralph runutil::execution",
         "make agent-ci"
       ],
       "evidence": [
-        "crates/ralph/src/runutil/execution/orchestration/core.rs:114-127 currently emits log::warn! when auto-revert before a retry fails. That warning is in the retry/self-healing path and can appear even when a later retry succeeds.",
-        "crates/ralph/src/runutil/execution/retry_policy.rs:31-39 currently emits log::warn! and returns Ok(false) when repo cleanliness probing fails. This is a terminal retry-admission decision, but the reason is not carried into the final runner error/operator diagnostic text.",
-        "crates/ralph/src/runutil/execution/orchestration/core.rs drives retry admission, auto-revert-before-retry, backoff, terminal failure dispatch, and signal/continue recovery; it is the best place to own a per-run retry diagnostic accumulator and append it only when returning final errors.",
-        "crates/ralph/src/runutil/execution/orchestration/failure_paths.rs builds the terminal timeout, non-zero-exit, signal, and other-failure operator messages; either pass retry diagnostics into these helpers or append diagnostics at the call sites before returning their final errors.",
-        "crates/ralph/src/runutil/execution/orchestration/tests.rs already uses mock RunnerBackend implementations and temp dirs, so regression coverage can be added without real runner binaries. Existing tests do not currently capture log levels for this retry warning behavior.",
+        "crates/cueloop/src/runutil/execution/orchestration/core.rs:114-127 currently emits log::warn! when auto-revert before a retry fails. That warning is in the retry/self-healing path and can appear even when a later retry succeeds.",
+        "crates/cueloop/src/runutil/execution/retry_policy.rs:31-39 currently emits log::warn! and returns Ok(false) when repo cleanliness probing fails. This is a terminal retry-admission decision, but the reason is not carried into the final runner error/operator diagnostic text.",
+        "crates/cueloop/src/runutil/execution/orchestration/core.rs drives retry admission, auto-revert-before-retry, backoff, terminal failure dispatch, and signal/continue recovery; it is the best place to own a per-run retry diagnostic accumulator and append it only when returning final errors.",
+        "crates/cueloop/src/runutil/execution/orchestration/failure_paths.rs builds the terminal timeout, non-zero-exit, signal, and other-failure operator messages; either pass retry diagnostics into these helpers or append diagnostics at the call sites before returning their final errors.",
+        "crates/cueloop/src/runutil/execution/orchestration/tests.rs already uses mock RunnerBackend implementations and temp dirs, so regression coverage can be added without real runner binaries. Existing tests do not currently capture log levels for this retry warning behavior.",
         "The requested behavior is to keep in-flight retry/recovery warnings hidden at warning/error levels, log only debug/trace during self-healing, and emit ample redacted detail only on terminal failure or explicit operator-visible recovery output."
       ],
       "plan": [
@@ -3438,7 +3438,7 @@
         "Implemented retry diagnostic accumulation and debug-only in-flight retry/recovery logs.",
         "Preserved accumulated diagnostics on terminal helper failures, including revert failure paths.",
         "Added regression coverage for retry-admission diagnostics, failed auto-revert debug logging, and terminal diagnostic preservation.",
-        "Verified with cargo test -p ralph-agent-loop runutil::execution and make agent-ci."
+        "Verified with cargo test -p cueloop-agent-loop runutil::execution and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T03:24:54Z",
@@ -3469,8 +3469,8 @@
         "recovery"
       ],
       "scope": [
-        "crates/ralph/src/contracts/machine.rs",
-        "crates/ralph/src/cli/machine/error.rs",
+        "crates/cueloop/src/contracts/machine.rs",
+        "crates/cueloop/src/cli/machine/error.rs",
         "apps/RalphMac/RalphCore/ConfigModels.swift",
         "apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift",
         "apps/RalphMac/RalphCoreTests/ErrorRecoveryCategoryTests.swift",
@@ -3478,15 +3478,15 @@
         "make agent-ci"
       ],
       "evidence": [
-        "crates/ralph/src/contracts/machine.rs:57-69 defines MachineErrorCode::CliUnavailable as a stable machine error code.",
-        "crates/ralph/src/cli/machine/error.rs:38-137 builds MachineErrorDocument by phrase-matching sanitized errors, but currently maps missing queue files only when 'queue file' is present and otherwise falls through missing-binary/spawn ENOENT phrases to ParseError or Unknown.",
-        "crates/ralph/src/cli/machine/error.rs:176-244 contains colocated unit tests for machine error classification; this is the right place for missing binary regression coverage.",
+        "crates/cueloop/src/contracts/machine.rs:57-69 defines MachineErrorCode::CliUnavailable as a stable machine error code.",
+        "crates/cueloop/src/cli/machine/error.rs:38-137 builds MachineErrorDocument by phrase-matching sanitized errors, but currently maps missing queue files only when 'queue file' is present and otherwise falls through missing-binary/spawn ENOENT phrases to ParseError or Unknown.",
+        "crates/cueloop/src/cli/machine/error.rs:176-244 contains colocated unit tests for machine error classification; this is the right place for missing binary regression coverage.",
         "apps/RalphMac/RalphCore/ConfigModels.swift:188-199 already mirrors MachineErrorCode.cliUnavailable, so the Swift wire enum does not need a new case.",
         "apps/RalphMac/RalphCore/RalphCLIRecoveryClassifier.swift:86-101 maps RalphCLIClientError.executableNotFound/executableNotExecutable to .cliUnavailable and lines 299-330 map structured MachineErrorDocument.cliUnavailable to .cliUnavailable, but legacy classifyDescription at lines 177-290 lacks missing-binary phrase coverage.",
         "apps/RalphMac/RalphCoreTests/ErrorRecoveryCategoryTests.swift:134-150 covers direct RalphCLIClientError cli unavailable cases and lines 201-219 cover structured machine error decoding, but no test currently covers legacy/process stderr phrases such as command not found or failed to spawn ENOENT."
       ],
       "plan": [
-        "In crates/ralph/src/cli/machine/error.rs, add a small helper such as is_cli_unavailable_error(normalized: &str) and call it after the queue-missing special case but before generic queue/config/version/network/resource/parse branches so non-queue ENOENT/spawn failures classify as MachineErrorCode::CliUnavailable.",
+        "In crates/cueloop/src/cli/machine/error.rs, add a small helper such as is_cli_unavailable_error(normalized: &str) and call it after the queue-missing special case but before generic queue/config/version/network/resource/parse branches so non-queue ENOENT/spawn failures classify as MachineErrorCode::CliUnavailable.",
         "Keep the existing queue-file missing branch ahead of the new CLI-unavailable branch so 'read queue file ... No such file or directory (os error 2)' remains QueueCorrupted, not CliUnavailable.",
         "Have the new Rust branch return message 'Ralph CLI executable is not available.' (or a similarly stable app-facing message) and retryable false; do not mark these as resource-busy/transient.",
         "Cover common phrases in the helper: command not found, executable not found, no such file or directory/os error 2 when not identified as queue file, failed to spawn, spawn enoent, no such file or directory (os error 2), and bundled CLI unavailable / Ralph CLI executable not found.",
@@ -3501,7 +3501,7 @@
         "Rust semantic reference lookup degraded because rust-analyzer failed to initialize during planning; use local file evidence and rg results as the implementation baseline.",
         "Classified missing CLI/spawn failures as cli_unavailable in Rust machine errors and RalphMac fallback recovery.",
         "Scoped ENOENT matching to spawn/executable phrases so missing queue/config files keep their existing categories.",
-        "Verified cargo test -p ralph-agent-loop cli::machine::error and make agent-ci."
+        "Verified cargo test -p cueloop-agent-loop cli::machine::error and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T03:24:54Z",
@@ -3531,23 +3531,23 @@
         "runner"
       ],
       "scope": [
-        "crates/ralph/src/runner/execution/json.rs",
-        "crates/ralph/src/runner/execution/stream_reader.rs",
-        "crates/ralph/src/runner/execution/process/mod.rs",
-        "crates/ralph/src/runutil/execution/continue_session.rs",
-        "crates/ralph/src/runner/execution/tests/parsing.rs",
-        "crates/ralph/src/runner/execution/tests/stream/readers.rs",
-        "crates/ralph/src/runutil/execution/orchestration/tests.rs",
+        "crates/cueloop/src/runner/execution/json.rs",
+        "crates/cueloop/src/runner/execution/stream_reader.rs",
+        "crates/cueloop/src/runner/execution/process/mod.rs",
+        "crates/cueloop/src/runutil/execution/continue_session.rs",
+        "crates/cueloop/src/runner/execution/tests/parsing.rs",
+        "crates/cueloop/src/runner/execution/tests/stream/readers.rs",
+        "crates/cueloop/src/runutil/execution/orchestration/tests.rs",
         "cargo test -p ralph runner::execution",
         "make agent-ci"
       ],
       "evidence": [
-        "crates/ralph/src/runner/execution/json.rs:21-39 parses the first JSON object starting at the first '{' in any line as a compatibility fallback; useful for rendering noisy stream lines but too permissive as a persistence source.",
-        "crates/ralph/src/runner/execution/json.rs:42-58 currently accepts top-level thread_id, session_id, or sessionID from any JSON object, plus {type:'session', id}, without checking the active runner or that the event is a lifecycle/session-start event.",
-        "crates/ralph/src/runner/execution/stream_reader.rs:263-272 stores any ID returned by extract_session_id_from_json while streaming stdout, so unrelated assistant/tool/chatter payloads can become the captured session id before process completion.",
-        "crates/ralph/src/runner/execution/process/mod.rs:260-265 falls back to extract_session_id_from_text(&stdout) when the streaming reader did not capture one, which re-scans the complete stdout buffer after the fact.",
-        "crates/ralph/src/runutil/execution/continue_session.rs:79-91 prefers error_session_id over invocation_session_id whenever non-empty; once extraction is strict, invalid/ambiguous error output should not overwrite a previous known-good invocation id.",
-        "Existing parsing tests in crates/ralph/src/runner/execution/tests/parsing.rs codify the overly broad behavior and must be updated to assert unrelated thread_id/session_id/sessionID fields are ignored unless the runner-specific event shape is confirmed.",
+        "crates/cueloop/src/runner/execution/json.rs:21-39 parses the first JSON object starting at the first '{' in any line as a compatibility fallback; useful for rendering noisy stream lines but too permissive as a persistence source.",
+        "crates/cueloop/src/runner/execution/json.rs:42-58 currently accepts top-level thread_id, session_id, or sessionID from any JSON object, plus {type:'session', id}, without checking the active runner or that the event is a lifecycle/session-start event.",
+        "crates/cueloop/src/runner/execution/stream_reader.rs:263-272 stores any ID returned by extract_session_id_from_json while streaming stdout, so unrelated assistant/tool/chatter payloads can become the captured session id before process completion.",
+        "crates/cueloop/src/runner/execution/process/mod.rs:260-265 falls back to extract_session_id_from_text(&stdout) when the streaming reader did not capture one, which re-scans the complete stdout buffer after the fact.",
+        "crates/cueloop/src/runutil/execution/continue_session.rs:79-91 prefers error_session_id over invocation_session_id whenever non-empty; once extraction is strict, invalid/ambiguous error output should not overwrite a previous known-good invocation id.",
+        "Existing parsing tests in crates/cueloop/src/runner/execution/tests/parsing.rs codify the overly broad behavior and must be updated to assert unrelated thread_id/session_id/sessionID fields are ignored unless the runner-specific event shape is confirmed.",
         "Existing stream reader tests construct spawn_json_reader without a runner argument; runner-aware extraction will require updating those call sites and adding at least one stream-level regression for ignored chatter plus accepted lifecycle event."
       ],
       "plan": [
@@ -3852,10 +3852,10 @@
       "scope": [
         "docs/prd/ralph-task-decompose.md",
         "docs/cli.md",
-        "crates/ralph/src/cli/task/args/decompose.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/commands/task/decompose/",
-        "crates/ralph/src/cli/prd.rs",
+        "crates/cueloop/src/cli/task/args/decompose.rs",
+        "crates/cueloop/src/cli/task/decompose.rs",
+        "crates/cueloop/src/commands/task/decompose/",
+        "crates/cueloop/src/cli/prd.rs",
         "apps/RalphMac/RalphCore/Workspace+Decompose.swift",
         "apps/RalphMac/RalphMac/TaskDecomposeView.swift",
         "ralph task decompose --help",
@@ -3863,10 +3863,10 @@
       ],
       "evidence": [
         "path: docs/prd/ralph-task-decompose.md :: Functional Requirements :: requirement 2 says decomposition accepts either a freeform request or an existing task ID; no plan-file/path source is specified.",
-        "path: crates/ralph/src/cli/task/args/decompose.rs :: TaskDecomposeArgs.source :: the positional source is documented as `Task ID or freeform request text` and stdin is the only non-argument input path.",
-        "path: crates/ralph/src/cli/task/decompose.rs :: handle :: source text is read through `read_request_from_args_or_stdin(&args.source)` and passed as `source_input`; there is no file-path argument or file-read branch.",
+        "path: crates/cueloop/src/cli/task/args/decompose.rs :: TaskDecomposeArgs.source :: the positional source is documented as `Task ID or freeform request text` and stdin is the only non-argument input path.",
+        "path: crates/cueloop/src/cli/task/decompose.rs :: handle :: source text is read through `read_request_from_args_or_stdin(&args.source)` and passed as `source_input`; there is no file-path argument or file-read branch.",
         "workflow: ralph task decompose --help :: help lists SOURCE/freeform/task-ID/stdin examples but no `--from-file`, `--plan-file`, or path-backed decomposition workflow.",
-        "path: crates/ralph/src/cli/prd.rs :: PrdCreateArgs.path :: `ralph prd create` has a file path input, proving Ralph already has file-backed task creation, but it is separate from recursive task decomposition."
+        "path: crates/cueloop/src/cli/prd.rs :: PrdCreateArgs.path :: `ralph prd create` has a file path input, proving Ralph already has file-backed task creation, but it is separate from recursive task decomposition."
       ],
       "plan": [
         "Update the task-decompose PRD and CLI docs to define the canonical plan-file workflow, including command spelling, preview/write semantics, path normalization, file-size/read errors, and how it differs from PRD-specific import.",
@@ -3905,25 +3905,25 @@
         "queue-contract"
       ],
       "scope": [
-        "crates/ralph/assets/prompts/task_decompose.md",
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/support.rs",
-        "crates/ralph/src/commands/task/decompose/tree.rs",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
+        "crates/cueloop/assets/prompts/task_decompose.md",
+        "crates/cueloop/src/commands/task/decompose/types.rs",
+        "crates/cueloop/src/commands/task/decompose/support.rs",
+        "crates/cueloop/src/commands/task/decompose/tree.rs",
+        "crates/cueloop/src/commands/task/decompose/tests.rs",
         "schemas/queue.schema.json",
         "ralph queue validate",
-        "crates/ralph/src/commands/task/decompose/planning.rs",
-        "crates/ralph/src/commands/task/decompose/source_file.rs",
-        "crates/ralph/src/queue/operations/materialize.rs"
+        "crates/cueloop/src/commands/task/decompose/planning.rs",
+        "crates/cueloop/src/commands/task/decompose/source_file.rs",
+        "crates/cueloop/src/queue/operations/materialize.rs"
       ],
       "evidence": [
-        "path: crates/ralph/assets/prompts/task_decompose.md :: Decomposition Rules / Required JSON Shape :: the planner may return optional `scope` and `plan`, but the prompt does not require each task to cite the original plan file or relevant plan sections.",
-        "path: crates/ralph/src/commands/task/decompose/types.rs :: RawPlannedNode :: planner output has title, description, plan, tags, scope, depends_on, and children; there is no explicit source-plan reference or evidence field in the decomposition node model.",
-        "path: crates/ralph/src/commands/task/decompose/support.rs :: collect_materialized_specs_for_nodes :: materialized decomposition specs set `evidence: Vec::new()` and `request: Some(request.to_string())`, so generated queue tasks do not receive evidence-backed provenance by default.",
+        "path: crates/cueloop/assets/prompts/task_decompose.md :: Decomposition Rules / Required JSON Shape :: the planner may return optional `scope` and `plan`, but the prompt does not require each task to cite the original plan file or relevant plan sections.",
+        "path: crates/cueloop/src/commands/task/decompose/types.rs :: RawPlannedNode :: planner output has title, description, plan, tags, scope, depends_on, and children; there is no explicit source-plan reference or evidence field in the decomposition node model.",
+        "path: crates/cueloop/src/commands/task/decompose/support.rs :: collect_materialized_specs_for_nodes :: materialized decomposition specs set `evidence: Vec::new()` and `request: Some(request.to_string())`, so generated queue tasks do not receive evidence-backed provenance by default.",
         "path: docs/prd/ralph-task-decompose.md :: Data Model and State :: recommended persistent representation mentions `parent_id`, `plan`, `request`, `tags`, and `scope`, but not source-plan-file provenance or evidence entries for generated tasks.",
-        "path: crates/ralph/src/commands/task/decompose/source_file.rs :: read_plan_file_source :: RQ-0074 records repo-relative plan-file paths and full content in TaskDecomposeSourceInput::PlanFile, giving RQ-0075 a stable path source without adding a new queue field.",
-        "path: crates/ralph/src/commands/task/decompose/planning.rs :: build_planner_prompt/default_root_title :: plan-file prompts already include `Plan file path: <path>` and content, and default root title is `Plan from <path>`; materialization still needs deterministic queue-task provenance independent of planner compliance.",
-        "path: crates/ralph/src/queue/operations/materialize.rs :: materialize_tasks :: MaterializedTaskSpec already carries scope, evidence, plan, and request into Task records, so provenance can be injected before the canonical materializer without queue schema changes."
+        "path: crates/cueloop/src/commands/task/decompose/source_file.rs :: read_plan_file_source :: RQ-0074 records repo-relative plan-file paths and full content in TaskDecomposeSourceInput::PlanFile, giving RQ-0075 a stable path source without adding a new queue field.",
+        "path: crates/cueloop/src/commands/task/decompose/planning.rs :: build_planner_prompt/default_root_title :: plan-file prompts already include `Plan file path: <path>` and content, and default root title is `Plan from <path>`; materialization still needs deterministic queue-task provenance independent of planner compliance.",
+        "path: crates/cueloop/src/queue/operations/materialize.rs :: materialize_tasks :: MaterializedTaskSpec already carries scope, evidence, plan, and request into Task records, so provenance can be injected before the canonical materializer without queue schema changes."
       ],
       "plan": [
         "Build on the plan-file source metadata from RQ-0074 and decide the minimal queue-schema-compatible representation for source provenance, favoring existing fields before adding any new contract surface.",
@@ -3962,18 +3962,18 @@
         "ordering"
       ],
       "scope": [
-        "crates/ralph/assets/prompts/task_decompose.md",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
-        "crates/ralph/tests/",
+        "crates/cueloop/assets/prompts/task_decompose.md",
+        "crates/cueloop/src/commands/task/decompose/tests.rs",
+        "crates/cueloop/tests/",
         "docs/prd/ralph-task-decompose.md",
         "docs/cli.md",
         "ralph task decompose --help",
         "ralph queue validate"
       ],
       "evidence": [
-        "path: crates/ralph/assets/prompts/task_decompose.md :: Decomposition Rules :: the prompt says to prefer fewer actionable tasks and keep siblings distinct, but it does not require complete coverage of every source plan section or explicit logical execution ordering for plan-file inputs.",
-        "path: crates/ralph/assets/prompts/task_decompose.md :: Limits :: `infer sibling dependencies` is optional, so ordering depends on planner behavior unless tests and prompt rules require order-sensitive output when a source plan has ordered phases.",
-        "path: crates/ralph/src/commands/task/decompose/tests.rs :: task decomposition tests :: existing tests cover sibling dependency normalization, attach writes, replace safety, append/replace insertion, and nested dependencies, but no fixture proves a full plan document is decomposed into complete ordered queue work.",
+        "path: crates/cueloop/assets/prompts/task_decompose.md :: Decomposition Rules :: the prompt says to prefer fewer actionable tasks and keep siblings distinct, but it does not require complete coverage of every source plan section or explicit logical execution ordering for plan-file inputs.",
+        "path: crates/cueloop/assets/prompts/task_decompose.md :: Limits :: `infer sibling dependencies` is optional, so ordering depends on planner behavior unless tests and prompt rules require order-sensitive output when a source plan has ordered phases.",
+        "path: crates/cueloop/src/commands/task/decompose/tests.rs :: task decomposition tests :: existing tests cover sibling dependency normalization, attach writes, replace safety, append/replace insertion, and nested dependencies, but no fixture proves a full plan document is decomposed into complete ordered queue work.",
         "path: docs/prd/ralph-task-decompose.md :: Success Metrics :: success is defined as creating a decomposed task tree from a high-level request and generating valid trees; there is no explicit metric for full-plan coverage from a source file."
       ],
       "plan": [
@@ -4014,23 +4014,23 @@
         "ux"
       ],
       "scope": [
-        "crates/ralph/src/contracts/task/types.rs",
-        "crates/ralph/src/contracts/task/tests.rs",
-        "crates/ralph/src/queue/operations/query.rs",
-        "crates/ralph/src/queue/operations/runnability/",
-        "crates/ralph/src/queue/operations/tests/query.rs",
-        "crates/ralph/src/queue/operations/tests/runnability.rs",
-        "crates/ralph/src/commands/run/selection.rs",
-        "crates/ralph/src/commands/run/run_one/selection.rs",
-        "crates/ralph/src/commands/run/parallel/worker_selection.rs",
-        "crates/ralph/src/cli/queue/next.rs",
-        "crates/ralph/src/cli/queue/explain.rs",
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/cli/machine/queue.rs",
+        "crates/cueloop/src/contracts/task/types.rs",
+        "crates/cueloop/src/contracts/task/tests.rs",
+        "crates/cueloop/src/queue/operations/query.rs",
+        "crates/cueloop/src/queue/operations/runnability/",
+        "crates/cueloop/src/queue/operations/tests/query.rs",
+        "crates/cueloop/src/queue/operations/tests/runnability.rs",
+        "crates/cueloop/src/commands/run/selection.rs",
+        "crates/cueloop/src/commands/run/run_one/selection.rs",
+        "crates/cueloop/src/commands/run/parallel/worker_selection.rs",
+        "crates/cueloop/src/cli/queue/next.rs",
+        "crates/cueloop/src/cli/queue/explain.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
+        "crates/cueloop/src/cli/machine/queue.rs",
         "apps/RalphMac/RalphCore/RalphTaskModels.swift",
         "apps/RalphMac/RalphCore/GraphModels.swift",
         "schemas/queue.schema.json",
-        "crates/ralph/tests/schema_alignment_test.rs",
+        "crates/cueloop/tests/schema_alignment_test.rs",
         "docs/queue-and-tasks.md",
         "docs/features/task-schema.md",
         "docs/machine-contract.md"
@@ -4081,14 +4081,14 @@
         "ux"
       ],
       "scope": [
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/support.rs",
-        "crates/ralph/src/commands/task/decompose/write.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/cli/machine/task.rs",
-        "crates/ralph/src/cli/machine/task/continuation.rs",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
-        "crates/ralph/src/commands/task/decompose/tests/",
+        "crates/cueloop/src/commands/task/decompose/types.rs",
+        "crates/cueloop/src/commands/task/decompose/support.rs",
+        "crates/cueloop/src/commands/task/decompose/write.rs",
+        "crates/cueloop/src/cli/task/decompose.rs",
+        "crates/cueloop/src/cli/machine/task.rs",
+        "crates/cueloop/src/cli/machine/task/continuation.rs",
+        "crates/cueloop/src/commands/task/decompose/tests.rs",
+        "crates/cueloop/src/commands/task/decompose/tests/",
         "docs/cli.md",
         "docs/prd/ralph-task-decompose.md"
       ],
@@ -4140,17 +4140,17 @@
         "operator-ux"
       ],
       "scope": [
-        "crates/ralph/src/cli/task/args/decompose.rs",
-        "crates/ralph/src/cli/task/args/types.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/cli/task/status.rs",
-        "crates/ralph/src/cli/machine/args.rs",
-        "crates/ralph/src/cli/machine/task.rs",
-        "crates/ralph/src/cli/machine/task/continuation.rs",
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/support.rs",
-        "crates/ralph/src/commands/task/decompose/write.rs",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
+        "crates/cueloop/src/cli/task/args/decompose.rs",
+        "crates/cueloop/src/cli/task/args/types.rs",
+        "crates/cueloop/src/cli/task/decompose.rs",
+        "crates/cueloop/src/cli/task/status.rs",
+        "crates/cueloop/src/cli/machine/args.rs",
+        "crates/cueloop/src/cli/machine/task.rs",
+        "crates/cueloop/src/cli/machine/task/continuation.rs",
+        "crates/cueloop/src/commands/task/decompose/types.rs",
+        "crates/cueloop/src/commands/task/decompose/support.rs",
+        "crates/cueloop/src/commands/task/decompose/write.rs",
+        "crates/cueloop/src/commands/task/decompose/tests.rs",
         "docs/cli.md",
         "docs/queue-and-tasks.md"
       ],
@@ -4158,7 +4158,7 @@
         "Warden feedback: after `--write`, all 46 generated tasks were `draft`, `queue validate` was structurally valid, and there were no runnable todo candidates.",
         "The existing decompose command has one `--status` for all generated nodes, so users must infer how to move from an all-draft decomposition to an executable queue.",
         "The existing `ralph task ready <TASK_ID>` command can promote a draft to todo, but decompose output does not currently point at the first actionable leaf.",
-        "Repo inspection: CLI decompose args live in crates/ralph/src/cli/task/args/decompose.rs plus shared enums in args/types.rs; machine decompose flags live in crates/ralph/src/cli/machine/args.rs."
+        "Repo inspection: CLI decompose args live in crates/cueloop/src/cli/task/args/decompose.rs plus shared enums in args/types.rs; machine decompose flags live in crates/cueloop/src/cli/machine/args.rs."
       ],
       "plan": [
         "Add the smallest explicit activation surface for decomposition writes, such as `--ready-first-leaf`, `--leaf-status todo --parent-status draft`, or an equivalent machine-safe option that avoids all-draft dead ends by intent.",
@@ -4204,24 +4204,24 @@
         "ux"
       ],
       "scope": [
-        "crates/ralph/src/queue/validation/dependency_graph.rs",
-        "crates/ralph/src/queue/validation/relationships.rs",
-        "crates/ralph/src/queue/operations/runnability/analysis.rs",
-        "crates/ralph/src/queue/operations/runnability/report.rs",
-        "crates/ralph/src/cli/queue/validate.rs",
-        "crates/ralph/src/cli/queue/explain.rs",
-        "crates/ralph/src/cli/machine/queue.rs",
+        "crates/cueloop/src/queue/validation/dependency_graph.rs",
+        "crates/cueloop/src/queue/validation/relationships.rs",
+        "crates/cueloop/src/queue/operations/runnability/analysis.rs",
+        "crates/cueloop/src/queue/operations/runnability/report.rs",
+        "crates/cueloop/src/cli/queue/validate.rs",
+        "crates/cueloop/src/cli/queue/explain.rs",
+        "crates/cueloop/src/cli/machine/queue.rs",
         "docs/queue-and-tasks.md",
         "docs/machine-contract.md",
-        "crates/ralph/src/cli/machine/queue_docs.rs",
-        "crates/ralph/src/cli/machine/queue_docs/support.rs",
-        "crates/ralph/src/contracts/blocking.rs",
-        "crates/ralph/src/queue/operations/runnability/model.rs",
-        "crates/ralph/src/queue/validation_runtime_tests/dependencies.rs",
-        "crates/ralph/src/queue/operations/tests/runnability.rs",
-        "crates/ralph/src/cli/machine/queue_docs/tests.rs",
-        "crates/ralph/tests/machine_contract_test/machine_contract_test_recovery.rs",
-        "crates/ralph/tests/machine_contract_test/machine_contract_test_queue.rs"
+        "crates/cueloop/src/cli/machine/queue_docs.rs",
+        "crates/cueloop/src/cli/machine/queue_docs/support.rs",
+        "crates/cueloop/src/contracts/blocking.rs",
+        "crates/cueloop/src/queue/operations/runnability/model.rs",
+        "crates/cueloop/src/queue/validation_runtime_tests/dependencies.rs",
+        "crates/cueloop/src/queue/operations/tests/runnability.rs",
+        "crates/cueloop/src/cli/machine/queue_docs/tests.rs",
+        "crates/cueloop/tests/machine_contract_test/machine_contract_test_recovery.rs",
+        "crates/cueloop/tests/machine_contract_test/machine_contract_test_queue.rs"
       ],
       "evidence": [
         "Warden feedback: `ralph queue validate` printed many warnings like `Task RQ-0004 is blocked: all dependency paths lead to incomplete or rejected tasks` for a freshly decomposed all-draft tree.",
@@ -4280,14 +4280,14 @@
         "ux"
       ],
       "scope": [
-        "crates/ralph/src/commands/task/decompose/planning.rs",
-        "crates/ralph/src/commands/task/decompose/types.rs",
-        "crates/ralph/src/commands/task/decompose/write.rs",
-        "crates/ralph/src/cli/task/decompose.rs",
-        "crates/ralph/src/cli/machine/task.rs",
-        "crates/ralph/src/cli/machine/task/continuation.rs",
-        "crates/ralph/src/cli/machine/common.rs",
-        "crates/ralph/src/commands/task/decompose/tests.rs",
+        "crates/cueloop/src/commands/task/decompose/planning.rs",
+        "crates/cueloop/src/commands/task/decompose/types.rs",
+        "crates/cueloop/src/commands/task/decompose/write.rs",
+        "crates/cueloop/src/cli/task/decompose.rs",
+        "crates/cueloop/src/cli/machine/task.rs",
+        "crates/cueloop/src/cli/machine/task/continuation.rs",
+        "crates/cueloop/src/cli/machine/common.rs",
+        "crates/cueloop/src/commands/task/decompose/tests.rs",
         "docs/cli.md",
         "docs/machine-contract.md"
       ],

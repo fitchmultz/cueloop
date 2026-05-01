@@ -21,7 +21,7 @@ set -euo pipefail
 RELEASE_METADATA_PATHS=(
     "VERSION"
     "Cargo.lock"
-    "crates/ralph/Cargo.toml"
+    "crates/cueloop/Cargo.toml"
     "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
     "apps/RalphMac/RalphCore/VersionValidator.swift"
     "CHANGELOG.md"

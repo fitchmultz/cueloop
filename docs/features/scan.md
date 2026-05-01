@@ -623,7 +623,7 @@ ralph scan --mode maintenance "security vulnerabilities"
 # Result: Agent discovers 3 security issues
 
 # TASK BUILD: Refactor specific module
-ralph task build-refactor --path crates/ralph/src/auth
+ralph task build-refactor --path crates/cueloop/src/auth
 # Result: Creates tasks for large files in auth module
 ```
 

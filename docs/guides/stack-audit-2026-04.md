@@ -9,7 +9,7 @@ Purpose: record Ralph's current source-build toolchain baseline, explain the Rus
 
 ## Scope
 
-- Rust CLI workspace under `crates/ralph/`
+- Rust CLI workspace under `crates/cueloop/`
 - macOS SwiftUI app under `apps/RalphMac/`
 - Local build/test entrypoints in `Makefile`
 - Release/versioning surfaces that consume the pinned Rust toolchain
@@ -21,7 +21,7 @@ Audit date: `2026-04-27`
 ### Languages and Toolchains
 
 - Rust toolchain: `1.95.0` stable (`rust-toolchain.toml`)
-- Cargo manifest MSRV floor: `1.95` (`crates/ralph/Cargo.toml`)
+- Cargo manifest MSRV floor: `1.95` (`crates/cueloop/Cargo.toml`)
 - Rust edition: `2024`
 - Xcode: `26.3`
 - Swift language mode: `6.2`

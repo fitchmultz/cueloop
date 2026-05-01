@@ -208,7 +208,7 @@ Example loop summary for an idle queue:
 
 Stop After Current is a machine-contract workflow under `ralph machine run stop`, not a human `ralph queue stop` parsing path.
 
-The scenario-level app parity registry in `crates/ralph/src/cli/app_parity.rs`
+The scenario-level app parity registry in `crates/cueloop/src/cli/app_parity.rs`
 should reference this contract through explicit Rust and RalphMac proof anchors
 whenever Stop After Current behavior changes.
 

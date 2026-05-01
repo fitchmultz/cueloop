@@ -127,7 +127,7 @@ ralph watch --debounce-ms 2000
 **Implementation Details:**
 
 ```rust
-// From crates/ralph/src/commands/watch/state.rs
+// From crates/cueloop/src/commands/watch/state.rs
 pub struct WatchState {
     pub pending_files: HashSet<PathBuf>,
     pub last_event: Instant,
@@ -224,7 +224,7 @@ Watch mode uses fingerprint-based deduplication to prevent duplicate tasks.
 **Fingerprint Generation:**
 
 ```rust
-// From crates/ralph/src/commands/watch/tasks.rs
+// From crates/cueloop/src/commands/watch/tasks.rs
 pub fn generate_comment_fingerprint(content: &str) -> String {
     let normalized = content.to_lowercase().trim().to_string();
     let mut hasher = Sha256::new();

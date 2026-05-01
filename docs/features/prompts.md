@@ -73,7 +73,7 @@ Ralph uses a sophisticated prompt system to guide AI agents through task executi
 Default prompts are embedded in the Ralph binary using Rust's `include_str!` macro. They live in:
 
 ```
-crates/ralph/assets/prompts/
+crates/cueloop/assets/prompts/
 ├── worker.md                     # Base worker prompt
 ├── worker_phase1.md              # Phase 1 (planning) wrapper
 ├── worker_phase2.md              # Phase 2 (implementation, 2-phase)
@@ -675,13 +675,13 @@ cat .ralph/logs/debug.log | grep -A 50 "Rendered prompt"
 
 | Component | Path |
 |-----------|------|
-| Public API | `crates/ralph/src/prompts.rs` |
-| Internal Modules | `crates/ralph/src/prompts_internal/` |
-| Registry | `crates/ralph/src/prompts_internal/registry.rs` |
-| Utilities | `crates/ralph/src/prompts_internal/util.rs` |
-| Worker Phases | `crates/ralph/src/prompts_internal/worker_phases.rs` |
-| Template System | `crates/ralph/src/template/` |
-| Embedded Defaults | `crates/ralph/assets/prompts/` |
+| Public API | `crates/cueloop/src/prompts.rs` |
+| Internal Modules | `crates/cueloop/src/prompts_internal/` |
+| Registry | `crates/cueloop/src/prompts_internal/registry.rs` |
+| Utilities | `crates/cueloop/src/prompts_internal/util.rs` |
+| Worker Phases | `crates/cueloop/src/prompts_internal/worker_phases.rs` |
+| Template System | `crates/cueloop/src/template/` |
+| Embedded Defaults | `crates/cueloop/assets/prompts/` |
 
 ### Related Documentation
 

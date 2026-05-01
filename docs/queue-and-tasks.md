@@ -82,7 +82,7 @@ Notes:
   "created_at": "2026-01-25T03:45:00Z",
   "updated_at": "2026-01-25T03:45:00Z",
   "tags": ["cli", "queue"],
-  "scope": ["schemas/queue.schema.json", "crates/ralph/src/cli/queue.rs"],
+  "scope": ["schemas/queue.schema.json", "crates/cueloop/src/cli/queue.rs"],
   "plan": ["Add schema validation to queue validate."],
   "evidence": ["make agent-ci"],
   "depends_on": [],
