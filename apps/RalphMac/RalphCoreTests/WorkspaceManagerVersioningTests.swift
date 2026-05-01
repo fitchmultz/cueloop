@@ -202,7 +202,7 @@ final class WorkspaceManagerVersioningTests: RalphCoreTestCase {
         XCTAssertEqual(found.description, "0.3.9")
         XCTAssertEqual(minimum.description, VersionCompatibility.minimumCLIVersion)
         XCTAssertTrue(manager.errorMessage?.contains("is too old") == true)
-        XCTAssertTrue(manager.errorMessage?.contains("Please reinstall Ralph") == true)
+        XCTAssertTrue(manager.errorMessage?.contains("Please reinstall CueLoop") == true)
         XCTAssertNil(RalphAppDefaults.userDefaults.data(forKey: manager.versionCheckCacheKey))
     }
 

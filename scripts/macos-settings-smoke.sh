@@ -12,7 +12,7 @@
 # - scripts/macos-settings-smoke.sh --app-bundle target/tmp/xcode-deriveddata/build/Build/Products/Release/RalphMac.app
 # Invariants/assumptions:
 # - Requires macOS with `python3` available.
-# - The app bundle contains the companion `ralph` CLI at `Contents/MacOS/ralph`.
+# - The app bundle contains the companion `cueloop` CLI at `Contents/MacOS/cueloop`.
 # - Contract mode launches the app executable directly with `--settings-smoke-contract`; it must never rely on `open`, AppleScript, or interactive focus stealing.
 
 set -euo pipefail
@@ -74,7 +74,7 @@ print(os.path.abspath(path))
 PY
 )"
 APP_EXECUTABLE="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
-APP_CLI="$APP_BUNDLE/Contents/MacOS/ralph"
+APP_CLI="$APP_BUNDLE/Contents/MacOS/cueloop"
 
 if [ ! -d "$APP_BUNDLE" ]; then
     echo "ERROR: app bundle not found: $APP_BUNDLE" >&2
@@ -85,7 +85,7 @@ if [ ! -x "$APP_EXECUTABLE" ]; then
     exit 2
 fi
 if [ ! -x "$APP_CLI" ]; then
-    echo "ERROR: bundled ralph CLI not found or not executable: $APP_CLI" >&2
+    echo "ERROR: bundled cueloop CLI not found or not executable: $APP_CLI" >&2
     exit 2
 fi
 

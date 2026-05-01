@@ -292,7 +292,7 @@ final class RalphCLIClientTests: RalphCoreTestCase {
 
         let scriptContent = """
             #!/bin/sh
-            echo "ralph \(compatibleVersion)"
+            echo "cueloop \(compatibleVersion)"
             """
         let scriptURL = try RalphMockCLITestSupport.makeExecutableScript(in: tempDir, body: scriptContent)
 
@@ -307,7 +307,7 @@ final class RalphCLIClientTests: RalphCoreTestCase {
         let result = validator.validate(versionString)
 
         XCTAssertTrue(result.isCompatible, "Version '\(versionString)' should be compatible")
-        XCTAssertEqual(result.rawVersion, "ralph \(compatibleVersion)")
+        XCTAssertEqual(result.rawVersion, "cueloop \(compatibleVersion)")
     }
 
     func test_runAndCollect_versionOutput_withVPrefix_parsable() async throws {
