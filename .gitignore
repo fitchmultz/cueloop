@@ -27,22 +27,22 @@ apps/RalphMac/build/
 *.profraw
 *.profdata
 
-# Ralph debug logs (raw/unredacted; do not commit)
-.ralph/logs/
+# CueLoop debug logs (raw/unredacted; do not commit)
+.cueloop/logs/
 
-# Ralph lock files (runtime coordination artifacts)
-.ralph/lock/
+# CueLoop lock files (runtime coordination artifacts)
+.cueloop/lock/
 
-# Ralph runtime artifacts (generated/session data should stay local)
-.ralph/workspaces/
-.ralph/cache/
-.ralph/undo/
-.ralph/webhooks/
-.ralph/trust.json
-.ralph/trust.jsonc
+# CueLoop runtime artifacts (generated/session data should stay local)
+.cueloop/workspaces/
+.cueloop/cache/
+.cueloop/undo/
+.cueloop/webhooks/
+.cueloop/trust.json
+.cueloop/trust.jsonc
 .scratchpad.md
 .FIX_TRACKING.md
-!.ralph/queue.jsonc
-!.ralph/done.jsonc
+!.cueloop/queue.jsonc
+!.cueloop/done.jsonc
 .repo_ignore
 prompt-exports/

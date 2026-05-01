@@ -132,10 +132,10 @@ collect_tracked_runtime_build_path_violations() {
     fi
 }
 
-collect_tracked_ralph_allowlist_violations() {
+collect_tracked_runtime_state_allowlist_violations() {
     local path="$1"
-    if [ "$path" = ".ralph" ] || [[ "$path" == .ralph/* ]]; then
-        if [ "$path" = ".ralph" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_ralph_path "$path"; then
+    if release_is_runtime_state_path "$path"; then
+        if [ "$path" = ".cueloop" ] || [ "$path" = ".ralph" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_runtime_state_path "$path"; then
             unexpected+=("$path")
         fi
     fi
@@ -159,22 +159,25 @@ check_source_snapshot_artifacts() {
         fi
     done
 
-    if [ -e "$REPO_ROOT/.ralph" ] || [ -L "$REPO_ROOT/.ralph" ]; then
-        if [ ! -d "$REPO_ROOT/.ralph" ] || [ -L "$REPO_ROOT/.ralph" ]; then
-            violations+=(".ralph")
-        else
-            while IFS= read -r -d '' rel_path; do
-                [ -z "$rel_path" ] && continue
-                rel_path="${rel_path#./}"
-                release_require_safe_publication_path "Source snapshot" "$rel_path" || return 1
-                if [ -L "$REPO_ROOT/$rel_path" ] || ! release_is_allowed_tracked_ralph_path "$rel_path"; then
-                    violations+=("$rel_path")
-                fi
-            done < <(
-                cd "$REPO_ROOT" && find .ralph -mindepth 1 -print0
-            )
+    local runtime_dir
+    for runtime_dir in ".cueloop" ".ralph"; do
+        if [ -e "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
+            if [ ! -d "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
+                violations+=("$runtime_dir")
+            else
+                while IFS= read -r -d '' rel_path; do
+                    [ -z "$rel_path" ] && continue
+                    rel_path="${rel_path#./}"
+                    release_require_safe_publication_path "Source snapshot" "$rel_path" || return 1
+                    if [ -L "$REPO_ROOT/$rel_path" ] || ! release_is_allowed_tracked_runtime_state_path "$rel_path"; then
+                        violations+=("$rel_path")
+                    fi
+                done < <(
+                    cd "$REPO_ROOT" && find "$runtime_dir" -mindepth 1 -print0
+                )
+            fi
         fi
-    fi
+    done
 
     while IFS= read -r -d '' rel_path; do
         [ -z "$rel_path" ] && continue
@@ -204,13 +207,13 @@ check_tracked_runtime_artifacts() {
 
     scan_tracked_paths \
         collect_tracked_runtime_build_path_violations \
-        collect_tracked_ralph_allowlist_violations || return 1
+        collect_tracked_runtime_state_allowlist_violations || return 1
 
     if [ "${#tracked_violations[@]}" -gt 0 ]; then
         report_path_violations "Tracked runtime/build artifacts detected" "${tracked_violations[@]}" || return 1
     fi
     if [ "${#unexpected[@]}" -gt 0 ]; then
-        report_path_violations "Tracked .ralph files outside the public allowlist detected" "${unexpected[@]}" || return 1
+        report_path_violations "Tracked runtime state files outside the public allowlist detected" "${unexpected[@]}" || return 1
     fi
 
     ralph_log_success "No tracked runtime/build artifacts detected"

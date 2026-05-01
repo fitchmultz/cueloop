@@ -1,13 +1,13 @@
-//! Source-snapshot `.ralph` path contracts for `pre-public-check.sh`.
+//! Source-snapshot runtime-state path contracts for `pre-public-check.sh`.
 //!
 //! Purpose:
-//! - Keep `--allow-no-git` `.ralph` path rejection coverage grouped together.
+//! - Keep `--allow-no-git` `.cueloop`/`.ralph` path rejection coverage grouped together.
 //!
 //! Responsibilities:
-//! - Verify non-directory `.ralph` roots, symlinked allowlisted files, and unallowlisted `.ralph` paths remain rejected.
+//! - Verify non-directory runtime roots, symlinked allowlisted files, and unallowlisted runtime paths remain rejected.
 //!
 //! Scope:
-//! - Limited to source-snapshot `.ralph` path coverage.
+//! - Limited to source-snapshot runtime-state path coverage.
 //!
 //! Usage:
 //! - Loaded by `source_snapshot_safety.rs`.
@@ -165,6 +165,48 @@ fn pre_public_check_allow_no_git_rejects_unallowlisted_ralph_paths() {
         stderr.contains(".ralph/plugins/test.plugin/plugin.json")
             && stderr.contains(".ralph/trust.json"),
         "unallowlisted .ralph rejection should enumerate the offending paths\nstderr:\n{}",
+        stderr
+    );
+}
+
+#[test]
+fn pre_public_check_allow_no_git_rejects_unallowlisted_cueloop_paths() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path();
+
+    copy_pre_public_check_fixture(repo_root);
+    write_file(
+        &repo_root.join(".cueloop/plugins/test.plugin/plugin.json"),
+        "{\"name\":\"test.plugin\"}\n",
+    );
+    write_file(
+        &repo_root.join(".cueloop/trust.json"),
+        "{\"allow_project_commands\":true}\n",
+    );
+
+    let output = Command::new("bash")
+        .arg(repo_root.join("scripts/pre-public-check.sh"))
+        .args([
+            "--skip-ci",
+            "--skip-links",
+            "--skip-clean",
+            "--allow-no-git",
+        ])
+        .current_dir(repo_root)
+        .output()
+        .expect("run source-snapshot safety mode with unallowlisted .cueloop paths");
+
+    assert!(
+        !output.status.success(),
+        "source-snapshot safety mode should reject unallowlisted .cueloop paths\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains(".cueloop/plugins/test.plugin/plugin.json")
+            && stderr.contains(".cueloop/trust.json"),
+        "unallowlisted .cueloop rejection should enumerate the offending paths\nstderr:\n{}",
         stderr
     );
 }

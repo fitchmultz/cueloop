@@ -31,6 +31,10 @@ RELEASE_METADATA_PATHS=(
 )
 
 RALPH_TRACKED_ALLOWLIST=(
+    ".cueloop/README.md"
+    ".cueloop/queue.jsonc"
+    ".cueloop/done.jsonc"
+    ".cueloop/config.jsonc"
     ".ralph/README.md"
     ".ralph/queue.jsonc"
     ".ralph/done.jsonc"
@@ -55,6 +59,15 @@ PUBLIC_REQUIRED_FILES=(
 PUBLIC_SCAN_EXCLUDES=(
     ".git/"
     "target/"
+    ".cueloop/cache/"
+    ".cueloop/lock/"
+    ".cueloop/logs/"
+    ".cueloop/plugins/"
+    ".cueloop/trust.json"
+    ".cueloop/trust.jsonc"
+    ".cueloop/undo/"
+    ".cueloop/webhooks/"
+    ".cueloop/workspaces/"
     ".ralph/cache/"
     ".ralph/lock/"
     ".ralph/logs/"
@@ -102,6 +115,12 @@ PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
     ".ruff_cache/"
     ".pytest_cache/"
     ".ty_cache/"
+    ".cueloop/cache/"
+    ".cueloop/lock/"
+    ".cueloop/logs/"
+    ".cueloop/workspaces/"
+    ".cueloop/undo/"
+    ".cueloop/webhooks/"
     ".ralph/cache/"
     ".ralph/lock/"
     ".ralph/logs/"
@@ -111,11 +130,20 @@ PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
 )
 
 PUBLIC_IGNORED_DIRTY_PATHS=(
+    ".cueloop/trust.json"
+    ".cueloop/trust.jsonc"
     ".ralph/trust.json"
     ".ralph/trust.jsonc"
 )
 
 PUBLIC_IGNORED_DIRTY_PATH_PREFIXES=(
+    ".cueloop/cache/"
+    ".cueloop/lock/"
+    ".cueloop/logs/"
+    ".cueloop/plugins/"
+    ".cueloop/undo/"
+    ".cueloop/webhooks/"
+    ".cueloop/workspaces/"
     ".ralph/cache/"
     ".ralph/lock/"
     ".ralph/logs/"
@@ -292,7 +320,19 @@ release_assert_dirty_paths_allowed() {
     return 0
 }
 
-release_is_allowed_tracked_ralph_path() {
+release_is_runtime_state_path() {
+    local path="${1#./}"
+
+    case "$path" in
+        .cueloop|.cueloop/*|.ralph|.ralph/*)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+release_is_allowed_tracked_runtime_state_path() {
     local path="$1"
     local allowed
     for allowed in "${RALPH_TRACKED_ALLOWLIST[@]}"; do
@@ -301,6 +341,10 @@ release_is_allowed_tracked_ralph_path() {
         fi
     done
     return 1
+}
+
+release_is_allowed_tracked_ralph_path() {
+    release_is_allowed_tracked_runtime_state_path "$1"
 }
 
 release_is_local_only_name() {

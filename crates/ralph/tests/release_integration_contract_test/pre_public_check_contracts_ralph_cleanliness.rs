@@ -278,7 +278,7 @@ fn pre_public_check_rejects_symlinked_allowlisted_ralph_files() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        combined.contains("Tracked .ralph files outside the public allowlist detected")
+        combined.contains("Tracked runtime state files outside the public allowlist detected")
             && combined.contains(".ralph/README.md"),
         "symlinked allowlisted .ralph file rejection should explain the offending path\noutput:\n{}",
         combined
