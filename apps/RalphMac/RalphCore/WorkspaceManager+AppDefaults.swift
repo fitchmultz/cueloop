@@ -292,7 +292,7 @@ public extension WorkspaceManager {
             errorMessage = nil
             return true
         } catch {
-            errorMessage = "Failed to locate bundled ralph executable: \(error)"
+            errorMessage = "Failed to locate bundled cueloop executable: \(error)"
             return false
         }
     }

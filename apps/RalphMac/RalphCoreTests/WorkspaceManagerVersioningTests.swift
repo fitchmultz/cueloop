@@ -98,7 +98,7 @@ final class WorkspaceManagerVersioningTests: RalphCoreTestCase {
 
         XCTAssertNil(result)
         XCTAssertTrue(manager.errorMessage?.contains("Unsupported machine system info version 999") == true)
-        XCTAssertTrue(manager.errorMessage?.contains("Rebuild RalphMac and the bundled CLI from the same revision.") == true)
+        XCTAssertTrue(manager.errorMessage?.contains("Rebuild the macOS app and the bundled CueLoop CLI from the same revision.") == true)
         XCTAssertFalse(manager.errorMessage?.contains("Failed to check CLI version:") == true)
     }
 

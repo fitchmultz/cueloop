@@ -2,10 +2,10 @@
  RalphE2ESmokeTests
 
  Purpose:
- - Validate that the real `ralph` binary can be executed end-to-end from Swift.
+ - Validate that the real `cueloop` binary can be executed end-to-end from Swift.
 
  Responsibilities:
- - Validate that the real `ralph` binary can be executed end-to-end from Swift.
+ - Validate that the real `cueloop` binary can be executed end-to-end from Swift.
  - Exercise a minimal workflow in an isolated temp directory:
    - version check
    - `init --force --non-interactive`
@@ -18,9 +18,9 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - A deterministic `ralph` binary must be available via either:
+ - A deterministic `cueloop` binary must be available via either:
    - `RALPH_BIN_PATH`, or
-   - the bundled app binary at `RalphMac.app/Contents/MacOS/ralph`.
+   - the bundled app binary at `RalphMac.app/Contents/MacOS/cueloop`.
  - A Rust toolchain is available if `RALPH_E2E_ALLOW_CARGO_BUILD=1` enables fallback cargo builds.
  - Tests must not rely on network access.
  */
@@ -39,7 +39,7 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
         let ralphURL = try Self.resolveRalphBinaryURL()
         let client = try RalphCLIClient(executableURL: ralphURL)
 
-        // Some versions of Ralph expose `version` as a subcommand only.
+        // Some versions of CueLoop expose `version` as a subcommand only.
         // Prefer `--version` when it exists but fall back to `version` to keep the GUI usable.
         let version1 = await Self.runAndCollect(
             client: client,
@@ -123,7 +123,7 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
         let tempDir = try Self.makeTempDir(prefix: "ralph-resolver-env-")
         defer { RalphCoreTestSupport.assertRemoved(tempDir) }
 
-        let binaryURL = tempDir.appendingPathComponent("ralph", isDirectory: false)
+        let binaryURL = tempDir.appendingPathComponent("cueloop", isDirectory: false)
         try Self.writeExecutableScript(at: binaryURL)
 
         let resolved = try Self.resolveRalphBinaryURL(
@@ -278,7 +278,7 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
             guard FileManager.default.isExecutableFile(atPath: overrideURL.path) else {
                 throw resolverError(
                     "Environment variable \(binaryPathEnvKey) points to a non-executable path: \(overrideURL.path). " +
-                        "Set \(binaryPathEnvKey) to an executable `ralph` binary."
+                        "Set \(binaryPathEnvKey) to an executable `cueloop` binary."
                 )
             }
             return overrideURL
@@ -290,8 +290,8 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
 
         guard environment[allowCargoBuildEnvKey] == "1" else {
             throw resolverError(
-                "Missing \(binaryPathEnvKey). Set \(binaryPathEnvKey) to an executable `ralph` binary for deterministic tests, " +
-                    "or ensure the bundled Ralph binary is present at \(bundledRalphBinaryPathDescription()). " +
+                "Missing \(binaryPathEnvKey). Set \(binaryPathEnvKey) to an executable `cueloop` binary for deterministic tests, " +
+                    "or ensure the bundled CueLoop binary is present at \(bundledRalphBinaryPathDescription()). " +
                     "If you explicitly want fallback runtime cargo build, set \(allowCargoBuildEnvKey)=1."
             )
         }
@@ -299,11 +299,11 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
         let root = try repoRoot ?? findRepoRoot(startingAt: URL(fileURLWithPath: #filePath))
         let candidate = root.appendingPathComponent("target", isDirectory: true)
             .appendingPathComponent("debug", isDirectory: true)
-            .appendingPathComponent("ralph", isDirectory: false)
+            .appendingPathComponent("cueloop", isDirectory: false)
 
         // FAIL FAST - never build during tests
         throw resolverError(
-            "Missing ralph binary at \(candidate.path). " +
+            "Missing cueloop binary at \(candidate.path). " +
             "Run 'make build' before tests, or set \(binaryPathEnvKey) to a valid binary."
         )
     }
@@ -319,11 +319,11 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
             .appendingPathComponent("RalphMac.app", isDirectory: true)
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("MacOS", isDirectory: true)
-            .appendingPathComponent("ralph", isDirectory: false)
+            .appendingPathComponent("cueloop", isDirectory: false)
     }
 
     private static func bundledRalphBinaryPathDescription() -> String {
-        bundledRalphBinaryURL()?.path ?? "<derived-data>/Build/Products/Debug/RalphMac.app/Contents/MacOS/ralph"
+        bundledRalphBinaryURL()?.path ?? "<derived-data>/Build/Products/Debug/RalphMac.app/Contents/MacOS/cueloop"
     }
 
     private static func findRepoRoot(startingAt url: URL) throws -> URL {

@@ -207,14 +207,14 @@ public extension WorkspaceOperationalIssue {
         let details: (String, String, String?) = switch reason {
         case .cliNotFound:
             (
-                "Ralph CLI missing",
-                "The workspace cannot reach the bundled `ralph` executable.",
-                "Reinstall Ralph or restore the bundled CLI binary."
+                "CueLoop CLI missing",
+                "The workspace cannot reach the bundled `cueloop` executable.",
+                "Reinstall CueLoop or restore the bundled CLI binary."
             )
         case .cliNotExecutable:
             (
-                "Ralph CLI not executable",
-                "The workspace found `ralph`, but macOS cannot execute it.",
+                "CueLoop CLI not executable",
+                "The workspace found `cueloop`, but macOS cannot execute it.",
                 "Check quarantine and file permissions, then retry."
             )
         case .workspaceInaccessible:

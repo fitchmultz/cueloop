@@ -4,7 +4,7 @@
 
  Responsibilities:
  - Create and seed isolated UI-test workspaces.
- - Run the bundled `ralph` executable and decode queue state.
+ - Run the bundled `cueloop` executable and decode queue state.
  - Relaunch the app against the same workspace when app-state regressions need it.
 
  Scope:
@@ -14,7 +14,7 @@
  - Base harness and app-state suites call these helpers to prepare or inspect the fixture workspace.
 
  Invariants/Assumptions:
- - `ralphExecutableURL` is resolved before command helpers run.
+ - `ralphExecutableURL` points to the primary bundled CueLoop CLI before command helpers run.
  - Seeded fixtures stay stable unless a test intentionally mutates the workspace.
  */
 
@@ -109,7 +109,7 @@ extension RalphMacUITestCase {
                 domain: "RalphMacUITests",
                 code: Int(process.terminationStatus),
                 userInfo: [
-                    NSLocalizedDescriptionKey: "ralph \(arguments.joined(separator: " ")) failed",
+                    NSLocalizedDescriptionKey: "\(executableURL.lastPathComponent) \(arguments.joined(separator: " ")) failed",
                     "stdout": stdout,
                     "stderr": stderr
                 ]
@@ -152,23 +152,27 @@ extension RalphMacUITestCase {
             return overrideURL
         }
 
-        let bundledURL = Bundle.main.bundleURL
+        let executableDirectory = Bundle.main.bundleURL
             .deletingLastPathComponent()
             .appendingPathComponent("RalphMac.app", isDirectory: true)
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("MacOS", isDirectory: true)
-            .appendingPathComponent("ralph", isDirectory: false)
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
-        if FileManager.default.isExecutableFile(atPath: bundledURL.path) {
-            return bundledURL
+        for executableName in ["cueloop", "ralph"] {
+            let bundledURL = executableDirectory
+                .appendingPathComponent(executableName, isDirectory: false)
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+            if FileManager.default.isExecutableFile(atPath: bundledURL.path) {
+                return bundledURL
+            }
         }
 
+        let primaryURL = executableDirectory.appendingPathComponent("cueloop", isDirectory: false)
         throw NSError(
             domain: "RalphMacUITests",
             code: 2,
             userInfo: [
-                NSLocalizedDescriptionKey: "Failed to locate a bundled ralph executable for UI tests at \(bundledURL.path). Build the app bundle or set RALPH_BIN_PATH explicitly."
+                NSLocalizedDescriptionKey: "Failed to locate a bundled cueloop executable for UI tests at \(primaryURL.path). Build the app bundle or set RALPH_BIN_PATH explicitly."
             ]
         )
     }
