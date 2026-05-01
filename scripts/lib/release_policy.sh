@@ -202,14 +202,14 @@ release_require_safe_publication_path() {
     local control_status=0
 
     if release_path_has_control_characters "$path"; then
-        ralph_log_error "$context contains a path with unsupported control characters: $(release_format_path_for_logs "$path")"
+        cueloop_log_error "$context contains a path with unsupported control characters: $(release_format_path_for_logs "$path")"
         return 1
     else
         control_status=$?
     fi
 
     if [ "$control_status" -ne 1 ]; then
-        ralph_log_error "$context path validation failed for $(release_format_path_for_logs "$path")"
+        cueloop_log_error "$context path validation failed for $(release_format_path_for_logs "$path")"
         return 1
     fi
 
@@ -233,10 +233,10 @@ release_collect_git_output_z() {
     shift
 
     local output_file
-    output_file=$(ralph_mktemp_file "ralph-git-output")
+    output_file=$(cueloop_mktemp_file "ralph-git-output")
     if ! "$@" >"$output_file" 2>/dev/null; then
         rm -f "$output_file"
-        ralph_log_error "$context failed"
+        cueloop_log_error "$context failed"
         return 1
     fi
 
@@ -266,7 +266,7 @@ release_collect_dirty_lines() {
 
         if release_dirty_status_has_second_path "$status"; then
             if ! IFS= read -r -d '' path; then
-                ralph_log_error "Git status rename/copy entry ended unexpectedly"
+                cueloop_log_error "Git status rename/copy entry ended unexpectedly"
                 failed=1
                 break
             fi
@@ -310,7 +310,7 @@ release_assert_dirty_paths_allowed() {
     done <<< "$dirty_lines"
 
     if [ "${#disallowed[@]}" -ne 0 ]; then
-        ralph_log_error "Unexpected tracked changes detected"
+        cueloop_log_error "Unexpected tracked changes detected"
         printf '  %s\n' "${disallowed[@]}" >&2
         echo "  Allowed release metadata paths are:" >&2
         printf '    - %s\n' "${RELEASE_METADATA_PATHS[@]}" >&2

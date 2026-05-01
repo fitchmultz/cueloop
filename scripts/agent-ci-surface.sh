@@ -21,7 +21,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/lib/release_policy.sh"
 
 MODE="target"
@@ -89,7 +89,7 @@ while [ $# -gt 0 ]; do
             exit 0
             ;;
         *)
-            ralph_log_error "Unknown option: $1"
+            cueloop_log_error "Unknown option: $1"
             usage
             exit 2
             ;;

@@ -49,7 +49,7 @@ EOF
 
 release_verify_state_load() {
     if [ ! -f "$VERIFY_STATE_FILE" ]; then
-        ralph_log_error "Verified release snapshot not found: $VERIFY_STATE_FILE"
+        cueloop_log_error "Verified release snapshot not found: $VERIFY_STATE_FILE"
         echo "  Run: scripts/release.sh verify $VERSION" >&2
         return 1
     fi
@@ -64,7 +64,7 @@ release_verify_state_init() {
     VERIFY_STATE_FILE="$VERIFY_DIR/state.env"
 
     if [ -e "$STATE_FILE" ]; then
-        ralph_log_error "Release transaction already exists for v$VERSION"
+        cueloop_log_error "Release transaction already exists for v$VERSION"
         echo "  Continue it with: scripts/release.sh reconcile $VERSION" >&2
         return 1
     fi
@@ -86,7 +86,7 @@ release_verify_write_metadata_manifest() {
     : > "$VERIFY_METADATA_MANIFEST"
     local relative_path
     for relative_path in "${RELEASE_METADATA_PATHS[@]}"; do
-        ralph_sha256_file "$REPO_ROOT/$relative_path" >> "$VERIFY_METADATA_MANIFEST"
+        cueloop_sha256_file "$REPO_ROOT/$relative_path" >> "$VERIFY_METADATA_MANIFEST"
     done
 }
 
@@ -94,13 +94,13 @@ release_verify_write_artifact_manifest() {
     : > "$VERIFY_ARTIFACT_MANIFEST"
 
     if [ -f "$VERIFY_RELEASE_NOTES_FILE" ]; then
-        ralph_sha256_file "$VERIFY_RELEASE_NOTES_FILE" >> "$VERIFY_ARTIFACT_MANIFEST"
+        cueloop_sha256_file "$VERIFY_RELEASE_NOTES_FILE" >> "$VERIFY_ARTIFACT_MANIFEST"
     fi
 
     if [ -d "$RELEASE_ARTIFACTS_DIR" ]; then
         while IFS= read -r artifact; do
             [ -n "$artifact" ] || continue
-            ralph_sha256_file "$artifact" >> "$VERIFY_ARTIFACT_MANIFEST"
+            cueloop_sha256_file "$artifact" >> "$VERIFY_ARTIFACT_MANIFEST"
         done < <(find "$RELEASE_ARTIFACTS_DIR" -maxdepth 1 -type f | LC_ALL=C sort)
     fi
 }
@@ -120,7 +120,7 @@ release_verify_assert_manifest_matches() {
     local label="$2"
 
     if [ ! -f "$manifest_path" ]; then
-        ralph_log_error "Missing $label manifest: $manifest_path"
+        cueloop_log_error "Missing $label manifest: $manifest_path"
         return 1
     fi
 
@@ -133,12 +133,12 @@ release_verify_assert_manifest_matches() {
         expected_hash=$(printf '%s\n' "$line" | awk '{print $1}')
         file_path=$(printf '%s\n' "$line" | cut -d' ' -f3-)
         if [ ! -f "$file_path" ]; then
-            ralph_log_error "Verified snapshot is missing $label file: $file_path"
+            cueloop_log_error "Verified snapshot is missing $label file: $file_path"
             return 1
         fi
-        actual_hash=$(ralph_sha256_file "$file_path" | awk '{print $1}')
+        actual_hash=$(cueloop_sha256_file "$file_path" | awk '{print $1}')
         if [ "$actual_hash" != "$expected_hash" ]; then
-            ralph_log_error "Verified snapshot drifted for $file_path"
+            cueloop_log_error "Verified snapshot drifted for $file_path"
             return 1
         fi
     done < "$manifest_path"
@@ -146,14 +146,14 @@ release_verify_assert_manifest_matches() {
 
 release_verify_assert_ready_for_execute() {
     if [ "$VERIFY_STATUS" != "ready" ]; then
-        ralph_log_error "Verified release snapshot is not ready for publish (status: $VERIFY_STATUS)"
+        cueloop_log_error "Verified release snapshot is not ready for publish (status: $VERIFY_STATUS)"
         return 1
     fi
 
     local current_head
     current_head=$(git -C "$REPO_ROOT" rev-parse HEAD)
     if [ "$current_head" != "$VERIFY_SOURCE_COMMIT" ]; then
-        ralph_log_error "HEAD moved since release verification"
+        cueloop_log_error "HEAD moved since release verification"
         echo "  Verified commit: $VERIFY_SOURCE_COMMIT" >&2
         echo "  Current commit:  $current_head" >&2
         echo "  Re-run: scripts/release.sh verify $VERSION" >&2
@@ -168,5 +168,5 @@ release_verify_assert_ready_for_execute() {
         return 1
     fi
 
-    ralph_log_success "Verified release snapshot matches current workspace"
+    cueloop_log_success "Verified release snapshot matches current workspace"
 }

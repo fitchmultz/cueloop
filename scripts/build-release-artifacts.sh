@@ -17,7 +17,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/ralph-shell.sh"
-REPO_ROOT="$(ralph_repo_root)"
+REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/versioning.sh"
 
 RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
@@ -52,7 +52,7 @@ build_native_release_artifact() {
         binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --print-path)
     fi
     local target_triple
-    target_triple=$(ralph_get_rust_host_target)
+    target_triple=$(cueloop_get_rust_host_target)
     local platform_name
     platform_name=$(target_to_platform "$target_triple")
     local tarball_name="cueloop-${version}-${platform_name}.tar.gz"
@@ -61,7 +61,7 @@ build_native_release_artifact() {
     tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
     (
         cd "$RELEASE_ARTIFACTS_DIR"
-        ralph_sha256_file "$tarball_name" > "$tarball_name.sha256"
+        cueloop_sha256_file "$tarball_name" > "$tarball_name.sha256"
     )
 }
 
@@ -81,7 +81,7 @@ build_cross_target() {
     tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
     (
         cd "$RELEASE_ARTIFACTS_DIR"
-        ralph_sha256_file "$tarball_name" > "$tarball_name.sha256"
+        cueloop_sha256_file "$tarball_name" > "$tarball_name.sha256"
     )
 }
 
@@ -110,7 +110,7 @@ while [ $# -gt 0 ]; do
             ;;
         *)
             if [ -n "$VERSION" ]; then
-                ralph_log_error "Unexpected extra argument: $1"
+                cueloop_log_error "Unexpected extra argument: $1"
                 exit 2
             fi
             VERSION="$1"
@@ -123,31 +123,31 @@ if [ -z "$VERSION" ]; then
     VERSION=$(read_canonical_version)
 fi
 
-if ! ralph_validate_semver "$VERSION"; then
-    ralph_log_error "VERSION must be in semver format"
+if ! cueloop_validate_semver "$VERSION"; then
+    cueloop_log_error "VERSION must be in semver format"
     exit 2
 fi
 
 rm -rf "$RELEASE_ARTIFACTS_DIR"
 mkdir -p "$RELEASE_ARTIFACTS_DIR"
-ralph_activate_pinned_rust_toolchain
+cueloop_activate_pinned_rust_toolchain
 
 if [ "$MODE" = "current" ]; then
-    ralph_log_step "Building current-platform release artifact"
+    cueloop_log_step "Building current-platform release artifact"
     build_native_release_artifact "$VERSION"
 else
-    ralph_log_step "Building all supported release artifacts"
+    cueloop_log_step "Building all supported release artifacts"
     build_native_release_artifact "$VERSION"
     for target in x86_64-unknown-linux-gnu x86_64-apple-darwin aarch64-apple-darwin; do
-        if [ "$target" = "$(ralph_get_rust_host_target)" ]; then
+        if [ "$target" = "$(cueloop_get_rust_host_target)" ]; then
             continue
         fi
         if rustup target list --installed 2>/dev/null | grep -q "^$target$"; then
             build_cross_target "$target" "$VERSION"
         else
-            ralph_log_warn "Skipping cross target not installed: $target"
+            cueloop_log_warn "Skipping cross target not installed: $target"
         fi
     done
 fi
 
-ralph_log_success "Release artifacts are available in $RELEASE_ARTIFACTS_DIR"
+cueloop_log_success "Release artifacts are available in $RELEASE_ARTIFACTS_DIR"

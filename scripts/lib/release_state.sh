@@ -57,7 +57,7 @@ EOF
 
 release_state_load() {
     if [ ! -f "$STATE_FILE" ]; then
-        ralph_log_error "Release transaction state not found: $STATE_FILE"
+        cueloop_log_error "Release transaction state not found: $STATE_FILE"
         return 1
     fi
 
@@ -70,7 +70,7 @@ release_state_init() {
     TRANSACTION_DIR="$REPO_ROOT/target/release-transactions/v$VERSION"
     STATE_FILE="$TRANSACTION_DIR/state.env"
     if [ -e "$STATE_FILE" ]; then
-        ralph_log_error "Release transaction already exists for v$VERSION"
+        cueloop_log_error "Release transaction already exists for v$VERSION"
         echo "  Continue it with: scripts/release.sh reconcile $VERSION" >&2
         return 1
     fi

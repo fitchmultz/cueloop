@@ -67,7 +67,7 @@ fn parse_makefile_generated_schema_paths(makefile: &str) -> BTreeSet<String> {
 fn release_script_derives_repo_url_from_origin_remote() {
     let script = read_repo_file("scripts/lib/release_verify_pipeline.sh");
     assert!(
-        script.contains("ralph_get_repo_http_url"),
+        script.contains("cueloop_get_repo_http_url"),
         "release pipeline should derive the repo URL from git remote origin"
     );
     assert!(

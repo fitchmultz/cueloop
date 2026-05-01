@@ -81,7 +81,7 @@ fn shared_cli_bundle_script_supports_configuration_and_bundle_dir() {
         "shared CLI bundle script should build the primary cueloop binary and legacy ralph alias"
     );
     assert!(
-        script.contains("ralph_activate_pinned_rust_toolchain"),
+        script.contains("cueloop_activate_pinned_rust_toolchain"),
         "shared CLI bundle script should honor the pinned rustup toolchain"
     );
     assert!(
