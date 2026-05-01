@@ -32,7 +32,7 @@ use std::path::Path;
 /// while legacy repos with `.ralph` markers keep `.ralph/*` entries.
 ///
 /// This function is idempotent - calling it multiple times is safe.
-pub fn ensure_ralph_gitignore_entries(repo_root: &Path) -> Result<()> {
+pub fn ensure_cueloop_gitignore_entries(repo_root: &Path) -> Result<()> {
     let gitignore_path = repo_root.join(".gitignore");
 
     let existing_content = if gitignore_path.exists() {
@@ -244,11 +244,11 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn ensure_ralph_gitignore_entries_creates_current_runtime_file() -> Result<()> {
+    fn ensure_cueloop_gitignore_entries_creates_current_runtime_file() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
 
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
 
         let gitignore_path = repo_root.join(".gitignore");
         assert!(gitignore_path.exists());
@@ -263,13 +263,13 @@ mod tests {
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_appends_to_existing() -> Result<()> {
+    fn ensure_cueloop_gitignore_entries_appends_to_existing() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let gitignore_path = repo_root.join(".gitignore");
         fs::write(&gitignore_path, ".env\ntarget/\n")?;
 
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(&gitignore_path)?;
         assert!(content.contains(".env"));
@@ -281,13 +281,13 @@ mod tests {
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_is_idempotent() -> Result<()> {
+    fn ensure_cueloop_gitignore_entries_is_idempotent() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
 
         // Run twice
-        ensure_ralph_gitignore_entries(repo_root)?;
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
 
         let gitignore_path = repo_root.join(".gitignore");
         let content = fs::read_to_string(&gitignore_path)?;
@@ -309,13 +309,13 @@ mod tests {
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_detects_existing_workspaces_entry() -> Result<()> {
+    fn ensure_cueloop_gitignore_entries_detects_existing_workspaces_entry() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let gitignore_path = repo_root.join(".gitignore");
         fs::write(&gitignore_path, ".cueloop/workspaces/\n")?;
 
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(&gitignore_path)?;
         // Should add logs and trust but not duplicate workspaces
@@ -330,13 +330,13 @@ mod tests {
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_detects_existing_logs_entry() -> Result<()> {
+    fn ensure_cueloop_gitignore_entries_detects_existing_logs_entry() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let gitignore_path = repo_root.join(".gitignore");
         fs::write(&gitignore_path, ".cueloop/logs/\n")?;
 
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(&gitignore_path)?;
         // Should add workspaces and trust but not duplicate logs
@@ -362,14 +362,14 @@ mod tests {
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_detects_existing_entry_without_trailing_slash() -> Result<()>
+    fn ensure_cueloop_gitignore_entries_detects_existing_entry_without_trailing_slash() -> Result<()>
     {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let gitignore_path = repo_root.join(".gitignore");
         fs::write(&gitignore_path, ".cueloop/workspaces\n.cueloop/logs\n")?;
 
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(&gitignore_path)?;
         // Should not add the trailing-slash version if non-trailing exists
@@ -390,13 +390,13 @@ mod tests {
     }
 
     #[test]
-    fn ensure_ralph_gitignore_entries_uses_legacy_runtime_when_marked() -> Result<()> {
+    fn ensure_cueloop_gitignore_entries_uses_legacy_runtime_when_marked() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         fs::create_dir_all(repo_root.join(".ralph"))?;
         fs::write(repo_root.join(".ralph/config.jsonc"), "{}")?;
 
-        ensure_ralph_gitignore_entries(repo_root)?;
+        ensure_cueloop_gitignore_entries(repo_root)?;
         ensure_local_queue_gitignore_entries(repo_root)?;
 
         let content = fs::read_to_string(repo_root.join(".gitignore"))?;

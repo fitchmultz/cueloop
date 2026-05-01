@@ -20,7 +20,7 @@
 //! - Shared helpers are imported by sibling suites through `super::*`.
 
 pub(super) use super::gitignored as sync_gitignored_impl;
-pub(super) use super::sync_ralph_state;
+pub(super) use super::sync_cueloop_state;
 pub(super) use crate::contracts::Config;
 pub(super) use crate::testsupport::git as git_test;
 pub(super) use anyhow::Result;

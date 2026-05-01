@@ -33,7 +33,7 @@ use crate::commands::run::parallel::orchestration::events::{
     FinishedWorkerHandlingContext, handle_finished_workers,
 };
 use crate::commands::run::parallel::state::{self, WorkerRecord};
-use crate::commands::run::parallel::sync::sync_ralph_state;
+use crate::commands::run::parallel::sync::sync_cueloop_state;
 use crate::commands::run::parallel::worker::{
     NextTaskSelection, collect_excluded_ids, select_next_task_locked,
     select_next_task_state_locked, spawn_worker, start_worker_monitor,
@@ -162,7 +162,7 @@ fn spawn_available_workers(
                 )?;
                 Ok(workspace)
             },
-            |path| sync_ralph_state(resolved, path),
+            |path| sync_cueloop_state(resolved, path),
             |workspace| {
                 spawn_worker(
                     resolved,

@@ -86,7 +86,7 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
         readme_status = Some((status, version));
     }
 
-    if let Err(e) = gitignore::ensure_ralph_gitignore_entries(&resolved.repo_root) {
+    if let Err(e) = gitignore::ensure_cueloop_gitignore_entries(&resolved.repo_root) {
         log::warn!(
             "Failed to update .gitignore: {}. You may need to manually add active runtime logs, workspaces, and trust entries to your .gitignore.",
             e

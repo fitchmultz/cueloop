@@ -34,7 +34,7 @@ use gitignored::sync_gitignored;
 pub(crate) use gitignored::{
     preflight_parallel_ignored_file_allowlist, validate_parallel_ignored_file_allowlist_config,
 };
-use runtime::sync_ralph_runtime_tree;
+use runtime::sync_cueloop_runtime_tree;
 
 /// Sync ralph state files from repo root to workspace.
 ///
@@ -42,13 +42,13 @@ use runtime::sync_ralph_runtime_tree;
 /// Ephemeral `.ralph` runtime paths are intentionally NOT synchronized.
 /// Queue/done files are seeded explicitly using resolved queue/done paths so
 /// parallel workers work with `.jsonc` migrations and gitignored `.ralph` setups.
-pub(crate) fn sync_ralph_state(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {
+pub(crate) fn sync_cueloop_state(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {
     let target = workspace_path.join(".ralph");
     std::fs::create_dir_all(&target)
         .with_context(|| format!("create workspace ralph dir {}", target.display()))?;
 
     let source = resolved.repo_root.join(".ralph");
-    sync_ralph_runtime_tree(resolved, &source, &target)?;
+    sync_cueloop_runtime_tree(resolved, &source, &target)?;
     sync_worker_bookkeeping_files(resolved, workspace_path)?;
     sync_gitignored(resolved, workspace_path)?;
 

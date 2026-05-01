@@ -18,7 +18,7 @@
 //!
 //! Invariants:
 //! - Resolved queue/done files are always synced explicitly outside this module.
-//! - Top-level runtime skip policy stays centralized in `should_skip_ralph_runtime_path`.
+//! - Top-level runtime skip policy stays centralized in `should_skip_cueloop_runtime_path`.
 
 use crate::config;
 use anyhow::{Context, Result};
@@ -27,7 +27,7 @@ use std::path::Path;
 
 use super::common::sync_file_if_exists;
 
-pub(super) fn sync_ralph_runtime_tree(
+pub(super) fn sync_cueloop_runtime_tree(
     resolved: &config::Resolved,
     source_root: &Path,
     target_root: &Path,
@@ -36,10 +36,10 @@ pub(super) fn sync_ralph_runtime_tree(
         return Ok(());
     }
 
-    sync_ralph_runtime_tree_recursive(resolved, source_root, source_root, target_root)
+    sync_cueloop_runtime_tree_recursive(resolved, source_root, source_root, target_root)
 }
 
-fn sync_ralph_runtime_tree_recursive(
+fn sync_cueloop_runtime_tree_recursive(
     resolved: &config::Resolved,
     source_root: &Path,
     current_source_dir: &Path,
@@ -49,10 +49,10 @@ fn sync_ralph_runtime_tree_recursive(
         .with_context(|| format!("read ralph dir {}", current_source_dir.display()))?
     {
         let entry = entry
-            .with_context(|| format!("read ralph entry in {}", current_source_dir.display()))?;
+            .with_context(|| format!("read runtime entry in {}", current_source_dir.display()))?;
         let source_path = entry.path();
 
-        if should_skip_ralph_runtime_path(resolved, source_root, &source_path) {
+        if should_skip_cueloop_runtime_path(resolved, source_root, &source_path) {
             continue;
         }
 
@@ -71,7 +71,7 @@ fn sync_ralph_runtime_tree_recursive(
         if file_type.is_dir() {
             fs::create_dir_all(&target_path)
                 .with_context(|| format!("create workspace dir {}", target_path.display()))?;
-            sync_ralph_runtime_tree_recursive(resolved, source_root, &source_path, target_root)?;
+            sync_cueloop_runtime_tree_recursive(resolved, source_root, &source_path, target_root)?;
             continue;
         }
 
@@ -81,12 +81,12 @@ fn sync_ralph_runtime_tree_recursive(
     Ok(())
 }
 
-fn should_skip_ralph_runtime_path(
+fn should_skip_cueloop_runtime_path(
     resolved: &config::Resolved,
     source_root: &Path,
     source_path: &Path,
 ) -> bool {
-    const NEVER_COPY_RALPH_DIRS: &[&str] = &["cache", "workspaces", "logs", "lock"];
+    const NEVER_COPY_CUELOOP_DIRS: &[&str] = &["cache", "workspaces", "logs", "lock"];
 
     let Ok(rel_path) = source_path.strip_prefix(source_root) else {
         return true;
@@ -107,5 +107,5 @@ fn should_skip_ralph_runtime_path(
         .components()
         .next()
         .and_then(|component| component.as_os_str().to_str())
-        .is_some_and(|component| NEVER_COPY_RALPH_DIRS.contains(&component))
+        .is_some_and(|component| NEVER_COPY_CUELOOP_DIRS.contains(&component))
 }

@@ -50,7 +50,7 @@ pub(crate) fn check_project(
     auto_fix: bool,
 ) {
     check_ci_gate_prerequisites(report, resolved);
-    check_gitignore_ralph_logs(report, resolved, auto_fix);
+    check_gitignore_runtime_logs(report, resolved, auto_fix);
 }
 
 fn check_ci_gate_prerequisites(report: &mut DoctorReport, resolved: &config::Resolved) {
@@ -177,7 +177,7 @@ fn make_target_exists(content: &str, target: &str) -> bool {
 /// This check inspects the repo-local `.gitignore` file content directly
 /// (not using `git check-ignore`, which would incorrectly pass on machines
 /// with global excludes).
-pub(crate) fn check_gitignore_ralph_logs(
+pub(crate) fn check_gitignore_runtime_logs(
     report: &mut DoctorReport,
     resolved: &config::Resolved,
     auto_fix: bool,
@@ -226,8 +226,9 @@ pub(crate) fn check_gitignore_ralph_logs(
     );
 
     if auto_fix && fix_available {
-        match crate::commands::init::gitignore::ensure_ralph_gitignore_entries(&resolved.repo_root)
-        {
+        match crate::commands::init::gitignore::ensure_cueloop_gitignore_entries(
+            &resolved.repo_root,
+        ) {
             Ok(()) => match fs::read_to_string(&gitignore_path) {
                 Ok(new_content) => {
                     let now_has_entry = new_content.lines().any(|line| {
