@@ -2,11 +2,11 @@
  CueLoopCLIExecutableLocatorTests
 
  Purpose:
- - Validate macOS bundled CLI executable lookup during the CueLoop transition.
+ - Validate macOS bundled CLI executable lookup.
 
  Responsibilities:
- - Prove the locator prefers the bundled `cueloop` executable.
- - Prove the locator still falls back to the legacy `cueloop` executable during the migration window.
+ - Prove the locator resolves the bundled `cueloop` executable.
+ - Prove the locator rejects bundles without an executable `cueloop`.
 
  Does not handle:
  - Building the real CLI or validating Xcode bundle phases.
@@ -25,10 +25,9 @@ import XCTest
 @testable import CueLoopCore
 
 final class CueLoopCLIExecutableLocatorTests: CueLoopCoreTestCase {
-    func testBundledExecutableLookupPrefersCueLoop() throws {
-        let bundleURL = try makeBundle(named: "BothCLIs")
+    func testBundledExecutableLookupResolvesCueLoop() throws {
+        let bundleURL = try makeBundle(named: "CueLoopCLI")
         let cueloopURL = try makeExecutable(named: "cueloop", in: bundleURL)
-        _ = try makeExecutable(named: "cueloop", in: bundleURL)
         let bundle = try XCTUnwrap(Bundle(url: bundleURL))
 
         let resolved = try CueLoopCLIExecutableLocator.bundledCueLoopExecutableURL(bundle: bundle)
@@ -36,14 +35,13 @@ final class CueLoopCLIExecutableLocatorTests: CueLoopCoreTestCase {
         XCTAssertEqual(resolved.path, cueloopURL.path)
     }
 
-    func testBundledExecutableLookupFallsBackToLegacyCueLoop() throws {
-        let bundleURL = try makeBundle(named: "LegacyCLI")
-        let cueloopURL = try makeExecutable(named: "cueloop", in: bundleURL)
+    func testBundledExecutableLookupRejectsMissingCueLoop() throws {
+        let bundleURL = try makeBundle(named: "MissingCLI")
         let bundle = try XCTUnwrap(Bundle(url: bundleURL))
 
-        let resolved = try CueLoopCLIExecutableLocator.bundledCueLoopExecutableURL(bundle: bundle)
-
-        XCTAssertEqual(resolved.path, cueloopURL.path)
+        XCTAssertThrowsError(try CueLoopCLIExecutableLocator.bundledCueLoopExecutableURL(bundle: bundle)) { error in
+            XCTAssertEqual(error as? CueLoopCLIExecutableLocator.LocatorError, .bundledExecutableNotFound)
+        }
     }
 
     private func makeBundle(named name: String) throws -> URL {

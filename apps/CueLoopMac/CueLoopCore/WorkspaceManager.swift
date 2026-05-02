@@ -78,7 +78,6 @@ public final class WorkspaceManager: ObservableObject {
         }
 
         scheduleVersionCheck()
-        migrateLegacyStateIfNeeded()
     }
 
     deinit {

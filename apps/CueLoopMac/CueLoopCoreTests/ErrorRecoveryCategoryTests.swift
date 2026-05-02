@@ -198,7 +198,7 @@ final class ErrorRecoveryCategoryTests: CueLoopCoreTestCase {
     }
 
     func testClassifyLegacyConfigLoadFailure() {
-        let configPath = CueLoopCoreTestSupport.workspaceURL(label: "legacy-config-load")
+        let configPath = CueLoopCoreTestSupport.workspaceURL(label: "old-config-load")
             .appendingPathComponent(".cueloop/config.jsonc", isDirectory: false)
             .path
         let error = NSError(domain: "CueLoopCore.CLIProcess", code: 1, userInfo: [

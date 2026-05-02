@@ -31,7 +31,6 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>cueloop</string>
-				<string>cueloop</string>
 			</array>
 		</dict>
 	</array>

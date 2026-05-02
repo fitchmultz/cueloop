@@ -7,7 +7,6 @@
  Responsibilities:
  - Provide a single place to resolve the on-disk `cueloop` executable used by the macOS GUI.
  - Prefer the app-bundled `cueloop` placed next to the app executable (Contents/MacOS/cueloop).
- - Fall back to the legacy bundled `cueloop` executable during the migration window.
 
  Does not handle:
  - Building or copying the `cueloop` binary into the bundle (handled by the Xcode build phase).
@@ -28,9 +27,6 @@ public enum CueLoopCLIExecutableLocator {
     }
 
     public static func bundledCueLoopExecutableURL(bundle: Bundle = .main) throws -> URL {
-        if let url = bundledExecutableURL(named: "cueloop", bundle: bundle) {
-            return url
-        }
         if let url = bundledExecutableURL(named: "cueloop", bundle: bundle) {
             return url
         }
