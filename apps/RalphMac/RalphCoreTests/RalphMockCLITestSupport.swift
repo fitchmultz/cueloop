@@ -2,10 +2,10 @@
  RalphMockCLITestSupport
 
  Purpose:
- - Centralize mock Ralph CLI script creation for RalphCore tests.
+ - Centralize mock CueLoop CLI script creation for RalphCore tests.
 
  Responsibilities:
- - Centralize mock Ralph CLI script creation for RalphCore tests.
+ - Centralize mock CueLoop CLI script creation for RalphCore tests.
  - Generate machine-readable config, queue, graph, and CLI-spec fixtures with workspace-resolved paths.
  - Build test workspaces that opt into mock clients without triggering unrelated repository refreshes.
  - Keep test payloads aligned with RalphCore Codable contracts so path and JSON shape drift is caught in one place.

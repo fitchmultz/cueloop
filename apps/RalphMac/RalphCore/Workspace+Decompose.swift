@@ -2,10 +2,10 @@
  Workspace+Decompose
 
  Purpose:
- - Execute `ralph machine task decompose` preview and write operations through the CLI.
+ - Execute `cueloop machine task decompose` preview and write operations through the CLI.
 
  Responsibilities:
- - Execute `ralph machine task decompose` preview and write operations through the CLI.
+ - Execute `cueloop machine task decompose` preview and write operations through the CLI.
  - Build deterministic CLI arguments from app-side decomposition inputs.
  - Decode stable JSON responses and refresh workspace task state after writes.
 

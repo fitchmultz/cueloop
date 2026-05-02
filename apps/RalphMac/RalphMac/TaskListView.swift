@@ -2,10 +2,10 @@
  TaskListView
 
  Purpose:
- - Display a rich, sortable, filterable list of tasks from the Ralph queue.
+ - Display a rich, sortable, filterable list of tasks from the CueLoop queue.
 
  Responsibilities:
- - Display a rich, sortable, filterable list of tasks from the Ralph queue.
+ - Display a rich, sortable, filterable list of tasks from the CueLoop queue.
  - Show task metadata with visual indicators (status badges, priority dots, tag chips).
 - Provide search, filtering, and sorting controls.
 - Display "What's Next" section highlighting the next todo task.

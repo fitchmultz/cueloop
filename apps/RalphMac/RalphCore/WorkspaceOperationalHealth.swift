@@ -188,8 +188,8 @@ public extension WorkspaceOperationalIssue {
             source: .workspaceRouting,
             severity: .warning,
             title: "Workspace reveal timed out",
-            message: "Ralph could not route focus to the requested workspace after \(attempts) attempts.",
-            recoverySuggestion: "Bring Ralph to the foreground or reopen the main window, then retry the action.",
+            message: "CueLoop could not route focus to the requested workspace after \(attempts) attempts.",
+            recoverySuggestion: "Bring CueLoop to the foreground or reopen the main window, then retry the action.",
             timestamp: health.timestamp
         )
     }
@@ -228,13 +228,13 @@ public extension WorkspaceOperationalIssue {
                 "CLI health check timed out",
                 "The workspace health probe did not complete before the timeout\(attemptSuffix).",
                 (status.diagnostics?.attempts ?? 1) > 1
-                    ? "Ralph retried automatically and still could not complete the health check. Retry after system load settles."
+                    ? "CueLoop retried automatically and still could not complete the health check. Retry after system load settles."
                     : "Retry the health check after the system load settles."
             )
         case .permissionDenied:
             (
                 "Workspace permission denied",
-                "Ralph cannot read the workspace directory.",
+                "CueLoop cannot read the workspace directory.",
                 "Review filesystem permissions for this workspace."
             )
         case .unknown(let description):
@@ -310,7 +310,7 @@ public extension WorkspaceOperationalIssue {
                 title: hasScheduledRetry ? "Queue watcher retrying" : "Queue watcher degraded",
                 message: "Queue watching hit \(retryCount) retry \(retryCount == 1 ? "attempt" : "attempts"): \(reason).\(retryMessage)",
                 recoverySuggestion: hasScheduledRetry
-                    ? "Ralph is retrying queue-file observation automatically."
+                    ? "CueLoop is retrying queue-file observation automatically."
                     : "Manually refresh if changes seem stale, or reload the workspace to restart queue watching.",
                 timestamp: health.timestamp
             )
@@ -380,7 +380,7 @@ private extension PersistenceIssue.Domain {
         case .windowRestoration, .appDefaultsPreparation:
             return "Restart the app if window or defaults state remains inconsistent."
         case .versionCache:
-            return "Retry the version check; Ralph will regenerate the cache on success."
+            return "Retry the version check; CueLoop will regenerate the cache on success."
         case .crashReporting:
             return "Inspect recent logs and the app support directory for crash-reporting failures."
         }

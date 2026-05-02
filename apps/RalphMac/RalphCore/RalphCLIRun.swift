@@ -2,10 +2,10 @@
  RalphCLIRun
 
  Purpose:
- - Own a single running Ralph CLI subprocess.
+ - Own a single running CueLoop CLI subprocess.
 
  Responsibilities:
- - Own a single running Ralph CLI subprocess.
+ - Own a single running CueLoop CLI subprocess.
  - Bridge pipe readability callbacks into async event streams.
  - Coordinate cooperative termination and final exit-status delivery.
 

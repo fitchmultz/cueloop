@@ -2,10 +2,10 @@
  RalphCLIHealthChecker
 
  Purpose:
- - Probe whether the Ralph CLI is available for a workspace.
+ - Probe whether the CueLoop CLI is available for a workspace.
 
  Responsibilities:
- - Probe whether the Ralph CLI is available for a workspace.
+ - Probe whether the CueLoop CLI is available for a workspace.
  - Cache health results and coalesce duplicate in-flight checks.
  - Translate health failures into availability reasons for offline-mode UI.
 

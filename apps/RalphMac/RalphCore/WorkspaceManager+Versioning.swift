@@ -18,7 +18,7 @@
 
  Invariants/assumptions callers must respect:
  - Only compatible version checks are cached.
- - Version checks use `ralph machine system info`.
+ - Version checks use `cueloop machine system info`.
  */
 
 import Foundation

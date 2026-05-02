@@ -30,7 +30,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
 
         let parallelStatusURL = fixture.rootURL.appendingPathComponent("parallel-status.json", isDirectory: false)
         try """
-            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Parallel workers are active on target branch main.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"ralph machine run parallel-status","detail":"Review lifecycle counts and retained worker details."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-7001","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-7001", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
+            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Parallel workers are active on target branch main.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"cueloop machine run parallel-status","detail":"Review lifecycle counts and retained worker details."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-7001","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-7001", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
             """.write(to: parallelStatusURL, atomically: true, encoding: .utf8)
 
         let script = """
@@ -58,7 +58,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
         XCTAssertEqual(workspace.runState.parallelStatus?.headline, "Parallel execution is in progress.")
         XCTAssertEqual(workspace.runState.parallelStatus?.snapshot.targetBranch, "main")
         XCTAssertEqual(workspace.runState.parallelStatus?.snapshot.lifecycleCounts.running, 1)
-        XCTAssertEqual(workspace.runState.parallelStatus?.nextSteps.first?.command, "ralph machine run parallel-status")
+        XCTAssertEqual(workspace.runState.parallelStatus?.nextSteps.first?.command, "cueloop machine run parallel-status")
     }
 
     func test_loadParallelStatus_rejectsUnsupportedVersion_andClearsRetainedState() async throws {
@@ -96,7 +96,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
             status: .blocked,
             reason: .dependencyBlocked(blockedTasks: 2),
             taskID: nil,
-            message: "Ralph is blocked by unfinished dependencies.",
+            message: "CueLoop is blocked by unfinished dependencies.",
             detail: "2 candidate task(s) are waiting on dependency completion."
         )
         workspace.runState.parallelStatus = retainedParallelStatus(blocking: sharedBlocking)
@@ -136,7 +136,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
                 secondsUntilNextRunnable: 86400
             ),
             taskID: nil,
-            message: "Ralph is waiting for scheduled work to become runnable.",
+            message: "CueLoop is waiting for scheduled work to become runnable.",
             detail: "1 candidate task(s) are scheduled for the future."
         )
         workspace.runState.resumeState = nil
@@ -200,7 +200,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
                 secondsUntilNextRunnable: 86400
             ),
             taskID: nil,
-            message: "Ralph is waiting for scheduled work to become runnable.",
+            message: "CueLoop is waiting for scheduled work to become runnable.",
             detail: "1 candidate task(s) are scheduled for the future."
         )
         let parallelBlocking = Workspace.BlockingState(
@@ -228,10 +228,10 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
                 reason: .operatorRecovery(
                     scope: "queue_validate",
                     reason: "validation_failed",
-                    suggestedCommand: "ralph machine queue repair --dry-run"
+                    suggestedCommand: "cueloop machine queue repair --dry-run"
                 ),
                 taskID: nil,
-                message: "Ralph is stalled on queue consistency.",
+                message: "CueLoop is stalled on queue consistency.",
                 detail: "Validation found recoverable queue issues."
             )
         )
@@ -249,12 +249,12 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
             [
                 ParallelStatusStep(
                     title: "Inspect worker snapshot",
-                    command: "ralph machine run parallel-status",
+                    command: "cueloop machine run parallel-status",
                     detail: "Refresh retained worker details."
                 ),
                 ParallelStatusStep(
                     title: "Retry one blocked worker",
-                    command: "ralph run parallel retry --task <TASK_ID>",
+                    command: "cueloop run parallel retry --task <TASK_ID>",
                     detail: "Retry the retained worker branch after resolving conflicts."
                 ),
             ],
@@ -264,7 +264,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
 
         XCTAssertEqual(actions.nativeActionCount(.refreshParallelStatus), 1)
         XCTAssertTrue(actions.containsNative(.stopAfterCurrent))
-        XCTAssertTrue(actions.containsUnsupportedCommand("ralph run parallel retry --task <TASK_ID>"))
+        XCTAssertTrue(actions.containsUnsupportedCommand("cueloop run parallel retry --task <TASK_ID>"))
         XCTAssertTrue(actions.containsTitle("Retry one blocked worker"))
     }
 
@@ -273,13 +273,13 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
             [
                 ParallelStatusStep(
                     title: "Preview stop request",
-                    command: "ralph machine run stop --dry-run",
+                    command: "cueloop machine run stop --dry-run",
                     detail: "Preview whether Stop After Current would create a stop marker."
                 ),
             ]
         )
 
-        XCTAssertTrue(actions.containsCopyCommand("ralph machine run stop --dry-run"))
+        XCTAssertTrue(actions.containsCopyCommand("cueloop machine run stop --dry-run"))
         XCTAssertFalse(actions.containsNative(.stopAfterCurrent))
     }
 
@@ -299,7 +299,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
                 secondsUntilNextRunnable: 86400
             ),
             taskID: nil,
-            message: "Ralph is waiting for scheduled work to become runnable.",
+            message: "CueLoop is waiting for scheduled work to become runnable.",
             detail: "1 candidate task(s) are scheduled for the future."
         )
 
@@ -557,7 +557,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
         )
         let parallelStatusURL = fixture.rootURL.appendingPathComponent("parallel-status.json", isDirectory: false)
         try """
-            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Retained worker state still exists for this repository.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"ralph machine run parallel-status","detail":"Review retained worker lifecycles."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-8111","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-8111", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
+            {"version":3,"lifecycle_counts":{"running":1,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":1},"blocking":null,"continuation":{"headline":"Parallel execution is in progress.","detail":"Retained worker state still exists for this repository.","blocking":null,"next_steps":[{"title":"Inspect worker snapshot","command":"cueloop machine run parallel-status","detail":"Review retained worker lifecycles."}]},"status":{"schema_version":3,"target_branch":"main","workers":[{"task_id":"RQ-8111","workspace_path":"\(fixture.workspaceURL.appendingPathComponent(".ralph/workspaces/RQ-8111", isDirectory: true).path)","lifecycle":"running","started_at":"2026-03-22T00:00:00Z","push_attempts":1}]}}
             """.write(to: parallelStatusURL, atomically: true, encoding: .utf8)
 
         let script = """
@@ -619,7 +619,7 @@ final class WorkspaceParallelRunControlTests: WorkspacePerformanceTestCase {
         )
         let parallelStatusURL = fixture.rootURL.appendingPathComponent("parallel-status.json", isDirectory: false)
         try """
-            {"version":3,"lifecycle_counts":{"running":0,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":0},"blocking":null,"continuation":{"headline":"Parallel execution has not started.","detail":"No persisted parallel state was found for this repository. Start a coordinator run to create worker state and begin parallel execution.","blocking":null,"next_steps":[{"title":"Start parallel execution","command":"ralph machine run loop --resume --max-tasks 0 --parallel <N>","detail":"Start the coordinator with the desired worker count."}]},"status":{"schema_version":3,"workers":[],"message":"No parallel state found"}}
+            {"version":3,"lifecycle_counts":{"running":0,"integrating":0,"completed":0,"failed":0,"blocked":0,"total":0},"blocking":null,"continuation":{"headline":"Parallel execution has not started.","detail":"No persisted parallel state was found for this repository. Start a coordinator run to create worker state and begin parallel execution.","blocking":null,"next_steps":[{"title":"Start parallel execution","command":"cueloop machine run loop --resume --max-tasks 0 --parallel <N>","detail":"Start the coordinator with the desired worker count."}]},"status":{"schema_version":3,"workers":[],"message":"No parallel state found"}}
             """.write(to: parallelStatusURL, atomically: true, encoding: .utf8)
 
         let script = """

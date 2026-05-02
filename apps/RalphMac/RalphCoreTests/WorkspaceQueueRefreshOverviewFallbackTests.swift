@@ -70,7 +70,7 @@ extension WorkspaceQueueRefreshTests {
             fi
             printf '%s\n' "$*" >> "\(commandLogURL.path)"
             if [ "$1" = "machine" ] && [ "$2" = "workspace" ] && [ "$3" = "overview" ]; then
-              echo "usage: ralph machine workspace overview [OPTIONS]" >&2
+              echo "usage: cueloop machine workspace overview [OPTIONS]" >&2
               exit 64
             fi
             if [ "$1" = "machine" ] && [ "$2" = "cli-spec" ]; then
@@ -104,10 +104,10 @@ extension WorkspaceQueueRefreshTests {
         XCTAssertTrue(workspace.taskState.tasks.isEmpty)
         XCTAssertFalse(workspace.diagnosticsState.watcherHealth.isWatching)
         XCTAssertTrue(
-            workspace.taskState.tasksErrorMessage?.contains("usage: ralph machine workspace overview [OPTIONS]") ?? false
+            workspace.taskState.tasksErrorMessage?.contains("usage: cueloop machine workspace overview [OPTIONS]") ?? false
         )
         XCTAssertTrue(
-            workspace.runState.runnerConfigErrorMessage?.contains("usage: ralph machine workspace overview [OPTIONS]") ?? false
+            workspace.runState.runnerConfigErrorMessage?.contains("usage: cueloop machine workspace overview [OPTIONS]") ?? false
         )
 
         let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)
@@ -164,7 +164,7 @@ extension WorkspaceQueueRefreshTests {
             fi
             printf '%s\n' "$*" >> "\(commandLogURL.path)"
             if [ "$1" = "machine" ] && [ "$2" = "workspace" ] && [ "$3" = "overview" ]; then
-              echo "usage: ralph machine workspace overview [OPTIONS]" >&2
+              echo "usage: cueloop machine workspace overview [OPTIONS]" >&2
               exit 64
             fi
             if [ "$1" = "machine" ] && [ "$2" = "cli-spec" ]; then
@@ -199,10 +199,10 @@ extension WorkspaceQueueRefreshTests {
         XCTAssertTrue(workspace.taskState.tasks.isEmpty)
         XCTAssertFalse(workspace.diagnosticsState.watcherHealth.isWatching)
         XCTAssertTrue(
-            workspace.taskState.tasksErrorMessage?.contains("usage: ralph machine workspace overview [OPTIONS]") ?? false
+            workspace.taskState.tasksErrorMessage?.contains("usage: cueloop machine workspace overview [OPTIONS]") ?? false
         )
         XCTAssertTrue(
-            workspace.runState.runnerConfigErrorMessage?.contains("usage: ralph machine workspace overview [OPTIONS]") ?? false
+            workspace.runState.runnerConfigErrorMessage?.contains("usage: cueloop machine workspace overview [OPTIONS]") ?? false
         )
 
         let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)

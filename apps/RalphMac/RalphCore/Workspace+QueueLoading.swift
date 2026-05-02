@@ -1,10 +1,10 @@
 //! Workspace+QueueLoading
 //!
 //! Purpose:
-//! - Load queue tasks through the Ralph machine contract.
+//! - Load queue tasks through the CueLoop machine contract.
 //!
 //! Responsibilities:
-//! - Load queue tasks through the Ralph machine contract.
+//! - Load queue tasks through the CueLoop machine contract.
 //! - Coordinate queue file watching and workspace-local refresh state.
 //!
 //! Does not handle:
@@ -14,10 +14,10 @@
 //!
 //!
 //! Usage:
-//! - Used by the RalphMac app or RalphCore tests through its owning feature surface.
+//! - Used by the CueLoop macOS app or RalphCore tests through its owning feature surface.
 //! Invariants/assumptions callers must respect:
-//! - The workspace must point at a Ralph-initialized directory to load tasks.
-//! - Queue snapshots are always sourced from `ralph machine queue read`.
+//! - The workspace must point at a CueLoop-initialized directory to load tasks.
+//! - Queue snapshots are always sourced from `cueloop machine queue read`.
 //! - Queue refresh events retain previous and current task snapshots for view-local reactions.
 //!
 public import Foundation
@@ -299,10 +299,10 @@ extension Workspace {
 
     nonisolated static func missingConfiguredQueueMessage(for queueURL: URL) -> String {
         """
-        No Ralph queue was found at the configured path:
+        No CueLoop queue was found at the configured path:
         \(queueURL.path)
 
-        Confirm the active Ralph queue configuration or inspect `ralph machine config resolve` for the current machine-resolved queue paths.
+        Confirm the active CueLoop queue configuration or inspect `cueloop machine config resolve` for the current machine-resolved queue paths.
         """
     }
 

@@ -2,10 +2,10 @@
  GraphModels
 
  Purpose:
- - Define Codable models for parsing `ralph machine queue graph` output.
+ - Define Codable models for parsing `cueloop machine queue graph` output.
 
  Responsibilities:
- - Define Codable models for parsing `ralph machine queue graph` output.
+ - Define Codable models for parsing `cueloop machine queue graph` output.
  - Represent graph nodes, edges, critical paths, and summary statistics.
 
  Does not handle:
@@ -22,7 +22,7 @@
 public import Foundation
 import CoreGraphics
 
-/// Represents the graph payload nested inside `ralph machine queue graph`.
+/// Represents the graph payload nested inside `cueloop machine queue graph`.
 public struct RalphGraphDocument: Codable, Sendable, Equatable {
     public let summary: RalphGraphSummary
     public let criticalPaths: [RalphCriticalPath]

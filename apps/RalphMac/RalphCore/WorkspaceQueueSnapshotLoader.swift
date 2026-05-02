@@ -1,10 +1,10 @@
 //! WorkspaceQueueSnapshotLoader
 //!
 //! Purpose:
-//! - Decode Ralph machine queue-read documents away from the main actor.
+//! - Decode CueLoop machine queue-read documents away from the main actor.
 //!
 //! Responsibilities:
-//! - Decode Ralph machine queue-read documents away from the main actor.
+//! - Decode CueLoop machine queue-read documents away from the main actor.
 //! - Centralize queue decoding so watcher and manual refresh paths stay consistent.
 //!
 //! Does not handle:

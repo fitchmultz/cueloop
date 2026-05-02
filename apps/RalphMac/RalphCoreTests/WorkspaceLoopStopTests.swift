@@ -293,7 +293,7 @@ final class WorkspaceLoopStopTests: WorkspacePerformanceTestCase {
                 status: .blocked,
                 reason: .dependencyBlocked(blockedTasks: 2),
                 taskID: nil,
-                message: "Ralph is blocked by unfinished dependencies.",
+                message: "CueLoop is blocked by unfinished dependencies.",
                 detail: "2 candidate task(s) are waiting on dependency completion."
             )
         )

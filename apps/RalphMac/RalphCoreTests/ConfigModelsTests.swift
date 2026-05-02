@@ -14,7 +14,7 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - Fixtures mirror snake_case keys from `ralph machine config resolve` documents.
+ - Fixtures mirror snake_case keys from `cueloop machine config resolve` documents.
  */
 
 import Foundation

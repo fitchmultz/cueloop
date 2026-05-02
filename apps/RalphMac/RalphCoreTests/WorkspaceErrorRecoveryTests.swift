@@ -19,7 +19,7 @@
 
  Invariants/assumptions callers must respect:
  - Tests run against an isolated mock CLI script rather than the real Ralph binary.
- - Failed `ralph machine queue ...` commands emit stderr only and no success JSON payload.
+ - Failed `cueloop machine queue ...` commands emit stderr only and no success JSON payload.
  - Structured `machine_error` stderr should be reformatted before it reaches localized descriptions.
  */
 

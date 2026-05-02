@@ -6,7 +6,7 @@
 
  Responsibilities:
  - Execute workspace-scoped diagnostics commands used by recovery UI.
- - Load recent Ralph logs through the shared logger using async-friendly APIs.
+ - Load recent CueLoop logs through the shared logger using async-friendly APIs.
  - Keep diagnostics and recovery command orchestration out of SwiftUI views.
  - Format continuation documents into human-readable recovery summaries.
 
@@ -16,11 +16,11 @@
  - Opening Finder, links, or pasteboard integration.
 
  Usage:
- - Used by the RalphMac app or RalphCore tests through its owning feature surface.
+ - Used by the CueLoop macOS app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
  - Diagnostics run against a live `Workspace` configured on the main actor.
- - Queue validation requires a Ralph queue file in the workspace.
+ - Queue validation requires a CueLoop queue file in the workspace.
  - Log export may be unavailable on older macOS runtimes.
  */
 
@@ -192,7 +192,7 @@ public enum WorkspaceDiagnosticsService {
             No queue file was found at the configured path:
             \(queueURL.path)
 
-            Confirm the active Ralph queue configuration or inspect `ralph machine config resolve`.
+            Confirm the active CueLoop queue configuration or inspect `cueloop machine config resolve`.
             """
         }
 
