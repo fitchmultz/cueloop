@@ -140,7 +140,7 @@ fn pi_wrapper_builder(
     ),
     RunnerError,
 > {
-    let temp_dir = fsutil::create_ralph_temp_dir("pi-wrapper").map_err(|err| {
+    let temp_dir = fsutil::create_cueloop_temp_dir("pi-wrapper").map_err(|err| {
         runner_execution_error_with_source(&Runner::Pi, bin, "create pi wrapper temp dir", err)
     })?;
     let mut wrapper = tempfile::Builder::new()

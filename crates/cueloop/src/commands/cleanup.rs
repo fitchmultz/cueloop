@@ -45,7 +45,7 @@ pub fn run(args: &CleanupArgs) -> Result<()> {
 }
 
 fn run_dry_run(retention: Duration) -> Result<()> {
-    let base = fsutil::ralph_temp_root();
+    let base = fsutil::cueloop_temp_root();
     println!(
         "Dry run - would clean temp files older than {:?}",
         retention
@@ -59,7 +59,7 @@ fn run_dry_run(retention: Duration) -> Result<()> {
 
     let entries = list_entries_to_clean(
         &base,
-        &[crate::constants::paths::RALPH_TEMP_PREFIX],
+        &[crate::constants::paths::CUELOOP_TEMP_PREFIX],
         retention,
     )?;
 

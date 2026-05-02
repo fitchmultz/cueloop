@@ -296,14 +296,14 @@ pub mod paths {
     /// Productivity stats filename.
     pub const STATS_FILENAME: &str = "productivity.jsonc";
 
-    /// Ralph temp directory name.
-    pub const RALPH_TEMP_DIR_NAME: &str = "ralph";
+    /// CueLoop temp directory name. Value stays legacy-compatible during migration.
+    pub const CUELOOP_TEMP_DIR_NAME: &str = "ralph";
 
     /// Legacy prompt temp file prefix.
     pub const LEGACY_PROMPT_PREFIX: &str = "ralph_prompt_";
 
-    /// Ralph temp file prefix.
-    pub const RALPH_TEMP_PREFIX: &str = "ralph_";
+    /// CueLoop temp file prefix. Value stays legacy-compatible during migration.
+    pub const CUELOOP_TEMP_PREFIX: &str = "ralph_";
 
     /// Current worker prompt override path.
     pub const WORKER_OVERRIDE_PATH: &str = ".cueloop/prompts/worker.md";

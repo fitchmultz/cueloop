@@ -104,7 +104,7 @@ fn update_existing_issue(
         return Ok(PublishItemResult::Updated);
     }
 
-    let tmp = crate::fsutil::create_ralph_temp_file("issue")
+    let tmp = crate::fsutil::create_cueloop_temp_file("issue")
         .context("create temp file for issue body")?;
     std::fs::write(tmp.path(), &payload.body).context("write issue body to temp file")?;
     edit_issue(
@@ -140,7 +140,7 @@ fn create_new_issue(
         return Ok(PublishItemResult::Created);
     }
 
-    let tmp = crate::fsutil::create_ralph_temp_file("issue")
+    let tmp = crate::fsutil::create_cueloop_temp_file("issue")
         .context("create temp file for issue body")?;
     std::fs::write(tmp.path(), &payload.body).context("write issue body to temp file")?;
     let issue = create_issue(

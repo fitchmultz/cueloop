@@ -227,27 +227,27 @@ fn write_atomic_cleans_up_temp_file_on_persist_failure() {
 }
 
 #[test]
-fn create_ralph_temp_file_uses_ralph_prefix() {
-    let temp = create_ralph_temp_file("test").unwrap();
+fn create_cueloop_temp_file_uses_legacy_compatible_prefix() {
+    let temp = create_cueloop_temp_file("test").unwrap();
     let name = temp.path().file_name().unwrap().to_string_lossy();
     assert!(
         name.starts_with("ralph_test_"),
-        "temp file should have ralph prefix, got: {}",
+        "temp file should have legacy-compatible prefix, got: {}",
         name
     );
     let parent = temp.path().parent().unwrap();
     assert!(
         parent.ends_with("ralph"),
-        "temp file should be in ralph temp directory, got: {}",
+        "temp file should be in legacy-compatible temp directory, got: {}",
         parent.display()
     );
 }
 
 #[test]
-fn create_ralph_temp_file_is_cleaned_on_drop() {
+fn create_cueloop_temp_file_is_cleaned_on_drop() {
     let path;
     {
-        let temp = create_ralph_temp_file("test").unwrap();
+        let temp = create_cueloop_temp_file("test").unwrap();
         path = temp.path().to_path_buf();
         assert!(path.exists(), "temp file should exist while held");
     }
@@ -256,10 +256,10 @@ fn create_ralph_temp_file_is_cleaned_on_drop() {
 }
 
 #[test]
-fn create_ralph_temp_file_accepts_content() {
+fn create_cueloop_temp_file_accepts_content() {
     use std::io::Write;
 
-    let mut temp = create_ralph_temp_file("test").unwrap();
+    let mut temp = create_cueloop_temp_file("test").unwrap();
     temp.write_all(b"test content").unwrap();
     temp.flush().unwrap();
 

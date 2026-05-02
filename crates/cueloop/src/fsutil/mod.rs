@@ -1,4 +1,4 @@
-//! Purpose: Facade for filesystem utility helpers used across Ralph.
+//! Purpose: Facade for filesystem utility helpers used across CueLoop.
 //!
 //! Responsibilities:
 //! - Declare focused fsutil companion modules.
@@ -24,13 +24,13 @@ mod temp;
 #[cfg(test)]
 mod tests;
 
-pub use crate::constants::paths::RALPH_TEMP_PREFIX;
+pub use crate::constants::paths::CUELOOP_TEMP_PREFIX;
 pub use atomic::write_atomic;
 pub use paths::expand_tilde;
 pub use safeguard::{safeguard_text_dump, safeguard_text_dump_redacted};
 pub use temp::{
     cleanup_default_temp_dirs, cleanup_stale_temp_dirs, cleanup_stale_temp_entries,
-    create_ralph_temp_dir, create_ralph_temp_file, ralph_temp_root,
+    create_cueloop_temp_dir, create_cueloop_temp_file, cueloop_temp_root,
 };
 
 pub(crate) use atomic::sync_dir_best_effort;

@@ -35,7 +35,7 @@ pub fn find_non_repo_temp_base() -> PathBuf {
     let cwd = std::env::current_dir().expect("resolve current dir");
     let repo_root = config::find_repo_root(&cwd);
 
-    let temp_base = cueloop::fsutil::ralph_temp_root().join("integration-tests");
+    let temp_base = cueloop::fsutil::cueloop_temp_root().join("integration-tests");
     if !path_has_repo_markers(&temp_base) {
         return temp_base;
     }

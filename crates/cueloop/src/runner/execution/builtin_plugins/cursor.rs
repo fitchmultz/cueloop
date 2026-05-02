@@ -124,7 +124,7 @@ impl RunnerPlugin for CursorPlugin {
 fn write_cursor_sdk_helper(
     bin: &str,
 ) -> Result<(PathBuf, Vec<Box<dyn Any + Send + Sync>>), RunnerError> {
-    let temp_dir = fsutil::create_ralph_temp_dir("cursor-sdk-runner").map_err(|err| {
+    let temp_dir = fsutil::create_cueloop_temp_dir("cursor-sdk-runner").map_err(|err| {
         RunnerError::Other(anyhow::anyhow!(
             "Cursor SDK runner setup failed (bin={bin}, step=create_temp_dir): {err}"
         ))
