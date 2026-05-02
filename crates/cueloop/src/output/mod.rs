@@ -1,7 +1,7 @@
-//! Output styling and theming for Ralph CLI.
+//! Output styling and theming for CueLoop CLI.
 //!
 //! Purpose:
-//! - Output styling and theming for Ralph CLI.
+//! - Output styling and theming for CueLoop CLI.
 //!
 //! Responsibilities:
 //! - Provide centralized color theme definitions for CLI (colored crate).

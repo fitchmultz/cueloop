@@ -1,7 +1,7 @@
-//! Ralph CLI facade.
+//! CueLoop CLI facade.
 //!
 //! Purpose:
-//! - Ralph CLI facade.
+//! - CueLoop CLI facade.
 //!
 //! Responsibilities:
 //! - Expose the top-level Clap surface for the `cueloop` binary.

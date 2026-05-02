@@ -1,7 +1,7 @@
-//! Version command for Ralph CLI.
+//! Version command for CueLoop CLI.
 //!
 //! Purpose:
-//! - Version command for Ralph CLI.
+//! - Version command for CueLoop CLI.
 //!
 //! Responsibilities:
 //! - Display version information including package version, git commit, and build timestamp.
@@ -29,7 +29,7 @@ pub struct VersionArgs {
     pub verbose: bool,
 }
 
-/// Display version information for Ralph CLI.
+/// Display version information for CueLoop CLI.
 ///
 /// Prints the package version by default. With --verbose, also displays
 /// git commit hash and build timestamp when available.

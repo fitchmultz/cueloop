@@ -9,7 +9,7 @@
 //!
 //! Not handled here:
 //! - Building or installing the SwiftUI app bundle (see `apps/RalphMac/`).
-//! - Any queue/runner logic (Ralph remains CLI-first; the GUI shells out to the CLI).
+//! - Any queue/runner logic (CueLoop remains CLI-first; the GUI shells out to the CLI).
 //!
 //!
 //! Usage:
@@ -38,10 +38,10 @@ pub struct AppArgs {
 
 #[derive(Subcommand)]
 pub enum AppCommand {
-    /// Open the macOS Ralph app.
+    /// Open the macOS CueLoop app.
     #[command(
-        about = "Open the macOS Ralph app",
-        after_long_help = "Examples:\n  cueloop app open\n  cueloop app open --bundle-id com.mitchfultz.ralph\n  cueloop app open --path /Applications/Ralph.app\n"
+        about = "Open the macOS CueLoop app",
+        after_long_help = "Examples:\n  cueloop app open\n  cueloop app open --bundle-id com.mitchfultz.ralph\n  cueloop app open --path /Applications/RalphMac.app\n"
     )]
     Open(AppOpenArgs),
 }

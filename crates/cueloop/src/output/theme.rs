@@ -1,7 +1,7 @@
-//! Centralized color theme for Ralph CLI.
+//! Centralized color theme for CueLoop CLI.
 //!
 //! Purpose:
-//! - Centralized color theme for Ralph CLI.
+//! - Centralized color theme for CueLoop CLI.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
