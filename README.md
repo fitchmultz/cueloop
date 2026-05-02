@@ -1,8 +1,5 @@
 # CueLoop
 
-> Naming note: CueLoop was formerly Ralph.
-
-
 [![crates.io](https://img.shields.io/crates/v/cueloop-agent-loop.svg)](https://crates.io/crates/cueloop-agent-loop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop-agent-loop)](https://docs.rs/cueloop-agent-loop)
 [![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/cueloop)](https://github.com/fitchmultz/cueloop/releases)
