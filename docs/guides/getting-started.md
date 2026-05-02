@@ -38,7 +38,7 @@ The easiest way to install CueLoop is via Cargo:
 cargo install cueloop-agent-loop
 ```
 
-This installs the latest published version from crates.io and provides the primary `cueloop` executable at `~/.cargo/bin/cueloop` plus the legacy `cueloop` compatibility alias.
+This installs the latest published version from crates.io and provides the `cueloop` executable at `~/.cargo/bin/cueloop`.
 
 ### From Source
 
@@ -53,7 +53,7 @@ cd cueloop
 make install
 ```
 
-This installs the primary `cueloop` binary to `~/.local/bin/cueloop` and the legacy `cueloop` compatibility alias to `~/.local/bin/cueloop` (or a writable fallback path).
+This installs the `cueloop` binary to `~/.local/bin/cueloop` (or a writable fallback path).
 
 ### Verify Installation
 

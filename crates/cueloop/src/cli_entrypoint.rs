@@ -96,10 +96,6 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
         log::debug!("startup temp cleanup: {:#}", err);
     }
 
-    if should_emit_legacy_compat_warnings(&cli) {
-        emit_legacy_compat_warnings();
-    }
-
     // Ensure README guidance stays current for agent-facing commands even when
     // full sanity checks are skipped for this command.
     let sanity_mode = sanity::startup_sanity_mode(&cli.command);
@@ -197,30 +193,6 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
     }
 }
 
-/// Decide whether to emit human-only legacy compatibility warnings.
-fn should_emit_legacy_compat_warnings(cli: &cli::Cli) -> bool {
-    match &cli.command {
-        cli::Command::Machine(_)
-        | cli::Command::CliSpec(_)
-        | cli::Command::Completions(_)
-        | cli::Command::HelpAll
-        | cli::Command::Queue(_) => false,
-        cli::Command::Config(args) => !matches!(
-            &args.command,
-            cli::config::ConfigCommand::Show(show_args)
-                if matches!(show_args.format, cli::config::ConfigShowFormat::Json)
-        ),
-        cli::Command::Doctor(args) => !matches!(args.format, cli::doctor::DoctorFormat::Json),
-        cli::Command::Init(_) | cli::Command::Migrate(_) => true,
-        cli::Command::Plugin(args) => !matches!(
-            &args.command,
-            cli::plugin::PluginCommand::List { json: true }
-        ),
-        cli::Command::Prompt(args) => matches!(&args.command, cli::prompt::PromptCommand::List),
-        _ => false,
-    }
-}
-
 fn parse_cli(args: Vec<OsString>) -> cli::Cli {
     let invoked_name = args
         .first()
@@ -234,45 +206,6 @@ fn parse_cli(args: Vec<OsString>) -> cli::Cli {
         .get_matches_from(args);
 
     cli::Cli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit())
-}
-
-fn emit_legacy_compat_warnings() {
-    let Ok(cwd) = std::env::current_dir() else {
-        return;
-    };
-    let repo_root = crate::config::find_repo_root(&cwd);
-    let current_runtime = repo_root.join(crate::constants::identity::PROJECT_RUNTIME_DIR);
-    let legacy_runtime = repo_root.join(crate::constants::identity::LEGACY_PROJECT_RUNTIME_DIR);
-
-    if current_runtime.is_dir() && legacy_runtime.is_dir() {
-        log::warn!(
-            "CueLoop found both .cueloop and legacy .cueloop runtime directories. .cueloop takes precedence; resolve or remove .cueloop when ready."
-        );
-    } else if matches!(
-        crate::config::project_runtime_layout(&repo_root),
-        crate::config::ProjectRuntimeLayout::Legacy
-    ) {
-        log::warn!(
-            "CueLoop is using legacy project runtime directory .cueloop. This remains supported for now. Run `cueloop migrate runtime-dir --apply` to move project state to .cueloop."
-        );
-    }
-
-    if let Some(legacy_global) = crate::config::legacy_global_config_path()
-        && legacy_global.exists()
-    {
-        let current_global_exists =
-            crate::config::global_config_path().is_some_and(|path| path.exists());
-        let suffix = if current_global_exists {
-            " Current ~/.config/cueloop/config.jsonc still takes precedence."
-        } else {
-            " Move it to ~/.config/cueloop/config.jsonc when ready."
-        };
-        log::warn!(
-            "CueLoop found legacy global config {}.{}",
-            legacy_global.display(),
-            suffix
-        );
-    }
 }
 
 /// Check if a dotenvy error is a "file not found" error.
