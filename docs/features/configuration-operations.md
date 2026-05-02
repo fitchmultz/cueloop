@@ -12,8 +12,8 @@ Use this guide when configuring CueLoop queue files, task aging, archive behavio
 
 Default queue paths:
 
-- `queue.file`: `.cueloop/queue.jsonc` (legacy fallback: `.cueloop/queue.jsonc`)
-- `queue.done_file`: `.cueloop/done.jsonc` (legacy fallback: `.cueloop/done.jsonc`)
+- `queue.file`: `.cueloop/queue.jsonc`
+- `queue.done_file`: `.cueloop/done.jsonc`
 
 Notes:
 

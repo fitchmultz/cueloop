@@ -6,7 +6,7 @@
 //! Responsibilities:
 //! - Cover creation, force-overwrite, README handling, and invalid queue/done validation.
 //! - Exercise wizard-driven initialization outputs.
-//! - Verify new CueLoop runtime defaults and legacy CueLoop runtime compatibility.
+//! - Verify CueLoop runtime defaults and migration-safe initialization behavior.
 //!
 //! Scope:
 //! - Unit tests for init workflow behavior only.

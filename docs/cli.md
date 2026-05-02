@@ -26,7 +26,7 @@ These are available on most commands:
 - `cueloop run` - Execute tasks (`one`, `loop`, `resume`, `parallel`)
 - `cueloop task` - Build/create and manage task lifecycle
 - `cueloop scan` - Create tasks by scanning repository state
-- `cueloop init` - Bootstrap `.cueloop/` files for new repos, or keep `.cueloop/` for legacy repos
+- `cueloop init` - Bootstrap `.cueloop/` files for a repo
 - `cueloop app` - macOS app integration
 - `cueloop version` - Build/version info
 

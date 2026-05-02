@@ -19,7 +19,7 @@ Key fields:
 - `workspace_root`: root directory for parallel workspaces (default: `<repo-parent>/.workspaces/<repo-name>/parallel`).
 - `ignored_file_allowlist`: optional trusted repo-relative file/glob allowlist for additional small gitignored local files to copy into worker workspaces. Default: `null` (`.env` / `.env.*` only). Project config that sets this key is repo-trust-gated.
 
-  **Git hygiene warning:** If you set `parallel.workspace_root` to a path **inside** the repository (for example `.cueloop/workspaces`, or legacy `.cueloop/workspaces`), you MUST gitignore it (or add it to `.git/info/exclude`). Otherwise CueLoop will create workspace clone directories that appear as untracked files and the repo will look "dirty" across runs. Parallel mode will fail fast if the workspace root is inside the repo and not ignored.
+  **Git hygiene warning:** If you set `parallel.workspace_root` to a path **inside** the repository (for example `.cueloop/workspaces`), you MUST gitignore it (or add it to `.git/info/exclude`). Otherwise CueLoop will create workspace clone directories that appear as untracked files and the repo will look "dirty" across runs. Parallel mode will fail fast if the workspace root is inside the repo and not ignored.
 
 Notes:
 - CLI flag `--parallel` overrides `parallel.workers` for a single run.
@@ -43,7 +43,7 @@ Example:
 
 ### Ignored local file sync
 
-Parallel worker workspaces receive tracked files through git and CueLoop runtime files under `.cueloop/` (or legacy `.cueloop/`) through workspace seeding. By default, CueLoop also copies ignored `.env` and `.env.*` files so workers inherit common local environment files.
+Parallel worker workspaces receive tracked files through git and CueLoop runtime files under `.cueloop/` through workspace seeding. By default, CueLoop also copies ignored `.env` and `.env.*` files so workers inherit common local environment files.
 
 CueLoop does **not** copy all ignored files automatically. Broad ignored-file copying can duplicate heavy build/cache trees (`target/`, `node_modules/`, `.venv/`), stale generated artifacts, nested worker workspaces, or nondeterministic local state.
 
@@ -73,12 +73,12 @@ Invalid examples:
 | `/tmp/secret.json` | entries must be repo-relative |
 | `../secret.json` | entries may not escape the repo |
 | `.cueloop/cache/*` | runtime/cache paths are denied |
-| `.cueloop/cache/*` | legacy runtime/cache paths are denied |
+| `.cueloop/cache/*` | runtime/cache paths are denied |
 
 Rules:
 - entries are repo-relative file paths or file glob patterns
 - directories, absolute paths, `..`, and `.` path components are rejected
-- denied runtime/build paths such as `target/`, `node_modules/`, `.venv/`, `.git/`, `.cueloop/{cache,workspaces,logs,lock}/`, and legacy `.cueloop/{cache,workspaces,logs,lock}/` are rejected
+- denied runtime/build paths such as `target/`, `node_modules/`, `.venv/`, `.git/`, and `.cueloop/{cache,workspaces,logs,lock}/` are rejected
 - entries that match no existing gitignored files are treated as optional and skipped with a warning during parallel preflight
 - invalid entries or entries that match unsafe paths still fail preflight, including directories, denied runtime/build paths, symlinks resolving outside the repo, and paths inside or overlapping the parallel workspace root
 - project config that sets this allowlist requires repo trust (`cueloop init` creates trust during bootstrap; `cueloop config trust init` is available for trust-only repair)
@@ -87,13 +87,13 @@ Rules:
 `queue` controls file locations, task ID formatting, and auto-archive behavior.
 
 Supported fields:
-- `file`: path to the queue file (default: `.cueloop/queue.jsonc`; legacy default fallback: `.cueloop/queue.jsonc`).
-- `done_file`: path to the done archive (default: `.cueloop/done.jsonc`; legacy default fallback: `.cueloop/done.jsonc`).
+- `file`: path to the queue file (default: `.cueloop/queue.jsonc`).
+- `done_file`: path to the done archive (default: `.cueloop/done.jsonc`).
 - `id_prefix`: task ID prefix (default: `RQ`).
 - `id_width`: zero padding width (default: `4`, e.g. `RQ-0001`).
 - `auto_archive_terminal_after_days`: automatically archive terminal tasks (done/rejected) from queue to done after this many days (default: `null`/`None`, disabled).
 
-Machine clients resolve these settings through `cueloop machine config resolve` or `cueloop machine workspace overview`; the `.cueloop/...` locations are defaults, and legacy `.cueloop/...` locations remain compatibility fallback, not a separate app contract.
+Machine clients resolve these settings through `cueloop machine config resolve` or `cueloop machine workspace overview`; the `.cueloop/...` locations are defaults, not a separate app contract.
 
 **Parallel mode restriction:** When running `cueloop run loop --parallel ...`, `queue.file` and
 `queue.done_file` must resolve to paths **under the repository root**. Parallel mode maps these

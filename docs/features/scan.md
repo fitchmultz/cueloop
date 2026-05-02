@@ -386,7 +386,7 @@ Configure in `.cueloop/config.jsonc`:
 
 ### Customizing Scan Prompts
 
-You can override the default templates by creating files in `.cueloop/prompts/` (legacy `.cueloop/prompts/` remains supported):
+You can override the default templates by creating files in `.cueloop/prompts/`:
 
 ```
 .cueloop/

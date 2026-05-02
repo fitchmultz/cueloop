@@ -143,7 +143,7 @@ MigrationType::FileRename {
 
 ### ReadmeUpdate
 
-Legacy migration type for updating the generated `.cueloop/README.md` to the latest template version. Current releases refresh this file through `cueloop init` and agent-facing write-enabled commands instead of relying on a registered README migration.
+Historical migration type for updating the generated `.cueloop/README.md` to the latest template version. Current releases refresh this file through `cueloop init` and agent-facing write-enabled commands instead of relying on a registered README migration.
 
 **Structure:**
 ```rust

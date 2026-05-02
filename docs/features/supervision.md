@@ -337,7 +337,7 @@ The runner is prompted to verify checklist items before signaling completion. Th
 
 ### Customization
 
-Override the default checklist by creating `.cueloop/prompts/phase2_handoff_checklist.md` (legacy `.cueloop/prompts/phase2_handoff_checklist.md` remains supported):
+Override the default checklist by creating `.cueloop/prompts/phase2_handoff_checklist.md`:
 
 ```markdown
 # Phase 2 Handoff Checklist

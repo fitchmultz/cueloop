@@ -18,14 +18,12 @@ Supported fields:
 - `plugins.plugins.<id>.enabled`: enable/disable the plugin (default: `false`).
 - `plugins.plugins.<id>.config`: opaque configuration blob passed to the plugin.
 
-Plugin directories are discovered with current paths preferred over legacy fallback, and project plugins overriding global plugins with the same id:
+Plugin directories are discovered from the active CueLoop locations, with trusted project plugins overriding global plugins that use the same id:
 
-1. Legacy global fallback: `~/.config/cueloop/plugins/<plugin_id>/plugin.json`
-2. Current global: `~/.config/cueloop/plugins/<plugin_id>/plugin.json`
-3. Legacy project fallback: `.cueloop/plugins/<plugin_id>/plugin.json`
-4. Current project: `.cueloop/plugins/<plugin_id>/plugin.json`
+1. Global plugin path: `~/.config/cueloop/plugins/<plugin_id>/plugin.json`
+2. Project plugin path: `.cueloop/plugins/<plugin_id>/plugin.json`
 
-New `cueloop plugin install` and `cueloop plugin init` writes target `.cueloop/plugins` or `~/.config/cueloop/plugins`. Use `cueloop migrate runtime-dir --apply` to move legacy project runtime state when ready.
+New `cueloop plugin install` and `cueloop plugin init` writes target `.cueloop/plugins` or `~/.config/cueloop/plugins`.
 
 Example:
 

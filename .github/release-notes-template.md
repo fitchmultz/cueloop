@@ -22,8 +22,6 @@ Download the appropriate release asset for your platform, then extract and insta
 curl -LO {{REPO_URL}}/releases/download/v{{VERSION}}/cueloop-{{VERSION}}-<platform>.tar.gz
 tar -xzf cueloop-{{VERSION}}-<platform>.tar.gz
 mv cueloop ~/.local/bin/
-# Optional legacy alias during the compatibility window:
-mv cueloop ~/.local/bin/
 ```
 
 ### Verify Checksum

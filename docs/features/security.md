@@ -161,7 +161,7 @@ Programmatic usage:
 ```rust
 use cueloop::fsutil::safeguard_text_dump;
 
-// Requires CUELOOP_RAW_DUMP=1 (legacy CUELOOP_RAW_DUMP=1 is also accepted) or debug_mode=true
+// Requires CUELOOP_RAW_DUMP=1 or debug_mode=true
 let path = safeguard_text_dump("debug_context", &raw_content, is_debug_mode)?;
 ```
 

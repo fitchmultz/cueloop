@@ -73,7 +73,7 @@ Use these when you want to validate a clone, understand the operational model, o
 - Done archive: `.cueloop/done.jsonc`
 - Project config: `.cueloop/config.jsonc`
 - Prompt overrides: `.cueloop/prompts/`
-- Legacy fallback: `.cueloop/` remains supported; use `cueloop migrate runtime-dir --apply` when ready.
+- Runtime migration: use `cueloop migrate runtime-dir --check` before applying supported old-state migrations.
 
 ## Validation and CI
 
