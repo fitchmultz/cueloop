@@ -10,7 +10,7 @@
 //! - Test-only process, git, and fixture bootstrap helpers used by Rust integration suites.
 //!
 //! Usage:
-//! - Prefer `seed_cueloop_dir()` when a test needs legacy `.cueloop/` runtime fixtures.
+//! - Prefer `seed_cueloop_dir()` when a test needs `.cueloop/` runtime fixtures.
 //! - Prefer `seed_git_repo_with_cueloop()` when a suite repeatedly needs the same initialized git repo.
 //! - Use `run_in_dir()`/`cueloop_command()` for CLI execution and `create_fake_runner()` for fake runner binaries.
 //!
@@ -287,14 +287,14 @@ pub fn cueloop_init_cli(dir: &Path) -> Result<()> {
     run_cueloop_init_cli(dir)
 }
 
-/// Seed legacy `.cueloop/` from a cached template while preserving files already written by the test.
+/// Seed `.cueloop/` from a cached template while preserving files already written by the test.
 pub fn seed_cueloop_dir(dir: &Path) -> Result<()> {
     let target = dir.join(".cueloop");
     let template = cueloop_init_template_dir().join(".cueloop");
     copy_dir_recursive_missing_only(&template, &target)
 }
 
-/// Seed an empty disposable directory from a cached git repo plus cached legacy runtime scaffold.
+/// Seed an empty disposable directory from a cached git repo plus cached runtime scaffold.
 ///
 /// This avoids repeated `git init` subprocesses in command-heavy integration suites.
 pub fn seed_git_repo_with_cueloop(dir: &Path) -> Result<()> {

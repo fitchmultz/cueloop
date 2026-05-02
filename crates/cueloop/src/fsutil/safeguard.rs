@@ -16,7 +16,7 @@
 //! - Raw dumps require either debug mode or an explicit env-var opt-in.
 //! - Successful dumps persist their temp directory so callers can inspect the output later.
 
-use crate::constants::paths::{ENV_RAW_DUMP, LEGACY_ENV_RAW_DUMP};
+use crate::constants::paths::ENV_RAW_DUMP;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::PathBuf;
@@ -39,7 +39,7 @@ pub fn safeguard_text_dump_redacted(label: &str, content: &str) -> Result<PathBu
 ///
 /// SECURITY WARNING: This function writes raw content that may contain secrets.
 /// It requires explicit opt-in via either:
-/// - Setting the `CUELOOP_RAW_DUMP=1` environment variable (or legacy `CUELOOP_RAW_DUMP=1`)
+/// - Setting the `CUELOOP_RAW_DUMP=1` environment variable
 /// - Passing `is_debug_mode=true` (e.g., when `--debug` flag is used)
 ///
 /// If opt-in is not provided, this function returns an error.
@@ -50,18 +50,16 @@ pub fn safeguard_text_dump(label: &str, content: &str, is_debug_mode: bool) -> R
     if !raw_dump_enabled && !is_debug_mode {
         anyhow::bail!(
             "Raw safeguard dumps require explicit opt-in. \
-             Set {}=1 (or legacy {}=1) or use --debug mode. \
+             Set {}=1 or use --debug mode. \
              Consider using safeguard_text_dump_redacted() for safe dumping.",
-            ENV_RAW_DUMP,
-            LEGACY_ENV_RAW_DUMP
+            ENV_RAW_DUMP
         );
     }
 
     if raw_dump_enabled {
         log::warn!(
-            "SECURITY: Writing raw safeguard dump ({}=1 or {}=1). Secrets may be written to disk.",
-            ENV_RAW_DUMP,
-            LEGACY_ENV_RAW_DUMP
+            "SECURITY: Writing raw safeguard dump ({}=1). Secrets may be written to disk.",
+            ENV_RAW_DUMP
         );
     }
 
@@ -69,10 +67,8 @@ pub fn safeguard_text_dump(label: &str, content: &str, is_debug_mode: bool) -> R
 }
 
 fn raw_dump_env_enabled() -> bool {
-    [ENV_RAW_DUMP, LEGACY_ENV_RAW_DUMP]
-        .iter()
-        .filter_map(|key| std::env::var(key).ok())
-        .any(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+    std::env::var(ENV_RAW_DUMP)
+        .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"))
 }
 
 fn safeguard_text_dump_internal(label: &str, content: &str, _is_redacted: bool) -> Result<PathBuf> {

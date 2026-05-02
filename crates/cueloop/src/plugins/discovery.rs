@@ -15,7 +15,6 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Current CueLoop plugin roots override legacy CueLoop roots with the same plugin id.
 //! - Project plugins override global plugins with the same plugin id.
 
 use std::collections::BTreeMap;
@@ -23,9 +22,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 
-use crate::constants::identity::{
-    GLOBAL_CONFIG_DIR, LEGACY_GLOBAL_CONFIG_DIR, LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR,
-};
+use crate::constants::identity::{GLOBAL_CONFIG_DIR, PROJECT_RUNTIME_DIR};
 use crate::plugins::manifest::PluginManifest;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,18 +50,10 @@ pub(crate) fn plugin_roots(repo_root: &Path) -> Vec<(PluginScope, PathBuf)> {
         let config_dir = PathBuf::from(home).join(".config");
         roots.push((
             PluginScope::Global,
-            config_dir.join(LEGACY_GLOBAL_CONFIG_DIR).join("plugins"),
-        ));
-        roots.push((
-            PluginScope::Global,
             config_dir.join(GLOBAL_CONFIG_DIR).join("plugins"),
         ));
     }
 
-    roots.push((
-        PluginScope::Project,
-        repo_root.join(LEGACY_PROJECT_RUNTIME_DIR).join("plugins"),
-    ));
     roots.push((
         PluginScope::Project,
         repo_root.join(PROJECT_RUNTIME_DIR).join("plugins"),

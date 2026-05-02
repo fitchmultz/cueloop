@@ -12,13 +12,11 @@
 //! - Used by cleanup flows, runner prompts, plugin IO, issue publishing, and safeguard dump persistence.
 //!
 //! Invariants/Assumptions:
-//! - CueLoop temp artifacts currently live under the legacy-compatible
-//!   `std::env::temp_dir()/cueloop` namespace.
+//! - CueLoop temp artifacts live under the `std::env::temp_dir()/cueloop` namespace.
 //! - Cleanup is prefix-based and best-effort on per-entry metadata or deletion failures.
-//! - CueLoop-created temp files currently use the legacy-compatible `cueloop_` prefix so
-//!   cleanup can discover them.
+//! - CueLoop-created temp files use the `cueloop_` prefix so cleanup can discover them.
 
-use crate::constants::paths::{CUELOOP_TEMP_DIR_NAME, CUELOOP_TEMP_PREFIX, LEGACY_PROMPT_PREFIX};
+use crate::constants::paths::{CUELOOP_TEMP_DIR_NAME, CUELOOP_TEMP_PREFIX};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -104,11 +102,7 @@ pub fn cleanup_stale_temp_dirs(base: &Path, retention: Duration) -> Result<usize
 }
 
 pub fn cleanup_default_temp_dirs(retention: Duration) -> Result<usize> {
-    let mut removed = 0usize;
-    removed += cleanup_stale_temp_dirs(&cueloop_temp_root(), retention)?;
-    removed +=
-        cleanup_stale_temp_entries(&std::env::temp_dir(), &[LEGACY_PROMPT_PREFIX], retention)?;
-    Ok(removed)
+    cleanup_stale_temp_dirs(&cueloop_temp_root(), retention)
 }
 
 pub fn create_cueloop_temp_dir(label: &str) -> Result<tempfile::TempDir> {

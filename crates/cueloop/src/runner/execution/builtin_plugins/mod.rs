@@ -22,9 +22,7 @@
 
 use serde_json::Value as JsonValue;
 
-use crate::constants::paths::{
-    ENV_MODEL_USED, ENV_RUNNER_USED, LEGACY_ENV_MODEL_USED, LEGACY_ENV_RUNNER_USED,
-};
+use crate::constants::paths::{ENV_MODEL_USED, ENV_RUNNER_USED};
 use crate::contracts::{Model, Runner};
 use crate::runner::RunnerError;
 
@@ -204,8 +202,6 @@ pub(crate) fn apply_analytics_env(
     builder
         .env(ENV_RUNNER_USED, runner.id())
         .env(ENV_MODEL_USED, model.as_str())
-        .env(LEGACY_ENV_RUNNER_USED, runner.id())
-        .env(LEGACY_ENV_MODEL_USED, model.as_str())
 }
 
 /// Extract text content from a JSON value (string or array of text objects).

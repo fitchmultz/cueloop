@@ -179,7 +179,7 @@ fn migrate_queue_json_to_jsonc_removes_legacy_file_when_jsonc_already_exists() {
     let ctx = create_test_context(&dir);
 
     fs::create_dir_all(dir.path().join(".cueloop")).unwrap();
-    fs::write(dir.path().join(".cueloop/queue.json"), "{\"legacy\": true}").unwrap();
+    fs::write(dir.path().join(".cueloop/queue.json"), "{\"old\": true}").unwrap();
     fs::write(dir.path().join(".cueloop/queue.jsonc"), "{\"version\": 1}").unwrap();
 
     migrate_queue_json_to_jsonc(&ctx).unwrap();

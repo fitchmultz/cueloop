@@ -23,7 +23,6 @@ use anyhow::Result;
 use std::collections::BTreeMap;
 
 use crate::config::Resolved;
-use crate::constants::identity::{LEGACY_GLOBAL_CONFIG_DIR, LEGACY_PROJECT_RUNTIME_DIR};
 use crate::plugins::discovery::{PluginScope, plugin_roots};
 use crate::plugins::registry::PluginRegistry;
 
@@ -51,8 +50,6 @@ pub(super) fn run_list(resolved: &Resolved, json_output: bool) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&output)?);
         return Ok(());
     }
-
-    print_legacy_plugin_root_warning(resolved);
 
     if discovered.is_empty() {
         println!("No plugins discovered.");
@@ -91,27 +88,6 @@ pub(super) fn run_list(resolved: &Resolved, json_output: bool) -> Result<()> {
     println!(r#"  {{ "plugins": {{ "plugins": {{ "<plugin-id>": {{ "enabled": true }} }} }} }}"#);
 
     Ok(())
-}
-
-fn print_legacy_plugin_root_warning(resolved: &Resolved) {
-    let legacy_project = resolved
-        .repo_root
-        .join(LEGACY_PROJECT_RUNTIME_DIR)
-        .join("plugins");
-    let legacy_global = std::env::var_os("HOME").map(|home| {
-        std::path::PathBuf::from(home)
-            .join(".config")
-            .join(LEGACY_GLOBAL_CONFIG_DIR)
-            .join("plugins")
-    });
-
-    if legacy_project.is_dir() || legacy_global.as_ref().is_some_and(|path| path.is_dir()) {
-        println!(
-            "Warning: legacy plugin directories are still supported, but .cueloop/plugins and ~/.config/cueloop/plugins take precedence."
-        );
-        println!("Run `cueloop migrate runtime-dir --apply` for project runtime state when ready.");
-        println!();
-    }
 }
 
 fn scope_label(scope: PluginScope) -> &'static str {

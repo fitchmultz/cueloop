@@ -74,11 +74,11 @@ fn check_sync_status_reports_missing_and_up_to_date() {
 }
 
 #[test]
-fn legacy_override_counts_as_fallback_override() {
+fn current_override_counts_as_override() {
     let temp = TempDir::new().unwrap();
-    let legacy = temp.path().join(".cueloop/prompts");
-    fs::create_dir_all(&legacy).unwrap();
-    fs::write(legacy.join("worker.md"), "legacy").unwrap();
+    let overrides = temp.path().join(".cueloop/prompts");
+    fs::create_dir_all(&overrides).unwrap();
+    fs::write(overrides.join("worker.md"), "custom").unwrap();
 
     let templates = list_templates(temp.path());
     let worker = templates
@@ -88,12 +88,12 @@ fn legacy_override_counts_as_fallback_override() {
     assert!(worker.has_override);
     assert_eq!(
         get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
-        "legacy"
+        "custom"
     );
 }
 
 #[test]
-fn load_version_info_ignores_legacy_schema_during_cutover() {
+fn load_version_info_ignores_old_schema() {
     let temp = TempDir::new().unwrap();
     let cache_dir = temp.path().join(".cueloop/cache");
     fs::create_dir_all(&cache_dir).unwrap();
@@ -104,7 +104,7 @@ fn load_version_info_ignores_legacy_schema_during_cutover() {
   "exported_at": "2026-01-28T22:30:00Z",
   "templates": {
     "worker": {
-      "hash": "hash:legacy",
+      "hash": "hash:old",
       "exported_at": "2026-01-28T22:30:00Z"
     }
   }

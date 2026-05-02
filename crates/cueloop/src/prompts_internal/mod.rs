@@ -15,7 +15,7 @@
 //!
 //! Invariants/Assumptions:
 //! - Re-exported entrypoints remain the canonical internal surface for moved helpers.
-//! - `.cueloop/prompts` and legacy `.cueloop/prompts` overrides may be absent.
+//! - `.cueloop/prompts` overrides may be absent.
 
 mod instructions;
 pub(crate) mod iteration;

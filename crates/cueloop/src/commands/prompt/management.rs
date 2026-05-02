@@ -17,7 +17,6 @@
 //!
 //! Invariants/assumptions:
 //! - Export/sync operations target `.cueloop/prompts/`.
-//! - Legacy `.cueloop/prompts/` overrides remain readable as fallback.
 //! - Errors are surfaced per-template without aborting unrelated exports.
 
 use std::path::Path;
@@ -28,7 +27,6 @@ use crate::prompts_internal::management as prompt_mgmt;
 
 pub fn list_prompts(repo_root: &Path) -> Result<()> {
     let templates = prompt_mgmt::list_templates(repo_root);
-    print_legacy_prompt_warning(repo_root);
     println!("Available prompt templates ({} total):\n", templates.len());
 
     let max_name_len = templates
@@ -52,7 +50,6 @@ pub fn list_prompts(repo_root: &Path) -> Result<()> {
     }
 
     println!("\nOverride paths: .cueloop/prompts/<name>.md");
-    println!("Legacy fallback: .cueloop/prompts/<name>.md");
     println!("Use 'cueloop prompt show <name> --raw' to view raw embedded content");
     Ok(())
 }
@@ -221,17 +218,6 @@ pub fn diff_prompt(repo_root: &Path, name: &str) -> Result<()> {
         None => println!("No local override for '{}' - using embedded default", name),
     }
     Ok(())
-}
-
-fn print_legacy_prompt_warning(repo_root: &Path) {
-    let legacy_prompts = repo_root.join(".cueloop/prompts");
-    if legacy_prompts.is_dir() {
-        println!(
-            "Warning: legacy prompt overrides in .cueloop/prompts are still supported, but .cueloop/prompts takes precedence."
-        );
-        println!("Run `cueloop migrate runtime-dir --apply` for project runtime state when ready.");
-        println!();
-    }
 }
 
 fn print_group<T>(label: &str, items: &[(String, T)]) {

@@ -16,7 +16,7 @@
 //! - Environment-mutating tests serialize on a local mutex to avoid cross-test races.
 
 use super::*;
-use crate::constants::paths::{ENV_RAW_DUMP, LEGACY_ENV_RAW_DUMP};
+use crate::constants::paths::ENV_RAW_DUMP;
 use std::fs;
 use std::sync::{Mutex, OnceLock};
 
@@ -28,7 +28,6 @@ fn env_lock() -> &'static Mutex<()> {
 fn clear_raw_dump_env() {
     unsafe {
         std::env::remove_var(ENV_RAW_DUMP);
-        std::env::remove_var(LEGACY_ENV_RAW_DUMP);
     }
 }
 
@@ -71,8 +70,8 @@ fn safeguard_text_dump_requires_opt_in_without_debug() {
     assert!(result.is_err(), "Raw dump should fail without opt-in");
     let err_msg = result.unwrap_err().to_string();
     assert!(
-        err_msg.contains("CUELOOP_RAW_DUMP") && err_msg.contains("CUELOOP_RAW_DUMP"),
-        "Error should mention primary and legacy env vars"
+        err_msg.contains("CUELOOP_RAW_DUMP"),
+        "Error should mention raw dump env var"
     );
 }
 
@@ -90,26 +89,6 @@ fn safeguard_text_dump_allows_raw_with_env_var() {
     assert_eq!(written, content, "Raw content should be written unchanged");
 
     // Cleanup
-    clear_raw_dump_env();
-    let _ = fs::remove_file(&path);
-    if let Some(parent) = path.parent() {
-        let _ = fs::remove_dir(parent);
-    }
-}
-
-#[test]
-fn safeguard_text_dump_allows_raw_with_legacy_env_var() {
-    let _guard = env_lock().lock().expect("env lock");
-
-    clear_raw_dump_env();
-    unsafe { std::env::set_var(LEGACY_ENV_RAW_DUMP, "1") };
-
-    let content = "legacy raw secret data";
-    let path = safeguard_text_dump("test_raw_legacy_env", content, false).unwrap();
-
-    let written = fs::read_to_string(&path).unwrap();
-    assert_eq!(written, content, "Raw content should be written unchanged");
-
     clear_raw_dump_env();
     let _ = fs::remove_file(&path);
     if let Some(parent) = path.parent() {
@@ -254,18 +233,18 @@ fn write_atomic_cleans_up_temp_file_on_persist_failure() {
 }
 
 #[test]
-fn create_cueloop_temp_file_uses_legacy_compatible_prefix() {
+fn create_cueloop_temp_file_uses_cueloop_prefix() {
     let temp = create_cueloop_temp_file("test").unwrap();
     let name = temp.path().file_name().unwrap().to_string_lossy();
     assert!(
         name.starts_with("cueloop_test_"),
-        "temp file should have legacy-compatible prefix, got: {}",
+        "temp file should have CueLoop prefix, got: {}",
         name
     );
     let parent = temp.path().parent().unwrap();
     assert!(
         parent.ends_with("cueloop"),
-        "temp file should be in legacy-compatible temp directory, got: {}",
+        "temp file should be in CueLoop temp directory, got: {}",
         parent.display()
     );
 }

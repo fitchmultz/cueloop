@@ -125,7 +125,7 @@ impl RuntimeDirMigrationState {
                 legacy_path,
                 current_path,
             } => format!(
-                "Legacy runtime directory {} can be moved to {}.",
+                "Old runtime directory {} can be moved to {}.",
                 legacy_path.display(),
                 current_path.display()
             ),

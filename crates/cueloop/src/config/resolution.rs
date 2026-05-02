@@ -1,11 +1,11 @@
 //! Configuration resolution for CueLoop.
 //!
 //! Purpose:
-//! - Configuration resolution for CueLoop's transitional `cueloop` CLI.
+//! - Configuration resolution for CueLoop's `cueloop` CLI.
 //!
 //! Responsibilities:
 //! - Resolve configuration from multiple layers: global, project, and defaults.
-//! - Discover repository root via current `.cueloop/`, legacy `.cueloop/`, or `.git/` markers.
+//! - Discover repository root via `.cueloop/` or `.git/` markers.
 //! - Resolve active runtime layout and queue/done file paths.
 //! - Apply profile patches after base config resolution.
 //!
@@ -18,21 +18,14 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Config layers are applied in order: defaults, legacy global, current global, project.
+//! - Config layers are applied in order: defaults, global, project.
 //! - Paths are resolved relative to repo root unless absolute.
 //! - Current global config resolves from `~/.config/cueloop/config.jsonc`.
-//! - Legacy global config at `~/.config/cueloop/config.jsonc` remains a fallback.
-//! - Project config resolves from the active runtime dir: `.cueloop/config.jsonc` for
-//!   current/uninitialized repos, `.cueloop/config.jsonc` for legacy repos.
+//! - Project config resolves from `.cueloop/config.jsonc`.
 
 use crate::constants::defaults::DEFAULT_ID_WIDTH;
-use crate::constants::identity::{
-    GLOBAL_CONFIG_DIR, LEGACY_GLOBAL_CONFIG_DIR, LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR,
-};
-use crate::constants::queue::{
-    DEFAULT_DONE_FILE, DEFAULT_ID_PREFIX, DEFAULT_QUEUE_FILE, LEGACY_DEFAULT_DONE_FILE,
-    LEGACY_DEFAULT_QUEUE_FILE,
-};
+use crate::constants::identity::{GLOBAL_CONFIG_DIR, PROJECT_RUNTIME_DIR};
+use crate::constants::queue::{DEFAULT_DONE_FILE, DEFAULT_ID_PREFIX, DEFAULT_QUEUE_FILE};
 use crate::contracts::Config;
 use crate::fsutil;
 use crate::prompts_internal::validate_instruction_file_paths;
@@ -53,17 +46,17 @@ const CONFIG_FILE_NAME: &str = "config.jsonc";
 const QUEUE_FILE_NAME: &str = "queue.jsonc";
 const DONE_FILE_NAME: &str = "done.jsonc";
 const TRUST_FILE_NAME: &str = "trust.jsonc";
-const LEGACY_QUEUE_JSON_FILE_NAME: &str = "queue.json";
-const LEGACY_DONE_JSON_FILE_NAME: &str = "done.json";
-const LEGACY_CONFIG_JSON_FILE_NAME: &str = "config.json";
+const OLD_QUEUE_JSON_FILE_NAME: &str = "queue.json";
+const OLD_DONE_JSON_FILE_NAME: &str = "done.json";
+const OLD_CONFIG_JSON_FILE_NAME: &str = "config.json";
 const RUNTIME_MARKER_FILES: &[&str] = &[
     QUEUE_FILE_NAME,
     DONE_FILE_NAME,
     CONFIG_FILE_NAME,
     TRUST_FILE_NAME,
-    LEGACY_QUEUE_JSON_FILE_NAME,
-    LEGACY_DONE_JSON_FILE_NAME,
-    LEGACY_CONFIG_JSON_FILE_NAME,
+    OLD_QUEUE_JSON_FILE_NAME,
+    OLD_DONE_JSON_FILE_NAME,
+    OLD_CONFIG_JSON_FILE_NAME,
 ];
 
 /// Active repo-local runtime layout.
@@ -71,8 +64,6 @@ const RUNTIME_MARKER_FILES: &[&str] = &[
 pub enum ProjectRuntimeLayout {
     /// Current CueLoop runtime directory (`.cueloop`).
     Current,
-    /// Legacy CueLoop runtime directory (`.cueloop`).
-    Legacy,
     /// No runtime markers exist yet; new writes should use `.cueloop`.
     Uninitialized,
 }
@@ -81,7 +72,6 @@ impl ProjectRuntimeLayout {
     fn directory_name(self) -> &'static str {
         match self {
             Self::Current | Self::Uninitialized => PROJECT_RUNTIME_DIR,
-            Self::Legacy => LEGACY_PROJECT_RUNTIME_DIR,
         }
     }
 }
@@ -215,7 +205,7 @@ fn apply_profile_patch(cfg: &mut Config, name: &str) -> Result<()> {
             let names = crate::agent::all_profile_names(cfg.profiles.as_ref());
             if names.is_empty() {
                 anyhow::anyhow!(
-                    "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or legacy .cueloop/config.jsonc."
+                    "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc."
                 )
             } else {
                 anyhow::anyhow!(
@@ -260,7 +250,6 @@ fn resolve_queue_path_with_source(
         queue_file_explicit,
         QUEUE_FILE_NAME,
         DEFAULT_QUEUE_FILE,
-        LEGACY_DEFAULT_QUEUE_FILE,
     );
 
     resolve_repo_path(repo_root, &raw)
@@ -284,7 +273,6 @@ fn resolve_done_path_with_source(
         done_file_explicit,
         DONE_FILE_NAME,
         DEFAULT_DONE_FILE,
-        LEGACY_DEFAULT_DONE_FILE,
     );
 
     resolve_repo_path(repo_root, &raw)
@@ -296,13 +284,9 @@ fn default_aware_runtime_path(
     configured_explicitly: bool,
     file_name: &str,
     current_default: &str,
-    legacy_default: &str,
 ) -> PathBuf {
     match configured {
-        Some(path)
-            if !configured_explicitly
-                && (path == Path::new(current_default) || path == Path::new(legacy_default)) =>
-        {
+        Some(path) if !configured_explicitly && path == Path::new(current_default) => {
             default_runtime_relative_path(repo_root, file_name)
         }
         Some(path) => path.to_path_buf(),
@@ -328,22 +312,8 @@ pub fn global_config_path() -> Option<PathBuf> {
     config_base_dir().map(|base| base.join(GLOBAL_CONFIG_DIR).join(CONFIG_FILE_NAME))
 }
 
-/// Get the path to the legacy global config file.
-pub fn legacy_global_config_path() -> Option<PathBuf> {
-    config_base_dir().map(|base| base.join(LEGACY_GLOBAL_CONFIG_DIR).join(CONFIG_FILE_NAME))
-}
-
 fn global_config_layer_paths() -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    if let Some(path) = legacy_global_config_path() {
-        paths.push(path);
-    }
-    if let Some(path) = global_config_path()
-        && !paths.iter().any(|existing| existing == &path)
-    {
-        paths.push(path);
-    }
-    paths
+    global_config_path().into_iter().collect()
 }
 
 fn config_base_dir() -> Option<PathBuf> {
@@ -368,12 +338,9 @@ pub fn project_runtime_dir(repo_root: &Path) -> PathBuf {
 /// Detect the active repo-local runtime layout.
 pub fn project_runtime_layout(repo_root: &Path) -> ProjectRuntimeLayout {
     let current_dir = repo_root.join(PROJECT_RUNTIME_DIR);
-    let legacy_dir = repo_root.join(LEGACY_PROJECT_RUNTIME_DIR);
 
     if has_runtime_marker(&current_dir) {
         ProjectRuntimeLayout::Current
-    } else if has_runtime_marker(&legacy_dir) {
-        ProjectRuntimeLayout::Legacy
     } else {
         ProjectRuntimeLayout::Uninitialized
     }
@@ -388,8 +355,7 @@ fn has_runtime_marker(runtime_dir: &Path) -> bool {
 
 /// Find the repository root starting from a given path.
 ///
-/// Searches upward for current `.cueloop/` marker files, then legacy `.cueloop/` marker files,
-/// then a `.git/` directory.
+/// Searches upward for `.cueloop/` marker files, then a `.git/` directory.
 pub fn find_repo_root(start: &Path) -> PathBuf {
     log::debug!("searching for repo root starting from: {}", start.display());
     for dir in start.ancestors() {
@@ -398,15 +364,6 @@ pub fn find_repo_root(start: &Path) -> PathBuf {
         if has_runtime_marker(&current_dir) {
             log::debug!(
                 "found repo root at: {} (via {PROJECT_RUNTIME_DIR}/)",
-                dir.display()
-            );
-            return dir.to_path_buf();
-        }
-
-        let legacy_dir = dir.join(LEGACY_PROJECT_RUNTIME_DIR);
-        if has_runtime_marker(&legacy_dir) {
-            log::debug!(
-                "found repo root at: {} (via {LEGACY_PROJECT_RUNTIME_DIR}/)",
                 dir.display()
             );
             return dir.to_path_buf();

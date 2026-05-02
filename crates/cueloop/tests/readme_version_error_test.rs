@@ -87,7 +87,7 @@ fn check_readme_current_propagates_malformed_marker_error() -> Result<()> {
 }
 
 #[test]
-fn check_readme_current_handles_legacy_no_marker() -> Result<()> {
+fn check_readme_current_handles_no_marker() -> Result<()> {
     let dir = TempDir::new()?;
     let repo_root = dir.path();
 
@@ -97,9 +97,9 @@ fn check_readme_current_handles_legacy_no_marker() -> Result<()> {
     let prompt_content = "This prompt references .cueloop/README.md for context";
     fs::write(repo_root.join(".cueloop/prompts/worker.md"), prompt_content)?;
 
-    // Create a README without any version marker (legacy file)
-    let legacy_readme = "# Test README\nSome content";
-    fs::write(repo_root.join(".cueloop/README.md"), legacy_readme)?;
+    // Create a README without any version marker.
+    let unmarked_readme = "# Test README\nSome content";
+    fs::write(repo_root.join(".cueloop/README.md"), unmarked_readme)?;
 
     // This should succeed and treat it as version 1
     let result = check_readme_current_from_root(repo_root)?;
@@ -113,7 +113,7 @@ fn check_readme_current_handles_legacy_no_marker() -> Result<()> {
         } => {
             assert_eq!(current_version, 1);
         }
-        _ => panic!("Unexpected result for legacy README: {:?}", result),
+        _ => panic!("Unexpected result for unmarked README: {:?}", result),
     }
 
     Ok(())
@@ -173,7 +173,7 @@ fn init_fails_on_malformed_readme_version() -> Result<()> {
 }
 
 #[test]
-fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
+fn init_succeeds_on_readme_without_marker() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
 
@@ -194,9 +194,12 @@ fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
         prompt_content,
     )?;
 
-    // Create a legacy README without version marker
-    let legacy_readme = "# Test README\nSome content";
-    fs::write(resolved.repo_root.join(".cueloop/README.md"), legacy_readme)?;
+    // Create a README without version marker.
+    let unmarked_readme = "# Test README\nSome content";
+    fs::write(
+        resolved.repo_root.join(".cueloop/README.md"),
+        unmarked_readme,
+    )?;
 
     // Init should succeed (treats as version 1)
     let result = run_init(
@@ -210,7 +213,7 @@ fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
 
     assert!(
         result.is_ok(),
-        "Init should succeed on legacy README without marker"
+        "Init should succeed on README without marker"
     );
     Ok(())
 }

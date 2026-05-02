@@ -26,9 +26,7 @@ use anyhow::{Result, bail};
 use crate::cli::task::args::{TaskDoneArgs, TaskReadyArgs, TaskRejectArgs, TaskStatusArgs};
 use crate::config;
 use crate::constants::custom_fields::{MODEL_USED, RUNNER_USED};
-use crate::constants::paths::{
-    ENV_MODEL_USED, ENV_RUNNER_USED, LEGACY_ENV_MODEL_USED, LEGACY_ENV_RUNNER_USED,
-};
+use crate::constants::paths::{ENV_MODEL_USED, ENV_RUNNER_USED};
 use crate::contracts::TaskStatus;
 use crate::queue;
 use crate::queue::operations::{batch_set_status, print_batch_results, resolve_task_ids};
@@ -344,21 +342,16 @@ fn read_env_trimmed(key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Read a primary environment variable with a legacy fallback.
-fn read_env_trimmed_with_legacy(primary_key: &str, legacy_key: &str) -> Option<String> {
-    read_env_trimmed(primary_key).or_else(|| read_env_trimmed(legacy_key))
-}
-
 /// Build custom fields patch from environment variables for observational analytics.
 fn build_custom_fields_patch_from_env() -> Option<HashMap<String, String>> {
     // These environment variables are set by the runner or external tools
     // and provide observational analytics about what was actually used.
     let mut patch = HashMap::new();
 
-    if let Some(runner) = read_env_trimmed_with_legacy(ENV_RUNNER_USED, LEGACY_ENV_RUNNER_USED) {
+    if let Some(runner) = read_env_trimmed(ENV_RUNNER_USED) {
         patch.insert(RUNNER_USED.to_string(), runner.to_ascii_lowercase());
     }
-    if let Some(model) = read_env_trimmed_with_legacy(ENV_MODEL_USED, LEGACY_ENV_MODEL_USED) {
+    if let Some(model) = read_env_trimmed(ENV_MODEL_USED) {
         patch.insert(MODEL_USED.to_string(), model.to_string());
     }
 

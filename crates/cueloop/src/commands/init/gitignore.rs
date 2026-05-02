@@ -28,8 +28,7 @@ use std::path::Path;
 
 /// Ensures CueLoop-specific entries exist in `.gitignore`.
 ///
-/// The active runtime dir comes from config path authority: new repos get `.cueloop/*`,
-/// while legacy repos with `.cueloop` markers keep `.cueloop/*` entries.
+/// The active runtime dir comes from config path authority: repos get `.cueloop/*` entries.
 ///
 /// This function is idempotent - calling it multiple times is safe.
 pub fn ensure_cueloop_gitignore_entries(repo_root: &Path) -> Result<()> {
