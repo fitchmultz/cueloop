@@ -62,7 +62,7 @@ done
 
 if [[ ! -x "$CUELOOP_BIN" ]]; then
   echo "CueLoop/CueLoop binary not found or not executable: $CUELOOP_BIN" >&2
-  echo "Build one first, for example: cargo build -p cueloop-agent-loop --bin cueloop" >&2
+  echo "Build one first, for example: cargo build -p cueloop --bin cueloop" >&2
   exit 1
 fi
 

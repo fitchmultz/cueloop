@@ -5,7 +5,7 @@ Source of truth: this document for documentation navigation
 Parent: [README](../README.md)
 
 
-CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. The executable is `cueloop`; the Cargo package is `cueloop-agent-loop`.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. The executable is `cueloop`; the Cargo package is `cueloop`.
 
 ## Start Here
 

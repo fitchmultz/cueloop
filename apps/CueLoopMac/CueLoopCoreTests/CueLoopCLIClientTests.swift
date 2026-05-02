@@ -95,7 +95,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
     }
 
     func test_streamingOutputBufferIsBoundedWhenConsumerIsDelayed() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-client-bounded-stream-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-client-bounded-stream-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
 
         let script = """
@@ -119,7 +119,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
     }
 
     func test_runAndCollect_appliesDefaultOutputLimit() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-client-collected-limit-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-client-collected-limit-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
 
         let script = """
@@ -137,7 +137,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
     }
 
     func test_currentDirectoryURL_used() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-client-cwd-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-client-cwd-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
 
         let client = try CueLoopCLIClient(executableURL: URL(fileURLWithPath: "/bin/sh"))
@@ -203,7 +203,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
     }
 
     func test_cancellation_interruptsBeforeTerminate() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-client-interrupt-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-client-interrupt-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
 
         let readyURL = tempDir.appendingPathComponent("cancel-ready.log", isDirectory: false)
@@ -234,7 +234,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
     }
 
     func test_runAndCollect_taskCancellation_terminatesProcessAndThrowsCancellation() async throws {
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-client-cancel-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-client-cancel-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
 
         let logURL = tempDir.appendingPathComponent("run-and-collect-cancel.log", isDirectory: false)
@@ -286,7 +286,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
 
     func test_runAndCollect_versionOutput_parsableByVersionValidator() async throws {
         // Simulate a CLI that outputs a version string
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-version-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-version-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
         let compatibleVersion = VersionCompatibility.minimumCLIVersion
 
@@ -312,7 +312,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
 
     func test_runAndCollect_versionOutput_withVPrefix_parsable() async throws {
         // Simulate a CLI that outputs version with v prefix
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-version-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-version-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
         let compatibleVersion = VersionCompatibility.maximumCLIVersion
 
@@ -334,7 +334,7 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
 
     func test_runAndCollect_incompatibleVersion_detected() async throws {
         // Simulate a CLI with an incompatible (too new) version
-        let tempDir = try Self.makeTempDir(prefix: "cueloop-agent-loop-version-")
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-version-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
 
         let scriptContent = """

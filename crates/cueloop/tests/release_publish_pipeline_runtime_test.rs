@@ -206,7 +206,7 @@ fn release_crate_probe_uses_isolated_directory() {
     let output = Command::new("bash")
         .arg("-c")
         .arg(format!(
-            "source '{}' && CRATE_PACKAGE_NAME=cueloop-agent-loop && VERSION=0.3.0 && if release_crate_is_published; then echo published; else echo missing; fi",
+            "source '{}' && CRATE_PACKAGE_NAME=cueloop && VERSION=0.3.0 && if release_crate_is_published; then echo published; else echo missing; fi",
             script_path.display()
         ))
         .env("FAKE_CARGO_INFO_MODE", "missing")
@@ -253,7 +253,7 @@ fn release_publish_crate_rechecks_remote_state_before_skipping() {
          source '{release_state_path}' && \
          source '{release_publish_path}' && \
          VERSION=0.3.0 && \
-         CRATE_PACKAGE_NAME=cueloop-agent-loop && \
+         CRATE_PACKAGE_NAME=cueloop && \
          REPO_ROOT='{repo_root}' && \
          TRANSACTION_DIR='{transaction_dir}' && \
          STATE_FILE='{state_file}' && \

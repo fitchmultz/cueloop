@@ -13,7 +13,7 @@
 //! - Not live-model quality or planner creativity.
 //!
 //! Usage:
-//! - Run with `cargo test -p cueloop-agent-loop --test task_decompose_plan_file_cli_test`.
+//! - Run with `cargo test -p cueloop --test task_decompose_plan_file_cli_test`.
 //!
 //! Invariants/assumptions:
 //! - The fake runner emits a deterministic complete planner response.

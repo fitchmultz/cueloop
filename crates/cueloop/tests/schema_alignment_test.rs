@@ -6,7 +6,7 @@
 //! Scope: Schema-alignment regression coverage only; schema generation remains
 //! owned by the CLI and Makefile.
 //!
-//! Usage: Run with `cargo test -p cueloop-agent-loop --test schema_alignment_test`.
+//! Usage: Run with `cargo test -p cueloop --test schema_alignment_test`.
 //!
 //! Invariants/assumptions: The committed `schemas/` files are regenerated from
 //! current Rust contracts before assertions are updated.

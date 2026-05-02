@@ -56,16 +56,16 @@ During development, you can use these commands for rapid iteration:
 
 ```bash
 # Run tests for the cueloop crate
-cargo test -p cueloop-agent-loop
+cargo test -p cueloop
 
 # Run the CLI locally
-cargo run -p cueloop-agent-loop -- <command>
+cargo run -p cueloop -- <command>
 
 # Validate the queue format
-cargo run -p cueloop-agent-loop -- queue validate
+cargo run -p cueloop -- queue validate
 
 # List queue contents
-cargo run -p cueloop-agent-loop -- queue list
+cargo run -p cueloop -- queue list
 
 # Generate rustdocs for API review
 make docs
@@ -193,7 +193,7 @@ Example:
 make test
 
 # Run tests for just the cueloop crate
-cargo test -p cueloop-agent-loop
+cargo test -p cueloop
 ```
 
 ### Code Coverage
@@ -276,7 +276,7 @@ date strings with `<DATE>` to prevent daily churn.
 To update snapshots after an intentional output change:
 
 ```bash
-INSTA_UPDATE=always cargo test -p cueloop-agent-loop
+INSTA_UPDATE=always cargo test -p cueloop
 ```
 
 Commit the updated snapshot files under `crates/cueloop/tests/snapshots/`.
@@ -298,7 +298,7 @@ User-facing commands and flags MUST have `--help` text with examples. Keep `docs
 Verify help text before committing:
 
 ```bash
-cargo run -p cueloop-agent-loop -- <command> --help
+cargo run -p cueloop -- <command> --help
 ```
 
 ## Submitting Changes

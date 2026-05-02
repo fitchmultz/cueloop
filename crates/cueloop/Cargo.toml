@@ -1,5 +1,5 @@
 [package]
-name = "cueloop-agent-loop"
+name = "cueloop"
 version = "0.4.0"
 edition = "2024"
 rust-version = "1.95"
@@ -7,7 +7,7 @@ license = "MIT"
 description = "A Rust CLI for managing AI agent loops with a structured JSON task queue"
 repository = "https://github.com/fitchmultz/cueloop"
 homepage = "https://github.com/fitchmultz/cueloop"
-documentation = "https://docs.rs/cueloop-agent-loop"
+documentation = "https://docs.rs/cueloop"
 readme = "README.md"
 keywords = ["ai", "agent", "cli", "task-queue", "workflow"]
 categories = ["command-line-utilities", "development-tools"]
