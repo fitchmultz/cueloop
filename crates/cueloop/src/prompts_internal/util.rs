@@ -17,7 +17,6 @@
 //! - Templates are UTF-8 strings using `{{...}}` placeholders.
 //! - Required placeholders include braces (e.g., `{{TASK_ID}}`).
 
-use crate::constants::identity::{LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR};
 use crate::constants::queue::{DEFAULT_DONE_FILE, DEFAULT_QUEUE_FILE};
 use crate::contracts::{Config, ProjectType};
 use anyhow::{Context, Result, bail};
@@ -310,28 +309,9 @@ pub(crate) fn load_prompt_with_fallback(
     let path = repo_root.join(rel_path);
     match fs::read_to_string(&path) {
         Ok(contents) => Ok(contents),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {
-            if let Some(legacy_path) = legacy_prompt_path_for_current(repo_root, rel_path) {
-                match fs::read_to_string(&legacy_path) {
-                    Ok(contents) => return Ok(contents),
-                    Err(legacy_err) if legacy_err.kind() == io::ErrorKind::NotFound => {}
-                    Err(legacy_err) => {
-                        return Err(legacy_err).with_context(|| {
-                            format!("read legacy {label} prompt {}", legacy_path.display())
-                        });
-                    }
-                }
-            }
-            Ok(embedded_default.to_string())
-        }
+        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(embedded_default.to_string()),
         Err(err) => Err(err).with_context(|| format!("read {label} prompt {}", path.display())),
     }
-}
-
-fn legacy_prompt_path_for_current(repo_root: &Path, rel_path: &str) -> Option<std::path::PathBuf> {
-    rel_path
-        .strip_prefix(PROJECT_RUNTIME_DIR)
-        .map(|suffix| repo_root.join(format!("{LEGACY_PROJECT_RUNTIME_DIR}{suffix}")))
 }
 
 pub(crate) fn project_type_guidance(project_type: ProjectType) -> &'static str {

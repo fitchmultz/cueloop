@@ -17,9 +17,9 @@
 //!
 //! Invariants/assumptions:
 //! - Schema version `2` is the only accepted persisted format.
-//! - Unknown or legacy files are ignored and replaced on the next export/sync write.
+//! - Unknown files are ignored and replaced on the next export/sync write.
 
-use crate::constants::identity::{LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR};
+use crate::constants::identity::PROJECT_RUNTIME_DIR;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -48,22 +48,11 @@ fn current_version_file_path(repo_root: &Path) -> PathBuf {
         .join("cache/prompt_versions.json")
 }
 
-fn legacy_version_file_path(repo_root: &Path) -> PathBuf {
-    repo_root
-        .join(LEGACY_PROJECT_RUNTIME_DIR)
-        .join("cache/prompt_versions.json")
-}
-
 pub(crate) fn load_version_info(repo_root: &Path) -> Result<Option<PromptVersionInfo>> {
-    let current_path = current_version_file_path(repo_root);
-    let legacy_path = legacy_version_file_path(repo_root);
-    let path = if current_path.exists() {
-        current_path
-    } else if legacy_path.exists() {
-        legacy_path
-    } else {
+    let path = current_version_file_path(repo_root);
+    if !path.exists() {
         return Ok(None);
-    };
+    }
 
     let content = fs::read_to_string(&path)
         .with_context(|| format!("read version file {}", path.display()))?;

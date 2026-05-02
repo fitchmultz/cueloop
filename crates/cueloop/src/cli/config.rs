@@ -103,7 +103,7 @@ fn handle_profiles(args: ConfigProfilesArgs) -> Result<()> {
             if names.is_empty() {
                 println!("No profiles configured.");
                 println!(
-                    "Define profiles under the `profiles` key in .cueloop/config.jsonc or ~/.config/cueloop/config.jsonc (legacy .cueloop and ~/.config/cueloop are still read)."
+                    "Define profiles under the `profiles` key in .cueloop/config.jsonc or ~/.config/cueloop/config.jsonc."
                 );
                 return Ok(());
             }
@@ -145,7 +145,7 @@ fn handle_profiles(args: ConfigProfilesArgs) -> Result<()> {
                     let names = agent::all_profile_names(resolved.config.profiles.as_ref());
                     if names.is_empty() {
                         anyhow::bail!(
-                            "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or ~/.config/cueloop/config.jsonc (legacy .cueloop and ~/.config/cueloop are still read)."
+                            "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or ~/.config/cueloop/config.jsonc."
                         );
                     }
                     anyhow::bail!(
@@ -264,7 +264,7 @@ pub enum ConfigCommand {
         after_long_help = "Examples:\n  cueloop config profiles list\n  cueloop config profiles show fast-local\n  cueloop config profiles show deep-review"
     )]
     Profiles(ConfigProfilesArgs),
-    /// Manage repo-local execution trust (`.cueloop/trust.jsonc`, with legacy `.cueloop/trust.jsonc` support).
+    /// Manage repo-local execution trust (`.cueloop/trust.jsonc`).
     #[command(after_long_help = "Examples:\n  cueloop config trust init")]
     Trust(ConfigTrustArgs),
 }

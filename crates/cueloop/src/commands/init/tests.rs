@@ -252,7 +252,7 @@ fn init_skips_readme_when_not_referenced() -> anyhow::Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
 
-    // Legacy prompt overrides remain readable as a fallback during the CueLoop cutover.
+    // Prompt overrides that do not reference the README should not trigger README creation.
     let overrides = resolved.repo_root.join(".cueloop/prompts");
     fs::create_dir_all(&overrides)?;
     let prompt_files = [

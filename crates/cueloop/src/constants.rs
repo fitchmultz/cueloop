@@ -189,32 +189,17 @@ pub mod identity {
     /// Current user-facing product name.
     pub const DISPLAY_NAME: &str = "CueLoop";
 
-    /// Legacy user-facing product name retained for compatibility messaging.
-    pub const LEGACY_DISPLAY_NAME: &str = "CueLoop";
-
     /// Current primary CLI executable name.
     pub const CLI_BIN_NAME: &str = "cueloop";
-
-    /// Legacy CLI executable name retained as a compatibility alias.
-    pub const LEGACY_CLI_BIN_NAME: &str = "cueloop";
 
     /// Current repo-local runtime directory.
     pub const PROJECT_RUNTIME_DIR: &str = ".cueloop";
 
-    /// Legacy repo-local runtime directory.
-    pub const LEGACY_PROJECT_RUNTIME_DIR: &str = ".cueloop";
-
     /// Current per-user config directory under XDG_CONFIG_HOME or ~/.config.
     pub const GLOBAL_CONFIG_DIR: &str = "cueloop";
 
-    /// Legacy per-user config directory under XDG_CONFIG_HOME or ~/.config.
-    pub const LEGACY_GLOBAL_CONFIG_DIR: &str = "cueloop";
-
     /// Current generated runtime README version marker.
     pub const README_MARKER: &str = "CUELOOP_README_VERSION";
-
-    /// Legacy generated runtime README version marker.
-    pub const LEGACY_README_MARKER: &str = "CUELOOP_README_VERSION";
 }
 
 /// Queue configuration constants.
@@ -230,15 +215,6 @@ pub mod queue {
 
     /// Current default config file path (relative to repo root).
     pub const DEFAULT_CONFIG_FILE: &str = ".cueloop/config.jsonc";
-
-    /// Legacy default queue file path (relative to repo root).
-    pub const LEGACY_DEFAULT_QUEUE_FILE: &str = ".cueloop/queue.jsonc";
-
-    /// Legacy default done file path (relative to repo root).
-    pub const LEGACY_DEFAULT_DONE_FILE: &str = ".cueloop/done.jsonc";
-
-    /// Legacy default config file path (relative to repo root).
-    pub const LEGACY_DEFAULT_CONFIG_FILE: &str = ".cueloop/config.jsonc";
 
     /// Default maximum dependency depth.
     pub const DEFAULT_MAX_DEPENDENCY_DEPTH: u8 = 10;
@@ -296,13 +272,10 @@ pub mod paths {
     /// Productivity stats filename.
     pub const STATS_FILENAME: &str = "productivity.jsonc";
 
-    /// CueLoop temp directory name. Value stays legacy-compatible during migration.
+    /// CueLoop temp directory name.
     pub const CUELOOP_TEMP_DIR_NAME: &str = "cueloop";
 
-    /// Legacy prompt temp file prefix.
-    pub const LEGACY_PROMPT_PREFIX: &str = "cueloop_prompt_";
-
-    /// CueLoop temp file prefix. Value stays legacy-compatible during migration.
+    /// CueLoop temp file prefix.
     pub const CUELOOP_TEMP_PREFIX: &str = "cueloop_";
 
     /// Current worker prompt override path.
@@ -317,22 +290,13 @@ pub mod paths {
     /// Primary environment variable for raw dump mode.
     pub const ENV_RAW_DUMP: &str = "CUELOOP_RAW_DUMP";
 
-    /// Legacy environment variable for raw dump mode.
-    pub const LEGACY_ENV_RAW_DUMP: &str = "CUELOOP_RAW_DUMP";
-
     /// Primary environment variable for the runner actually used (set by CueLoop when spawning runners).
     /// Used for analytics tracking in task custom fields.
     pub const ENV_RUNNER_USED: &str = "CUELOOP_RUNNER_USED";
 
-    /// Legacy environment variable for the runner actually used.
-    pub const LEGACY_ENV_RUNNER_USED: &str = "CUELOOP_RUNNER_USED";
-
     /// Primary environment variable for the model actually used (set by CueLoop when spawning runners).
     /// Used for analytics tracking in task custom fields.
     pub const ENV_MODEL_USED: &str = "CUELOOP_MODEL_USED";
-
-    /// Legacy environment variable for the model actually used.
-    pub const LEGACY_ENV_MODEL_USED: &str = "CUELOOP_MODEL_USED";
 }
 
 /// Version constants for schemas and templates.
@@ -451,8 +415,7 @@ pub mod custom_fields {
 /// Error message templates for consistent error formatting.
 pub mod error_messages {
     /// Config update instruction suffix.
-    pub const CONFIG_UPDATE_INSTRUCTION: &str =
-        "Update project config (.cueloop/config.jsonc, or legacy .cueloop/config.jsonc)";
+    pub const CONFIG_UPDATE_INSTRUCTION: &str = "Update project config (.cueloop/config.jsonc)";
 
     /// Template for invalid config value errors.
     pub fn invalid_config_value(
@@ -461,7 +424,7 @@ pub mod error_messages {
         reason: &str,
     ) -> String {
         format!(
-            "Invalid {field}: {value}. {reason}. Update project config (.cueloop/config.jsonc, or legacy .cueloop/config.jsonc)."
+            "Invalid {field}: {value}. {reason}. Update project config (.cueloop/config.jsonc)."
         )
     }
 }

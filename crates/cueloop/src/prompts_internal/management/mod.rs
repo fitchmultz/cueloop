@@ -17,8 +17,7 @@
 //!
 //! Invariants/assumptions:
 //! - Exported prompts live under `.cueloop/prompts/`.
-//! - Legacy `.cueloop/prompts/` overrides remain readable as fallback.
-//! - Prompt version tracking is stored under `.cueloop/cache/prompt_versions.json` with legacy read fallback.
+//! - Prompt version tracking is stored under `.cueloop/cache/prompt_versions.json`.
 //! - Digests use normalized-content SHA-256 with the `sha256:` prefix.
 
 mod hash;

@@ -73,21 +73,6 @@ fn run_dry_run(retention: Duration) -> Result<()> {
         }
     }
 
-    // Also check legacy prefix
-    let legacy_entries = list_entries_to_clean(
-        &std::env::temp_dir(),
-        &[crate::constants::paths::LEGACY_PROMPT_PREFIX],
-        retention,
-    )?;
-
-    if !legacy_entries.is_empty() {
-        println!("\nWould delete {} legacy entries:", legacy_entries.len());
-        for entry in legacy_entries {
-            let entry_type = if entry.is_dir() { "[dir]" } else { "[file]" };
-            println!("  {} {}", entry_type, entry.display());
-        }
-    }
-
     Ok(())
 }
 

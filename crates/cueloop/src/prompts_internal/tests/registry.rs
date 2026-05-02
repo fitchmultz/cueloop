@@ -252,12 +252,12 @@ fn queue_related_prompts_use_config_paths_and_avoid_legacy_json_literals() {
         let template = prompt_template(template_id).embedded_default;
         assert!(
             !contains_legacy_json_path(template, ".cueloop/queue.json"),
-            "template {:?} still references legacy .cueloop/queue.json",
+            "template {:?} still references old .cueloop/queue.json",
             template_id
         );
         assert!(
             !contains_legacy_json_path(template, ".cueloop/done.json"),
-            "template {:?} still references legacy .cueloop/done.json",
+            "template {:?} still references old .cueloop/done.json",
             template_id
         );
     }

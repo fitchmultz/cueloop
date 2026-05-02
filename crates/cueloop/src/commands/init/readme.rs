@@ -19,11 +19,10 @@
 //! Invariants/assumptions:
 //! - README_VERSION is incremented when template changes.
 //! - Version marker format: `<!-- CUELOOP_README_VERSION: X -->`.
-//! - Legacy `CUELOOP_README_VERSION` markers are still parsed.
-//! - Legacy files without markers are treated as version 1.
+//! - Files without markers are treated as version 1.
 
 use crate::config;
-use crate::constants::identity::{LEGACY_README_MARKER, README_MARKER};
+use crate::constants::identity::README_MARKER;
 use crate::constants::versions::README_VERSION;
 use crate::fsutil;
 use crate::prompts;
@@ -73,15 +72,9 @@ pub enum ReadmeCheckResult {
 
 /// Extract version from README content.
 ///
-/// Current generated files use `CUELOOP_README_VERSION`; legacy generated files with
-/// `CUELOOP_README_VERSION` are accepted so old runtime READMEs can be refreshed.
+/// Current generated files use `CUELOOP_README_VERSION`.
 pub fn extract_readme_version(content: &str) -> Result<u32, ReadmeVersionError> {
-    for marker in [README_MARKER, LEGACY_README_MARKER] {
-        if let Some(version) = extract_readme_version_for_marker(content, marker)? {
-            return Ok(version);
-        }
-    }
-    Err(ReadmeVersionError::NoMarker)
+    extract_readme_version_for_marker(content, README_MARKER)?.ok_or(ReadmeVersionError::NoMarker)
 }
 
 fn extract_readme_version_for_marker(

@@ -142,8 +142,8 @@ fn sync_cueloop_state_seeds_jsonc_bookkeeping_for_migrated_uncommitted_config() 
     git_test::init_repo(&repo_root)?;
 
     fs::create_dir_all(repo_root.join(".cueloop"))?;
-    fs::write(repo_root.join(".cueloop/queue.json"), "{legacy_queue}")?;
-    fs::write(repo_root.join(".cueloop/done.json"), "{legacy_done}")?;
+    fs::write(repo_root.join(".cueloop/queue.json"), "{old_queue}")?;
+    fs::write(repo_root.join(".cueloop/done.json"), "{old_done}")?;
     fs::write(repo_root.join(".cueloop/queue.jsonc"), "{migrated_queue}")?;
     fs::write(repo_root.join(".cueloop/done.jsonc"), "{migrated_done}")?;
     fs::write(repo_root.join(".cueloop/config.jsonc"), "{config}")?;

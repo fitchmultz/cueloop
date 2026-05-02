@@ -18,7 +18,7 @@
 //! Invariants/assumptions:
 //! - Template file names remain stable across exports and sync.
 
-use crate::constants::identity::{LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR};
+use crate::constants::identity::PROJECT_RUNTIME_DIR;
 use crate::prompts_internal::registry::{PromptTemplateId, prompt_template};
 use anyhow::{Context, Result};
 use std::fs;
@@ -199,20 +199,11 @@ pub(crate) fn current_prompts_dir(repo_root: &Path) -> PathBuf {
     repo_root.join(PROJECT_RUNTIME_DIR).join("prompts")
 }
 
-pub(crate) fn legacy_prompts_dir(repo_root: &Path) -> PathBuf {
-    repo_root.join(LEGACY_PROJECT_RUNTIME_DIR).join("prompts")
-}
-
 pub(crate) fn current_override_path(repo_root: &Path, id: PromptTemplateId) -> PathBuf {
     current_prompts_dir(repo_root).join(format!("{}.md", template_file_name(id)))
 }
 
 pub(crate) fn effective_override_path(repo_root: &Path, id: PromptTemplateId) -> Option<PathBuf> {
     let current = current_override_path(repo_root, id);
-    if current.exists() {
-        return Some(current);
-    }
-
-    let legacy = legacy_prompts_dir(repo_root).join(format!("{}.md", template_file_name(id)));
-    legacy.exists().then_some(legacy)
+    current.exists().then_some(current)
 }

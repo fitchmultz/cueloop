@@ -45,14 +45,6 @@ fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     queue_path
 }
 
-// Helper to create a queue.jsonc file in the legacy runtime directory.
-fn create_legacy_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
-    let cueloop_dir = setup_cueloop_dir(dir);
-    let queue_path = cueloop_dir.join("queue.jsonc");
-    fs::write(&queue_path, content).expect("write legacy queue.jsonc");
-    queue_path
-}
-
 // Helper to create a done.json file
 #[allow(dead_code)]
 fn create_done_json(dir: &TempDir, content: &str) -> PathBuf {
@@ -76,14 +68,6 @@ fn create_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     let cueloop_dir = setup_cueloop_dir(dir);
     let config_path = cueloop_dir.join("config.jsonc");
     fs::write(&config_path, content).expect("write config.jsonc");
-    config_path
-}
-
-// Helper to create a config.jsonc file in the legacy runtime directory.
-fn create_legacy_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
-    let cueloop_dir = setup_cueloop_dir(dir);
-    let config_path = cueloop_dir.join("config.jsonc");
-    fs::write(&config_path, content).expect("write legacy config.jsonc");
     config_path
 }
 

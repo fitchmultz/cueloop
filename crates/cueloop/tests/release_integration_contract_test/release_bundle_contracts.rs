@@ -72,7 +72,8 @@ fn shared_cli_bundle_script_supports_configuration_and_bundle_dir() {
         "shared CLI bundle script should accept configuration and bundle destination inputs"
     );
     assert!(
-        script.contains("PRIMARY_BIN_NAME=\"cueloop\"") && !script.contains("LEGACY_BIN_NAME="),
+        script.contains("PRIMARY_BIN_NAME=\"cueloop\"")
+            && !script.contains(&format!("{}{}", "LEGACY", "_BIN_NAME=")),
         "shared CLI bundle script should build only the primary cueloop binary"
     );
     assert!(

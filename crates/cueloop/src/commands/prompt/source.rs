@@ -24,31 +24,21 @@ use crate::constants::paths::{
     SCAN_OVERRIDE_PATH, TASK_BUILDER_OVERRIDE_PATH, WORKER_OVERRIDE_PATH,
 };
 
-const LEGACY_WORKER_OVERRIDE_PATH: &str = ".cueloop/prompts/worker.md";
-const LEGACY_SCAN_OVERRIDE_PATH: &str = ".cueloop/prompts/scan.md";
-const LEGACY_TASK_BUILDER_OVERRIDE_PATH: &str = ".cueloop/prompts/task_builder.md";
-
 pub(super) fn worker_template_source(repo_root: &Path) -> &'static str {
-    template_source(repo_root, WORKER_OVERRIDE_PATH, LEGACY_WORKER_OVERRIDE_PATH)
+    template_source(repo_root, WORKER_OVERRIDE_PATH)
 }
 
 pub(super) fn scan_template_source(repo_root: &Path) -> &'static str {
-    template_source(repo_root, SCAN_OVERRIDE_PATH, LEGACY_SCAN_OVERRIDE_PATH)
+    template_source(repo_root, SCAN_OVERRIDE_PATH)
 }
 
 pub(super) fn task_builder_template_source(repo_root: &Path) -> &'static str {
-    template_source(
-        repo_root,
-        TASK_BUILDER_OVERRIDE_PATH,
-        LEGACY_TASK_BUILDER_OVERRIDE_PATH,
-    )
+    template_source(repo_root, TASK_BUILDER_OVERRIDE_PATH)
 }
 
-fn template_source(repo_root: &Path, current: &'static str, legacy: &'static str) -> &'static str {
+fn template_source(repo_root: &Path, current: &'static str) -> &'static str {
     if repo_root.join(current).exists() {
         current
-    } else if repo_root.join(legacy).exists() {
-        legacy
     } else {
         "(embedded default)"
     }
