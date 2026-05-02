@@ -1,7 +1,7 @@
-//! Clap arguments for `ralph queue export`.
+//! Clap arguments for `cueloop queue export`.
 //!
 //! Purpose:
-//! - Clap arguments for `ralph queue export`.
+//! - Clap arguments for `cueloop queue export`.
 //!
 //! Responsibilities:
 //! - Define the user-facing flags and help text for queue export.
@@ -26,10 +26,10 @@ use clap::Args;
 
 use crate::cli::queue::{QueueExportFormat, StatusArg};
 
-/// Arguments for `ralph queue export`.
+/// Arguments for `cueloop queue export`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue export\n  ralph queue export --format csv --output tasks.csv\n  ralph queue export --format json --status done\n  ralph queue export --format tsv --tag rust --tag cli\n  ralph queue export --include-archive --format csv\n  ralph queue export --format csv --created-after 2026-01-01\n  ralph queue export --format md --status todo\n  ralph queue export --format gh --status doing"
+    after_long_help = "Examples:\n  cueloop queue export\n  cueloop queue export --format csv --output tasks.csv\n  cueloop queue export --format json --status done\n  cueloop queue export --format tsv --tag rust --tag cli\n  cueloop queue export --include-archive --format csv\n  cueloop queue export --format csv --created-after 2026-01-01\n  cueloop queue export --format md --status todo\n  cueloop queue export --format gh --status doing"
 )]
 pub struct QueueExportArgs {
     /// Output format.

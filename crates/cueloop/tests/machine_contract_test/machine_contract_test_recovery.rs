@@ -1,4 +1,4 @@
-//! Recovery and continuation contract coverage for `ralph machine`.
+//! Recovery and continuation contract coverage for `cueloop machine`.
 //!
 //! Purpose:
 //! - Verify versioned recovery documents and undo/repair continuations for machine clients.

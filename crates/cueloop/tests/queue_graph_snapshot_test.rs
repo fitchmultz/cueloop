@@ -1,7 +1,7 @@
-//! Snapshot tests for `ralph queue graph` output formats.
+//! Snapshot tests for `cueloop queue graph` output formats.
 //!
 //! Purpose:
-//! - Snapshot tests for `ralph queue graph` output formats.
+//! - Snapshot tests for `cueloop queue graph` output formats.
 //!
 //! Responsibilities:
 //! - Lock in deterministic graph outputs for the primary human-readable and export formats.

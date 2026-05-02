@@ -26,7 +26,9 @@ pub fn parallel_retry(resolved: &crate::config::Resolved, task_id: &str) -> Resu
     })? {
         Some(state) => state,
         None => {
-            anyhow::bail!("No parallel run state found. Run `ralph run loop --parallel N` first.");
+            anyhow::bail!(
+                "No parallel run state found. Run `cueloop run loop --parallel N` first."
+            );
         }
     };
 
@@ -51,10 +53,10 @@ pub fn parallel_retry(resolved: &crate::config::Resolved, task_id: &str) -> Resu
             println!();
             println!("Next:");
             println!(
-                "  1. ralph run loop --parallel <N> — resume the coordinator so the worker can run again."
+                "  1. cueloop run loop --parallel <N> — resume the coordinator so the worker can run again."
             );
             println!(
-                "  2. ralph run parallel status — confirm the worker is no longer retained as blocked or failed."
+                "  2. cueloop run parallel status — confirm the worker is no longer retained as blocked or failed."
             );
 
             Ok(())

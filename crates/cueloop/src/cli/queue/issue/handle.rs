@@ -1,7 +1,7 @@
-//! Command orchestration for `ralph queue issue`.
+//! Command orchestration for `cueloop queue issue`.
 //!
 //! Purpose:
-//! - Command orchestration for `ralph queue issue`.
+//! - Command orchestration for `cueloop queue issue`.
 //!
 //! Responsibilities:
 //! - Route single-task and bulk GitHub issue publish commands.

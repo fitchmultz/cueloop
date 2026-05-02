@@ -30,7 +30,7 @@ fn run_one_fails_when_custom_ci_gate_command_fails() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;
@@ -81,7 +81,7 @@ fn run_one_succeeds_when_ci_gate_disabled() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;

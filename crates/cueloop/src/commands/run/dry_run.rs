@@ -1,7 +1,7 @@
-//! Dry-run selection for `ralph run one --dry-run` and `ralph run loop --dry-run`.
+//! Dry-run selection for `cueloop run one --dry-run` and `cueloop run loop --dry-run`.
 //!
 //! Purpose:
-//! - Dry-run selection for `ralph run one --dry-run` and `ralph run loop --dry-run`.
+//! - Dry-run selection for `cueloop run one --dry-run` and `cueloop run loop --dry-run`.
 //!
 //! Responsibilities:
 //! - Perform task selection without acquiring queue lock or modifying files.
@@ -29,7 +29,7 @@ use anyhow::Result;
 
 use super::selection::select_run_one_task_index;
 
-/// Dry-run selection for `ralph run one --dry-run`.
+/// Dry-run selection for `cueloop run one --dry-run`.
 ///
 /// Performs task selection without:
 /// - Acquiring queue lock
@@ -193,12 +193,12 @@ pub fn dry_run_one(
     }
 
     println!();
-    println!("Run 'ralph queue explain' for a full report.");
+    println!("Run 'cueloop queue explain' for a full report.");
 
     Ok(())
 }
 
-/// Dry-run selection for `ralph run loop --dry-run`.
+/// Dry-run selection for `cueloop run loop --dry-run`.
 ///
 /// Reports the first selection only since subsequent tasks depend on outcomes.
 pub fn dry_run_loop(resolved: &config::Resolved, agent_overrides: &AgentOverrides) -> Result<()> {

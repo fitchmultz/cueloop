@@ -1,7 +1,7 @@
 //! Pending-migration warning helpers.
 //!
 //! Purpose:
-//! - Detect and report unapplied migrations during `ralph init`.
+//! - Detect and report unapplied migrations during `cueloop init`.
 //!
 //! Responsibilities:
 //! - Build a migration context from resolved config.
@@ -43,7 +43,7 @@ pub(super) fn check_pending_migrations(resolved: &config::Resolved) -> Result<()
                 "{}",
                 format!("⚠ Warning: {} migration(s) pending", migrations.len()).yellow()
             );
-            eprintln!("Run {} to apply them.", "ralph migrate --apply".cyan());
+            eprintln!("Run {} to apply them.", "cueloop migrate --apply".cyan());
         }
     }
 

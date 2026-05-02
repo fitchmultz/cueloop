@@ -1,11 +1,11 @@
-//! Purpose: scan-subcommand parsing coverage for `ralph prompt`.
+//! Purpose: scan-subcommand parsing coverage for `cueloop prompt`.
 //!
 //! Responsibilities:
 //! - Verify scan flags parse into the expected clap structures.
 //! - Preserve scan-mode, repo-prompt, and explain flag assertions.
 //!
 //! Scope:
-//! - `ralph prompt scan` parsing only.
+//! - `cueloop prompt scan` parsing only.
 //!
 //! Usage:
 //! - Run via the root `prompt_cli_test` integration suite.

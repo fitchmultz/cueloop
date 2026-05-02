@@ -1,4 +1,4 @@
-//! Purpose: bulk update integration coverage for `ralph task update` without a task ID.
+//! Purpose: bulk update integration coverage for `cueloop task update` without a task ID.
 //!
 //! Responsibilities:
 //! - Verify update-all success when multiple tasks exist in the queue.
@@ -24,7 +24,7 @@ fn task_update_without_id_updates_all_tasks() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     write_queue_with_two_tasks(dir.path())?;
@@ -58,7 +58,7 @@ fn task_update_without_id_fails_on_empty_queue() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     write_empty_queue(dir.path())?;

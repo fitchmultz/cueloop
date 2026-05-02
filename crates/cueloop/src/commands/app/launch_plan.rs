@@ -48,7 +48,7 @@ pub(super) fn plan_open_command_with_installed_path(
     installed_app_path: Option<PathBuf>,
 ) -> Result<OpenCommandSpec> {
     if !is_macos {
-        bail!("`ralph app open` is macOS-only.");
+        bail!("`cueloop app open` is macOS-only.");
     }
 
     if args.path.is_some() && args.bundle_id.is_some() {

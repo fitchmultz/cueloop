@@ -1,7 +1,7 @@
-//! `ralph watch` command: Clap types and handler.
+//! `cueloop watch` command: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph watch` command: Clap types and handler.
+//! - `cueloop watch` command: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Define clap arguments for watch commands.
@@ -104,15 +104,15 @@ pub fn handle_watch(args: WatchArgs, force: bool) -> Result<()> {
 #[command(
     about = "Watch files for changes and auto-detect tasks from TODO/FIXME/HACK/XXX comments",
     after_long_help = "Examples:
-  ralph watch
-  ralph watch src/
-  ralph watch --patterns \"*.rs,*.toml\"
-  ralph watch --auto-queue
-  ralph watch --notify
-  ralph watch --comments todo,fixme
-  ralph watch --debounce-ms 1000
-  ralph watch --ignore-patterns \"vendor/,target/,node_modules/\"
-  ralph watch --auto-queue --close-removed"
+  cueloop watch
+  cueloop watch src/
+  cueloop watch --patterns \"*.rs,*.toml\"
+  cueloop watch --auto-queue
+  cueloop watch --notify
+  cueloop watch --comments todo,fixme
+  cueloop watch --debounce-ms 1000
+  cueloop watch --ignore-patterns \"vendor/,target/,node_modules/\"
+  cueloop watch --auto-queue --close-removed"
 )]
 pub struct WatchArgs {
     /// Directories or files to watch (defaults to current directory).
@@ -160,7 +160,10 @@ mod tests {
         let watch = cmd.find_subcommand_mut("watch").expect("watch subcommand");
         let help = watch.render_long_help().to_string();
 
-        assert!(help.contains("ralph watch"), "missing basic watch example");
+        assert!(
+            help.contains("cueloop watch"),
+            "missing basic watch example"
+        );
         assert!(
             help.contains("--auto-queue"),
             "missing --auto-queue example"

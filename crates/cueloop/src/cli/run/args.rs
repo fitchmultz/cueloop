@@ -1,7 +1,7 @@
-//! Clap argument definitions for `ralph run`.
+//! Clap argument definitions for `cueloop run`.
 //!
 //! Purpose:
-//! - Clap argument definitions for `ralph run`.
+//! - Clap argument definitions for `cueloop run`.
 //!
 //! Responsibilities:
 //! - Define clap types for `run`, `run one`, `run loop`, `run resume`, and `run parallel`.
@@ -28,7 +28,7 @@ use super::help::{
 
 #[derive(Args)]
 #[command(
-    about = "Run Ralph supervisor (executes queued tasks via codex/opencode/gemini/claude/cursor/kimi/pi)",
+    about = "Run CueLoop supervisor (executes queued tasks via codex/opencode/gemini/claude/cursor/kimi/pi)",
     after_long_help = RUN_AFTER_LONG_HELP
 )]
 pub struct RunArgs {

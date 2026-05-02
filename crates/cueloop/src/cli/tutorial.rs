@@ -1,7 +1,7 @@
-//! `ralph tutorial` command: Clap types and handler.
+//! `cueloop tutorial` command: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph tutorial` command: Clap types and handler.
+//! - `cueloop tutorial` command: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Parse CLI arguments for the tutorial command.
@@ -51,7 +51,7 @@ pub fn handle_tutorial(args: TutorialArgs) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Run interactive tutorial for Ralph onboarding",
-    after_long_help = "Examples:\n  ralph tutorial\n  ralph tutorial --keep-sandbox\n  ralph tutorial --non-interactive\n\nThe tutorial creates a temporary sandbox project and walks you through:\n  1. Initializing Ralph in a project\n  2. Creating your first task\n  3. Running a task (dry-run preview)\n  4. Reviewing the results\n\nUse --keep-sandbox to preserve the sandbox directory after the tutorial.\nUse --non-interactive for automated testing or CI environments."
+    after_long_help = "Examples:\n  cueloop tutorial\n  cueloop tutorial --keep-sandbox\n  cueloop tutorial --non-interactive\n\nThe tutorial creates a temporary sandbox project and walks you through:\n  1. Initializing Ralph in a project\n  2. Creating your first task\n  3. Running a task (dry-run preview)\n  4. Reviewing the results\n\nUse --keep-sandbox to preserve the sandbox directory after the tutorial.\nUse --non-interactive for automated testing or CI environments."
 )]
 pub struct TutorialArgs {
     /// Keep the sandbox directory after tutorial completion.

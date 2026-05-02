@@ -1,7 +1,7 @@
-//! Integration tests for `ralph migrate` commands.
+//! Integration tests for `cueloop migrate` commands.
 //!
 //! Purpose:
-//! - Integration tests for `ralph migrate` commands.
+//! - Integration tests for `cueloop migrate` commands.
 //!
 //! Responsibilities:
 //! - Verify `migrate --list` displays available migrations.

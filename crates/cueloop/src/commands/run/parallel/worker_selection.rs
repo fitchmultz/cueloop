@@ -29,7 +29,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::process::WorkerState;
 
-const READ_ONLY_SELECTION_REPAIR_HINT: &str = "Parallel worker selection is read-only; run `ralph queue repair --dry-run` and then `ralph queue repair` to apply undo-backed normalization before retrying";
+const READ_ONLY_SELECTION_REPAIR_HINT: &str = "Parallel worker selection is read-only; run `cueloop queue repair --dry-run` and then `cueloop queue repair` to apply undo-backed normalization before retrying";
 
 pub(crate) enum NextTaskSelection {
     Runnable((String, String)),

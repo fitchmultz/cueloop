@@ -4,7 +4,7 @@
 //! - Text rendering helpers for stats reports.
 //!
 //! Responsibilities:
-//! - Render the human-readable `ralph queue stats` text output.
+//! - Render the human-readable `cueloop queue stats` text output.
 //! - Keep CLI presentation separate from metrics computation.
 //!
 //! Not handled here:

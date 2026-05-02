@@ -10,12 +10,12 @@
 //!
 //! Usage:
 //! - Each test creates a fresh `ParallelDoneJsonRepo`, seeds the shared two-task fixture, and runs
-//!   `ralph run loop --parallel 2 --max-tasks 2 --force`.
+//!   `cueloop run loop --parallel 2 --max-tasks 2 --force`.
 //! - Assertions inspect queue, done, and parallel-state files through suite-local helpers.
 //!
 //! Invariants/Assumptions:
 //! - Tests preserve end-to-end CLI coverage; they do not bypass `ralph` commands.
-//! - Repo/bootstrap uses cached git+`.ralph/` fixtures instead of repeated real `ralph init` calls.
+//! - Repo/bootstrap uses cached git+`.ralph/` fixtures instead of repeated real `cueloop init` calls.
 //! - The fake runner is configured by explicit path, so suite tests must not serialize on `env_lock()`.
 
 #[path = "parallel_done_json_safety_test/support.rs"]

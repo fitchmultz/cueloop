@@ -1,7 +1,7 @@
 //! App-launch runtime helpers.
 //!
 //! Purpose:
-//! - Execute the planned launcher commands for `ralph app open`.
+//! - Execute the planned launcher commands for `cueloop app open`.
 //!
 //! Responsibilities:
 //! - Spawn the initial app-launch command when no workspace routing is needed.

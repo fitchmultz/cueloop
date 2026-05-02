@@ -3,7 +3,7 @@
 //! Responsibilities:
 //! - Create disposable repos from the cached git+`.ralph/` integration scaffold.
 //! - Centralize queue/done fixture writes for search scenarios.
-//! - Provide small helpers for invoking `ralph queue search` and decoding JSON output.
+//! - Provide small helpers for invoking `cueloop queue search` and decoding JSON output.
 //!
 //! Scope:
 //! - Helpers used only by `crates/cueloop/tests/queue_search_test.rs`.

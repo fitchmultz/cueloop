@@ -1,7 +1,7 @@
-//! Run-surface contract coverage for `ralph machine`.
+//! Run-surface contract coverage for `cueloop machine`.
 //!
 //! Purpose:
-//! - Verify `ralph machine run` contracts for canonical task selection and loop terminal summaries.
+//! - Verify `cueloop machine run` contracts for canonical task selection and loop terminal summaries.
 //!
 //! Responsibilities:
 //! - Assert no-ID `machine run one --resume` emits `run_started` without a task ID.
@@ -352,7 +352,7 @@ fn machine_run_stop_uses_runtime_parallel_state_for_guidance() -> Result<()> {
     assert!(
         next_steps
             .iter()
-            .all(|step| step["command"] != "ralph machine run parallel-status"),
+            .all(|step| step["command"] != "cueloop machine run parallel-status"),
         "stop guidance should not suggest parallel status without live parallel state"
     );
     assert_eq!(
@@ -360,7 +360,7 @@ fn machine_run_stop_uses_runtime_parallel_state_for_guidance() -> Result<()> {
             .iter()
             .find(|step| step["title"] == "Resume run-control inspection")
             .context("expected loop resume step")?["command"],
-        "ralph machine run loop --resume --max-tasks 0"
+        "cueloop machine run loop --resume --max-tasks 0"
     );
     Ok(())
 }

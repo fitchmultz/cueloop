@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue import` undo behavior.
+//! Integration tests for `cueloop queue import` undo behavior.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue import` undo behavior.
+//! - Integration tests for `cueloop queue import` undo behavior.
 //!
 //! Responsibilities:
 //! - Verify no snapshot is created when import validation fails.

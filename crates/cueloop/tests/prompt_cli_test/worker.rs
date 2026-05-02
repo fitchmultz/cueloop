@@ -1,11 +1,11 @@
-//! Purpose: worker-subcommand parsing coverage for `ralph prompt`.
+//! Purpose: worker-subcommand parsing coverage for `cueloop prompt`.
 //!
 //! Responsibilities:
 //! - Verify worker flags parse into the expected clap structures.
 //! - Verify invalid phase values and conflicting worker flags are rejected.
 //!
 //! Scope:
-//! - `ralph prompt worker` parsing only.
+//! - `cueloop prompt worker` parsing only.
 //!
 //! Usage:
 //! - Run via the root `prompt_cli_test` integration suite.

@@ -4,7 +4,7 @@
 //! - CLI arguments for task follow-up proposal application.
 //!
 //! Responsibilities:
-//! - Define nested `ralph task followups ...` subcommands.
+//! - Define nested `cueloop task followups ...` subcommands.
 //! - Expose text vs JSON output selection for apply reports.
 //! - Keep proposal-file path and source-task arguments typed for handlers.
 //!
@@ -40,7 +40,7 @@ pub struct TaskFollowupsArgs {
 pub enum TaskFollowupsCommand {
     /// Apply a followups@v1 proposal into the queue.
     #[command(
-        after_long_help = "Examples:\n ralph task followups apply --task RQ-0135\n ralph task followups apply --task RQ-0135 --dry-run\n ralph task followups apply --task RQ-0135 --input /tmp/followups.json --format json"
+        after_long_help = "Examples:\n cueloop task followups apply --task RQ-0135\n cueloop task followups apply --task RQ-0135 --dry-run\n cueloop task followups apply --task RQ-0135 --input /tmp/followups.json --format json"
     )]
     Apply(TaskFollowupsApplyArgs),
 }

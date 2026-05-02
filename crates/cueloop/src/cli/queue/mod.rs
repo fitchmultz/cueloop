@@ -1,7 +1,7 @@
-//! `ralph queue ...` command group: Clap types and handler facade.
+//! `cueloop queue ...` command group: Clap types and handler facade.
 //!
 //! Purpose:
-//! - `ralph queue ...` command group: Clap types and handler facade.
+//! - `cueloop queue ...` command group: Clap types and handler facade.
 //!
 //! Responsibilities:
 //! - Define clap structures for queue-related subcommands.
@@ -113,7 +113,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Inspect and manage the task queue",
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue show RQ-0008\n  ralph queue next --with-title\n  ralph queue next-id\n  ralph queue archive"
+    after_long_help = "Examples:\n  cueloop queue list\n  cueloop queue list --status todo --tag rust\n  cueloop queue show RQ-0008\n  cueloop queue next --with-title\n  cueloop queue next-id\n  cueloop queue archive"
 )]
 pub struct QueueArgs {
     #[command(subcommand)]
@@ -124,25 +124,25 @@ pub struct QueueArgs {
 pub enum QueueCommand {
     /// Inspect whether Ralph can safely continue from the current queue state.
     #[command(
-        after_long_help = "Continuation workflow:\n - This command is read-only.\n - If the queue is valid, Ralph tells you whether continuation is ready, waiting, or blocked.\n - If recoverable issues are present, Ralph explains the blocking state and the next repair/undo steps.\n - Warnings are preserved as partial value; they do not force manual queue surgery.\n\nExamples:\n ralph queue validate\n ralph --verbose queue validate\n ralph queue repair --dry-run\n ralph queue repair\n ralph undo --dry-run"
+        after_long_help = "Continuation workflow:\n - This command is read-only.\n - If the queue is valid, Ralph tells you whether continuation is ready, waiting, or blocked.\n - If recoverable issues are present, Ralph explains the blocking state and the next repair/undo steps.\n - Warnings are preserved as partial value; they do not force manual queue surgery.\n\nExamples:\n cueloop queue validate\n cueloop --verbose queue validate\n cueloop queue repair --dry-run\n cueloop queue repair\n cueloop undo --dry-run"
     )]
     Validate,
 
     /// Prune tasks from the done archive based on age, status, or keep-last rules.
     #[command(
-        after_long_help = "Prune removes old tasks from .ralph/done.jsonc while preserving recent history.\n\nSafety:\n --keep-last always protects the N most recently completed tasks (by completed_at).\n If no filters are provided, all tasks are pruned except those protected by --keep-last.\n Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n but do NOT match the age filter (safety-first).\n\nExamples:\n ralph queue prune --dry-run --age 30 --status rejected\n ralph queue prune --keep-last 100\n ralph queue prune --age 90\n ralph queue prune --age 30 --status done --keep-last 50"
+        after_long_help = "Prune removes old tasks from .ralph/done.jsonc while preserving recent history.\n\nSafety:\n --keep-last always protects the N most recently completed tasks (by completed_at).\n If no filters are provided, all tasks are pruned except those protected by --keep-last.\n Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n but do NOT match the age filter (safety-first).\n\nExamples:\n cueloop queue prune --dry-run --age 30 --status rejected\n cueloop queue prune --keep-last 100\n cueloop queue prune --age 90\n cueloop queue prune --age 30 --status done --keep-last 50"
     )]
     Prune(QueuePruneArgs),
 
     /// Print the next todo task (ID by default).
     #[command(
-        after_long_help = "Examples:\n ralph queue next\n ralph queue next --with-title\n ralph queue next --with-eta\n ralph queue next --with-title --with-eta\n ralph queue next --explain\n ralph queue next --explain --with-title"
+        after_long_help = "Examples:\n cueloop queue next\n cueloop queue next --with-title\n cueloop queue next --with-eta\n cueloop queue next --with-title --with-eta\n cueloop queue next --explain\n cueloop queue next --explain --with-title"
     )]
     Next(QueueNextArgs),
 
     /// Print the next available task ID (across queue + done archive).
     #[command(
-        after_long_help = "Examples:\n ralph queue next-id\n ralph queue next-id --count 5\n ralph queue next-id -n 3\n ralph --verbose queue next-id"
+        after_long_help = "Examples:\n cueloop queue next-id\n cueloop queue next-id --count 5\n cueloop queue next-id -n 3\n cueloop --verbose queue next-id"
     )]
     NextId(QueueNextIdArgs),
 
@@ -154,99 +154,101 @@ pub enum QueueCommand {
 
     /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
     #[command(
-        after_long_help = "Examples:\n ralph queue search \"authentication\"\n ralph queue search \"RQ-\\d{4}\" --regex\n ralph queue search \"TODO\" --match-case\n ralph queue search \"fix\" --status todo --tag rust\n ralph queue search \"refactor\" --scope crates/cueloop --tag rust\n ralph queue search \"auth bug\" --fuzzy\n ralph queue search \"fuzzy search\" --fuzzy --match-case"
+        after_long_help = "Examples:\n cueloop queue search \"authentication\"\n cueloop queue search \"RQ-\\d{4}\" --regex\n cueloop queue search \"TODO\" --match-case\n cueloop queue search \"fix\" --status todo --tag rust\n cueloop queue search \"refactor\" --scope crates/cueloop --tag rust\n cueloop queue search \"auth bug\" --fuzzy\n cueloop queue search \"fuzzy search\" --fuzzy --match-case"
     )]
     Search(QueueSearchArgs),
 
     /// Move completed tasks from queue.jsonc to done.jsonc.
     #[command(
-        after_long_help = "Examples:\n  ralph queue archive\n  ralph queue archive --dry-run"
+        after_long_help = "Examples:\n  cueloop queue archive\n  cueloop queue archive --dry-run"
     )]
     Archive(QueueArchiveArgs),
 
     /// Normalize recoverable queue issues so Ralph can continue safely.
     #[command(
-        after_long_help = "Continuation workflow:\n - Use --dry-run first to preview recoverable fixes.\n - Applying the repair creates an undo checkpoint before queue files are rewritten.\n - This command is for normal continuation, not manual emergency surgery.\n\nExamples:\n ralph queue repair --dry-run\n ralph queue repair\n ralph undo --dry-run"
+        after_long_help = "Continuation workflow:\n - Use --dry-run first to preview recoverable fixes.\n - Applying the repair creates an undo checkpoint before queue files are rewritten.\n - This command is for normal continuation, not manual emergency surgery.\n\nExamples:\n cueloop queue repair --dry-run\n cueloop queue repair\n cueloop undo --dry-run"
     )]
     Repair(RepairArgs),
 
     /// Safely remove the queue lock file with process detection.
     #[command(after_long_help = "Safely remove the queue lock directory.\n\n\
 Safety:\n  - Checks if the lock holder process is still running\n  - Blocks if process is active (override with --force)\n  - Requires confirmation in interactive mode (bypass with --yes)\n\n\
-Examples:\n  ralph queue unlock --dry-run\n  ralph queue unlock --yes\n  ralph queue unlock --force --yes")]
+Examples:\n  cueloop queue unlock --dry-run\n  cueloop queue unlock --yes\n  cueloop queue unlock --force --yes")]
     Unlock(QueueUnlockArgs),
 
     /// Sort tasks by priority (reorders the queue file).
     #[command(
-        after_long_help = "Examples:\n ralph queue sort\n ralph queue sort --order descending\n ralph queue sort --order ascending"
+        after_long_help = "Examples:\n cueloop queue sort\n cueloop queue sort --order descending\n cueloop queue sort --order ascending"
     )]
     Sort(QueueSortArgs),
 
     /// Show task statistics (completion rate, avg duration, tag breakdown).
     #[command(
-        after_long_help = "Examples:\n ralph queue stats\n ralph queue stats --tag rust --tag cli\n ralph queue stats --format json"
+        after_long_help = "Examples:\n cueloop queue stats\n cueloop queue stats --tag rust --tag cli\n cueloop queue stats --format json"
     )]
     Stats(QueueStatsArgs),
 
     /// Show task history timeline (creation/completion events by day).
-    #[command(after_long_help = "Examples:\n ralph queue history\n ralph queue history --days 14")]
+    #[command(
+        after_long_help = "Examples:\n cueloop queue history\n cueloop queue history --days 14"
+    )]
     History(QueueHistoryArgs),
 
     /// Show burndown chart of remaining tasks over time.
     #[command(
-        after_long_help = "Examples:\n ralph queue burndown\n ralph queue burndown --days 30"
+        after_long_help = "Examples:\n cueloop queue burndown\n cueloop queue burndown --days 30"
     )]
     Burndown(QueueBurndownArgs),
 
     /// Show task aging buckets to identify stale work.
     #[command(
-        after_long_help = "Examples:\n  ralph queue aging\n  ralph queue aging --format json\n  ralph queue aging --status todo --status doing"
+        after_long_help = "Examples:\n  cueloop queue aging\n  cueloop queue aging --format json\n  cueloop queue aging --status todo --status doing"
     )]
     Aging(QueueAgingArgs),
 
     /// Print the JSON schema for the queue file.
-    #[command(after_long_help = "Example:\n ralph queue schema")]
+    #[command(after_long_help = "Example:\n cueloop queue schema")]
     Schema,
 
     /// Visualize task dependencies as a graph.
     #[command(
-        after_long_help = "Examples:\n ralph queue graph\n ralph queue graph --task RQ-0001\n ralph queue graph --format dot\n ralph queue graph --critical\n ralph queue graph --reverse --task RQ-0001"
+        after_long_help = "Examples:\n cueloop queue graph\n cueloop queue graph --task RQ-0001\n cueloop queue graph --format dot\n cueloop queue graph --critical\n cueloop queue graph --reverse --task RQ-0001"
     )]
     Graph(QueueGraphArgs),
 
     /// Export task data to CSV, TSV, JSON, Markdown, or GitHub issue format.
     #[command(
-        after_long_help = "Examples:\n ralph queue export\n ralph queue export --format csv --output tasks.csv\n ralph queue export --format json --status done\n ralph queue export --format tsv --tag rust --tag cli\n ralph queue export --format md --status todo\n ralph queue export --format gh --id-pattern RQ-0001\n ralph queue export --include-archive --format csv\n ralph queue export --format csv --created-after 2026-01-01"
+        after_long_help = "Examples:\n cueloop queue export\n cueloop queue export --format csv --output tasks.csv\n cueloop queue export --format json --status done\n cueloop queue export --format tsv --tag rust --tag cli\n cueloop queue export --format md --status todo\n cueloop queue export --format gh --id-pattern RQ-0001\n cueloop queue export --include-archive --format csv\n cueloop queue export --format csv --created-after 2026-01-01"
     )]
     Export(QueueExportArgs),
 
     /// Import tasks from CSV, TSV, or JSON.
     #[command(
-        after_long_help = "Examples:\n ralph queue import --format json < tasks.json\n ralph queue import --format csv tasks.csv\n ralph queue import --format tsv --on-duplicate rename tasks.tsv\n ralph queue import --format json --dry-run < tasks.json"
+        after_long_help = "Examples:\n cueloop queue import --format json < tasks.json\n cueloop queue import --format csv tasks.csv\n cueloop queue import --format tsv --on-duplicate rename tasks.tsv\n cueloop queue import --format json --dry-run < tasks.json"
     )]
     Import(QueueImportArgs),
 
     /// Request graceful stop of a running loop after current task completes.
     #[command(
-        after_long_help = "Examples:\n ralph queue stop\n\nNotes:\n - This creates a stop signal file that the run loop checks between tasks.\n - Sequential mode: exits between tasks (current task completes, then exits).\n - Parallel mode: stops scheduling new tasks; waits for in-flight tasks to complete.\n - The stop signal is automatically cleared when the loop honors the request.\n - To force immediate termination, use Ctrl+C in the running loop."
+        after_long_help = "Examples:\n cueloop queue stop\n\nNotes:\n - This creates a stop signal file that the run loop checks between tasks.\n - Sequential mode: exits between tasks (current task completes, then exits).\n - Parallel mode: stops scheduling new tasks; waits for in-flight tasks to complete.\n - The stop signal is automatically cleared when the loop honors the request.\n - To force immediate termination, use Ctrl+C in the running loop."
     )]
     Stop,
 
     /// Explain why tasks are (not) runnable.
     #[command(
-        after_long_help = "Examples:\n  ralph queue explain\n  ralph queue explain --format json\n  ralph queue explain --include-draft\n  ralph queue explain --format json --include-draft"
+        after_long_help = "Examples:\n  cueloop queue explain\n  cueloop queue explain --format json\n  cueloop queue explain --include-draft\n  cueloop queue explain --format json --include-draft"
     )]
     Explain(QueueExplainArgs),
 
     /// Render a parent/child hierarchy tree (based on parent_id).
     #[command(
-        after_long_help = "Examples:\n  ralph queue tree\n  ralph queue tree --include-done\n  ralph queue tree --root RQ-0001\n  ralph queue tree --max-depth 25"
+        after_long_help = "Examples:\n  cueloop queue tree\n  cueloop queue tree --include-done\n  cueloop queue tree --root RQ-0001\n  cueloop queue tree --max-depth 25"
     )]
     Tree(QueueTreeArgs),
 
     /// Aggregated dashboard for analytics UI (combines stats, burndown, history, productivity).
     #[command(
-        after_long_help = "Examples:\n  ralph queue dashboard\n  ralph queue dashboard --days 30\n  ralph queue dashboard --days 7\n\n\
+        after_long_help = "Examples:\n  cueloop queue dashboard\n  cueloop queue dashboard --days 30\n  cueloop queue dashboard --days 7\n\n\
 The dashboard command returns all analytics data in a single JSON payload for GUI clients.\n\
 Each section includes a 'status' field ('ok' or 'unavailable') for graceful partial failure handling."
     )]
@@ -254,7 +256,7 @@ Each section includes a 'status' field ('ok' or 'unavailable') for graceful part
 
     /// Publish tasks to GitHub Issues.
     #[command(
-        after_long_help = "Examples:\n  ralph queue issue publish RQ-0655\n  ralph queue issue publish RQ-0655 --dry-run\n  ralph queue issue publish RQ-0655 --label bug --assignee @me\n  ralph queue issue publish RQ-0655 --repo owner/repo\n  ralph queue issue publish-many --status todo --tag bug --dry-run\n  ralph queue issue publish-many --status todo --execute --force"
+        after_long_help = "Examples:\n  cueloop queue issue publish RQ-0655\n  cueloop queue issue publish RQ-0655 --dry-run\n  cueloop queue issue publish RQ-0655 --label bug --assignee @me\n  cueloop queue issue publish RQ-0655 --repo owner/repo\n  cueloop queue issue publish-many --status todo --tag bug --dry-run\n  cueloop queue issue publish-many --status todo --execute --force"
     )]
     Issue(QueueIssueArgs),
 }

@@ -89,11 +89,11 @@ fn queue_validate_help_examples_expanded() {
     let help = validate.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue validate"),
+        help.contains("cueloop queue validate"),
         "missing validate example: {help}"
     );
     assert!(
-        help.contains("ralph --verbose queue validate"),
+        help.contains("cueloop --verbose queue validate"),
         "missing verbose validate example: {help}"
     );
 }
@@ -108,11 +108,11 @@ fn queue_next_id_help_examples_expanded() {
     let help = next_id.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue next-id"),
+        help.contains("cueloop queue next-id"),
         "missing next-id example: {help}"
     );
     assert!(
-        help.contains("ralph --verbose queue next-id"),
+        help.contains("cueloop --verbose queue next-id"),
         "missing verbose next-id example: {help}"
     );
 }
@@ -310,7 +310,7 @@ fn queue_explain_help_includes_examples() {
     let help = explain_cmd.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue explain"),
+        help.contains("cueloop queue explain"),
         "missing explain example: {help}"
     );
     assert!(
@@ -411,15 +411,15 @@ fn queue_aging_help_examples_expanded() {
     let help = aging.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue aging"),
+        help.contains("cueloop queue aging"),
         "missing aging example: {help}"
     );
     assert!(
-        help.contains("ralph queue aging --format json"),
+        help.contains("cueloop queue aging --format json"),
         "missing aging json example: {help}"
     );
     assert!(
-        help.contains("ralph queue aging --status todo --status doing"),
+        help.contains("cueloop queue aging --status todo --status doing"),
         "missing aging status filter example: {help}"
     );
 }

@@ -20,7 +20,7 @@
 use anyhow::Result;
 use clap::{Args, Subcommand, ValueEnum};
 
-/// Arguments for the `ralph runner` command.
+/// Arguments for the `cueloop runner` command.
 #[derive(Args)]
 pub struct RunnerArgs {
     #[command(subcommand)]

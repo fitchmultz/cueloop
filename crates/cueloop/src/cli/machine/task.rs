@@ -4,7 +4,7 @@
 //! - Task-oriented machine command handlers.
 //!
 //! Responsibilities:
-//! - Implement `ralph machine task ...` operations.
+//! - Implement `cueloop machine task ...` operations.
 //! - Parse machine task-create/mutate/decompose inputs and emit versioned JSON documents.
 //! - Keep machine task writes aligned with queue locking, undo semantics, and continuation guidance.
 //!
@@ -182,16 +182,18 @@ fn validate_machine_from_preview_args(
     args: &crate::cli::machine::args::MachineTaskDecomposeArgs,
 ) -> Result<()> {
     if !args.write {
-        bail!("`ralph machine task decompose --from-preview` requires --write for queue mutation.");
+        bail!(
+            "`cueloop machine task decompose --from-preview` requires --write for queue mutation."
+        );
     }
     if !args.source.is_empty() || args.from_file.is_some() {
         bail!(
-            "`ralph machine task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
+            "`cueloop machine task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
         );
     }
     if args.attach_to.is_some() || args.with_dependencies {
         bail!(
-            "`ralph machine task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
+            "`cueloop machine task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
         );
     }
     Ok(())
@@ -205,7 +207,7 @@ fn machine_decompose_source_from_args(
     if let Some(path) = from_file {
         if !source_args.is_empty() {
             bail!(
-                "`ralph machine task decompose --from-file` cannot be combined with positional SOURCE text."
+                "`cueloop machine task decompose --from-file` cannot be combined with positional SOURCE text."
             );
         }
         return task_cmd::read_plan_file_source(resolved, path);

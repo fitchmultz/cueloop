@@ -36,7 +36,7 @@ pub(crate) use gitignored::{
 };
 use runtime::sync_cueloop_runtime_tree;
 
-/// Sync ralph state files from repo root to workspace.
+/// Sync cueloop state files from repo root to workspace.
 ///
 /// Syncs `.ralph/` runtime files plus gitignored allowlisted files.
 /// Ephemeral `.ralph` runtime paths are intentionally NOT synchronized.
@@ -45,7 +45,7 @@ use runtime::sync_cueloop_runtime_tree;
 pub(crate) fn sync_cueloop_state(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {
     let target = workspace_path.join(".ralph");
     std::fs::create_dir_all(&target)
-        .with_context(|| format!("create workspace ralph dir {}", target.display()))?;
+        .with_context(|| format!("create workspace cueloop dir {}", target.display()))?;
 
     let source = resolved.repo_root.join(".ralph");
     sync_cueloop_runtime_tree(resolved, &source, &target)?;

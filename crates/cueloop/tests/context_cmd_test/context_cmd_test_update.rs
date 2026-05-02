@@ -1,7 +1,7 @@
-//! `ralph context update` integration tests.
+//! `cueloop context update` integration tests.
 //!
 //! Purpose:
-//! - `ralph context update` integration tests.
+//! - `cueloop context update` integration tests.
 //!
 //! Responsibilities:
 //! - Cover file-based update flows, section targeting, and dry-run behavior.

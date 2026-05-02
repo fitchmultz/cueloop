@@ -1,7 +1,7 @@
-//! Handler for `ralph task followups ...` commands.
+//! Handler for `cueloop task followups ...` commands.
 //!
 //! Purpose:
-//! - Handler for `ralph task followups ...` commands.
+//! - Handler for `cueloop task followups ...` commands.
 //!
 //! Responsibilities:
 //! - Lock queue state before applying proposal-backed queue growth.

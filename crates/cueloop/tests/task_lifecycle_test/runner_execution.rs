@@ -1,7 +1,7 @@
 //! Purpose: runner-backed lifecycle integration coverage.
 //!
 //! Responsibilities:
-//! - Verify successful `ralph run one` auto-completes tasks when CI passes.
+//! - Verify successful `cueloop run one` auto-completes tasks when CI passes.
 //! - Verify runner failures keep tasks in queue with Doing status.
 //! - Verify queue and done-state tracking during runner execution.
 //!
@@ -21,7 +21,7 @@ use super::*;
 /// Test full lifecycle with actual runner execution: create → ready → start → run → done.
 ///
 /// This test verifies that:
-/// 1. `ralph run one` selects a todo task and runs the runner.
+/// 1. `cueloop run one` selects a todo task and runs the runner.
 /// 2. When CI gate passes, task is auto-completed.
 /// 3. Task metadata (`started_at`, `completed_at`) is properly tracked.
 #[test]
@@ -154,7 +154,7 @@ fn task_runner_failure_prevents_auto_complete() -> Result<()> {
 ///
 /// This test verifies the complete state transition sequence with CI gate auto-completion:
 /// 1. Initial: Task is Todo in queue.json.
-/// 2. After `ralph run one`: Task is auto-completed and moved to done.json with Done status.
+/// 2. After `cueloop run one`: Task is auto-completed and moved to done.json with Done status.
 /// 3. Timestamps (`started_at`, `completed_at`) are properly set.
 #[test]
 fn task_lifecycle_queue_state_during_run() -> Result<()> {

@@ -1,6 +1,6 @@
 //! Purpose: parallel status command entrypoint and machine-document builder.
 //!
-//! Responsibilities: handle `ralph run parallel status` output and build machine-readable documents.
+//! Responsibilities: handle `cueloop run parallel status` output and build machine-readable documents.
 //!
 //! Scope: operator-facing status output only.
 //!
@@ -167,7 +167,7 @@ fn build_parallel_status_guidance(
                     None,
                     "Parallel execution is blocked on worker integration outcomes that need operator action.",
                     detail.clone(),
-                    Some("ralph run parallel retry --task <TASK_ID>".to_string()),
+                    Some("cueloop run parallel retry --task <TASK_ID>".to_string()),
                 )
                 .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback());
                 (
@@ -184,7 +184,7 @@ fn build_parallel_status_guidance(
                             ),
                             step(
                                 "Retry one blocked worker",
-                                "ralph run parallel retry --task <TASK_ID>",
+                                "cueloop run parallel retry --task <TASK_ID>",
                                 "Mark a blocked worker ready for the next coordinator run.",
                             ),
                             step(
@@ -207,7 +207,7 @@ fn build_parallel_status_guidance(
                     None,
                     "Parallel execution is stalled on retryable worker failures.",
                     detail.clone(),
-                    Some("ralph run parallel retry --task <TASK_ID>".to_string()),
+                    Some("cueloop run parallel retry --task <TASK_ID>".to_string()),
                 )
                 .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback());
                 (
@@ -224,7 +224,7 @@ fn build_parallel_status_guidance(
                             ),
                             step(
                                 "Retry one failed worker",
-                                "ralph run parallel retry --task <TASK_ID>",
+                                "cueloop run parallel retry --task <TASK_ID>",
                                 "Mark the failed worker ready for another coordinator run.",
                             ),
                         ],
@@ -314,7 +314,7 @@ fn build_parallel_queue_lock_guidance(
             vec![
                 step(
                     "Clear the verified stale lock",
-                    "ralph queue unlock",
+                    "cueloop queue unlock",
                     "Remove the stale queue lock after confirming the recorded PID is no longer running.",
                 ),
                 step(
@@ -340,7 +340,7 @@ fn build_parallel_queue_lock_guidance(
                 ),
                 step(
                     "Clear the broken lock record",
-                    "ralph queue unlock",
+                    "cueloop queue unlock",
                     "Remove the queue lock after confirming no other Ralph process is running.",
                 ),
                 step(

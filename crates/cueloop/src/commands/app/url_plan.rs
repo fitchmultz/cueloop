@@ -6,7 +6,7 @@
 //! Responsibilities:
 //! - Construct `ralph://open?...` URLs with safe percent encoding.
 //! - Select the correct launcher for app-path vs bundle-id targets.
-//! - Resolve an explicit or implicit workspace path for `ralph app open`.
+//! - Resolve an explicit or implicit workspace path for `cueloop app open`.
 //!
 //! Scope:
 //! - URL planning only; process execution and initial app launch live elsewhere.

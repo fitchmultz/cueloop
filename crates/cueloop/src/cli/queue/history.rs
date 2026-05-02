@@ -25,10 +25,10 @@ use crate::reports;
 
 use super::QueueReportFormat;
 
-/// Arguments for `ralph queue history`.
+/// Arguments for `cueloop queue history`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue history\n  ralph queue history --days 14\n  ralph queue history --format json"
+    after_long_help = "Examples:\n  cueloop queue history\n  cueloop queue history --days 14\n  cueloop queue history --format json"
 )]
 pub struct QueueHistoryArgs {
     /// Number of days to show (default: 7).

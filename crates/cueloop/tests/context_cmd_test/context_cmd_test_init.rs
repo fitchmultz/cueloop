@@ -1,7 +1,7 @@
-//! `ralph context init` integration tests.
+//! `cueloop context init` integration tests.
 //!
 //! Purpose:
-//! - `ralph context init` integration tests.
+//! - `cueloop context init` integration tests.
 //!
 //! Responsibilities:
 //! - Cover AGENTS.md creation and generated section expectations.

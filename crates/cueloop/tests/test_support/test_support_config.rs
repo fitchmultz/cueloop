@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Config helpers assume `ralph init` or equivalent created an active project config.
+//! - Config helpers assume `cueloop init` or equivalent created an active project config.
 //! - Mutations are full cutover fixture rewrites for the targeted keys.
 
 use anyhow::{Context, Result};

@@ -144,7 +144,7 @@ pub(super) fn decompose_continuation(
         if all_draft && let Some(first_leaf_id) = first_leaf_id {
             next_steps.push(step(
                 "Promote the first actionable leaf",
-                &format!("ralph task ready {first_leaf_id}"),
+                &format!("cueloop task ready {first_leaf_id}"),
                 "Mark the first actionable leaf todo so Ralph can run it.",
             ));
         }
@@ -189,7 +189,7 @@ pub(super) fn decompose_continuation(
             });
         let write_command = checkpoint
             .map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id))
-            .unwrap_or_else(|| "ralph machine task decompose --write <SOURCE>".to_string());
+            .unwrap_or_else(|| "cueloop machine task decompose --write <SOURCE>".to_string());
         let replay_detail = checkpoint
             .map(|checkpoint| {
                 format!(

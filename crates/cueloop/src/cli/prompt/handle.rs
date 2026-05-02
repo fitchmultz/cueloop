@@ -4,7 +4,7 @@
 //! - Prompt CLI routing.
 //!
 //! Responsibilities:
-//! - Resolve config and dispatch `ralph prompt` subcommands to command-layer helpers.
+//! - Resolve config and dispatch `cueloop prompt` subcommands to command-layer helpers.
 //! - Keep CLI-specific defaults and stdin convenience behavior out of clap types.
 //!
 //! Not handled here:

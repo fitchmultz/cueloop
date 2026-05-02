@@ -1,4 +1,4 @@
-//! Purpose: thin integration-test hub for `ralph task update` update-all coverage.
+//! Purpose: thin integration-test hub for `cueloop task update` update-all coverage.
 //!
 //! Responsibilities:
 //! - Re-export shared imports and suite-local helpers for update-all integration tests.

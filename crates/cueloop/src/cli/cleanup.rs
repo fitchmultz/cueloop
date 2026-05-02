@@ -4,7 +4,7 @@
 //! - Cleanup command CLI arguments.
 //!
 //! Responsibilities:
-//! - Define CLI arguments for the `ralph cleanup` command.
+//! - Define CLI arguments for the `cueloop cleanup` command.
 //!
 //! Not handled here:
 //! - Actual cleanup logic (see `crate::commands::cleanup`).
@@ -18,14 +18,14 @@
 
 use clap::Args;
 
-/// Arguments for `ralph cleanup`.
+/// Arguments for `cueloop cleanup`.
 #[derive(Args, Debug)]
 #[command(after_long_help = "Examples:\n\
-  ralph cleanup              # Clean temp files older than 7 days\n\
-  ralph cleanup --force      # Clean all ralph temp files\n\
-  ralph cleanup --dry-run    # Show what would be deleted without deleting")]
+  cueloop cleanup              # Clean temp files older than 7 days\n\
+  cueloop cleanup --force      # Clean all cueloop temp files\n\
+  cueloop cleanup --dry-run    # Show what would be deleted without deleting")]
 pub struct CleanupArgs {
-    /// Force cleanup of all ralph temp files regardless of age.
+    /// Force cleanup of all cueloop temp files regardless of age.
     #[arg(long)]
     pub force: bool,
 

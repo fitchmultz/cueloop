@@ -1,4 +1,4 @@
-//! Task creation and mutation contract coverage for `ralph machine`.
+//! Task creation and mutation contract coverage for `cueloop machine`.
 //!
 //! Purpose:
 //! - Verify machine task create and mutate documents stay stable for app consumers.
@@ -31,7 +31,7 @@ fn machine_task_create_and_mutate_round_trip() -> Result<()> {
     let create_request = serde_json::json!({
         "version": 1,
         "title": "Machine-created task",
-        "description": "Created through ralph machine task create",
+        "description": "Created through cueloop machine task create",
         "priority": TaskPriority::High.as_str(),
         "tags": ["machine", "app"],
         "scope": ["crates/cueloop"],
@@ -192,7 +192,7 @@ fn task_mutate_json_uses_shared_continuation_document() -> Result<()> {
     );
     assert_eq!(
         document["continuation"]["next_steps"][0]["command"],
-        "ralph machine task mutate --input <PATH>"
+        "cueloop machine task mutate --input <PATH>"
     );
 
     Ok(())

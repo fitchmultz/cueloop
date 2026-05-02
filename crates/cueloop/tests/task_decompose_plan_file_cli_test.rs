@@ -1,7 +1,7 @@
 //! Plan-file task decomposition CLI smoke tests.
 //!
 //! Purpose:
-//! - Prove `ralph task decompose --from-file` handles complete ordered plans end to end.
+//! - Prove `cueloop task decompose --from-file` handles complete ordered plans end to end.
 //!
 //! Responsibilities:
 //! - Exercise preview and write JSON output through a stubbed runner.

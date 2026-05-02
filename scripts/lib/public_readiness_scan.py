@@ -89,8 +89,8 @@ class DocSnippetContract:
 STALE_DOC_SNIPPET_CONTRACTS = (
     DocSnippetContract(
         rel_path="docs/features/app.md",
-        pattern=re.compile(r"`ralph task decompose --format json`"),
-        message="use `ralph machine task decompose` for RalphMac decomposition docs",
+        pattern=re.compile(r"`cueloop task decompose --format json`"),
+        message="use `cueloop machine task decompose` for RalphMac decomposition docs",
     ),
     DocSnippetContract(
         rel_path="docs/features/session-management.md",

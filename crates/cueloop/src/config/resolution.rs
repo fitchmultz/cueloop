@@ -93,7 +93,7 @@ pub fn resolve_from_cwd() -> Result<Resolved> {
 
 /// Resolve like `resolve_from_cwd`, but skip project-layer execution trust validation.
 ///
-/// Used when the operator is explicitly opting into trust (for example `ralph init`) so
+/// Used when the operator is explicitly opting into trust (for example `cueloop init`) so
 /// initialization can proceed before the repo-local trust file exists, then the trust file is
 /// written afterward.
 pub fn resolve_from_cwd_skipping_project_execution_trust() -> Result<Resolved> {

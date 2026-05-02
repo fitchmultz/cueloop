@@ -1,7 +1,7 @@
-//! Task decomposition command handler for `ralph task decompose`.
+//! Task decomposition command handler for `cueloop task decompose`.
 //!
 //! Purpose:
-//! - Task decomposition command handler for `ralph task decompose`.
+//! - Task decomposition command handler for `cueloop task decompose`.
 //!
 //! Responsibilities:
 //! - Read source text from CLI args or stdin.
@@ -120,19 +120,19 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
 
 fn validate_from_preview_args(args: &TaskDecomposeArgs) -> Result<()> {
     if !args.write {
-        bail!("`ralph task decompose --from-preview` requires --write for queue mutation.");
+        bail!("`cueloop task decompose --from-preview` requires --write for queue mutation.");
     }
     if args.preview {
-        bail!("`ralph task decompose --from-preview` cannot be combined with --preview.");
+        bail!("`cueloop task decompose --from-preview` cannot be combined with --preview.");
     }
     if !args.source.is_empty() || args.from_file.is_some() {
         bail!(
-            "`ralph task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
+            "`cueloop task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
         );
     }
     if args.attach_to.is_some() || args.with_dependencies {
         bail!(
-            "`ralph task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
+            "`cueloop task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
         );
     }
     Ok(())
@@ -146,7 +146,7 @@ fn source_from_args(
     if let Some(path) = from_file {
         if !source_args.is_empty() {
             bail!(
-                "`ralph task decompose --from-file` cannot be combined with positional SOURCE text."
+                "`cueloop task decompose --from-file` cannot be combined with positional SOURCE text."
             );
         }
         return task_cmd::read_plan_file_source(resolved, path);

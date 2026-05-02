@@ -12,11 +12,11 @@
 //!
 //! Scope:
 //! - Handles only the explicit `.ralph` -> `.cueloop` runtime directory cutover.
-//! - Does not run as part of the registry-backed `ralph migrate --apply` flow.
+//! - Does not run as part of the registry-backed `cueloop migrate --apply` flow.
 //! - Does not merge two populated runtime directories or rename binaries/packages/apps.
 //!
 //! Usage:
-//! - Called by `ralph migrate runtime-dir --check/--apply`.
+//! - Called by `cueloop migrate runtime-dir --check/--apply`.
 //!
 //! Invariants/Assumptions:
 //! - If both runtime directories exist as directories, no mutation is attempted.
@@ -132,7 +132,7 @@ impl RuntimeDirMigrationState {
                 current_path,
                 reason,
             } => format!(
-                "Runtime-dir migration is blocked: {reason}. No changes were made. Manually inspect {} and {}, merge or remove one path, then rerun `ralph migrate runtime-dir --apply`.",
+                "Runtime-dir migration is blocked: {reason}. No changes were made. Manually inspect {} and {}, merge or remove one path, then rerun `cueloop migrate runtime-dir --apply`.",
                 legacy_path.display(),
                 current_path.display()
             ),
@@ -245,7 +245,7 @@ pub fn apply_runtime_dir_migration(repo_root: &Path) -> Result<RuntimeDirApplyRe
                     .collect::<Vec<_>>()
                     .join(", ");
                 bail!(
-                    "runtime-dir migration is blocked because legacy JSON runtime files still exist: {rendered}. Run `ralph migrate --apply` first to convert legacy .json files to .jsonc, then rerun `ralph migrate runtime-dir --apply`. No changes were made."
+                    "runtime-dir migration is blocked because legacy JSON runtime files still exist: {rendered}. Run `cueloop migrate --apply` first to convert legacy .json files to .jsonc, then rerun `cueloop migrate runtime-dir --apply`. No changes were made."
                 );
             }
 

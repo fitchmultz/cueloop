@@ -1,7 +1,7 @@
-//! `ralph prompt ...` CLI facade.
+//! `cueloop prompt ...` CLI facade.
 //!
 //! Purpose:
-//! - `ralph prompt ...` CLI facade.
+//! - `cueloop prompt ...` CLI facade.
 //!
 //! Responsibilities:
 //! - Re-export clap argument types for prompt commands.

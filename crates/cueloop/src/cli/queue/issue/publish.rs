@@ -1,7 +1,7 @@
-//! GitHub issue create/update workflow for `ralph queue issue`.
+//! GitHub issue create/update workflow for `cueloop queue issue`.
 //!
 //! Purpose:
-//! - GitHub issue create/update workflow for `ralph queue issue`.
+//! - GitHub issue create/update workflow for `cueloop queue issue`.
 //!
 //! Responsibilities:
 //! - Render task issue payloads and compute sync hashes.

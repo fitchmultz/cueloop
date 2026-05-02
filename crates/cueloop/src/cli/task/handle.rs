@@ -4,7 +4,7 @@
 //! - Task CLI routing.
 //!
 //! Responsibilities:
-//! - Resolve config and dispatch `ralph task` subcommands to their handlers.
+//! - Resolve config and dispatch `cueloop task` subcommands to their handlers.
 //! - Keep the task facade focused on re-exports and module wiring.
 //!
 //! Not handled here:

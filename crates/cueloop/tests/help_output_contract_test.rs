@@ -129,7 +129,7 @@ fn run_help_mentions_precedence_and_overrides_exist() {
     let (status, stdout, stderr) = run(&["run", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph run --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop run --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -139,12 +139,12 @@ fn run_help_mentions_precedence_and_overrides_exist() {
     assert_contains(&combined, "task");
     assert_contains(&combined, "config");
     assert_contains(&combined, "Blocking-state diagnosis");
-    assert_contains(&combined, "ralph doctor");
-    assert_contains(&combined, "ralph machine doctor report");
+    assert_contains(&combined, "cueloop doctor");
+    assert_contains(&combined, "cueloop machine doctor report");
     assert_contains(&combined, "Examples:");
-    assert_contains(&combined, "ralph run one");
-    assert_contains(&combined, "ralph run loop");
-    assert_contains(&combined, "ralph run resume");
+    assert_contains(&combined, "cueloop run one");
+    assert_contains(&combined, "cueloop run loop");
+    assert_contains(&combined, "cueloop run resume");
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn run_one_help_mentions_flags_and_examples() {
     let (status, stdout, stderr) = run(&["run", "one", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph run one --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop run one --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -166,11 +166,11 @@ fn run_one_help_mentions_flags_and_examples() {
     assert_contains(&combined, "--id");
 
     // Examples should demonstrate explicit selection.
-    assert_contains(&combined, "ralph run one");
+    assert_contains(&combined, "cueloop run one");
     assert_contains(&combined, "--runner");
-    assert_contains(&combined, "ralph run one --id");
+    assert_contains(&combined, "cueloop run one --id");
     assert_contains(&combined, "Blocking-state diagnosis");
-    assert_contains(&combined, "ralph doctor");
+    assert_contains(&combined, "cueloop doctor");
 }
 
 #[test]
@@ -178,31 +178,31 @@ fn queue_recovery_help_mentions_continuation_workflows() {
     let (validate_status, validate_stdout, validate_stderr) = run(&["queue", "validate", "--help"]);
     assert!(
         validate_status.success(),
-        "expected `ralph queue validate --help` to succeed\nstdout:\n{validate_stdout}\nstderr:\n{validate_stderr}"
+        "expected `cueloop queue validate --help` to succeed\nstdout:\n{validate_stdout}\nstderr:\n{validate_stderr}"
     );
     let validate_combined = format!("{validate_stdout}\n{validate_stderr}");
     assert_contains(&validate_combined, "Continuation workflow");
-    assert_contains(&validate_combined, "ralph queue repair --dry-run");
-    assert_contains(&validate_combined, "ralph undo --dry-run");
+    assert_contains(&validate_combined, "cueloop queue repair --dry-run");
+    assert_contains(&validate_combined, "cueloop undo --dry-run");
 
     let (repair_status, repair_stdout, repair_stderr) = run(&["queue", "repair", "--help"]);
     assert!(
         repair_status.success(),
-        "expected `ralph queue repair --help` to succeed\nstdout:\n{repair_stdout}\nstderr:\n{repair_stderr}"
+        "expected `cueloop queue repair --help` to succeed\nstdout:\n{repair_stdout}\nstderr:\n{repair_stderr}"
     );
     let repair_combined = format!("{repair_stdout}\n{repair_stderr}");
     assert_contains(&repair_combined, "Continuation workflow");
-    assert_contains(&repair_combined, "ralph undo --dry-run");
+    assert_contains(&repair_combined, "cueloop undo --dry-run");
 
     let (undo_status, undo_stdout, undo_stderr) = run(&["undo", "--help"]);
     assert!(
         undo_status.success(),
-        "expected `ralph undo --help` to succeed\nstdout:\n{undo_stdout}\nstderr:\n{undo_stderr}"
+        "expected `cueloop undo --help` to succeed\nstdout:\n{undo_stdout}\nstderr:\n{undo_stderr}"
     );
     let undo_combined = format!("{undo_stdout}\n{undo_stderr}");
     assert_contains(&undo_combined, "Continuation workflow");
-    assert_contains(&undo_combined, "ralph undo --list");
-    assert_contains(&undo_combined, "ralph queue validate");
+    assert_contains(&undo_combined, "cueloop undo --list");
+    assert_contains(&undo_combined, "cueloop queue validate");
 }
 
 #[test]
@@ -210,13 +210,13 @@ fn run_loop_help_mentions_blocking_state_diagnosis() {
     let (status, stdout, stderr) = run(&["run", "loop", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph run loop --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop run loop --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
 
     assert_contains(&combined, "Blocking-state diagnosis");
-    assert_contains(&combined, "ralph doctor");
+    assert_contains(&combined, "cueloop doctor");
     assert_contains(&combined, "wait-when-blocked");
 }
 
@@ -225,13 +225,13 @@ fn task_mutate_help_mentions_continuation_and_format() {
     let (status, stdout, stderr) = run(&["task", "mutate", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph task mutate --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop task mutate --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
     assert_contains(&combined, "Continuation workflow");
     assert_contains(&combined, "--format");
-    assert_contains(&combined, "ralph undo --dry-run");
+    assert_contains(&combined, "cueloop undo --dry-run");
 }
 
 #[test]
@@ -239,7 +239,7 @@ fn task_build_help_mentions_repo_prompt_flag() {
     let (status, stdout, stderr) = run(&["task", "build", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph task build --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop task build --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -252,12 +252,12 @@ fn task_help_mentions_default_and_explicit_build() {
     let (status, stdout, stderr) = run(&["task", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph task --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop task --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
 
-    assert_contains(&combined, "ralph task");
+    assert_contains(&combined, "cueloop task");
     assert_contains(&combined, "build");
     assert_contains(&combined, "template");
     assert_contains(&combined, "done --note \"Build checks pass\" RQ-0001");
@@ -269,7 +269,7 @@ fn task_help_shows_group_headings() {
     let (status, stdout, stderr) = run(&["task", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph task --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop task --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -295,7 +295,7 @@ fn task_help_shows_common_journeys() {
     let (status, stdout, stderr) = run(&["task", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph task --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop task --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -312,12 +312,12 @@ fn task_show_help_mentions_examples() {
     let (status, stdout, stderr) = run(&["task", "show", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph task show --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop task show --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
 
-    assert_contains(&combined, "ralph task show RQ-0001");
+    assert_contains(&combined, "cueloop task show RQ-0001");
     assert_contains(&combined, "--format");
     assert_contains(&combined, "compact");
 }
@@ -327,7 +327,7 @@ fn scan_help_mentions_repo_prompt_flag() {
     let (status, stdout, stderr) = run(&["scan", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph scan --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop scan --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -340,7 +340,7 @@ fn config_show_help_mentions_format_and_examples() {
     let (status, stdout, stderr) = run(&["config", "show", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph config show --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop config show --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");
@@ -348,7 +348,7 @@ fn config_show_help_mentions_format_and_examples() {
     assert_contains(&combined, "--format");
     assert_contains(&combined, "json");
     assert_contains(&combined, "yaml");
-    assert_contains(&combined, "ralph config show --format json");
+    assert_contains(&combined, "cueloop config show --format json");
 }
 
 #[test]

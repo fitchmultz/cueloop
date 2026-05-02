@@ -187,7 +187,7 @@ fn enforce_child_policy(
                     .map(|task| task.id.as_str())
                     .unwrap_or("");
                 bail!(
-                    "Task {} already has child tasks. Refusing write for `ralph task decompose --child-policy fail`.",
+                    "Task {} already has child tasks. Refusing write for `cueloop task decompose --child-policy fail`.",
                     parent_id
                 );
             }

@@ -1,4 +1,4 @@
-//! Purpose: thin integration-test hub for `ralph undo` CLI coverage.
+//! Purpose: thin integration-test hub for `cueloop undo` CLI coverage.
 //!
 //! Responsibilities:
 //! - Re-export shared imports and suite-local helpers for undo integration tests.

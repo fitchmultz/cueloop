@@ -1,7 +1,7 @@
-//! Refactoring task generation for `ralph task refactor` subcommand.
+//! Refactoring task generation for `cueloop task refactor` subcommand.
 //!
 //! Purpose:
-//! - Refactoring task generation for `ralph task refactor` subcommand.
+//! - Refactoring task generation for `cueloop task refactor` subcommand.
 //!
 //! Responsibilities:
 //! - Handle `refactor` and `build-refactor` commands.

@@ -32,13 +32,13 @@ use colored::Colorize;
 #[command(
     about = "Check and apply migrations for config and project files",
     after_long_help = "Examples:
-  ralph migrate              # Check for pending migrations
-  ralph migrate --check      # Exit with error code if migrations pending (CI)
-  ralph migrate --apply      # Apply all pending config/file migrations
-  ralph migrate --list       # List all migrations and their status
-  ralph migrate status       # Show detailed migration status
-  ralph migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop
-  ralph migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop
+  cueloop migrate              # Check for pending migrations
+  cueloop migrate --check      # Exit with error code if migrations pending (CI)
+  cueloop migrate --apply      # Apply all pending config/file migrations
+  cueloop migrate --list       # List all migrations and their status
+  cueloop migrate status       # Show detailed migration status
+  cueloop migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop
+  cueloop migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop
 "
 )]
 pub struct MigrateArgs {
@@ -127,7 +127,7 @@ fn check_migrations() -> Result<()> {
             for migration in &migrations {
                 println!("  - {}: {}", migration.id.yellow(), migration.description);
             }
-            println!("\nRun {} to apply them.", "ralph migrate --apply".cyan());
+            println!("\nRun {} to apply them.", "cueloop migrate --apply".cyan());
             std::process::exit(1);
         }
     }
@@ -153,7 +153,7 @@ fn show_pending_migrations() -> Result<()> {
                 println!("    {}", migration.description);
                 println!();
             }
-            println!("Run {} to apply them.", "ralph migrate --apply".cyan());
+            println!("Run {} to apply them.", "cueloop migrate --apply".cyan());
         }
     }
 
@@ -340,7 +340,7 @@ fn print_runtime_dir_state(state: &migration::runtime_dir::RuntimeDirMigrationSt
     ) {
         println!(
             "Run {} to move durable project state to .cueloop.",
-            "ralph migrate runtime-dir --apply".cyan()
+            "cueloop migrate runtime-dir --apply".cyan()
         );
     }
 }

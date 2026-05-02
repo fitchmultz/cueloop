@@ -4,7 +4,7 @@
 //! - Task updating orchestration for runner-driven task refreshes.
 //!
 //! Responsibilities:
-//! - Expose single-task and update-all entrypoints for `ralph task update`.
+//! - Expose single-task and update-all entrypoints for `cueloop task update`.
 //! - Coordinate dry-run previews, queue locking, backup creation, runner execution, and result reporting.
 //! - Keep the root module as a small facade over focused queue, runner, and reporting helpers.
 //!

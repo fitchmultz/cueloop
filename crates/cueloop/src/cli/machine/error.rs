@@ -160,8 +160,8 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
 fn is_cli_unavailable_error(normalized: &str) -> bool {
     normalized.contains("command not found")
         || normalized.contains("executable not found")
-        || normalized.contains("ralph cli executable not found")
-        || normalized.contains("ralph cli executable is not available")
+        || normalized.contains("cueloop cli executable not found")
+        || normalized.contains("cueloop cli executable is not available")
         || normalized.contains("bundled cli unavailable")
         || normalized.contains("failed to spawn")
         || normalized.contains("spawn enoent")
@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn build_machine_error_document_classifies_spawn_enoent_as_cli_unavailable() {
         let err = anyhow::anyhow!(
-            "failed to spawn managed subprocess 'ralph machine queue read': No such file or directory (os error 2)"
+            "failed to spawn managed subprocess 'cueloop machine queue read': No such file or directory (os error 2)"
         );
 
         let document = build_machine_error_document(&err);
@@ -284,8 +284,8 @@ mod tests {
             .detail
             .as_deref()
             .expect("trust failures should keep remediation detail");
-        assert!(detail.contains("ralph init"));
-        assert!(detail.contains("ralph config trust init"));
+        assert!(detail.contains("cueloop init"));
+        assert!(detail.contains("cueloop config trust init"));
         assert!(detail.contains("trust.jsonc"));
     }
 

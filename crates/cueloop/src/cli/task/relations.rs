@@ -1,7 +1,7 @@
-//! Task relationship command handlers for `ralph task` subcommands.
+//! Task relationship command handlers for `cueloop task` subcommands.
 //!
 //! Purpose:
-//! - Task relationship command handlers for `ralph task` subcommands.
+//! - Task relationship command handlers for `cueloop task` subcommands.
 //!
 //! Responsibilities:
 //! - Handle `relate` command (generic relationship).

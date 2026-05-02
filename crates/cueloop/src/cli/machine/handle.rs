@@ -1,7 +1,7 @@
-//! Top-level routing for `ralph machine`.
+//! Top-level routing for `cueloop machine`.
 //!
 //! Purpose:
-//! - Top-level routing for `ralph machine`.
+//! - Top-level routing for `cueloop machine`.
 //!
 //! Responsibilities:
 //! - Dispatch machine subcommands to focused handlers.

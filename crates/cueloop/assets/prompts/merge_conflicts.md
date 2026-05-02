@@ -23,7 +23,7 @@ If `{{config.queue.done_file}}` is conflicted:
 For both files:
 - Remove all conflict markers.
 - Preserve the root queue/done structure and schema.
-- Run `ralph queue validate` if either queue/done file was touched and fix validation errors.
+- Run `cueloop queue validate` if either queue/done file was touched and fix validation errors.
 
 # General Resolution Flow
 1. Open each conflicted file.

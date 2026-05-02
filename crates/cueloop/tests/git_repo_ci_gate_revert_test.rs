@@ -25,12 +25,12 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
 
-    // Ensure ralph runtime files exist.
+    // Ensure cueloop runtime files exist.
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Add a task to the queue.
@@ -59,7 +59,7 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
     // Commit the setup so the repo starts clean.
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 
-    // Run `ralph run one`.
+    // Run `cueloop run one`.
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["run", "one", "--git-revert-mode", "enabled"]);
 
@@ -105,7 +105,7 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_disabled() -> Result<
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;
@@ -158,7 +158,7 @@ fn run_one_keeps_changes_when_ci_fails_and_git_revert_mode_ask_non_tty() -> Resu
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;

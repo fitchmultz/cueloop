@@ -73,15 +73,15 @@ fn run_loop_aborts_immediately_on_queue_validation_error() -> Result<()> {
         "expected 'non-existent' or task ID in error: {err_msg}"
     );
     anyhow::ensure!(
-        err_msg.contains("ralph queue repair --dry-run"),
+        err_msg.contains("cueloop queue repair --dry-run"),
         "expected repair preview guidance in error: {err_msg}"
     );
     anyhow::ensure!(
-        err_msg.contains("ralph queue repair"),
+        err_msg.contains("cueloop queue repair"),
         "expected repair guidance in error: {err_msg}"
     );
     anyhow::ensure!(
-        err_msg.contains("ralph queue validate"),
+        err_msg.contains("cueloop queue validate"),
         "expected post-repair validation guidance in error: {err_msg}"
     );
 

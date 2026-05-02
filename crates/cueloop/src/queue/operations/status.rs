@@ -123,7 +123,7 @@ pub fn complete_task(
         TaskStatus::Done | TaskStatus::Rejected => {}
         TaskStatus::Draft | TaskStatus::Todo | TaskStatus::Doing => {
             bail!(
-                "Invalid completion status: only 'done' or 'rejected' are allowed. Got: {:?}. Use 'ralph task done {}' or 'ralph task reject {}'.",
+                "Invalid completion status: only 'done' or 'rejected' are allowed. Got: {:?}. Use 'cueloop task done {}' or 'cueloop task reject {}'.",
                 status,
                 task_id,
                 task_id

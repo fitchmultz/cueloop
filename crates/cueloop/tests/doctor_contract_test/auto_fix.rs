@@ -35,7 +35,7 @@ fn doctor_auto_fix_removes_confirmed_stale_queue_lock() -> Result<()> {
     std::fs::write(
         &owner_file,
         format!(
-            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run loop\n",
+            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run loop\n",
             definitely_dead_pid()
         ),
     )?;
@@ -77,7 +77,7 @@ fn doctor_without_auto_fix_reports_but_does_not_remove_stale_queue_lock() -> Res
     std::fs::write(
         &owner_file,
         format!(
-            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run loop\n",
+            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run loop\n",
             definitely_dead_pid()
         ),
     )?;
@@ -114,7 +114,7 @@ fn doctor_json_output_with_auto_fix() -> Result<()> {
     std::fs::write(
         &owner_file,
         format!(
-            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run loop\n",
+            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run loop\n",
             definitely_dead_pid()
         ),
     )?;

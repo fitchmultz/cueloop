@@ -71,7 +71,7 @@ pub fn phase_init(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) ->
     prompter.info("First, let's initialize Ralph in the sandbox project.");
     prompter.info("This creates the .ralph/ directory with config, queue, and done files.");
     prompter.info("");
-    prompter.info("Running: ralph init --non-interactive");
+    prompter.info("Running: cueloop init --non-interactive");
     prompter.info("");
 
     // Call init programmatically
@@ -93,7 +93,7 @@ pub fn phase_init(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) ->
 
     std::env::set_current_dir(&original_dir).context("restore original dir")?;
 
-    result.context("ralph init failed")?;
+    result.context("cueloop init failed")?;
 
     prompter.info(&format!("{}", "Initialization complete!".bright_green()));
     prompter.info("");
@@ -212,7 +212,7 @@ pub fn phase_dry_run(
     prompter.info("Dry-run shows what would happen without actually invoking an AI runner.");
     prompter.info("");
     prompter.info(&format!(
-        "Running: ralph run one --id {} --dry-run",
+        "Running: cueloop run one --id {} --dry-run",
         task_id
     ));
     prompter.info("");
@@ -246,7 +246,7 @@ pub fn phase_review(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) 
     prompter.info("Let's look at the queue to see your task.");
     prompter.info("");
 
-    prompter.info("Running: ralph queue list");
+    prompter.info("Running: cueloop queue list");
     prompter.info("");
 
     // Show queue
@@ -273,13 +273,13 @@ pub fn phase_review(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) 
     prompter.info("Great job! You've completed the basic Ralph tutorial.");
     prompter.info("");
     prompter.info("Key takeaways:");
-    prompter.info("  - ralph init: Set up Ralph in a project");
-    prompter.info("  - ralph task: Create tasks for AI agents");
-    prompter.info("  - ralph run one: Execute a task");
-    prompter.info("  - ralph queue list: View your tasks");
+    prompter.info("  - cueloop init: Set up Ralph in a project");
+    prompter.info("  - cueloop task: Create tasks for AI agents");
+    prompter.info("  - cueloop run one: Execute a task");
+    prompter.info("  - cueloop queue list: View your tasks");
     prompter.info("");
     prompter.info("For more information, see:");
-    prompter.info("  - ralph --help");
+    prompter.info("  - cueloop --help");
     prompter.info("  - docs/cli.md");
     prompter.info("  - docs/quick-start.md");
     prompter.info("");

@@ -13,7 +13,7 @@
 //! - Does not route CLI commands or print output.
 //!
 //! Usage:
-//! - Called from `queue.rs`, which handles `ralph machine queue ...` dispatch.
+//! - Called from `queue.rs`, which handles `cueloop machine queue ...` dispatch.
 //! - Re-exported by `cli::machine::mod` for crate-internal CLI consumers.
 //!
 //! Invariants/assumptions:

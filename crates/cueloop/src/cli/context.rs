@@ -1,7 +1,7 @@
-//! `ralph context` command: Clap types and handler.
+//! `cueloop context` command: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph context` command: Clap types and handler.
+//! - `cueloop context` command: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Define CLI arguments for the `context` command group (init, update, validate).
@@ -116,7 +116,7 @@ pub fn handle_context(args: ContextArgs) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Manage project context (AGENTS.md) for AI agents",
-    after_long_help = "Examples:\n  ralph context init\n  ralph context init --project-type rust\n  ralph context update --section troubleshooting\n  ralph context validate\n  ralph context update --dry-run"
+    after_long_help = "Examples:\n  cueloop context init\n  cueloop context init --project-type rust\n  cueloop context update --section troubleshooting\n  cueloop context validate\n  cueloop context update --dry-run"
 )]
 pub struct ContextArgs {
     #[command(subcommand)]
@@ -127,19 +127,19 @@ pub struct ContextArgs {
 pub enum ContextCommand {
     /// Generate initial AGENTS.md from project detection
     #[command(
-        after_long_help = "Examples:\n  ralph context init\n  ralph context init --force\n  ralph context init --project-type python --output docs/AGENTS.md"
+        after_long_help = "Examples:\n  cueloop context init\n  cueloop context init --force\n  cueloop context init --project-type python --output docs/AGENTS.md"
     )]
     Init(ContextInitArgs),
 
     /// Update AGENTS.md with new learnings
     #[command(
-        after_long_help = "Examples:\n  ralph context update --section troubleshooting\n  ralph context update --file new_learnings.md\n  ralph context update --interactive"
+        after_long_help = "Examples:\n  cueloop context update --section troubleshooting\n  cueloop context update --file new_learnings.md\n  cueloop context update --interactive"
     )]
     Update(ContextUpdateArgs),
 
     /// Validate AGENTS.md is up to date with project structure
     #[command(
-        after_long_help = "Examples:\n  ralph context validate\n  ralph context validate --strict"
+        after_long_help = "Examples:\n  cueloop context validate\n  cueloop context validate --strict"
     )]
     Validate(ContextValidateArgs),
 }

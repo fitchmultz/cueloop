@@ -31,11 +31,11 @@ The working tree may already be dirty from earlier work. Inspect it, then contin
 pub(crate) const ITERATION_COMPLETION_BLOCK: &str = r#"
 ## ITERATION COMPLETION RULES
 This is not the terminal completion run.
-- Do not run `ralph task done` or `ralph task reject`.
+- Do not run `cueloop task done` or `cueloop task reject`.
 - Leave the task status as `doing`.
 - Leave task work available for continued iteration; do not stash or revert completed in-scope work.
 "#;
 
 pub(crate) const PHASE3_COMPLETION_GUIDANCE_FINAL: &str = "Task status is already `doing`. Leave it unchanged until the completion checklist performs terminal bookkeeping. Before completion, resolve in-scope risks, bugs, missing tests, or suspicious leads when practical; if a lead is false, state the evidence briefly.";
 
-pub(crate) const PHASE3_COMPLETION_GUIDANCE_NONFINAL: &str = "Task status is already `doing`. Leave it unchanged. This is not a terminal run: do not run `ralph task done` or `ralph task reject`. Investigate in-scope risks and suspicious leads when practical, and summarize evidence plus next steps for the next pass.";
+pub(crate) const PHASE3_COMPLETION_GUIDANCE_NONFINAL: &str = "Task status is already `doing`. Leave it unchanged. This is not a terminal run: do not run `cueloop task done` or `cueloop task reject`. Investigate in-scope risks and suspicious leads when practical, and summarize evidence plus next steps for the next pass.";

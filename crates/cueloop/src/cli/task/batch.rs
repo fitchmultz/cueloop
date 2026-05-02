@@ -1,7 +1,7 @@
-//! Batch task operations for `ralph task batch`.
+//! Batch task operations for `cueloop task batch`.
 //!
 //! Purpose:
-//! - Batch task operations for `ralph task batch`.
+//! - Batch task operations for `cueloop task batch`.
 //!
 //! Responsibilities:
 //! - Route each batch subcommand to a focused handler.

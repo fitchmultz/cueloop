@@ -18,7 +18,7 @@
 //! Invariants/assumptions callers must respect:
 //! - Returned portable paths may not exist yet; callers create directories when needed.
 //! - Environment mutations must hold `env_lock()` for the full mutation scope.
-//! - Tests that spawn nested `ralph run loop --parallel ...` workers should hold `parallel_run_lock()` only for the overlapping run window.
+//! - Tests that spawn nested `cueloop run loop --parallel ...` workers should hold `parallel_run_lock()` only for the overlapping run window.
 
 use cueloop::config;
 use std::path::{Path, PathBuf};

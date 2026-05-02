@@ -1,7 +1,7 @@
-//! Purpose: restore-focused integration tests for `ralph undo`.
+//! Purpose: restore-focused integration tests for `cueloop undo`.
 //!
 //! Responsibilities:
-//! - Verify `ralph undo` restores queue and done files atomically.
+//! - Verify `cueloop undo` restores queue and done files atomically.
 //! - Verify successful restore consumes the snapshot file.
 //!
 //! Scope:
@@ -16,7 +16,7 @@
 
 use super::*;
 
-/// Test that `ralph undo` atomically restores both queue.json and done.json.
+/// Test that `cueloop undo` atomically restores both queue.json and done.json.
 #[test]
 fn undo_restores_queue_after_task_done() -> Result<()> {
     let dir = setup_undo_repo()?;

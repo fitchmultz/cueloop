@@ -1,7 +1,7 @@
-//! Structured task mutation handler for `ralph task mutate`.
+//! Structured task mutation handler for `cueloop task mutate`.
 //!
 //! Purpose:
-//! - Structured task mutation handler for `ralph task mutate`.
+//! - Structured task mutation handler for `cueloop task mutate`.
 //!
 //! Responsibilities:
 //! - Read a JSON task-mutation request from stdin or a file.

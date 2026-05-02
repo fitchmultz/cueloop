@@ -75,7 +75,7 @@ fn default_completion_checklist_includes_followup_proposal_flow() -> Result<()> 
     let checklist = load_completion_checklist(dir.path())?;
     assert!(checklist.contains("follow-ups cannot substitute"));
     assert!(checklist.contains(".ralph/cache/followups/{{TASK_ID}}.json"));
-    assert!(checklist.contains("ralph task followups apply --task {{TASK_ID}}"));
+    assert!(checklist.contains("cueloop task followups apply --task {{TASK_ID}}"));
     assert!(checklist.contains("do not apply the proposal"));
     assert!(checklist.contains("RUN_MODE=parallel-worker"));
     assert!(checklist.contains("CI Gate (configured validation only; never a run toggle)"));

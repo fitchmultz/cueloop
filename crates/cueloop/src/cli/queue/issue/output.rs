@@ -1,7 +1,7 @@
-//! User-facing output and confirmation helpers for `ralph queue issue`.
+//! User-facing output and confirmation helpers for `cueloop queue issue`.
 //!
 //! Purpose:
-//! - User-facing output and confirmation helpers for `ralph queue issue`.
+//! - User-facing output and confirmation helpers for `cueloop queue issue`.
 //!
 //! Responsibilities:
 //! - Render dry-run previews and bulk publish summaries.

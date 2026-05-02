@@ -33,7 +33,7 @@ fn ci_gate_compliance_message_passed_to_runner_on_failure() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;
@@ -124,7 +124,7 @@ fn ci_gate_custom_command_shown_in_compliance_message() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;
@@ -193,7 +193,7 @@ fn ci_gate_repeated_same_error_escalates_before_retry_limit() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     test_support::write_valid_single_todo_queue(dir.path())?;

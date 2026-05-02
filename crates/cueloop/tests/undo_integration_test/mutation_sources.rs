@@ -1,4 +1,4 @@
-//! Purpose: mutation-source integration tests for `ralph undo` snapshot creation.
+//! Purpose: mutation-source integration tests for `cueloop undo` snapshot creation.
 //!
 //! Responsibilities:
 //! - Verify non-`task done` mutations also create undo snapshots.
@@ -16,7 +16,7 @@
 
 use super::*;
 
-/// Test that `ralph task reject` also creates snapshots.
+/// Test that `cueloop task reject` also creates snapshots.
 #[test]
 fn undo_creates_snapshot_on_task_reject() -> Result<()> {
     let dir = setup_undo_repo()?;
@@ -56,7 +56,7 @@ fn undo_creates_snapshot_on_task_reject() -> Result<()> {
     Ok(())
 }
 
-/// Test that `ralph queue archive` creates a snapshot.
+/// Test that `cueloop queue archive` creates a snapshot.
 #[test]
 fn undo_creates_snapshot_on_queue_archive() -> Result<()> {
     let dir = setup_undo_repo()?;

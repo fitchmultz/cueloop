@@ -1,9 +1,9 @@
 <!-- CUELOOP_README_VERSION: 9 -->
 # CueLoop runtime files
 
-This repo is using CueLoop. The `ralph` executable is still the command name for this phase. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`; legacy repos that already use `.ralph/` remain supported.
+This repo is using CueLoop. The `cueloop` executable is the primary command name; `ralph` remains a legacy alias for this phase. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`; legacy repos that already use `.ralph/` remain supported.
 
-> This file is generated and owned by CueLoop. `ralph init` and agent-facing write-enabled commands may refresh it when CueLoop ships a newer template. Avoid hand-editing it unless you intentionally accept that local drift may be replaced.
+> This file is generated and owned by CueLoop. `cueloop init` and agent-facing write-enabled commands may refresh it when CueLoop ships a newer template. Avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
 ## Files
 
@@ -14,98 +14,98 @@ This repo is using CueLoop. The `ralph` executable is still the command name for
 - `{{RUNTIME_DIR}}/logs/` — debug logs; should stay gitignored.
 - `{{RUNTIME_DIR}}/trust.jsonc` — machine-local trust decision; should stay gitignored.
 
-Legacy `.ralph/` runtime directories are read in place. Do not rename `.ralph/` manually; use `ralph migrate runtime-dir --check` to preview and `ralph migrate runtime-dir --apply` to move project state to `.cueloop/` when ready.
+Legacy `.ralph/` runtime directories are read in place. Do not rename `.ralph/` manually; use `cueloop migrate runtime-dir --check` to preview and `cueloop migrate runtime-dir --apply` to move project state to `.cueloop/` when ready.
 
 ## Core commands
 
 ### Bootstrap and health
 
 - Bootstrap repo files:
-  - `ralph init`
+  - `cueloop init`
 - Check this generated README:
-  - `ralph init --check`
+  - `cueloop init --check`
 - Verify environment readiness:
-  - `ralph doctor`
+  - `cueloop doctor`
 - Validate queue state:
-  - `ralph queue validate`
+  - `cueloop queue validate`
 
 ### Queue management
 
 - Inspect queue:
-  - `ralph queue list`
-  - `ralph queue next --with-title`
+  - `cueloop queue list`
+  - `cueloop queue next --with-title`
 - Get next task ID:
-  - `ralph queue next-id`
-  - `ralph queue next-id --count 7`
+  - `cueloop queue next-id`
+  - `cueloop queue next-id --count 7`
 - Show task details:
-  - `ralph queue show RQ-0001`
+  - `cueloop queue show RQ-0001`
 - Archive completed tasks:
-  - `ralph queue archive`
+  - `cueloop queue archive`
 - Repair queue issues:
-  - `ralph queue repair`
+  - `cueloop queue repair`
 - Remove queue lock:
-  - `ralph queue unlock`
+  - `cueloop queue unlock`
 - Sort and search tasks:
-  - `ralph queue sort`
-  - `ralph queue search "authentication"`
-  - `ralph queue search "TODO" --status todo`
+  - `cueloop queue sort`
+  - `cueloop queue search "authentication"`
+  - `cueloop queue search "TODO" --status todo`
 - Queue reports:
-  - `ralph queue stats`
-  - `ralph queue history --days 14`
-  - `ralph queue burndown --days 30`
-  - `ralph queue prune --age 90 --keep-last 100`
+  - `cueloop queue stats`
+  - `cueloop queue history --days 14`
+  - `cueloop queue burndown --days 30`
+  - `cueloop queue prune --age 90 --keep-last 100`
 
 ### Task creation and updates
 
 - Build a task from a request:
-  - `ralph task "Add tests for X"`
+  - `cueloop task "Add tests for X"`
 - Update task fields from repo state:
-  - `ralph task update RQ-0001`
-  - `ralph task update`
+  - `cueloop task update RQ-0001`
+  - `cueloop task update`
 - Edit task fields:
-  - `ralph task edit title "New title" RQ-0001`
-  - `ralph task edit tags "rust, cli" RQ-0001`
+  - `cueloop task edit title "New title" RQ-0001`
+  - `cueloop task edit tags "rust, cli" RQ-0001`
 - Change task status:
-  - `ralph task status doing RQ-0001`
+  - `cueloop task status doing RQ-0001`
 - Show task details:
-  - `ralph task show RQ-0001`
+  - `cueloop task show RQ-0001`
 
 ### Execution
 
 - Open the macOS app (macOS-only):
-  - `ralph app open`
+  - `cueloop app open`
 - Run one task:
-  - `ralph run one`
-  - `ralph run one --phases 3`
-  - `ralph run one --quick`
-  - `ralph run one --include-draft`
+  - `cueloop run one`
+  - `cueloop run one --phases 3`
+  - `cueloop run one --quick`
+  - `cueloop run one --include-draft`
 - Run multiple tasks:
-  - `ralph run loop --max-tasks 0`
-  - `ralph run loop --phases 2 --max-tasks 0`
+  - `cueloop run loop --max-tasks 0`
+  - `cueloop run loop --phases 2 --max-tasks 0`
 
 ### PRD, context, and scans
 
 - Convert PRD markdown to tasks:
-  - `ralph prd create docs/prd/feature.md`
-  - `ralph prd create docs/prd/feature.md --multi`
-  - `ralph prd create docs/prd/feature.md --dry-run`
+  - `cueloop prd create docs/prd/feature.md`
+  - `cueloop prd create docs/prd/feature.md --multi`
+  - `cueloop prd create docs/prd/feature.md --dry-run`
 - Generate or update AGENTS.md:
-  - `ralph context init`
-  - `ralph context update --section troubleshooting`
-  - `ralph context validate`
+  - `cueloop context init`
+  - `cueloop context update --section troubleshooting`
+  - `cueloop context validate`
 - Seed tasks from a scan:
-  - `ralph scan --focus "CI gaps"`
-  - `ralph scan --focus "risk audit" --runner claude --model sonnet`
+  - `cueloop scan --focus "CI gaps"`
+  - `cueloop scan --focus "risk audit" --runner claude --model sonnet`
 
 ## Troubleshooting
 
 ### Duplicate task ID error
 
-If `ralph queue validate` reports a duplicate task ID, this usually means a new task was added without incrementing the ID. Do not delete tasks.
+If `cueloop queue validate` reports a duplicate task ID, this usually means a new task was added without incrementing the ID. Do not delete tasks.
 
-1. Run `ralph queue next-id` to get the next available ID.
+1. Run `cueloop queue next-id` to get the next available ID.
 2. Edit `{{RUNTIME_DIR}}/queue.jsonc` and change the colliding task ID.
-3. Re-run `ralph queue validate`.
+3. Re-run `cueloop queue validate`.
 
 Task IDs must be unique across both `queue.jsonc` and `done.jsonc`.
 
@@ -114,7 +114,7 @@ Task IDs must be unique across both `queue.jsonc` and `done.jsonc`.
 Use `--count` to generate IDs in one call:
 
 ```bash
-ralph queue next-id --count 7
+cueloop queue next-id --count 7
 ```
 
 `next-id` does not reserve IDs. Assign the printed IDs to tasks and insert all tasks into `{{RUNTIME_DIR}}/queue.jsonc` before running other queue commands.
@@ -142,19 +142,19 @@ Standard placeholders like `{{USER_REQUEST}}` are still processed after variable
 
 ## Prompt overrides
 
-Default prompts are embedded in the `ralph` binary. Custom prompt files should live in `{{RUNTIME_DIR}}/prompts/`; when both exist, `.cueloop/prompts/` takes precedence over legacy `.ralph/prompts/`.
+Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `{{RUNTIME_DIR}}/prompts/`; when both exist, `.cueloop/prompts/` takes precedence over legacy `.ralph/prompts/`.
 
 Useful commands:
 
-- `ralph prompt worker --phase 1`
-- `ralph prompt worker --phase 2`
-- `ralph prompt worker --phase 3`
-- `ralph prompt list`
-- `ralph prompt show worker --raw`
-- `ralph prompt diff worker`
-- `ralph prompt export --all`
-- `ralph prompt sync --dry-run`
-- `ralph prompt sync`
+- `cueloop prompt worker --phase 1`
+- `cueloop prompt worker --phase 2`
+- `cueloop prompt worker --phase 3`
+- `cueloop prompt list`
+- `cueloop prompt show worker --raw`
+- `cueloop prompt diff worker`
+- `cueloop prompt export --all`
+- `cueloop prompt sync --dry-run`
+- `cueloop prompt sync`
 
 ## Runner configuration
 
@@ -162,12 +162,12 @@ CueLoop can use built-in runner IDs (`codex`, `opencode`, `gemini`, `claude`, `c
 
 One-off usage:
 
-- `ralph task --runner opencode --model gpt-5.2 "Add tests for X"`
-- `ralph scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
-- `ralph task --runner claude --model opus --repo-prompt plan "Add tests for X"`
-- `ralph run one --phases 3`
-- `ralph run one --phases 2`
-- `ralph run one --quick`
+- `cueloop task --runner opencode --model gpt-5.2 "Add tests for X"`
+- `cueloop scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"`
+- `cueloop task --runner claude --model opus --repo-prompt plan "Add tests for X"`
+- `cueloop run one --phases 3`
+- `cueloop run one --phases 2`
+- `cueloop run one --quick`
 
 Defaults via config:
 
@@ -195,7 +195,7 @@ CueLoop supports a 3-phase workflow by default:
 2. **Phase 2 (Implementation + CI):** implement the plan and pass the configured CI gate.
 3. **Phase 3 (Code Review + Completion):** review the diff, refine if needed, rerun the CI gate, and complete the task.
 
-Use `ralph run one --phases 3` for the full workflow. Use `--quick` as shorthand for `--phases 1`.
+Use `cueloop run one --phases 3` for the full workflow. Use `--quick` as shorthand for `--phases 1`.
 
 ## Security: safeguard dumps and redaction
 
@@ -204,8 +204,8 @@ When runner operations fail, CueLoop writes safeguard dumps to temp directories 
 Raw, non-redacted dumps require explicit opt-in:
 
 ```bash
-RALPH_RAW_DUMP=1 ralph run one
-ralph run one --debug
+RALPH_RAW_DUMP=1 cueloop run one
+cueloop run one --debug
 ```
 
 Security notes:

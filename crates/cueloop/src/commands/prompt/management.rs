@@ -53,7 +53,7 @@ pub fn list_prompts(repo_root: &Path) -> Result<()> {
 
     println!("\nOverride paths: .cueloop/prompts/<name>.md");
     println!("Legacy fallback: .ralph/prompts/<name>.md");
-    println!("Use 'ralph prompt show <name> --raw' to view raw embedded content");
+    println!("Use 'cueloop prompt show <name> --raw' to view raw embedded content");
     Ok(())
 }
 
@@ -229,7 +229,7 @@ fn print_legacy_prompt_warning(repo_root: &Path) {
         println!(
             "Warning: legacy prompt overrides in .ralph/prompts are still supported, but .cueloop/prompts takes precedence."
         );
-        println!("Run `ralph migrate runtime-dir --apply` for project runtime state when ready.");
+        println!("Run `cueloop migrate runtime-dir --apply` for project runtime state when ready.");
         println!();
     }
 }

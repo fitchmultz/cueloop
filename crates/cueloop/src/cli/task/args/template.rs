@@ -27,14 +27,14 @@ pub struct TaskTemplateArgs {
     pub command: TaskTemplateCommand,
 }
 
-/// Arguments for `ralph task from` command (parent of template subcommand).
+/// Arguments for `cueloop task from` command (parent of template subcommand).
 #[derive(Args)]
 pub struct TaskFromArgs {
     #[command(subcommand)]
     pub command: TaskFromCommand,
 }
 
-/// Subcommands for `ralph task from`
+/// Subcommands for `cueloop task from`
 #[derive(Subcommand)]
 pub enum TaskFromCommand {
     /// Build a task from a template with variable substitution.
@@ -42,11 +42,11 @@ pub enum TaskFromCommand {
     /// This is a convenience command that combines template selection,
     /// variable substitution, and task creation in one step.
     #[command(after_long_help = "Examples:
-  ralph task from template bug --title \"Fix login timeout\"
-  ralph task from template feature --title \"Add dark mode\" --set target=src/ui/theme.rs
-  ralph task from template add-tests --title \"Test auth module\" --set target=src/auth/mod.rs
-  ralph task from template refactor-performance --title \"Optimize parser\" --set target=src/parser/
-  ralph task from template custom-template --title \"Custom task\" --set component=auth
+  cueloop task from template bug --title \"Fix login timeout\"
+  cueloop task from template feature --title \"Add dark mode\" --set target=src/ui/theme.rs
+  cueloop task from template add-tests --title \"Test auth module\" --set target=src/auth/mod.rs
+  cueloop task from template refactor-performance --title \"Optimize parser\" --set target=src/parser/
+  cueloop task from template custom-template --title \"Custom task\" --set component=auth
 
 Template variables:
   {{target}}  - Target file/path (set via --set target=... or positional TARGET)
@@ -54,12 +54,12 @@ Template variables:
   {{file}}    - Filename only (e.g., task.rs)
   {{branch}}  - Current git branch name
 
-Use 'ralph task template list' to see available templates.
-Use 'ralph task template show <name>' to view template details.")]
+Use 'cueloop task template list' to see available templates.
+Use 'cueloop task template show <name>' to view template details.")]
     Template(TaskFromTemplateArgs),
 }
 
-/// Arguments for `ralph task from template` command.
+/// Arguments for `cueloop task from template` command.
 #[derive(Args)]
 pub struct TaskFromTemplateArgs {
     /// Template name (e.g., bug, feature, refactor, add-tests)

@@ -98,7 +98,7 @@ fn build_validate_document_marks_missing_queue_as_stalled() {
             assert_eq!(reason, "validation_failed");
             assert_eq!(
                 suggested_command.as_deref(),
-                Some("ralph machine queue repair --dry-run")
+                Some("cueloop machine queue repair --dry-run")
             );
         }
         other => panic!("unexpected blocking reason: {other:?}"),
@@ -109,7 +109,7 @@ fn build_validate_document_marks_missing_queue_as_stalled() {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine queue repair --dry-run"
+        "cueloop machine queue repair --dry-run"
     );
 }
 
@@ -137,11 +137,11 @@ fn build_validate_document_ready_queue_offers_resume_and_mutation_preview() {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine run one --resume"
+        "cueloop machine run one --resume"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph machine task mutate --dry-run --input <PATH>"
+        "cueloop machine task mutate --dry-run --input <PATH>"
     );
 }
 
@@ -185,7 +185,7 @@ fn build_validate_document_all_draft_queue_offers_activation_guidance() {
     assert_eq!(document.continuation.blocking.as_ref(), Some(blocking));
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph task ready RQ-0002"
+        "cueloop task ready RQ-0002"
     );
 }
 
@@ -212,7 +212,7 @@ fn build_repair_document_dry_run_reports_recoverable_repairs() -> anyhow::Result
     assert_eq!(document.continuation.headline, "Repair preview is ready.");
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine queue repair"
+        "cueloop machine queue repair"
     );
     Ok(())
 }
@@ -241,7 +241,7 @@ fn build_undo_document_list_without_snapshots_offers_mutation_checkpoint_guidanc
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine task mutate --dry-run --input <PATH>"
+        "cueloop machine task mutate --dry-run --input <PATH>"
     );
     Ok(())
 }
@@ -278,11 +278,11 @@ fn build_undo_document_list_with_snapshots_offers_preview_and_restore() -> anyho
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine queue undo --dry-run"
+        "cueloop machine queue undo --dry-run"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph machine queue undo --id <SNAPSHOT_ID>"
+        "cueloop machine queue undo --id <SNAPSHOT_ID>"
     );
     let result = document.result.expect("snapshot list result");
     assert_eq!(result.as_array().map(Vec::len), Some(1));

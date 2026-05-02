@@ -91,7 +91,7 @@ fn init_creates_missing_files() -> anyhow::Result<()> {
     assert!(readme_path.exists());
     let readme_raw = std::fs::read_to_string(readme_path)?;
     assert!(readme_raw.contains("# CueLoop runtime files"));
-    assert!(readme_raw.contains("ralph init"));
+    assert!(readme_raw.contains("cueloop init"));
     Ok(())
 }
 
@@ -110,12 +110,12 @@ fn init_generates_readme_with_correct_archive_command() -> anyhow::Result<()> {
     let readme_path = resolved.repo_root.join(".cueloop/README.md");
     let readme_raw = std::fs::read_to_string(readme_path)?;
     assert!(
-        readme_raw.contains("ralph queue archive"),
-        "README should contain 'ralph queue archive' command"
+        readme_raw.contains("cueloop queue archive"),
+        "README should contain 'cueloop queue archive' command"
     );
     assert!(
-        !readme_raw.contains("ralph queue done"),
-        "README should NOT contain stale 'ralph queue done' command"
+        !readme_raw.contains("cueloop queue done"),
+        "README should NOT contain stale 'cueloop queue done' command"
     );
     Ok(())
 }

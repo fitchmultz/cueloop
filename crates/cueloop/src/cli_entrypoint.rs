@@ -246,7 +246,7 @@ fn emit_legacy_compat_warnings() {
 
     if current_runtime.is_dir() && legacy_runtime.is_dir() {
         log::warn!(
-            "CueLoop found both .cueloop and legacy .ralph runtime directories. .cueloop takes precedence; resolve or remove .ralph when ready."
+            "CueLoop found both .cueloop and legacy .cueloop runtime directories. .cueloop takes precedence; resolve or remove .ralph when ready."
         );
     } else if matches!(
         crate::config::project_runtime_layout(&repo_root),

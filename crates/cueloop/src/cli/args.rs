@@ -129,98 +129,98 @@ pub enum Command {
     /// Render and print the final compiled prompts used by CueLoop (for debugging/auditing).
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph prompt worker --phase 1 --repo-prompt plan\n  ralph prompt worker --phase 2 --task-id RQ-0001 --plan-file .cueloop/cache/plans/RQ-0001.md\n  ralph prompt scan --focus \"CI gaps\" --repo-prompt off\n  ralph prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/cueloop --repo-prompt tools\n"
+        after_long_help = "Examples:\n  cueloop prompt worker --phase 1 --repo-prompt plan\n  cueloop prompt worker --phase 2 --task-id RQ-0001 --plan-file .cueloop/cache/plans/RQ-0001.md\n  cueloop prompt scan --focus \"CI gaps\" --repo-prompt off\n  cueloop prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/cueloop --repo-prompt tools\n"
     )]
     Prompt(prompt::PromptArgs),
     /// Verify environment readiness and configuration.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph doctor\n  ralph doctor --auto-fix\n  ralph doctor --no-sanity-checks\n  ralph doctor --format json\n  ralph doctor --format json --auto-fix"
+        after_long_help = "Examples:\n  cueloop doctor\n  cueloop doctor --auto-fix\n  cueloop doctor --no-sanity-checks\n  cueloop doctor --format json\n  cueloop doctor --format json --auto-fix"
     )]
     Doctor(doctor::DoctorArgs),
     /// Manage project context (AGENTS.md) for AI agents.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph context init\n  ralph context init --project-type rust\n  ralph context update --section troubleshooting\n  ralph context validate\n  ralph context update --dry-run"
+        after_long_help = "Examples:\n  cueloop context init\n  cueloop context init --project-type rust\n  cueloop context update --section troubleshooting\n  cueloop context validate\n  cueloop context update --dry-run"
     )]
     Context(context::ContextArgs),
     /// Manage the CueLoop daemon (background service).
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph daemon start\n  ralph daemon start --empty-poll-ms 5000\n  ralph daemon stop\n  ralph daemon status"
+        after_long_help = "Examples:\n  cueloop daemon start\n  cueloop daemon start --empty-poll-ms 5000\n  cueloop daemon stop\n  cueloop daemon status"
     )]
     Daemon(daemon::DaemonArgs),
     /// Convert PRD (Product Requirements Document) markdown to tasks.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph prd create docs/prd/new-feature.md\n  ralph prd create docs/prd/new-feature.md --multi\n  ralph prd create docs/prd/new-feature.md --dry-run\n  ralph prd create docs/prd/new-feature.md --priority high --tag feature\n  ralph prd create docs/prd/new-feature.md --draft"
+        after_long_help = "Examples:\n  cueloop prd create docs/prd/new-feature.md\n  cueloop prd create docs/prd/new-feature.md --multi\n  cueloop prd create docs/prd/new-feature.md --dry-run\n  cueloop prd create docs/prd/new-feature.md --priority high --tag feature\n  cueloop prd create docs/prd/new-feature.md --draft"
     )]
     Prd(prd::PrdArgs),
     /// Generate shell completion scripts.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph completions bash\n  ralph completions bash > ~/.local/share/bash-completion/completions/ralph\n  ralph completions zsh > ~/.zfunc/_ralph\n  ralph completions fish > ~/.config/fish/completions/ralph.fish\n  ralph completions powershell\n\nInstallation locations by shell:\n  Bash:   ~/.local/share/bash-completion/completions/ralph\n  Zsh:    ~/.zfunc/_ralph (and add 'fpath+=~/.zfunc' to ~/.zshrc)\n  Fish:   ~/.config/fish/completions/ralph.fish\n  PowerShell: Add to $PROFILE (see: $PROFILE | Get-Member -Type NoteProperty)"
+        after_long_help = "Examples:\n  cueloop completions bash\n  cueloop completions bash > ~/.local/share/bash-completion/completions/cueloop\n  cueloop completions zsh > ~/.zfunc/_cueloop\n  cueloop completions fish > ~/.config/fish/completions/cueloop.fish\n  cueloop completions powershell\n\nInstallation locations by shell:\n  Bash:   ~/.local/share/bash-completion/completions/cueloop\n  Zsh:    ~/.zfunc/_cueloop (and add 'fpath+=~/.zfunc' to ~/.zshrc)\n  Fish:   ~/.config/fish/completions/cueloop.fish\n  PowerShell: Add to $PROFILE (see: $PROFILE | Get-Member -Type NoteProperty)"
     )]
     Completions(completions::CompletionsArgs),
     /// Check and apply migrations for config and project files.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph migrate              # Check for pending config/file migrations\n  ralph migrate --check      # Exit with error code if migrations pending (CI)\n  ralph migrate --apply      # Apply all pending config/file migrations\n  ralph migrate --list       # List all migrations and their status\n  ralph migrate status       # Show detailed migration status\n  ralph migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop\n  ralph migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop"
+        after_long_help = "Examples:\n  cueloop migrate              # Check for pending config/file migrations\n  cueloop migrate --check      # Exit with error code if migrations pending (CI)\n  cueloop migrate --apply      # Apply all pending config/file migrations\n  cueloop migrate --list       # List all migrations and their status\n  cueloop migrate status       # Show detailed migration status\n  cueloop migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop\n  cueloop migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop"
     )]
     Migrate(migrate::MigrateArgs),
     /// Clean up temporary files created by CueLoop.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph cleanup              # Clean temp files older than 7 days\n  ralph cleanup --force      # Clean all CueLoop and legacy Ralph temp files\n  ralph cleanup --dry-run    # Show what would be deleted without deleting"
+        after_long_help = "Examples:\n  cueloop cleanup              # Clean temp files older than 7 days\n  cueloop cleanup --force      # Clean all CueLoop and legacy Ralph temp files\n  cueloop cleanup --dry-run    # Show what would be deleted without deleting"
     )]
     Cleanup(cleanup::CleanupArgs),
     /// Display version information.
-    #[command(after_long_help = "Examples:\n  ralph version\n  ralph version --verbose")]
+    #[command(after_long_help = "Examples:\n  cueloop version\n  cueloop version --verbose")]
     Version(version::VersionArgs),
     /// Watch files for changes and auto-detect tasks from TODO/FIXME/HACK/XXX comments.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph watch\n  ralph watch src/\n  ralph watch --patterns \"*.rs,*.toml\"\n  ralph watch --auto-queue\n  ralph watch --notify\n  ralph watch --comments todo,fixme\n  ralph watch --debounce-ms 1000\n  ralph watch --ignore-patterns \"vendor/,target/,node_modules/\""
+        after_long_help = "Examples:\n  cueloop watch\n  cueloop watch src/\n  cueloop watch --patterns \"*.rs,*.toml\"\n  cueloop watch --auto-queue\n  cueloop watch --notify\n  cueloop watch --comments todo,fixme\n  cueloop watch --debounce-ms 1000\n  cueloop watch --ignore-patterns \"vendor/,target/,node_modules/\""
     )]
     Watch(watch::WatchArgs),
     /// Webhook management commands.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph webhook test\n  ralph webhook test --event task_completed\n  ralph webhook status --format json\n  ralph webhook replay --dry-run --id wf-1700000000-1"
+        after_long_help = "Examples:\n  cueloop webhook test\n  cueloop webhook test --event task_completed\n  cueloop webhook status --format json\n  cueloop webhook replay --dry-run --id wf-1700000000-1"
     )]
     Webhook(webhook::WebhookArgs),
 
     /// Productivity analytics (streaks, velocity, milestones).
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph productivity summary\n  ralph productivity velocity\n  ralph productivity streak"
+        after_long_help = "Examples:\n  cueloop productivity summary\n  cueloop productivity velocity\n  cueloop productivity streak"
     )]
     Productivity(productivity::ProductivityArgs),
 
     /// Plugin management commands.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph plugin init my.plugin\n  ralph plugin init my.plugin --scope global\n  ralph plugin list\n  ralph plugin validate\n  ralph plugin install ./my-plugin --scope project\n  ralph plugin uninstall my.plugin --scope project"
+        after_long_help = "Examples:\n  cueloop plugin init my.plugin\n  cueloop plugin init my.plugin --scope global\n  cueloop plugin list\n  cueloop plugin validate\n  cueloop plugin install ./my-plugin --scope project\n  cueloop plugin uninstall my.plugin --scope project"
     )]
     Plugin(plugin::PluginArgs),
 
     /// Runner management commands (capabilities, list).
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph runner capabilities codex\n  ralph runner capabilities claude --format json\n  ralph runner list\n  ralph runner list --format json"
+        after_long_help = "Examples:\n  cueloop runner capabilities codex\n  cueloop runner capabilities claude --format json\n  cueloop runner list\n  cueloop runner list --format json"
     )]
     Runner(runner::RunnerArgs),
 
     /// Run the interactive CueLoop onboarding tutorial.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  ralph tutorial\n  ralph tutorial --keep-sandbox\n  ralph tutorial --non-interactive"
+        after_long_help = "Examples:\n  cueloop tutorial\n  cueloop tutorial --keep-sandbox\n  cueloop tutorial --non-interactive"
     )]
     Tutorial(tutorial::TutorialArgs),
 
     /// Restore or preview an earlier continuation checkpoint.
     #[command(
-        after_long_help = "Continuation workflow:\n  - `ralph undo --list` shows the checkpoints CueLoop created before queue-changing operations.\n  - `ralph undo --dry-run` previews the restore path without modifying queue files.\n  - `ralph undo` restores the most recent checkpoint; `--id` restores a specific one.\n  - After restoring, run `ralph queue validate` and then continue normal work.\n\nExamples:\n  ralph undo\n  ralph undo --list\n  ralph undo --dry-run\n  ralph undo --id undo-20260215073000000000\n\nCheckpoints are created automatically before queue mutations such as:\n  - ralph task mutate / task decompose --write\n  - ralph task done/reject/start/ready/schedule\n  - ralph task edit/field/clone/split\n  - ralph task relate/blocks/mark-duplicate\n  - ralph queue archive/prune/sort/import/repair\n  - ralph queue issue publish/publish-many\n  - ralph task batch operations"
+        after_long_help = "Continuation workflow:\n  - `cueloop undo --list` shows the checkpoints CueLoop created before queue-changing operations.\n  - `cueloop undo --dry-run` previews the restore path without modifying queue files.\n  - `cueloop undo` restores the most recent checkpoint; `--id` restores a specific one.\n  - After restoring, run `cueloop queue validate` and then continue normal work.\n\nExamples:\n  cueloop undo\n  cueloop undo --list\n  cueloop undo --dry-run\n  cueloop undo --id undo-20260215073000000000\n\nCheckpoints are created automatically before queue mutations such as:\n  - cueloop task mutate / task decompose --write\n  - cueloop task done/reject/start/ready/schedule\n  - cueloop task edit/field/clone/split\n  - cueloop task relate/blocks/mark-duplicate\n  - cueloop queue archive/prune/sort/import/repair\n  - cueloop queue issue publish/publish-many\n  - cueloop task batch operations"
     )]
     Undo(undo::UndoArgs),
 

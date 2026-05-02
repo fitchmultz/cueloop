@@ -19,7 +19,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Aging threshold configuration for `ralph queue aging`.
+/// Aging threshold configuration for `cueloop queue aging`.
 ///
 /// Controls the day thresholds for categorizing tasks by age.
 /// Ordering invariant: warning_days < stale_days < rotten_days
@@ -88,7 +88,7 @@ pub struct QueueConfig {
     #[schemars(range(min = 0, max = 3650))]
     pub auto_archive_terminal_after_days: Option<u32>,
 
-    /// Thresholds for `ralph queue aging` buckets.
+    /// Thresholds for `cueloop queue aging` buckets.
     ///
     /// Default: warning>7d, stale>14d, rotten>30d.
     /// Ordering must satisfy: warning_days < stale_days < rotten_days.

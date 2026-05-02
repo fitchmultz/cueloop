@@ -11,7 +11,7 @@
 //! - Follow-up proposals never edit existing tasks or the done archive.
 //!
 //! Usage:
-//! - CLI: `ralph task followups apply --task <TASK_ID>`.
+//! - CLI: `cueloop task followups apply --task <TASK_ID>`.
 //! - Parallel integration: apply a worker-local proposal after archiving the completed task.
 //!
 //! Invariants/Assumptions:

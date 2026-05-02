@@ -1,7 +1,7 @@
-//! `ralph task ...` command group: Clap types and handler facade.
+//! `cueloop task ...` command group: Clap types and handler facade.
 //!
 //! Purpose:
-//! - `ralph task ...` command group: Clap types and handler facade.
+//! - `cueloop task ...` command group: Clap types and handler facade.
 //!
 //! Responsibilities:
 //! - Re-export task argument types from the focused `args` tree.

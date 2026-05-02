@@ -1,4 +1,4 @@
-//! Purpose: error-handling integration tests for `ralph undo`.
+//! Purpose: error-handling integration tests for `cueloop undo`.
 //!
 //! Responsibilities:
 //! - Verify helpful failure output when undo is requested without any available snapshots.
@@ -11,11 +11,11 @@
 //!
 //! Invariants/assumptions callers must respect:
 //! - The test preserves the original non-zero exit expectation and stderr matching.
-//! - No snapshot-creating mutation is performed before invoking `ralph undo`.
+//! - No snapshot-creating mutation is performed before invoking `cueloop undo`.
 
 use super::*;
 
-/// Test that `ralph undo` fails with a clear error when no snapshots exist.
+/// Test that `cueloop undo` fails with a clear error when no snapshots exist.
 #[test]
 fn undo_no_snapshots_error() -> Result<()> {
     let dir = setup_undo_repo()?;

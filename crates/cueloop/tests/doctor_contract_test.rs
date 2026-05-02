@@ -1,7 +1,7 @@
-//! Contract tests for `ralph doctor` output and diagnostics.
+//! Contract tests for `cueloop doctor` output and diagnostics.
 //!
 //! Purpose:
-//! - Contract tests for `ralph doctor` output and diagnostics.
+//! - Contract tests for `cueloop doctor` output and diagnostics.
 //!
 //! Responsibilities:
 //! - Provide shared command helpers for doctor contract suites.

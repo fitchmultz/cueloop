@@ -1,7 +1,7 @@
-//! CLI arguments for `ralph task decompose`.
+//! CLI arguments for `cueloop task decompose`.
 //!
 //! Purpose:
-//! - CLI arguments for `ralph task decompose`.
+//! - CLI arguments for `cueloop task decompose`.
 //!
 //! Responsibilities:
 //! - Define clap arguments for decomposition previews and writes.

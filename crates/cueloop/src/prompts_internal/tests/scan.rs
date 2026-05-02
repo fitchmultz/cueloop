@@ -111,9 +111,9 @@ fn default_scan_prompt_mentions_next_id_command() -> Result<()> {
         ProjectType::Code,
         &config,
     )?;
-    assert!(rendered.contains("ralph queue next-id"));
+    assert!(rendered.contains("cueloop queue next-id"));
     assert!(
-        rendered.contains("ralph queue next is NOT an ID generator")
+        rendered.contains("cueloop queue next is NOT an ID generator")
             || rendered.contains("returns the next queued task, not a new ID"),
         "prompt should clarify the difference between 'next' and 'next-id'"
     );
@@ -222,7 +222,7 @@ fn default_scan_prompt_v2_maintenance_requires_queue_validation_safety() -> Resu
         "maintenance v2 prompt must include validation safety rules"
     );
     assert!(
-        rendered.contains("Run `ralph queue validate` before finishing"),
+        rendered.contains("Run `cueloop queue validate` before finishing"),
         "maintenance v2 prompt must require queue validation"
     );
     assert!(
@@ -250,7 +250,7 @@ fn default_scan_prompt_v2_innovation_requires_queue_validation_safety() -> Resul
         "innovation v2 prompt must include validation safety rules"
     );
     assert!(
-        rendered.contains("Run `ralph queue validate` before finishing"),
+        rendered.contains("Run `cueloop queue validate` before finishing"),
         "innovation v2 prompt must require queue validation"
     );
     assert!(

@@ -1,7 +1,7 @@
-//! `ralph daemon ...` command group for background service management.
+//! `cueloop daemon ...` command group for background service management.
 //!
 //! Purpose:
-//! - `ralph daemon ...` command group for background service management.
+//! - `cueloop daemon ...` command group for background service management.
 //!
 //! Responsibilities:
 //! - Define clap structures for daemon commands and flags.
@@ -47,23 +47,23 @@ pub enum DaemonCommand {
     #[command(
         about = "Start Ralph as a background daemon",
         after_long_help = "Examples:
- ralph daemon start
- ralph daemon start --empty-poll-ms 5000
- ralph daemon start --wait-poll-ms 500"
+ cueloop daemon start
+ cueloop daemon start --empty-poll-ms 5000
+ cueloop daemon start --wait-poll-ms 500"
     )]
     Start(DaemonStartArgs),
     /// Request the daemon to stop gracefully.
     #[command(
         about = "Request the daemon to stop",
         after_long_help = "Examples:
- ralph daemon stop"
+ cueloop daemon stop"
     )]
     Stop,
     /// Show daemon status (running, stopped, or stale).
     #[command(
         about = "Show daemon status",
         after_long_help = "Examples:
- ralph daemon status"
+ cueloop daemon status"
     )]
     Status,
     /// Internal: Run the daemon serve loop (do not use directly).
@@ -73,12 +73,12 @@ pub enum DaemonCommand {
     #[command(
         about = "Inspect daemon logs",
         after_long_help = "Examples:
- ralph daemon logs
- ralph daemon logs --tail 50
- ralph daemon logs --follow --tail 200
- ralph daemon logs --since 'in 10 minutes'
- ralph daemon logs --level error --contains \"webhook\"
- ralph daemon logs --json --since 2026-02-01T00:00:00Z"
+ cueloop daemon logs
+ cueloop daemon logs --tail 50
+ cueloop daemon logs --follow --tail 200
+ cueloop daemon logs --since 'in 10 minutes'
+ cueloop daemon logs --level error --contains \"webhook\"
+ cueloop daemon logs --json --since 2026-02-01T00:00:00Z"
     )]
     Logs(DaemonLogsArgs),
 }

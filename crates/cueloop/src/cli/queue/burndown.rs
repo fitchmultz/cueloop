@@ -25,10 +25,10 @@ use crate::reports;
 
 use super::QueueReportFormat;
 
-/// Arguments for `ralph queue burndown`.
+/// Arguments for `cueloop queue burndown`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue burndown\n  ralph queue burndown --days 30\n  ralph queue burndown --format json"
+    after_long_help = "Examples:\n  cueloop queue burndown\n  cueloop queue burndown --days 30\n  cueloop queue burndown --format json"
 )]
 pub struct QueueBurndownArgs {
     /// Number of days to show (default: 7).

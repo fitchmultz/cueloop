@@ -1,7 +1,7 @@
-//! Task display command handler for `ralph task show` subcommand.
+//! Task display command handler for `cueloop task show` subcommand.
 //!
 //! Purpose:
-//! - Task display command handler for `ralph task show` subcommand.
+//! - Task display command handler for `cueloop task show` subcommand.
 //!
 //! Responsibilities:
 //! - Handle `show` and `details` commands.

@@ -51,7 +51,7 @@ impl QueueLockInspection {
 /// Clear stale queue lock when resuming a session.
 ///
 /// This helper is called during resume to preemptively clean up stale locks
-/// left behind by a crashed or killed ralph process. Normal lock acquisition
+/// left behind by a crashed or killed cueloop process. Normal lock acquisition
 /// also auto-clears confirmed-dead PID locks; this remains a resume-specific
 /// preflight so resume decisions see a clean queue-lock state.
 ///

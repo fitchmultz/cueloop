@@ -1,7 +1,7 @@
-//! Regression coverage for the `ralph scan` CLI surface.
+//! Regression coverage for the `cueloop scan` CLI surface.
 //!
 //! Purpose:
-//! - Regression coverage for the `ralph scan` CLI surface.
+//! - Regression coverage for the `cueloop scan` CLI surface.
 //!
 //! Responsibilities:
 //! - Verify help examples stay current.
@@ -47,7 +47,7 @@ fn scan_help_examples_include_positional_prompt() {
     let help = scan.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph scan \"production readiness gaps\""),
+        help.contains("cueloop scan \"production readiness gaps\""),
         "missing positional prompt example: {help}"
     );
     assert!(

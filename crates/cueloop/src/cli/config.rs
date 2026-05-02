@@ -1,7 +1,7 @@
-//! `ralph config ...` command group: Clap types and handler.
+//! `cueloop config ...` command group: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph config ...` command group: Clap types and handler.
+//! - `cueloop config ...` command group: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -34,7 +34,7 @@ pub enum ConfigShowFormat {
     Json,
 }
 
-/// Arguments for the `ralph config show` command.
+/// Arguments for the `cueloop config show` command.
 #[derive(Args, Debug, Clone, Copy)]
 pub struct ConfigShowArgs {
     /// Output format.
@@ -223,7 +223,7 @@ fn format_reasoning_effort(effort: contracts::ReasoningEffort) -> &'static str {
     }
 }
 
-/// Arguments for `ralph config trust ...`.
+/// Arguments for `cueloop config trust ...`.
 #[derive(Args, Debug)]
 pub struct ConfigTrustArgs {
     #[command(subcommand)]
@@ -239,7 +239,7 @@ pub enum ConfigTrustCommand {
 #[derive(Args)]
 #[command(
     about = "Inspect and manage CueLoop configuration",
-    after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config paths\n  ralph config schema\n  ralph config trust init\n  ralph config profiles list\n  ralph config profiles show fast-local"
+    after_long_help = "Examples:\n  cueloop config show\n  cueloop config show --format json\n  cueloop config paths\n  cueloop config schema\n  cueloop config trust init\n  cueloop config profiles list\n  cueloop config profiles show fast-local"
 )]
 pub struct ConfigArgs {
     #[command(subcommand)]
@@ -250,33 +250,33 @@ pub struct ConfigArgs {
 pub enum ConfigCommand {
     /// Show the resolved CueLoop configuration.
     #[command(
-        after_long_help = "Examples:\n  ralph config show\n  ralph config show --format json\n  ralph config show --format yaml"
+        after_long_help = "Examples:\n  cueloop config show\n  cueloop config show --format json\n  cueloop config show --format yaml"
     )]
     Show(ConfigShowArgs),
     /// Print paths to the queue, done archive, and config files.
-    #[command(after_long_help = "Example:\n  ralph config paths")]
+    #[command(after_long_help = "Example:\n  cueloop config paths")]
     Paths,
     /// Print the JSON schema for the configuration.
-    #[command(after_long_help = "Example:\n  ralph config schema")]
+    #[command(after_long_help = "Example:\n  cueloop config schema")]
     Schema,
     /// List and inspect configuration profiles.
     #[command(
-        after_long_help = "Examples:\n  ralph config profiles list\n  ralph config profiles show fast-local\n  ralph config profiles show deep-review"
+        after_long_help = "Examples:\n  cueloop config profiles list\n  cueloop config profiles show fast-local\n  cueloop config profiles show deep-review"
     )]
     Profiles(ConfigProfilesArgs),
     /// Manage repo-local execution trust (`.cueloop/trust.jsonc`, with legacy `.ralph/trust.jsonc` support).
-    #[command(after_long_help = "Examples:\n  ralph config trust init")]
+    #[command(after_long_help = "Examples:\n  cueloop config trust init")]
     Trust(ConfigTrustArgs),
 }
 
-/// Arguments for the `ralph config profiles` command.
+/// Arguments for the `cueloop config profiles` command.
 #[derive(Args)]
 pub struct ConfigProfilesArgs {
     #[command(subcommand)]
     pub command: ConfigProfilesCommand,
 }
 
-/// Subcommands for `ralph config profiles`.
+/// Subcommands for `cueloop config profiles`.
 #[derive(Subcommand)]
 pub enum ConfigProfilesCommand {
     /// List available configured profiles.

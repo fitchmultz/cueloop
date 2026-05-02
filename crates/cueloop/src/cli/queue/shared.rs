@@ -85,7 +85,7 @@ pub enum QueueExportFormat {
     Gh,
 }
 
-/// Import format for `ralph queue import`.
+/// Import format for `cueloop queue import`.
 #[derive(Clone, Copy, Debug, ValueEnum)]
 #[clap(rename_all = "snake_case")]
 pub enum QueueImportFormat {
@@ -97,7 +97,7 @@ pub enum QueueImportFormat {
     Json,
 }
 
-/// Sort-by field for `ralph queue sort` (reorders queue file).
+/// Sort-by field for `cueloop queue sort` (reorders queue file).
 ///
 /// Intentionally conservative: only supports priority to avoid dangerous
 /// "reorder by arbitrary field" footguns that mutate queue.json.
@@ -116,7 +116,7 @@ impl std::fmt::Display for QueueSortBy {
     }
 }
 
-/// Sort-by field for `ralph queue list` (sorts output only).
+/// Sort-by field for `cueloop queue list` (sorts output only).
 ///
 /// Supports comprehensive time-based and metadata sorting for triage
 /// without the risks of mutating queue.json ordering.

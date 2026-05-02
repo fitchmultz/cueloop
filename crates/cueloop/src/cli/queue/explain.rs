@@ -26,15 +26,15 @@ use crate::cli::queue::shared::QueueReportFormat;
 use crate::config::Resolved;
 use crate::queue::operations::{RunnableSelectionOptions, queue_runnability_report};
 
-/// Arguments for `ralph queue explain`.
+/// Arguments for `cueloop queue explain`.
 #[derive(Args)]
 #[command(
     about = "Explain why tasks are (not) runnable",
     after_long_help = "Examples:\n\
-  ralph queue explain\n\
-  ralph queue explain --format json\n\
-  ralph queue explain --include-draft\n\
-  ralph queue explain --format json --include-draft"
+  cueloop queue explain\n\
+  cueloop queue explain --format json\n\
+  cueloop queue explain --include-draft\n\
+  cueloop queue explain --format json --include-draft"
 )]
 pub struct QueueExplainArgs {
     /// Output format (text or json).
@@ -139,14 +139,14 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
             println!("Hints:");
             if let Some(task_id) = blocking.task_id.as_deref() {
                 println!(
-                    "  - Run 'ralph task ready {}' to promote the first actionable leaf",
+                    "  - Run 'cueloop task ready {}' to promote the first actionable leaf",
                     task_id
                 );
             } else {
                 println!("  - Promote a leaf draft task to todo");
             }
             println!(
-                "  - For future decompositions, use 'ralph task decompose --write --parent-status draft --leaf-status todo <SOURCE>'"
+                "  - For future decompositions, use 'cueloop task decompose --write --parent-status draft --leaf-status todo <SOURCE>'"
             );
             println!();
         }
@@ -234,12 +234,12 @@ fn print_text_explanation(report: &crate::queue::operations::QueueRunnabilityRep
         // Hints
         println!("Hints:");
         if report.summary.blocked_by_dependencies > 0 {
-            println!("  - Run 'ralph queue graph --task <ID>' to visualize dependencies");
+            println!("  - Run 'cueloop queue graph --task <ID>' to visualize dependencies");
         }
         if report.summary.blocked_by_schedule > 0 {
-            println!("  - Run 'ralph queue list --scheduled' to see scheduled tasks");
+            println!("  - Run 'cueloop queue list --scheduled' to see scheduled tasks");
         }
-        println!("  - Run 'ralph run one --dry-run' to see what would be selected");
+        println!("  - Run 'cueloop run one --dry-run' to see what would be selected");
     }
 
     // If there is a selected task, show its details

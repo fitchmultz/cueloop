@@ -23,7 +23,7 @@ fn test_owner(started_at: &str) -> LockOwner {
     LockOwner {
         pid: 42,
         started_at: started_at.to_string(),
-        command: "ralph run loop".to_string(),
+        command: "cueloop run loop".to_string(),
         label: "run loop".to_string(),
     }
 }
@@ -129,7 +129,7 @@ fn acquire_dir_lock_auto_clears_stale_lock_without_force() -> anyhow::Result<()>
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run loop\n",
+            "pid: {}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run loop\n",
             find_definitely_dead_pid()
         ),
     )?;
@@ -164,7 +164,7 @@ fn lock_error_suggestions_do_not_emit_manual_rm_commands() {
         }),
     );
 
-    assert!(message.contains("ralph queue unlock --yes"));
+    assert!(message.contains("cueloop queue unlock --yes"));
     assert!(!message.contains("rm -rf"), "message was: {message}");
 }
 

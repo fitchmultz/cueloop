@@ -1,7 +1,7 @@
-//! Task cloning command handler for `ralph task clone` subcommand.
+//! Task cloning command handler for `cueloop task clone` subcommand.
 //!
 //! Purpose:
-//! - Task cloning command handler for `ralph task clone` subcommand.
+//! - Task cloning command handler for `cueloop task clone` subcommand.
 //!
 //! Responsibilities:
 //! - Handle `clone` command (duplicate an existing task).

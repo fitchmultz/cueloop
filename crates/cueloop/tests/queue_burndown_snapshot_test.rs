@@ -1,7 +1,7 @@
-//! Snapshot tests for `ralph queue burndown` text output.
+//! Snapshot tests for `cueloop queue burndown` text output.
 //!
 //! Purpose:
-//! - Snapshot tests for `ralph queue burndown` text output.
+//! - Snapshot tests for `cueloop queue burndown` text output.
 //!
 //! Responsibilities:
 //! - Lock in the human-readable burndown text format.

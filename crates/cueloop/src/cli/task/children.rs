@@ -1,7 +1,7 @@
-//! Handler for `ralph task children` subcommand.
+//! Handler for `cueloop task children` subcommand.
 //!
 //! Purpose:
-//! - Handler for `ralph task children` subcommand.
+//! - Handler for `cueloop task children` subcommand.
 //!
 //! Responsibilities:
 //! - List child tasks where parent_id matches the given task ID.

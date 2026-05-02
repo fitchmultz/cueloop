@@ -46,7 +46,7 @@ If a task is already accurate, do not rewrite it and do not change `updated_at`.
 - Preserve root shape `{"version": 1, "tasks": [...]}`.
 - Use double-quoted JSON strings, valid arrays/objects, no trailing commas.
 - Timestamps must be UTC RFC3339 with `Z`, for example `2026-01-27T19:22:00Z`.
-- Run `ralph queue validate` before finishing and fix validation errors.
+- Run `cueloop queue validate` before finishing and fix validation errors.
 
 # Final Response Shape
 - Task IDs reviewed

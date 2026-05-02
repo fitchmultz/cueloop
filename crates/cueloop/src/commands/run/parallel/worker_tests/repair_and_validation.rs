@@ -213,7 +213,7 @@ fn select_next_task_locked_rejects_non_utc_done_timestamps_without_persisting() 
         "error should explain read-only selection repair guidance: {err_msg}"
     );
     assert!(
-        err_msg.contains("ralph queue repair"),
+        err_msg.contains("cueloop queue repair"),
         "error should point to undo-backed repair: {err_msg}"
     );
 

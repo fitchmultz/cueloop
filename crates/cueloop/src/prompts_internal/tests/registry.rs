@@ -75,7 +75,7 @@ fn registry_maps_prompt_metadata() {
             id: PromptTemplateId::TaskBuilder,
             rel_path: ".cueloop/prompts/task_builder.md",
             label: "task builder",
-            embedded_marker: "ralph queue next-id",
+            embedded_marker: "cueloop queue next-id",
             project_guidance: true,
         },
         Expectation {

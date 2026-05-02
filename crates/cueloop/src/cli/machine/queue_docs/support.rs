@@ -95,13 +95,13 @@ pub(super) fn continuation_for_valid_queue(
             if let Some(task_id) = blocking.task_id.as_deref() {
                 next_steps.push(step(
                     "Promote first draft leaf",
-                    &format!("ralph task ready {task_id}"),
+                    &format!("cueloop task ready {task_id}"),
                     "Promote the first actionable draft leaf to todo.",
                 ));
             }
             next_steps.push(step(
                 "Inspect runnability",
-                "ralph queue explain",
+                "cueloop queue explain",
                 "Review queue runnability and draft activation guidance.",
             ));
             if !warnings.is_empty() {
@@ -142,7 +142,7 @@ pub(super) fn continuation_for_valid_queue(
             next_steps: vec![
                 step(
                     "Inspect runnability",
-                    "ralph queue explain",
+                    "cueloop queue explain",
                     "Review why the next task is waiting or blocked.",
                 ),
                 step(

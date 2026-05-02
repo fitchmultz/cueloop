@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue next --with-eta`.
+//! Integration tests for `cueloop queue next --with-eta`.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue next --with-eta`.
+//! - Integration tests for `cueloop queue next --with-eta`.
 //!
 //! Responsibilities:
 //! - Validate `--with-eta` output for both runnable tasks and the "no runnable task" case.

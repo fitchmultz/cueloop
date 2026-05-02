@@ -42,7 +42,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                 "queue_exists",
                 &format!("queue file missing at {}", resolved.queue_path.display()),
                 false,
-                Some("Run 'ralph init' to create a new queue"),
+                Some("Run 'cueloop init' to create a new queue"),
             )
             .with_blocking(queue_recovery_state(
                 "queue_missing",
@@ -154,7 +154,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                                         "queue_valid",
                                         &format!("queue validation failed: {}", e),
                                         fix_available,
-                                        Some("Run 'ralph queue repair' to repair"),
+                                        Some("Run 'cueloop queue repair' to repair"),
                                     )
                                     .with_fix_applied(false)
                                     .with_blocking(
@@ -179,7 +179,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                                 "queue_valid",
                                 &format!("queue validation failed: {}", e),
                                 fix_available,
-                                Some("Run 'ralph queue repair' or use --auto-fix to repair automatically"),
+                                Some("Run 'cueloop queue repair' or use --auto-fix to repair automatically"),
                             )
                             .with_blocking(queue_recovery_state(
                                 "queue_invalid",
@@ -244,7 +244,7 @@ pub(crate) fn check_done_archive(report: &mut DoctorReport, resolved: &config::R
                         "done_archive_valid",
                         &format!("done archive validation failed: {}", e),
                         false,
-                        Some("Run 'ralph queue repair' to repair the done archive"),
+                        Some("Run 'cueloop queue repair' to repair the done archive"),
                     )
                     .with_blocking(queue_recovery_state(
                         "done_archive_invalid",

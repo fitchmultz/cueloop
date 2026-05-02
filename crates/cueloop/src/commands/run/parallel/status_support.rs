@@ -2,7 +2,7 @@
 //!
 //! Responsibilities: inspect worker workspaces, blocked-push markers, and lifecycle summaries.
 //!
-//! Scope: read-only status aggregation for `ralph run parallel status`.
+//! Scope: read-only status aggregation for `cueloop run parallel status`.
 //!
 //! Usage: called from `parallel_ops` status/document rendering code.
 //!

@@ -121,7 +121,7 @@ fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() ->
     let temp = seeded_repo()?;
     std::fs::create_dir_all(temp.path().join(".ralph"))?;
     std::fs::write(temp.path().join(".ralph/config.jsonc"), "{tracked_config}")?;
-    git_test::commit_all(temp.path(), "add tracked ralph config")?;
+    git_test::commit_all(temp.path(), "add tracked cueloop config")?;
 
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".ralph/workspaces/parallel");

@@ -1,4 +1,4 @@
-//! `ralph machine` CLI facade.
+//! `cueloop machine` CLI facade.
 //!
 //! Purpose:
 //! - Provide the stable machine-command entrypoint for `main.rs`, tests, and the macOS app.

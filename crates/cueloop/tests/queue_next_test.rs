@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue next` behavior.
+//! Integration tests for `cueloop queue next` behavior.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue next` behavior.
+//! - Integration tests for `cueloop queue next` behavior.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -35,7 +35,7 @@ fn queue_next_reports_empty_queue_with_done_tasks() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let queue = r#"{

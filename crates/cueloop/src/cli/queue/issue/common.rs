@@ -1,7 +1,7 @@
-//! Shared publish-mode, filtering, and queue lookup helpers for `ralph queue issue`.
+//! Shared publish-mode, filtering, and queue lookup helpers for `cueloop queue issue`.
 //!
 //! Purpose:
-//! - Shared publish-mode, filtering, and queue lookup helpers for `ralph queue issue`.
+//! - Shared publish-mode, filtering, and queue lookup helpers for `cueloop queue issue`.
 //!
 //! Responsibilities:
 //! - Define internal publish result/filter/summary types.

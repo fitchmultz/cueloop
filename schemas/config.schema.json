@@ -917,7 +917,7 @@
       ]
     },
     "QueueAgingThresholds": {
-      "description": "Aging threshold configuration for `ralph queue aging`.\n\nControls the day thresholds for categorizing tasks by age.\nOrdering invariant: warning_days < stale_days < rotten_days",
+      "description": "Aging threshold configuration for `cueloop queue aging`.\n\nControls the day thresholds for categorizing tasks by age.\nOrdering invariant: warning_days < stale_days < rotten_days",
       "type": "object",
       "properties": {
         "rotten_days": {
@@ -961,7 +961,7 @@
       "type": "object",
       "properties": {
         "aging_thresholds": {
-          "description": "Thresholds for `ralph queue aging` buckets.\n\nDefault: warning>7d, stale>14d, rotten>30d.\nOrdering must satisfy: warning_days < stale_days < rotten_days.",
+          "description": "Thresholds for `cueloop queue aging` buckets.\n\nDefault: warning>7d, stale>14d, rotten>30d.\nOrdering must satisfy: warning_days < stale_days < rotten_days.",
           "anyOf": [
             {
               "$ref": "#/$defs/QueueAgingThresholds"

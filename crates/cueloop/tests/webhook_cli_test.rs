@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Tests run in isolated temp repos initialized with `ralph init --non-interactive`.
+//! - Tests run in isolated temp repos initialized with `cueloop init --non-interactive`.
 //! - Failure records are stored under `.ralph/cache/webhooks/failures.json`.
 
 use anyhow::{Context, Result};

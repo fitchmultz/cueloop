@@ -1,7 +1,7 @@
-//! CLI handler for `ralph undo` command.
+//! CLI handler for `cueloop undo` command.
 //!
 //! Purpose:
-//! - CLI handler for `ralph undo` command.
+//! - CLI handler for `cueloop undo` command.
 //!
 //! Responsibilities:
 //! - List, preview, or restore continuation checkpoints.
@@ -42,7 +42,7 @@ pub struct UndoArgs {
     pub verbose: bool,
 }
 
-/// Handle the `ralph undo` command.
+/// Handle the `cueloop undo` command.
 pub fn handle(args: UndoArgs, force: bool) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
     let document = crate::cli::machine::build_queue_undo_document(
@@ -81,7 +81,7 @@ pub fn handle(args: UndoArgs, force: bool) -> Result<()> {
                 serde_json::from_value::<Vec<crate::undo::UndoSnapshotMeta>>(result.clone())?;
             if snapshots.is_empty() {
                 println!(
-                    "Ralph will create new checkpoints automatically before future queue writes."
+                    "CueLoop will create new checkpoints automatically before future queue writes."
                 );
             } else {
                 println!("Available continuation checkpoints (newest first):");
@@ -104,7 +104,7 @@ pub fn handle(args: UndoArgs, force: bool) -> Result<()> {
             println!("Tasks affected: {}", restore.tasks_affected);
             if args.verbose && !args.dry_run {
                 println!();
-                println!("Run `ralph queue list` to inspect the restored queue state in detail.");
+                println!("Run `cueloop queue list` to inspect the restored queue state in detail.");
             }
         }
     }

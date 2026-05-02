@@ -29,10 +29,10 @@ fn run_one_help_includes_phase_semantics() {
     let run_one = run.find_subcommand_mut("one").expect("run one subcommand");
     let help = run_one.render_long_help().to_string();
 
-    assert!(help.contains("ralph run one --phases 3 (plan/implement+CI/review+complete)"));
-    assert!(help.contains("ralph run one --phases 2 (plan/implement)"));
-    assert!(help.contains("ralph run one --phases 1 (single-pass)"));
-    assert!(help.contains("ralph run one --quick (single-pass, same as --phases 1)"));
+    assert!(help.contains("cueloop run one --phases 3 (plan/implement+CI/review+complete)"));
+    assert!(help.contains("cueloop run one --phases 2 (plan/implement)"));
+    assert!(help.contains("cueloop run one --phases 1 (single-pass)"));
+    assert!(help.contains("cueloop run one --quick (single-pass, same as --phases 1)"));
 }
 
 #[test]
@@ -44,8 +44,8 @@ fn run_loop_help_mentions_repo_prompt_examples() {
         .expect("run loop subcommand");
     let help = run_loop.render_long_help().to_string();
 
-    assert!(help.contains("ralph run loop --repo-prompt tools --max-tasks 1"));
-    assert!(help.contains("ralph run loop --repo-prompt off --max-tasks 1"));
+    assert!(help.contains("cueloop run loop --repo-prompt tools --max-tasks 1"));
+    assert!(help.contains("cueloop run loop --repo-prompt off --max-tasks 1"));
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn run_loop_help_clarifies_unlimited_max_tasks() {
 
     assert!(help.contains("Maximum tasks to run before stopping (0 = unlimited)"));
     assert!(help.contains("`--max-tasks 0` means unlimited successful iterations."));
-    assert!(help.contains("ralph run loop --max-tasks 0 (unlimited)"));
+    assert!(help.contains("cueloop run loop --max-tasks 0 (unlimited)"));
 }
 
 #[test]
@@ -147,9 +147,9 @@ fn run_one_help_includes_dry_run_examples() {
     let run_one = run.find_subcommand_mut("one").expect("run one subcommand");
     let help = run_one.render_long_help().to_string();
 
-    assert!(help.contains("ralph run one --dry-run"));
-    assert!(help.contains("ralph run one --dry-run --include-draft"));
-    assert!(help.contains("ralph run one --dry-run --id RQ-0001"));
+    assert!(help.contains("cueloop run one --dry-run"));
+    assert!(help.contains("cueloop run one --dry-run --include-draft"));
+    assert!(help.contains("cueloop run one --dry-run --id RQ-0001"));
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn run_loop_help_includes_dry_run_examples() {
         .expect("run loop subcommand");
     let help = run_loop.render_long_help().to_string();
 
-    assert!(help.contains("ralph run loop --dry-run"));
+    assert!(help.contains("cueloop run loop --dry-run"));
 }
 
 #[test]

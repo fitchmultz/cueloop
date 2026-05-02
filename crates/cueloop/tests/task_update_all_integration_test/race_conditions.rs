@@ -1,4 +1,4 @@
-//! Purpose: race-condition integration coverage for single-task `ralph task update` flows.
+//! Purpose: race-condition integration coverage for single-task `cueloop task update` flows.
 //!
 //! Responsibilities:
 //! - Verify behavior when a runner moves the target task into `done.jsonc` during update.
@@ -25,7 +25,7 @@ fn task_update_single_task_moved_to_done_during_update() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     write_queue_with_one_task(dir.path())?;
@@ -94,7 +94,7 @@ fn task_update_single_task_removed_during_update() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     write_queue_with_one_task(dir.path())?;
@@ -135,7 +135,7 @@ fn task_update_single_task_moved_to_done_no_changes() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     write_queue_with_one_task(dir.path())?;

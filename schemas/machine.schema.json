@@ -1407,7 +1407,7 @@
       },
       "QueueAgingThresholds": {
         "additionalProperties": false,
-        "description": "Aging threshold configuration for `ralph queue aging`.\n\nControls the day thresholds for categorizing tasks by age.\nOrdering invariant: warning_days < stale_days < rotten_days",
+        "description": "Aging threshold configuration for `cueloop queue aging`.\n\nControls the day thresholds for categorizing tasks by age.\nOrdering invariant: warning_days < stale_days < rotten_days",
         "properties": {
           "rotten_days": {
             "default": null,
@@ -1459,7 +1459,7 @@
               }
             ],
             "default": null,
-            "description": "Thresholds for `ralph queue aging` buckets.\n\nDefault: warning>7d, stale>14d, rotten>30d.\nOrdering must satisfy: warning_days < stale_days < rotten_days."
+            "description": "Thresholds for `cueloop queue aging` buckets.\n\nDefault: warning>7d, stale>14d, rotten>30d.\nOrdering must satisfy: warning_days < stale_days < rotten_days."
           },
           "auto_archive_terminal_after_days": {
             "default": null,
@@ -9040,7 +9040,7 @@
       },
       "QueueAgingThresholds": {
         "additionalProperties": false,
-        "description": "Aging threshold configuration for `ralph queue aging`.\n\nControls the day thresholds for categorizing tasks by age.\nOrdering invariant: warning_days < stale_days < rotten_days",
+        "description": "Aging threshold configuration for `cueloop queue aging`.\n\nControls the day thresholds for categorizing tasks by age.\nOrdering invariant: warning_days < stale_days < rotten_days",
         "properties": {
           "rotten_days": {
             "default": null,
@@ -9092,7 +9092,7 @@
               }
             ],
             "default": null,
-            "description": "Thresholds for `ralph queue aging` buckets.\n\nDefault: warning>7d, stale>14d, rotten>30d.\nOrdering must satisfy: warning_days < stale_days < rotten_days."
+            "description": "Thresholds for `cueloop queue aging` buckets.\n\nDefault: warning>7d, stale>14d, rotten>30d.\nOrdering must satisfy: warning_days < stale_days < rotten_days."
           },
           "auto_archive_terminal_after_days": {
             "default": null,
