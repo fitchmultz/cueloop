@@ -39,7 +39,7 @@ These are available on most commands:
 - `cueloop daemon` - Background daemon controls
 - `cueloop prd` - Convert PRD markdown into tasks
 - `cueloop completions` - Generate shell completions
-- `cueloop migrate` - Check/apply config migrations and explicit `runtime-dir` migration (`.cueloop` → `.cueloop`)
+- `cueloop migrate` - Check/apply config migrations and explicit `runtime-dir` migration (`.ralph` → `.cueloop`)
 - `cueloop cleanup` - Remove temporary runtime artifacts
 - `cueloop version` - Build/version info
 - `cueloop watch` - File watch to detect task comments
