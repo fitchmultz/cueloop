@@ -1,7 +1,7 @@
 <!-- CUELOOP_README_VERSION: 9 -->
 # CueLoop runtime files
 
-This repo is using CueLoop. The `cueloop` executable is still the command name for this phase. This project stores runtime state in `.cueloop/`. New repos default to `.cueloop/`; legacy repos that already use `.cueloop/` remain supported.
+This repo is using CueLoop. The command is `cueloop`. This project stores runtime state in `.cueloop/`.
 
 > This file is generated and owned by CueLoop. `cueloop init` and agent-facing write-enabled commands may refresh it when CueLoop ships a newer template. Avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
@@ -142,7 +142,7 @@ Standard placeholders like `{{USER_REQUEST}}` are still processed after variable
 
 ## Prompt overrides
 
-Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `.cueloop/prompts/`; when both exist, `.cueloop/prompts/` takes precedence over legacy `.cueloop/prompts/`.
+Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `.cueloop/prompts/`.
 
 Useful commands:
 
@@ -212,7 +212,7 @@ Security notes:
 
 - Never commit safeguard dumps.
 - Debug mode writes raw runner output to `.cueloop/logs/debug.log`.
-- Temp directories still use the legacy `/tmp/cueloop/` root and `cueloop_` prefixes until a later compatibility slice.
+- Temp directories use the `/tmp/cueloop/` root and `cueloop_` prefixes.
 
 ## Common flags
 

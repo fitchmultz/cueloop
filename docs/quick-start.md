@@ -13,7 +13,7 @@ Get CueLoop running in a repository in a few minutes.
 cargo install cueloop-agent-loop
 ```
 
-This installs the primary `cueloop` executable and the legacy `cueloop` compatibility alias.
+This installs the `cueloop` executable.
 
 Or from source:
 
@@ -123,7 +123,7 @@ Default runtime files:
 - `.cueloop/done.jsonc`
 - `.cueloop/config.jsonc`
 
-This repository intentionally keeps sanitized `.cueloop/` state for dogfooding and reproducible demos. Legacy `.cueloop/` runtime directories remain supported during the migration window.
+This repository intentionally keeps sanitized `.cueloop/` state for dogfooding and reproducible demos.
 
 ## Next Docs
 
