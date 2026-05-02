@@ -1,25 +1,12 @@
 //! Release script contract tests.
 //!
-//! Purpose:
-//! - Release script contract tests.
-//!
-//! Responsibilities:
-//! - Guard release-script transaction invariants that should not regress silently.
-//! - Verify release automation derives GitHub metadata from the current repo.
-//!
-//! Not handled here:
-//! - End-to-end release execution.
-//! - Credentialed GitHub or crates.io interactions.
-//!
-//!
-//! Usage:
-//! - Used through the crate module tree or integration test harness.
-//!
-//! Invariants/assumptions:
-//! - The release script lives at `scripts/release.sh` relative to repo root.
-//! - The release-notes template lives at `.github/release-notes-template.md`.
+//! These tests guard release-script invariants that should not regress silently.
+//! They do not run an end-to-end release or require GitHub/crates.io credentials.
 
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+};
 
 fn repo_root() -> PathBuf {
     let crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -36,19 +23,44 @@ fn read_repo_file(relative_path: &str) -> String {
         .unwrap_or_else(|err| panic!("failed to read {relative_path}: {err}"))
 }
 
+fn parse_shell_string_arrays(script: &str) -> BTreeMap<String, Vec<String>> {
+    let mut arrays = BTreeMap::new();
+    let mut lines = script.lines();
+
+    while let Some(line) = lines.next() {
+        let Some(name) = line.trim().strip_suffix("=(") else {
+            continue;
+        };
+
+        let mut entries = Vec::new();
+        for array_line in lines.by_ref() {
+            let array_line = array_line.trim();
+            if array_line == ")" {
+                break;
+            }
+            if let Some(entry) = array_line
+                .strip_prefix('"')
+                .and_then(|line| line.strip_suffix('"'))
+            {
+                entries.push(entry.to_owned());
+            }
+        }
+        arrays.insert(name.to_owned(), entries);
+    }
+
+    arrays
+}
+
+fn parse_shell_string_array(script: &str, name: &str) -> Vec<String> {
+    parse_shell_string_arrays(script)
+        .remove(name)
+        .unwrap_or_else(|| panic!("release policy should define {name}"))
+}
+
 fn parse_release_metadata_paths(script: &str) -> BTreeSet<String> {
-    script
-        .split_once("RELEASE_METADATA_PATHS=(")
-        .and_then(|(_, rest)| rest.split_once(')'))
-        .map(|(array_body, _)| {
-            array_body
-                .lines()
-                .map(str::trim)
-                .filter_map(|line| line.strip_prefix('"')?.strip_suffix('"'))
-                .map(str::to_owned)
-                .collect()
-        })
-        .expect("release policy should define RELEASE_METADATA_PATHS")
+    parse_shell_string_array(script, "RELEASE_METADATA_PATHS")
+        .into_iter()
+        .collect()
 }
 
 fn parse_makefile_generated_schema_paths(makefile: &str) -> BTreeSet<String> {
@@ -61,6 +73,34 @@ fn parse_makefile_generated_schema_paths(makefile: &str) -> BTreeSet<String> {
                 .then(|| path.to_owned())
         })
         .collect()
+}
+
+#[test]
+fn release_policy_arrays_do_not_repeat_entries() {
+    let script = read_repo_file("scripts/lib/release_policy.sh");
+    let arrays = parse_shell_string_arrays(&script);
+
+    assert!(
+        !arrays.is_empty(),
+        "release policy should define shell string arrays"
+    );
+
+    let mut duplicates_by_array = BTreeMap::new();
+    for (array, entries) in arrays {
+        let mut seen = BTreeSet::new();
+        let duplicates: Vec<_> = entries
+            .into_iter()
+            .filter(|entry| !seen.insert(entry.clone()))
+            .collect();
+        if !duplicates.is_empty() {
+            duplicates_by_array.insert(array, duplicates);
+        }
+    }
+
+    assert!(
+        duplicates_by_array.is_empty(),
+        "release policy arrays should not contain duplicate entries: {duplicates_by_array:?}"
+    );
 }
 
 #[test]

@@ -93,5 +93,5 @@ pub(crate) fn prompts_reference_readme(repo_root: &Path) -> Result<bool> {
 }
 
 fn prompt_references_runtime_readme(prompt: &str) -> bool {
-    prompt.contains(".cueloop/README.md") || prompt.contains(".cueloop/README.md")
+    prompt.contains(".cueloop/README.md")
 }

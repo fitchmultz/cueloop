@@ -1,19 +1,7 @@
-//! Source-snapshot runtime-state path contracts for `pre-public-check.sh`.
+//! Source-snapshot `.cueloop` path contracts for `pre-public-check.sh`.
 //!
-//! Purpose:
-//! - Keep `--allow-no-git` `.cueloop`/`.cueloop` path rejection coverage grouped together.
-//!
-//! Responsibilities:
-//! - Verify non-directory runtime roots, symlinked allowlisted files, and unallowlisted runtime paths remain rejected.
-//!
-//! Scope:
-//! - Limited to source-snapshot runtime-state path coverage.
-//!
-//! Usage:
-//! - Loaded by `source_snapshot_safety.rs`.
-//!
-//! Invariants/Assumptions:
-//! - These tests must preserve the existing release-contract assertions verbatim.
+//! These tests verify non-directory runtime roots, symlinked allowlisted files, and
+//! unallowlisted runtime paths remain rejected.
 
 use std::process::Command;
 

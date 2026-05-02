@@ -35,10 +35,6 @@ CUELOOP_TRACKED_ALLOWLIST=(
     ".cueloop/queue.jsonc"
     ".cueloop/done.jsonc"
     ".cueloop/config.jsonc"
-    ".cueloop/README.md"
-    ".cueloop/queue.jsonc"
-    ".cueloop/done.jsonc"
-    ".cueloop/config.jsonc"
 )
 
 PUBLIC_REQUIRED_FILES=(
@@ -59,15 +55,6 @@ PUBLIC_REQUIRED_FILES=(
 PUBLIC_SCAN_EXCLUDES=(
     ".git/"
     "target/"
-    ".cueloop/cache/"
-    ".cueloop/lock/"
-    ".cueloop/logs/"
-    ".cueloop/plugins/"
-    ".cueloop/trust.json"
-    ".cueloop/trust.jsonc"
-    ".cueloop/undo/"
-    ".cueloop/webhooks/"
-    ".cueloop/workspaces/"
     ".cueloop/cache/"
     ".cueloop/lock/"
     ".cueloop/logs/"
@@ -121,29 +108,14 @@ PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
     ".cueloop/workspaces/"
     ".cueloop/undo/"
     ".cueloop/webhooks/"
-    ".cueloop/cache/"
-    ".cueloop/lock/"
-    ".cueloop/logs/"
-    ".cueloop/workspaces/"
-    ".cueloop/undo/"
-    ".cueloop/webhooks/"
 )
 
 PUBLIC_IGNORED_DIRTY_PATHS=(
     ".cueloop/trust.json"
     ".cueloop/trust.jsonc"
-    ".cueloop/trust.json"
-    ".cueloop/trust.jsonc"
 )
 
 PUBLIC_IGNORED_DIRTY_PATH_PREFIXES=(
-    ".cueloop/cache/"
-    ".cueloop/lock/"
-    ".cueloop/logs/"
-    ".cueloop/plugins/"
-    ".cueloop/undo/"
-    ".cueloop/webhooks/"
-    ".cueloop/workspaces/"
     ".cueloop/cache/"
     ".cueloop/lock/"
     ".cueloop/logs/"
@@ -324,7 +296,7 @@ release_is_runtime_state_path() {
     local path="${1#./}"
 
     case "$path" in
-        .cueloop|.cueloop/*|.cueloop|.cueloop/*)
+        .cueloop|.cueloop/*)
             return 0
             ;;
     esac
@@ -341,10 +313,6 @@ release_is_allowed_tracked_runtime_state_path() {
         fi
     done
     return 1
-}
-
-release_is_allowed_tracked_cueloop_path() {
-    release_is_allowed_tracked_runtime_state_path "$1"
 }
 
 release_is_local_only_name() {

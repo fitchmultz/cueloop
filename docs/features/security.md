@@ -318,10 +318,7 @@ require_clean_repo_ignoring_paths(
     force,  // Bypass check if true
     &[
         ".cueloop/queue.jsonc",
-        ".cueloop/queue.jsonc",
         ".cueloop/done.jsonc",
-        ".cueloop/done.jsonc",
-        ".cueloop/config.jsonc",
         ".cueloop/config.jsonc",
         ".cueloop/cache/",
     ],
@@ -329,9 +326,9 @@ require_clean_repo_ignoring_paths(
 ```
 
 Allowed dirty paths (CueLoop's own files):
-- `.cueloop/queue.jsonc` / `.cueloop/queue.jsonc` - Active task queue
-- `.cueloop/done.jsonc` / `.cueloop/done.jsonc` - Completed task archive
-- `.cueloop/config.jsonc` / `.cueloop/config.jsonc` - Project configuration
+- `.cueloop/queue.jsonc` - Active task queue
+- `.cueloop/done.jsonc` - Completed task archive
+- `.cueloop/config.jsonc` - Project configuration
 - `.cueloop/cache/` - Cache directory
 
 ### Revert Modes

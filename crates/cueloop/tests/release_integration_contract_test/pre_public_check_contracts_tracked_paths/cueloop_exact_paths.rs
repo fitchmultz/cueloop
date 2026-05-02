@@ -1,19 +1,7 @@
-//! Exact tracked runtime-state path contracts for `pre-public-check.sh`.
+//! Exact tracked `.cueloop` root path contracts for `pre-public-check.sh`.
 //!
-//! Purpose:
-//! - Keep exact tracked `.cueloop`/`.cueloop` rejection coverage grouped together.
-//!
-//! Responsibilities:
-//! - Verify tracked root runtime-state files and symlinks remain outside the public allowlist.
-//!
-//! Scope:
-//! - Limited to exact tracked runtime-state path coverage.
-//!
-//! Usage:
-//! - Loaded by `pre_public_check_contracts_tracked_paths.rs`.
-//!
-//! Invariants/Assumptions:
-//! - These tests must preserve the existing release-contract assertions verbatim.
+//! These tests verify tracked runtime-state root files and symlinks remain outside the
+//! public allowlist.
 
 use std::process::Command;
 

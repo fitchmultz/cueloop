@@ -135,7 +135,7 @@ collect_tracked_runtime_build_path_violations() {
 collect_tracked_runtime_state_allowlist_violations() {
     local path="$1"
     if release_is_runtime_state_path "$path"; then
-        if [ "$path" = ".cueloop" ] || [ "$path" = ".cueloop" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_runtime_state_path "$path"; then
+        if [ "$path" = ".cueloop" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_runtime_state_path "$path"; then
             unexpected+=("$path")
         fi
     fi
@@ -159,25 +159,23 @@ check_source_snapshot_artifacts() {
         fi
     done
 
-    local runtime_dir
-    for runtime_dir in ".cueloop" ".cueloop"; do
-        if [ -e "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
-            if [ ! -d "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
-                violations+=("$runtime_dir")
-            else
-                while IFS= read -r -d '' rel_path; do
-                    [ -z "$rel_path" ] && continue
-                    rel_path="${rel_path#./}"
-                    release_require_safe_publication_path "Source snapshot" "$rel_path" || return 1
-                    if [ -L "$REPO_ROOT/$rel_path" ] || ! release_is_allowed_tracked_runtime_state_path "$rel_path"; then
-                        violations+=("$rel_path")
-                    fi
-                done < <(
-                    cd "$REPO_ROOT" && find "$runtime_dir" -mindepth 1 -print0
-                )
-            fi
+    local runtime_dir=".cueloop"
+    if [ -e "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
+        if [ ! -d "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
+            violations+=("$runtime_dir")
+        else
+            while IFS= read -r -d '' rel_path; do
+                [ -z "$rel_path" ] && continue
+                rel_path="${rel_path#./}"
+                release_require_safe_publication_path "Source snapshot" "$rel_path" || return 1
+                if [ -L "$REPO_ROOT/$rel_path" ] || ! release_is_allowed_tracked_runtime_state_path "$rel_path"; then
+                    violations+=("$rel_path")
+                fi
+            done < <(
+                cd "$REPO_ROOT" && find "$runtime_dir" -mindepth 1 -print0
+            )
         fi
-    done
+    fi
 
     while IFS= read -r -d '' rel_path; do
         [ -z "$rel_path" ] && continue

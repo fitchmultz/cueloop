@@ -349,7 +349,7 @@ When making breaking changes to config keys or file formats, use the migration s
 - **Migration registry**: `crates/cueloop/src/migration/registry.rs`
 - **Migration facades**: `crates/cueloop/src/migration/{config_migrations/,file_migrations/}`
 - **Migration types**: `ConfigKeyRename`, `ConfigKeyRemove`, `FileRename`, `ReadmeUpdate`
-- **History tracking**: `.cueloop/cache/migrations.jsonc` primary, `.cueloop/cache/migrations.jsonc` legacy fallback (auto-generated)
+- **History tracking**: `.cueloop/cache/migrations.jsonc` (auto-generated)
 - **CLI command**: `cueloop migrate` (check/list/apply)
 
 See `crates/cueloop/src/migration/mod.rs` for invariants/assumptions (idempotency, JSONC comment preservation, backups).

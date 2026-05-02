@@ -1,24 +1,9 @@
 //! Portable path and environment helpers for integration tests.
 //!
-//! Purpose:
-//! - Portable path and environment helpers for integration tests.
-//!
-//! Responsibilities:
-//! - Resolve temp roots that stay outside repo markers and work across platforms.
-//! - Provide shared locks for process-wide environment mutation and nested parallel-run contention.
-//! - Centralize path derivation used by both Rust and CLI integration fixtures.
-//!
-//! Non-scope:
-//! - Queue fixtures, command execution, or synchronization primitives beyond shared locks.
-//!
-//!
-//! Usage:
-//! - Used through the crate module tree or integration test harness.
-//!
-//! Invariants/assumptions callers must respect:
-//! - Returned portable paths may not exist yet; callers create directories when needed.
-//! - Environment mutations must hold `env_lock()` for the full mutation scope.
-//! - Tests that spawn nested `cueloop run loop --parallel ...` workers should hold `parallel_run_lock()` only for the overlapping run window.
+//! Temp roots stay outside repo markers, and process-wide environment mutations must hold
+//! `env_lock()`.
+//! Tests that spawn nested parallel workers should hold `parallel_run_lock()` only for the
+//! overlapping run window.
 
 use cueloop::config;
 use std::path::{Path, PathBuf};
@@ -26,9 +11,8 @@ use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
 
 pub fn path_has_repo_markers(path: &Path) -> bool {
-    path.ancestors().any(|dir| {
-        dir.join(".git").exists() || dir.join(".cueloop").is_dir() || dir.join(".cueloop").is_dir()
-    })
+    path.ancestors()
+        .any(|dir| dir.join(".git").exists() || dir.join(".cueloop").is_dir())
 }
 
 pub fn find_non_repo_temp_base() -> PathBuf {
