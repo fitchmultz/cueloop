@@ -29,7 +29,7 @@ Plugins are discovered automatically but **disabled by default**.
 }
 ```
 
-- Plugin config is passed through `RALPH_PLUGIN_CONFIG_JSON`.
+- Plugin config is passed through `CUELOOP_PLUGIN_CONFIG_JSON`.
 - Runner/processor executable paths come from `plugin.json`, not config.
 - Config-level binary overrides are not supported.
 - Project-scope plugin runtime execution depends on repository trust.

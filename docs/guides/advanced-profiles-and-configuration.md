@@ -143,7 +143,7 @@ Use comments in config for documentation:
   },
   "parallel": {
     // Workspace isolation
-    "workspace_root": "/tmp/ralph-workspaces",
+    "workspace_root": "/tmp/cueloop-workspaces",
     "workers": 3
   }
 }
@@ -151,7 +151,7 @@ Use comments in config for documentation:
 
 ### Layered Configuration Strategy
 
-**Global config** (`~/.config/ralph/config.jsonc`):
+**Global config** (`~/.config/cueloop/config.jsonc`):
 ```json
 {
   "version": 2,
@@ -169,7 +169,7 @@ Use comments in config for documentation:
 }
 ```
 
-**Project config** (`.ralph/config.jsonc`):
+**Project config** (`.cueloop/config.jsonc`):
 ```json
 {
   "version": 2,
@@ -247,7 +247,7 @@ Inject custom instructions at the top of every prompt:
     "instruction_files": [
       "~/.codex/GLOBAL_GUIDELINES.md",
       "AGENTS.md",
-      ".ralph/custom-instructions.md"
+      ".cueloop/custom-instructions.md"
     ]
   }
 }

@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with CueLoop's canonical `ralph` CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical `cueloop` CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use cueloop::commands::init::{
@@ -29,9 +29,9 @@ use tempfile::TempDir;
 
 fn resolved_for(dir: &TempDir) -> Resolved {
     let repo_root = dir.path().to_path_buf();
-    let queue_path = repo_root.join(".ralph/queue.jsonc");
-    let done_path = repo_root.join(".ralph/done.jsonc");
-    let project_config_path = Some(repo_root.join(".ralph/config.jsonc"));
+    let queue_path = repo_root.join(".cueloop/queue.jsonc");
+    let done_path = repo_root.join(".cueloop/done.jsonc");
+    let project_config_path = Some(repo_root.join(".cueloop/config.jsonc"));
     Resolved {
         config: Config::default(),
         repo_root,
@@ -46,14 +46,14 @@ fn resolved_for(dir: &TempDir) -> Resolved {
 
 #[test]
 fn extract_readme_version_fails_on_non_numeric_version() {
-    let content = "<!-- RALPH_README_VERSION: abc -->\n# Test";
+    let content = "<!-- CUELOOP_README_VERSION: abc -->\n# Test";
     let result = extract_readme_version(content);
     assert!(matches!(result, Err(ReadmeVersionError::ParseError { value }) if value == "abc"));
 }
 
 #[test]
 fn extract_readme_version_fails_on_missing_end_delimiter() {
-    let content = "<!-- RALPH_README_VERSION: 5\n# Test";
+    let content = "<!-- CUELOOP_README_VERSION: 5\n# Test";
     let result = extract_readme_version(content);
     assert!(matches!(result, Err(ReadmeVersionError::InvalidFormat)));
 }
@@ -63,15 +63,15 @@ fn check_readme_current_propagates_malformed_marker_error() -> Result<()> {
     let dir = TempDir::new()?;
     let repo_root = dir.path();
 
-    // Create the .ralph directory and prompts that reference README
-    fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
-    fs::write(repo_root.join(".ralph/config.jsonc"), r#"{"version":2}"#)?;
-    let prompt_content = "This prompt references .ralph/README.md for context";
-    fs::write(repo_root.join(".ralph/prompts/worker.md"), prompt_content)?;
+    // Create the .cueloop directory and prompts that reference README
+    fs::create_dir_all(repo_root.join(".cueloop/prompts"))?;
+    fs::write(repo_root.join(".cueloop/config.jsonc"), r#"{"version":2}"#)?;
+    let prompt_content = "This prompt references .cueloop/README.md for context";
+    fs::write(repo_root.join(".cueloop/prompts/worker.md"), prompt_content)?;
 
     // Create a README with malformed version marker
-    let malformed_readme = "<!-- RALPH_README_VERSION: not-a-number -->\n# Test README";
-    fs::write(repo_root.join(".ralph/README.md"), malformed_readme)?;
+    let malformed_readme = "<!-- CUELOOP_README_VERSION: not-a-number -->\n# Test README";
+    fs::write(repo_root.join(".cueloop/README.md"), malformed_readme)?;
 
     // Check that the error is propagated
     let result = check_readme_current_from_root(repo_root);
@@ -91,15 +91,15 @@ fn check_readme_current_handles_legacy_no_marker() -> Result<()> {
     let dir = TempDir::new()?;
     let repo_root = dir.path();
 
-    // Create the .ralph directory and prompts that reference README
-    fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
-    fs::write(repo_root.join(".ralph/config.jsonc"), r#"{"version":2}"#)?;
-    let prompt_content = "This prompt references .ralph/README.md for context";
-    fs::write(repo_root.join(".ralph/prompts/worker.md"), prompt_content)?;
+    // Create the .cueloop directory and prompts that reference README
+    fs::create_dir_all(repo_root.join(".cueloop/prompts"))?;
+    fs::write(repo_root.join(".cueloop/config.jsonc"), r#"{"version":2}"#)?;
+    let prompt_content = "This prompt references .cueloop/README.md for context";
+    fs::write(repo_root.join(".cueloop/prompts/worker.md"), prompt_content)?;
 
     // Create a README without any version marker (legacy file)
     let legacy_readme = "# Test README\nSome content";
-    fs::write(repo_root.join(".ralph/README.md"), legacy_readme)?;
+    fs::write(repo_root.join(".cueloop/README.md"), legacy_readme)?;
 
     // This should succeed and treat it as version 1
     let result = check_readme_current_from_root(repo_root)?;
@@ -125,8 +125,8 @@ fn init_fails_on_malformed_readme_version() -> Result<()> {
     let resolved = resolved_for(&dir);
 
     // Set up existing files
-    fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
-    fs::create_dir_all(resolved.repo_root.join(".ralph/prompts"))?;
+    fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
+    fs::create_dir_all(resolved.repo_root.join(".cueloop/prompts"))?;
     fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(
@@ -135,16 +135,16 @@ fn init_fails_on_malformed_readme_version() -> Result<()> {
     )?;
 
     // Create prompt files that reference the README (so README check is triggered)
-    let prompt_content = "This prompt references .ralph/README.md for context";
+    let prompt_content = "This prompt references .cueloop/README.md for context";
     fs::write(
-        resolved.repo_root.join(".ralph/prompts/worker.md"),
+        resolved.repo_root.join(".cueloop/prompts/worker.md"),
         prompt_content,
     )?;
 
     // Create a README with malformed version marker
-    let malformed_readme = "<!-- RALPH_README_VERSION: invalid-version -->\n# Test";
+    let malformed_readme = "<!-- CUELOOP_README_VERSION: invalid-version -->\n# Test";
     fs::write(
-        resolved.repo_root.join(".ralph/README.md"),
+        resolved.repo_root.join(".cueloop/README.md"),
         malformed_readme,
     )?;
 
@@ -178,8 +178,8 @@ fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
     let resolved = resolved_for(&dir);
 
     // Set up existing files
-    fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
-    fs::create_dir_all(resolved.repo_root.join(".ralph/prompts"))?;
+    fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
+    fs::create_dir_all(resolved.repo_root.join(".cueloop/prompts"))?;
     fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     fs::write(
@@ -188,15 +188,15 @@ fn init_succeeds_on_legacy_readme_without_marker() -> Result<()> {
     )?;
 
     // Create prompt files that reference the README (so README check is triggered)
-    let prompt_content = "This prompt references .ralph/README.md for context";
+    let prompt_content = "This prompt references .cueloop/README.md for context";
     fs::write(
-        resolved.repo_root.join(".ralph/prompts/worker.md"),
+        resolved.repo_root.join(".cueloop/prompts/worker.md"),
         prompt_content,
     )?;
 
     // Create a legacy README without version marker
     let legacy_readme = "# Test README\nSome content";
-    fs::write(resolved.repo_root.join(".ralph/README.md"), legacy_readme)?;
+    fs::write(resolved.repo_root.join(".cueloop/README.md"), legacy_readme)?;
 
     // Init should succeed (treats as version 1)
     let result = run_init(

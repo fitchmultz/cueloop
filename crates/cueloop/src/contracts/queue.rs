@@ -1,7 +1,7 @@
-//! Queue file contracts for Ralph.
+//! Queue file contracts for CueLoop.
 //!
 //! Purpose:
-//! - Queue file contracts for Ralph.
+//! - Queue file contracts for CueLoop.
 //!
 //! Responsibilities:
 //! - Define the queue file payload structure and defaults.

@@ -19,14 +19,14 @@
 //! - Recovery assertions intentionally mirror the historical flat suite.
 //! - Undo coverage depends on first creating and mutating a task through the public CLI.
 
-use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo, write_json_file};
+use super::machine_contract_test_support::{run_in_dir, setup_cueloop_repo, write_json_file};
 use anyhow::Result;
 use cueloop::contracts::TaskPriority;
 use serde_json::Value;
 
 #[test]
 fn machine_queue_recovery_documents_are_versioned() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (validate_status, validate_stdout, validate_stderr) =
         run_in_dir(dir.path(), &["machine", "queue", "validate"]);

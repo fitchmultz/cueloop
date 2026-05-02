@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -138,11 +138,11 @@ fn select_next_task_locked_works_under_held_lock() -> Result<()> {
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
     // Create a queue with one todo task
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
         id: "RQ-0001".to_string(),
@@ -178,7 +178,7 @@ fn select_next_task_locked_works_under_held_lock() -> Result<()> {
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -209,11 +209,11 @@ fn select_next_task_locked_returns_none_when_no_tasks() -> Result<()> {
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
     // Create an empty queue
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let queue_file = QueueFile::default();
     queue::save_queue(&queue_path, &queue_file)?;
 
@@ -221,7 +221,7 @@ fn select_next_task_locked_returns_none_when_no_tasks() -> Result<()> {
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -249,10 +249,10 @@ fn select_next_task_locked_preserves_queue_order_over_task_id() -> Result<()> {
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
         id: "RQ-0003".to_string(),
@@ -316,7 +316,7 @@ fn select_next_task_locked_preserves_queue_order_over_task_id() -> Result<()> {
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,

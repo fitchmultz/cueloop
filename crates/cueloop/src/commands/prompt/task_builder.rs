@@ -56,7 +56,7 @@ pub fn build_task_builder_prompt(
     }
 
     let mut header = String::new();
-    header.push_str("# RALPH PROMPT PREVIEW (task builder)\n\n");
+    header.push_str("# CUELOOP PROMPT PREVIEW (task builder)\n\n");
     header.push_str(&format!("- request: {}\n", request));
     header.push_str(&format!(
         "- hint_tags: {}\n",

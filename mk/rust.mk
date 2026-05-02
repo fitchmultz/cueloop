@@ -1,20 +1,20 @@
-# Purpose: Define Ralph Rust, release, and general developer targets included by the root Makefile.
+# Purpose: Define CueLoop Rust, release, and general developer targets included by the root Makefile.
 # Responsibilities: Own Rust dependency, formatting, linting, testing, build, schema generation, release, install, cleanup, and public-readiness recipes.
 # Scope: Target bodies only; global variables, GNU Make settings, public help text, and phony aggregation stay in ../Makefile.
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.
-# Invariants/Assumptions: The including Makefile defines RALPH_ENV_RESET, release stamp variables, toolchain variables, shell flags, and shared resource knobs first.
+# Invariants/Assumptions: The including Makefile defines CUELOOP_ENV_RESET, release stamp variables, toolchain variables, shell flags, and shared resource knobs first.
 
-$(RALPH_RELEASE_BUILD_STAMP): $(RALPH_RELEASE_STAMP_INPUTS) $(RALPH_CRATE_SOURCE_FILES)
-	@mkdir -p "$(RALPH_STAMP_DIR)"
+$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CRATE_SOURCE_FILES)
+	@mkdir -p "$(CUELOOP_STAMP_DIR)"
 	@echo "→ Release build..."
-	@$(RALPH_ENV_RESET); scripts/cueloop-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path >/dev/null
-	@touch "$(RALPH_RELEASE_BUILD_STAMP)"
+	@$(CUELOOP_ENV_RESET); scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path >/dev/null
+	@touch "$(CUELOOP_RELEASE_BUILD_STAMP)"
 	@echo "  ✓ Release build complete"
 
 # Optional but cheap: fail fast if lockfile or network access is busted
 deps: rust-toolchain-check
 	@echo "→ Fetching deps (locked)..."
-	@$(RALPH_ENV_RESET); cargo fetch --locked
+	@$(CUELOOP_ENV_RESET); cargo fetch --locked
 	@./scripts/versioning.sh check
 	@echo "  ✓ Deps fetched"
 
@@ -28,9 +28,9 @@ rust-toolchain-drift-check:
 	@./scripts/check-rust-toolchain.sh --fail-on-global-stable-drift
 	@echo "  ✓ Rust toolchain drift check OK"
 
-install-verify: $(RALPH_RELEASE_BUILD_STAMP)
-	@$(RALPH_ENV_RESET); \
-	cueloop_bin_path="$$(scripts/cueloop-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
+install-verify: $(CUELOOP_RELEASE_BUILD_STAMP)
+	@$(CUELOOP_ENV_RESET); \
+	cueloop_bin_path="$$(scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path)"; \
 	if [ ! -x "$$cueloop_bin_path" ]; then \
 		echo "install-verify: missing release binary at $$cueloop_bin_path (run make build first)" >&2; \
 		exit 1; \
@@ -51,9 +51,9 @@ install: install-verify
 
 update:
 	@echo "→ Updating direct dependencies to latest stable requirements..."
-	@$(RALPH_ENV_RESET); cargo upgrade --incompatible
+	@$(CUELOOP_ENV_RESET); cargo upgrade --incompatible
 	@echo "→ Refreshing lockfile to latest compatible transitive versions..."
-	@$(RALPH_ENV_RESET); CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
+	@$(CUELOOP_ENV_RESET); CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
 	@echo "  ℹ Swift/Xcode has no external package manifest here; use make macos-ci to verify the app against the current toolchain"
 	@echo "  ✓ Dependency update complete"
 
@@ -63,41 +63,41 @@ security-audit:
 		echo "security-audit: cargo-audit is required; install with: cargo install cargo-audit --locked" >&2; \
 		exit 1; \
 	fi
-	@$(RALPH_ENV_RESET); cargo audit --deny warnings
+	@$(CUELOOP_ENV_RESET); cargo audit --deny warnings
 	@echo "  ✓ Rust dependency advisory audit passed"
 
 format:
 	@echo "→ Formatting code..."
-	@$(RALPH_ENV_RESET); cargo fmt --all
+	@$(CUELOOP_ENV_RESET); cargo fmt --all
 	@echo "  ✓ Formatting complete"
 
 format-check:
 	@echo "→ Checking formatting..."
-	@$(RALPH_ENV_RESET); cargo fmt --all --check
+	@$(CUELOOP_ENV_RESET); cargo fmt --all --check
 	@echo "  ✓ Formatting OK"
 
 type-check:
 	@echo "→ Type-checking..."
-	@$(RALPH_ENV_RESET); cargo check --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG)
+	@$(CUELOOP_ENV_RESET); cargo check --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG)
 	@echo "  ✓ Type-checking complete"
 
 lint:
 	@echo "→ Linting (clippy, non-mutating)..."
-	@$(RALPH_ENV_RESET); cargo clippy --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG) -- -D warnings
+	@$(CUELOOP_ENV_RESET); cargo clippy --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG) -- -D warnings
 	@echo "  ✓ Linting complete"
 
 lint-fix:
 	@echo "→ Clippy autofix (optional)..."
-	@$(RALPH_ENV_RESET); cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG) -- -D warnings
+	@$(CUELOOP_ENV_RESET); cargo clippy --fix --allow-dirty --workspace --all-targets --all-features --locked $(CARGO_JOBS_FLAG) -- -D warnings
 	@echo "  ✓ Lint autofix complete"
 
 test:
 	@echo "→ Running tests..."
 	@system_tmp="$${TMPDIR:-/tmp}"; \
 	system_tmp="$${system_tmp%/}"; \
-	run_dir="$$(mktemp -d "$$system_tmp/ralph-ci.XXXXXX")"; \
+	run_dir="$$(mktemp -d "$$system_tmp/cueloop-ci.XXXXXX")"; \
 	cleanup() { \
-		if [ "$${RALPH_CI_KEEP_TMP:-0}" = "1" ]; then \
+		if [ "$${CUELOOP_CI_KEEP_TMP:-0}" = "1" ]; then \
 			echo "  ℹ Keeping CI temp dir: $$run_dir"; \
 			return 0; \
 		fi; \
@@ -107,7 +107,7 @@ test:
 	export TMPDIR="$$run_dir"; \
 	export TEMP="$$run_dir"; \
 	export TMP="$$run_dir"; \
-	$(RALPH_ENV_RESET); \
+	$(CUELOOP_ENV_RESET); \
 	unit_log="$$run_dir/unit-tests.log"; \
 	doc_log="$$run_dir/doc-tests.log"; \
 	unit_log_content=""; \
@@ -163,15 +163,15 @@ test:
 	exit "$$exit_code"
 
 # Required every time (deduplicated via release-build stamp)
-build: $(RALPH_RELEASE_BUILD_STAMP)
+build: $(CUELOOP_RELEASE_BUILD_STAMP)
 	@true
 
 # Use the already-built dist binary (no cargo run, no debug compile)
-generate: $(RALPH_RELEASE_BUILD_STAMP)
+generate: $(CUELOOP_RELEASE_BUILD_STAMP)
 	@echo "→ Generating schemas (via dist binary)..."
-	@$(RALPH_ENV_RESET); \
+	@$(CUELOOP_ENV_RESET); \
 	mkdir -p schemas; \
-	cueloop_bin_path="$$(scripts/cueloop-cli-bundle.sh --configuration Release $(RALPH_CLI_BUILD_JOBS_ARG) --print-path)"; \
+	cueloop_bin_path="$$(scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path)"; \
 	"$$cueloop_bin_path" config schema > schemas/config.schema.json; \
 	"$$cueloop_bin_path" queue schema > schemas/queue.schema.json; \
 	"$$cueloop_bin_path" machine schema > schemas/machine.schema.json
@@ -179,7 +179,7 @@ generate: $(RALPH_RELEASE_BUILD_STAMP)
 
 docs:
 	@echo "→ Generating rustdocs..."
-	@$(RALPH_ENV_RESET); cargo doc --workspace --all-features --no-deps --locked $(CARGO_JOBS_FLAG)
+	@$(CUELOOP_ENV_RESET); cargo doc --workspace --all-features --no-deps --locked $(CARGO_JOBS_FLAG)
 	@echo "  ✓ Rustdocs generated in target/doc"
 
 changelog:
@@ -203,8 +203,8 @@ version-sync:
 
 publish-check:
 	@echo "→ Validating crates.io package ($(CARGO_PACKAGE_NAME))..."
-	@$(RALPH_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME) --allow-dirty
-	@$(RALPH_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked --allow-dirty
+	@$(CUELOOP_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME) --allow-dirty
+	@$(CUELOOP_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked --allow-dirty
 	@echo "  ✓ crates.io package dry-run passed"
 
 release:
@@ -243,9 +243,9 @@ pre-public-check:
 clean: clean-temp
 	@cargo clean
 	@find . -name '*.log' -type f -delete
-	@rm -rf .ralph/lock .ralph/logs
-	@if [ -d .ralph/cache ]; then \
-		find .ralph/cache -mindepth 1 -maxdepth 1 ! -name completions -exec rm -rf {} +; \
+	@rm -rf .cueloop/lock .cueloop/logs
+	@if [ -d .cueloop/cache ]; then \
+		find .cueloop/cache -mindepth 1 -maxdepth 1 ! -name completions -exec rm -rf {} +; \
 	fi
 
 clean-temp:

@@ -45,7 +45,7 @@ fn acquire_dir_lock_auto_cleans_stale_lock_without_force() -> Result<()> {
     fs::write(
         &owner_path,
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-01-18T00:00:00Z\ncommand: old-ralph\nlabel: stale-lock\n"
+            "pid: {stale_pid}\nstarted_at: 2026-01-18T00:00:00Z\ncommand: old-cueloop\nlabel: stale-lock\n"
         ),
     )?;
 
@@ -85,13 +85,13 @@ fn acquire_dir_lock_does_not_clean_active_lock_even_if_forced() -> Result<()> {
 /// This test verifies the underlying mechanism used by the resume flow:
 /// acquire_queue_lock clears stale locks (PIDs that are dead). The run_loop
 /// calls this during resume to clear any stale locks left by a crashed or
-/// killed ralph process.
+/// killed cueloop process.
 #[cfg(unix)]
 #[test]
 fn acquire_dir_lock_clears_stale_lock_for_resume_without_force() -> Result<()> {
     let dir = TempDir::new().context("create temp dir")?;
     let repo_root = dir.path().to_path_buf();
-    fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
+    fs::create_dir_all(repo_root.join(".cueloop")).context("create .cueloop dir")?;
 
     // Create a stale queue lock with a dead PID
     let lock_dir = lock::queue_lock_dir(&repo_root);

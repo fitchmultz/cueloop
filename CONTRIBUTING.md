@@ -1,8 +1,8 @@
-# Contributing to Ralph
+# Contributing to CueLoop
 
-Purpose: Guide for contributing to Ralph, covering development workflow, standards, and submission process.
+Purpose: Guide for contributing to CueLoop, covering development workflow, standards, and submission process.
 
-Thank you for your interest in contributing to Ralph! This document provides guidelines for contributing effectively.
+Thank you for your interest in contributing to CueLoop! This document provides guidelines for contributing effectively.
 
 ## Getting Started
 
@@ -16,14 +16,14 @@ Thank you for your interest in contributing to Ralph! This document provides gui
 
 ```bash
 # Clone the repository
-git clone https://github.com/mitchfultz/ralph
-cd ralph
+git clone https://github.com/mitchfultz/cueloop
+cd cueloop
 
 # Install locally
 make install
 ```
 
-This installs the `ralph` binary to `~/.local/bin/ralph` (or a writable fallback).
+This installs the `cueloop` binary to `~/.local/bin/cueloop` (or a writable fallback).
 
 > macOS note: install GNU Make with `brew install make` and use `gmake ...` unless your PATH already points `make` to Homebrew gnubin.
 
@@ -55,7 +55,7 @@ For docs-only work, still run `make agent-ci`; it now routes to the lighter `ci-
 During development, you can use these commands for rapid iteration:
 
 ```bash
-# Run tests for the ralph crate
+# Run tests for the cueloop crate
 cargo test -p cueloop-agent-loop
 
 # Run the CLI locally
@@ -88,7 +88,7 @@ make docs
 
 `Makefile` and `scripts/**` are **not** blanket macOS triggers anymore. CI/router-only edits (for example `scripts/agent-ci-surface.sh`, `scripts/lib/release_policy.sh`, or `agent-ci` target wiring in `Makefile`) should stay below the Mac app gate.
 
-**Merge safety:** tier `ci` does not run Xcode or Swift tests. Before merging work that could affect the mac app, run `make macos-ci` or `RALPH_AGENT_CI_MIN_TIER=macos-ci make agent-ci` at least once.
+**Merge safety:** tier `ci` does not run Xcode or Swift tests. Before merging work that could affect the mac app, run `make macos-ci` or `CUELOOP_AGENT_CI_MIN_TIER=macos-ci make agent-ci` at least once.
 
 Lower-level gate reference (mostly implementation detail / power-user material):
 
@@ -120,9 +120,9 @@ Run required gate with:
 
 ```bash
 make agent-ci
-# Optional (shared workstation): RALPH_CI_JOBS=4 make agent-ci
-# Optional (raise floor): RALPH_AGENT_CI_MIN_TIER=macos-ci make agent-ci
-# Optional (faster local Xcode iteration): RALPH_XCODE_KEEP_DERIVED_DATA=1 make macos-ci
+# Optional (shared workstation): CUELOOP_CI_JOBS=4 make agent-ci
+# Optional (raise floor): CUELOOP_AGENT_CI_MIN_TIER=macos-ci make agent-ci
+# Optional (faster local Xcode iteration): CUELOOP_XCODE_KEEP_DERIVED_DATA=1 make macos-ci
 ```
 
 Do not commit or push changes if `make agent-ci` is failing. Fix all issues first.
@@ -142,7 +142,7 @@ For public-release verification:
 ```bash
 make release-verify VERSION=<x.y.z>
 make pre-public-check
-# Optional (shared workstation): RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make pre-public-check
+# Optional (shared workstation): CUELOOP_CI_JOBS=4 CUELOOP_XCODE_JOBS=4 make pre-public-check
 ```
 
 `make release-verify` is the full release preflight. It also deliberately tolerates an already-existing local `v<version>` tag during the dry-run release-script phase so shipped releases can be revalidated without hand-editing tag state.
@@ -192,13 +192,13 @@ Example:
 # Run all tests (nextest workspace tests with cargo-test fallback, then doc tests)
 make test
 
-# Run tests for just the ralph crate
+# Run tests for just the cueloop crate
 cargo test -p cueloop-agent-loop
 ```
 
 ### Code Coverage
 
-Ralph uses `cargo-llvm-cov` for code coverage analysis. Coverage is **optional** and not part of the default CI gate.
+CueLoop uses `cargo-llvm-cov` for code coverage analysis. Coverage is **optional** and not part of the default CI gate.
 
 #### Prerequisites
 
@@ -241,7 +241,7 @@ For troubleshooting coverage issues, see [Troubleshooting](docs/troubleshooting.
 
 ### Integration Testing (CLI)
 
-Ralph's CLI is a user-facing contract. For cross-module behaviors (argument parsing → filesystem IO → queue mutation → output),
+CueLoop's CLI is a user-facing contract. For cross-module behaviors (argument parsing → filesystem IO → queue mutation → output),
 prefer integration tests in `crates/cueloop/tests/`.
 
 #### Pattern: Isolated temp repo + CLI invocation
@@ -249,8 +249,8 @@ prefer integration tests in `crates/cueloop/tests/`.
 Use `crates/cueloop/tests/test_support.rs` helpers to avoid repeating boilerplate:
 
 - `temp_dir_outside_repo()` to isolate state
-- `git_init(dir)` and `ralph_init(dir)` to create a valid repo
-- `run_in_dir(dir, args)` to execute the compiled `ralph` binary
+- `git_init(dir)` and `cueloop_init(dir)` to create a valid repo
+- `run_in_dir(dir, args)` to execute the compiled `cueloop` binary
 - `write_queue(...)` / `write_done(...)` and `read_queue()` / `read_done()` to set fixtures and assert results
 
 Example skeleton:
@@ -258,7 +258,7 @@ Example skeleton:
 ```rust
 let dir = test_support::temp_dir_outside_repo();
 test_support::git_init(dir.path())?;
-test_support::ralph_init(dir.path())?;
+test_support::cueloop_init(dir.path())?;
 
 test_support::write_queue(dir.path(), &tasks)?;
 let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "archive"]);
@@ -283,7 +283,7 @@ Commit the updated snapshot files under `crates/cueloop/tests/snapshots/`.
 
 #### Isolation / flake prevention
 
-- Always run `ralph init` with `--non-interactive` in tests.
+- Always run `cueloop init` with `--non-interactive` in tests.
 - Prefer state assertions (queue/done JSON) for mutation commands.
 - If a CLI output order is nondeterministic, fix determinism in the renderer (preferred) or strengthen snapshot filters (fallback).
 
@@ -307,7 +307,7 @@ cargo run -p cueloop-agent-loop -- <command> --help
 
 Preferred format: `RQ-####: <short summary>`
 
-Where `####` is the task ID from `.ralph/queue.json`.
+Where `####` is the task ID from `.cueloop/queue.json`.
 
 If no task ID exists (for example, first external contribution), use:
 
@@ -367,7 +367,7 @@ If app changes are included in the release branch:
 
 ```bash
 make macos-ci
-# Optional caps while multitasking: RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make macos-ci
+# Optional caps while multitasking: CUELOOP_CI_JOBS=4 CUELOOP_XCODE_JOBS=4 make macos-ci
 ```
 
 ## Repository Structure
@@ -380,7 +380,7 @@ Key locations to know:
   - `assets/prompts/`: Embedded prompt templates
 - `docs/`: CLI + workflow + configuration docs (`docs/index.md` is the entry point)
 - `schemas/`: Generated JSON schemas (committed)
-- `.ralph/`: Repo-local runtime state
+- `.cueloop/`: Repo-local runtime state
   - `queue.jsonc` (`.json` fallback): Active tasks (source of truth)
   - `done.jsonc` (`.json` fallback): Archived tasks
   - `config.jsonc` (`.json` fallback): Project config (overrides global)
@@ -401,6 +401,6 @@ If you have questions not covered here:
 2. Review [AGENTS.md](./AGENTS.md) for contributor expectations
 3. Open an issue for discussion before investing significant effort
 
-By contributing to Ralph, you agree that your contributions are licensed under the project's MIT License.
+By contributing to CueLoop, you agree that your contributions are licensed under the project's MIT License.
 
-Thank you for contributing to Ralph!
+Thank you for contributing to CueLoop!

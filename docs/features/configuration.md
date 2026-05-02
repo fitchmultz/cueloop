@@ -27,11 +27,11 @@ Use this page to decide where a setting belongs. Use the main reference when you
 
 ## Config Files and Locations
 
-CueLoop loads configuration from global and project scopes. The primary executable is `cueloop`; `ralph` remains a compatibility alias during the migration window.
+CueLoop loads configuration from global and project scopes. The primary executable is `cueloop`; `cueloop` remains a compatibility alias during the migration window.
 
-- Global (user): `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
-- Project (repo): `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)
-- Local trust gate (repo): `.cueloop/trust.jsonc` (legacy fallback: `.ralph/trust.jsonc`; must remain untracked)
+- Global (user): `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/cueloop/config.jsonc`)
+- Project (repo): `.cueloop/config.jsonc` (legacy fallback: `.cueloop/config.jsonc`)
+- Local trust gate (repo): `.cueloop/trust.jsonc` (legacy fallback: `.cueloop/trust.jsonc`; must remain untracked)
 
 Useful commands:
 
@@ -62,7 +62,7 @@ Project-local execution settings are applied only after explicit local trust opt
 
 - Use `cueloop init` while bootstrapping; it creates or updates `.cueloop/trust.jsonc` by default.
 - Use `cueloop config trust init` only for trust-only repair in an already-initialized repo.
-- Do not commit `.cueloop/trust.jsonc` or legacy `.ralph/trust.jsonc`.
+- Do not commit `.cueloop/trust.jsonc` or legacy `.cueloop/trust.jsonc`.
 
 Execution-sensitive project settings include:
 

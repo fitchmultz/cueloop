@@ -290,7 +290,7 @@ For `machine task decompose`, preview-mode `result.version` is `2` and includes 
 - `checkpoint`: `{ "id", "path", "created_at", "expires_at" }` for preview-only output and checkpoint replay writes
 - `replay_exact`: `true` when a continuation can write the saved preview without invoking the planner again
 
-Preview continuation commands are literal copy/pasteable commands such as `cueloop machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`; decompose continuations must not contain ellipsis placeholders. Clients should consume `continuation.next_steps[].command` directly instead of reconstructing CLI args from prose. Checkpoints live under `.ralph/cache/decompose-previews/`, are runtime cache artifacts pruned best-effort after seven days, and are separate from undo snapshots; replay writes still create a normal undo snapshot before mutating the queue.
+Preview continuation commands are literal copy/pasteable commands such as `cueloop machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`; decompose continuations must not contain ellipsis placeholders. Clients should consume `continuation.next_steps[].command` directly instead of reconstructing CLI args from prose. Checkpoints live under `.cueloop/cache/decompose-previews/`, are runtime cache artifacts pruned best-effort after seven days, and are separate from undo snapshots; replay writes still create a normal undo snapshot before mutating the queue.
 
 ### `machine run parallel-status` (`version: 3`)
 

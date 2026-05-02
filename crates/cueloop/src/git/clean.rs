@@ -11,7 +11,7 @@
 //!
 //! This module provides functions for validating that a repository is in a clean
 //! state, with support for allowing specific paths to be dirty (for example,
-//! CueLoop/Ralph runtime files).
+//! CueLoop/CueLoop runtime files).
 //!
 //! # Invariants
 //! - Allowed paths must be normalized before comparison
@@ -32,17 +32,17 @@ use std::path::Path;
 
 /// Paths that are allowed to be dirty during CLI runs.
 ///
-/// These are CueLoop's current runtime files plus legacy Ralph runtime files that
+/// These are CueLoop's current runtime files plus legacy CueLoop runtime files that
 /// may change during normal operation.
-pub const RALPH_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
+pub const CUELOOP_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
     ".cueloop/queue.jsonc",
     ".cueloop/done.jsonc",
     ".cueloop/config.jsonc",
     ".cueloop/cache/",
-    ".ralph/queue.jsonc",
-    ".ralph/done.jsonc",
-    ".ralph/config.jsonc",
-    ".ralph/cache/",
+    ".cueloop/queue.jsonc",
+    ".cueloop/done.jsonc",
+    ".cueloop/config.jsonc",
+    ".cueloop/cache/",
 ];
 
 /// Require a clean repository, ignoring allowed paths.
@@ -122,7 +122,7 @@ pub fn require_clean_repo_ignoring_paths(
 
 /// Returns true when the repo has dirty paths and every dirty path is allowed.
 ///
-/// This is useful for detecting if only Ralph's own files have changed.
+/// This is useful for detecting if only CueLoop's own files have changed.
 pub fn repo_dirty_only_allowed_paths(
     repo_root: &Path,
     allowed_paths: &[&str],
@@ -223,13 +223,13 @@ mod clean_repo_tests {
             ".cueloop/done.jsonc",
             ".cueloop/config.jsonc",
             ".cueloop/cache/",
-            ".ralph/queue.jsonc",
-            ".ralph/done.jsonc",
-            ".ralph/config.jsonc",
-            ".ralph/cache/",
+            ".cueloop/queue.jsonc",
+            ".cueloop/done.jsonc",
+            ".cueloop/config.jsonc",
+            ".cueloop/cache/",
         ] {
             assert!(
-                RALPH_RUN_CLEAN_ALLOWED_PATHS.contains(&required),
+                CUELOOP_RUN_CLEAN_ALLOWED_PATHS.contains(&required),
                 "missing required allowlisted path: {required}"
             );
         }
@@ -239,18 +239,18 @@ mod clean_repo_tests {
     fn repo_dirty_only_allowed_paths_detects_config_only_changes() -> anyhow::Result<()> {
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
-        std::fs::create_dir_all(temp.path().join(".ralph"))?;
-        let config_path = temp.path().join(".ralph/config.jsonc");
+        std::fs::create_dir_all(temp.path().join(".cueloop"))?;
+        let config_path = temp.path().join(".cueloop/config.jsonc");
         std::fs::write(&config_path, "{ \"version\": 1 }")?;
-        git_test::git_run(temp.path(), &["add", "-f", ".ralph/config.jsonc"])?;
+        git_test::git_run(temp.path(), &["add", "-f", ".cueloop/config.jsonc"])?;
         git_test::git_run(temp.path(), &["commit", "-m", "init config"])?;
 
         std::fs::write(&config_path, "{ \"version\": 2 }")?;
 
         let dirty_allowed =
-            repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+            repo_dirty_only_allowed_paths(temp.path(), CUELOOP_RUN_CLEAN_ALLOWED_PATHS)?;
         assert!(dirty_allowed, "expected config-only changes to be allowed");
-        require_clean_repo_ignoring_paths(temp.path(), false, RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+        require_clean_repo_ignoring_paths(temp.path(), false, CUELOOP_RUN_CLEAN_ALLOWED_PATHS)?;
         Ok(())
     }
 
@@ -268,12 +268,12 @@ mod clean_repo_tests {
         std::fs::write(&config_path, "{ \"version\": 2 }")?;
 
         let dirty_allowed =
-            repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+            repo_dirty_only_allowed_paths(temp.path(), CUELOOP_RUN_CLEAN_ALLOWED_PATHS)?;
         assert!(
             dirty_allowed,
             "expected config.jsonc-only changes to be allowed"
         );
-        require_clean_repo_ignoring_paths(temp.path(), false, RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+        require_clean_repo_ignoring_paths(temp.path(), false, CUELOOP_RUN_CLEAN_ALLOWED_PATHS)?;
         Ok(())
     }
 
@@ -284,7 +284,7 @@ mod clean_repo_tests {
         std::fs::write(temp.path().join("notes.txt"), "hello")?;
 
         let dirty_allowed =
-            repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+            repo_dirty_only_allowed_paths(temp.path(), CUELOOP_RUN_CLEAN_ALLOWED_PATHS)?;
         assert!(!dirty_allowed, "expected untracked change to be disallowed");
         Ok(())
     }
@@ -337,21 +337,21 @@ mod clean_repo_tests {
 
     #[test]
     fn execution_history_json_is_in_allowed_paths() -> anyhow::Result<()> {
-        // Verify that execution_history.json is covered by RALPH_RUN_CLEAN_ALLOWED_PATHS
-        // via the .ralph/cache/ directory prefix
+        // Verify that execution_history.json is covered by CUELOOP_RUN_CLEAN_ALLOWED_PATHS
+        // via the .cueloop/cache/ directory prefix
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
-        std::fs::create_dir_all(temp.path().join(".ralph/cache"))?;
+        std::fs::create_dir_all(temp.path().join(".cueloop/cache"))?;
         std::fs::write(
-            temp.path().join(".ralph/cache/execution_history.json"),
+            temp.path().join(".cueloop/cache/execution_history.json"),
             "{}",
         )?;
 
         let dirty_allowed =
-            repo_dirty_only_allowed_paths(temp.path(), RALPH_RUN_CLEAN_ALLOWED_PATHS)?;
+            repo_dirty_only_allowed_paths(temp.path(), CUELOOP_RUN_CLEAN_ALLOWED_PATHS)?;
         assert!(
             dirty_allowed,
-            "execution_history.json should be covered by RALPH_RUN_CLEAN_ALLOWED_PATHS"
+            "execution_history.json should be covered by CUELOOP_RUN_CLEAN_ALLOWED_PATHS"
         );
         Ok(())
     }

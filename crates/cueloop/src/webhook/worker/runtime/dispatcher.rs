@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Context;
 use crossbeam_channel::{bounded, unbounded};
@@ -68,7 +68,7 @@ impl WebhookDispatcher {
             let ready_receiver = ready_receiver.clone();
             let weak_retry_sender = Arc::downgrade(&retry_sender);
             let startup_sender = startup_sender.clone();
-            let thread_name = format!("ralph-webhook-worker-{worker_id}");
+            let thread_name = format!("cueloop-webhook-worker-{worker_id}");
             let handle = match spawner
                 .spawn(
                     thread_name,
@@ -105,7 +105,7 @@ impl WebhookDispatcher {
         let scheduler_shutdown_receiver = shutdown_receiver.clone();
         let scheduler_handle = match spawner
             .spawn(
-                "ralph-webhook-retry-scheduler".to_string(),
+                "cueloop-webhook-retry-scheduler".to_string(),
                 Box::new(move || {
                     if let Err(err) = scheduler_startup_sender.send(()) {
                         log::warn!(

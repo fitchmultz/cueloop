@@ -1,7 +1,7 @@
 //! Purpose: suite-local fixtures and CLI helpers for `queue_search_test`.
 //!
 //! Responsibilities:
-//! - Create disposable repos from the cached git+`.ralph/` integration scaffold.
+//! - Create disposable repos from the cached git+`.cueloop/` integration scaffold.
 //! - Centralize queue/done fixture writes for search scenarios.
 //! - Provide small helpers for invoking `cueloop queue search` and decoding JSON output.
 //!
@@ -14,8 +14,8 @@
 //! - Use `search_json()` for JSON-output assertions and `search()` for raw stdout/stderr checks.
 //!
 //! Invariants/Assumptions:
-//! - Fixtures use cached seeded repo scaffolding instead of repeating `git init` + `.ralph` bootstrap.
-//! - Helpers preserve end-to-end CLI coverage by invoking the real `ralph` binary.
+//! - Fixtures use cached seeded repo scaffolding instead of repeating `git init` + `.cueloop` bootstrap.
+//! - Helpers preserve end-to-end CLI coverage by invoking the real `cueloop` binary.
 //! - JSON assertions are only valid when the caller passes `--format json`.
 
 use anyhow::{Context, Result, ensure};
@@ -31,7 +31,7 @@ pub(super) struct SearchRepo {
 impl SearchRepo {
     pub(super) fn new() -> Result<Self> {
         let dir = super::test_support::temp_dir_outside_repo();
-        super::test_support::seed_git_repo_with_ralph(dir.path())?;
+        super::test_support::seed_git_repo_with_cueloop(dir.path())?;
         Ok(Self { dir })
     }
 

@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Create isolated git repositories for doctor contract coverage.
-//! - Seed cached `.ralph/` fixtures instead of running real `cueloop init`.
+//! - Seed cached `.cueloop/` fixtures instead of running real `cueloop init`.
 //! - Keep doctor-suite bootstrap files centralized in one place.
 //!
 //! Not handled here:
@@ -17,8 +17,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Seeded repos rely on cached `seed_ralph_dir()` scaffolding rather than real init.
-//! - Git-only repos intentionally omit `.ralph/` files for missing-queue coverage.
+//! - Seeded repos rely on cached `seed_cueloop_dir()` scaffolding rather than real init.
+//! - Git-only repos intentionally omit `.cueloop/` files for missing-queue coverage.
 //! - Doctor suite fixtures keep a minimal `Makefile` so project checks stay deterministic.
 
 use anyhow::Result;
@@ -33,7 +33,7 @@ pub(super) fn setup_git_repo() -> Result<TempDir> {
 
 pub(super) fn setup_doctor_repo() -> Result<TempDir> {
     let dir = setup_git_repo()?;
-    super::test_support::seed_ralph_dir(dir.path())?;
+    super::test_support::seed_cueloop_dir(dir.path())?;
     write_makefile(dir.path())?;
     Ok(dir)
 }
@@ -50,12 +50,12 @@ pub(super) fn write_makefile(dir: &Path) -> Result<()> {
 }
 
 pub(super) fn write_repo_config(dir: &Path, contents: &str) -> Result<()> {
-    std::fs::write(dir.join(".ralph/config.jsonc"), contents)?;
+    std::fs::write(dir.join(".cueloop/config.jsonc"), contents)?;
     Ok(())
 }
 
 pub(super) fn write_global_config(home_dir: &Path, contents: &str) -> Result<()> {
-    let global_config_dir = home_dir.join(".config/ralph");
+    let global_config_dir = home_dir.join(".config/cueloop");
     std::fs::create_dir_all(&global_config_dir)?;
     std::fs::write(global_config_dir.join("config.jsonc"), contents)?;
     Ok(())

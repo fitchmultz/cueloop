@@ -15,7 +15,7 @@ macos-preflight:
 		exit 1; \
 	fi
 
-macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
+macos-build: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	@lock_dir="$(XCODE_BUILD_LOCK_DIR)"; \
 	source scripts/lib/xcodebuild-lock.sh; \
 	acquired=0; \
@@ -25,7 +25,7 @@ macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	acquired=1; \
 	derived_data_path="$(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)"; \
 	echo "→ macOS build (Xcode build)..."; \
-	if [ "$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
+	if [ "$${CUELOOP_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 	xcodebuild \
 		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
 		-scheme CueLoopMac \
@@ -54,7 +54,7 @@ macos-install-app: macos-build
 	/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f "$$dest_bundle" >/dev/null 2>&1 || true; \
 	echo "  ✓ CueLoopMac.app installed"
 
-macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
+macos-test: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	@include_ui_tests="$(CUELOOP_UI_TESTS)"; \
 	result_bundle_path="$(XCODE_RESULT_BUNDLE_PATH)"; \
 	if [ "$$include_ui_tests" = "1" ]; then \
@@ -75,7 +75,7 @@ macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		acquired=1; \
 		echo "→ macOS tests (Xcode, skipping UI tests - use CUELOOP_UI_TESTS=1 to include)..."; \
 		skipped_tests="-skip-testing CueLoopMacUITests"; \
-		if [ "$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
+		if [ "$${CUELOOP_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 		xcodebuild \
 			-project apps/CueLoopMac/CueLoopMac.xcodeproj \
 			-scheme CueLoopMac \
@@ -93,7 +93,7 @@ macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 
 # Build/sign macOS UI test bundles once for local iteration.
 # Use macos-ui-retest repeatedly afterward to avoid fresh bundle preparation.
-macos-ui-build-for-testing: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
+macos-ui-build-for-testing: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	@lock_dir="$(XCODE_BUILD_LOCK_DIR)"; \
 	source scripts/lib/xcodebuild-lock.sh; \
 	acquired=0; \
@@ -186,7 +186,7 @@ macos-test-ui:
 
 # Run macOS UI tests with preserved xcresult output (interactive).
 # Stores timestamped artifacts under $(CUELOOP_UI_ARTIFACTS_ROOT)/<timestamp>/.
-macos-test-ui-artifacts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
+macos-test-ui-artifacts: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	@timestamp="$$(date +%Y%m%d-%H%M%S)"; \
 	artifact_dir="$(CUELOOP_UI_ARTIFACTS_ROOT)/$$timestamp"; \
 	result_bundle_path="$$artifact_dir/CueLoopMacUITests.xcresult"; \
@@ -236,7 +236,7 @@ macos-test-workspace-routing-contract: macos-build
 	@echo "→ macOS workspace routing contract coverage (bootstrap, URL open, pending scene routes; noninteractive)..."
 	@./scripts/macos-workspace-routing-contract.sh --app-bundle "$(XCODE_MACOS_RELEASE_APP_BUNDLE)"
 
-macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
+macos-test-window-shortcuts: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	@lock_dir="$(XCODE_BUILD_LOCK_DIR)"; \
 	source scripts/lib/xcodebuild-lock.sh; \
 	acquired=0; \
@@ -291,8 +291,8 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 
 macos-ci: macos-preflight
 	@shared_derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ship"; \
-	keep_derived_data="$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}"; \
-	run_dir="$$(mktemp -d "$${TMPDIR:-/tmp}/ralph-macos-ci.XXXXXX")"; \
+	keep_derived_data="$${CUELOOP_XCODE_KEEP_DERIVED_DATA:-0}"; \
+	run_dir="$$(mktemp -d "$${TMPDIR:-/tmp}/cueloop-macos-ci.XXXXXX")"; \
 	rust_log="$$run_dir/rust-ci.log"; \
 	macos_log="$$run_dir/macos-validation.log"; \
 	rust_pid=""; \
@@ -322,8 +322,8 @@ macos-ci: macos-preflight
 	( $(MAKE) --no-print-directory ci ) >"$$rust_log" 2>&1 & \
 	rust_pid="$$!"; \
 	( $(MAKE) --no-print-directory macos-build macos-test macos-test-contracts \
-		RALPH_XCODE_REUSE_SHIP_DERIVED_DATA=1 \
-		RALPH_XCODE_KEEP_DERIVED_DATA=1 ) >"$$macos_log" 2>&1 & \
+		CUELOOP_XCODE_REUSE_SHIP_DERIVED_DATA=1 \
+		CUELOOP_XCODE_KEEP_DERIVED_DATA=1 ) >"$$macos_log" 2>&1 & \
 	macos_pid="$$!"; \
 	set +e; \
 	wait "$$rust_pid"; \

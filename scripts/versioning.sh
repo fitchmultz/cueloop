@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Manage Ralph's canonical release version and sync derived metadata.
+# Purpose: Manage CueLoop's canonical release version and sync derived metadata.
 # Responsibilities:
 # - Read the repo-wide semantic version from VERSION.
 # - Keep Cargo, Xcode, and macOS CLI compatibility metadata synchronized.

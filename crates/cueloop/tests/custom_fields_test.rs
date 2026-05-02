@@ -18,7 +18,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -35,11 +35,11 @@ fn setup_test_queue() -> Result<(TempDir, config::Resolved)> {
     let temp_dir = TempDir::new()?;
     let repo_root = temp_dir.path();
 
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
-    let done_path = ralph_dir.join("done.json");
+    let queue_path = cueloop_dir.join("queue.json");
+    let done_path = cueloop_dir.join("done.json");
 
     // Create initial queue with one task
     let queue = QueueFile {
@@ -86,14 +86,14 @@ fn setup_test_queue() -> Result<(TempDir, config::Resolved)> {
     std::fs::write(&done_path, done_json)?;
 
     // Create config
-    let config_dir = repo_root.join(".ralph");
+    let config_dir = repo_root.join(".cueloop");
     std::fs::create_dir_all(&config_dir)?;
     let config_path = config_dir.join("config.json");
 
     let config = Config {
         queue: cueloop::contracts::QueueConfig {
-            file: Some(PathBuf::from(".ralph/queue.jsonc")),
-            done_file: Some(PathBuf::from(".ralph/done.jsonc")),
+            file: Some(PathBuf::from(".cueloop/queue.jsonc")),
+            done_file: Some(PathBuf::from(".cueloop/done.jsonc")),
             id_prefix: Some("RQ".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
@@ -206,10 +206,10 @@ fn test_set_field_rejects_whitespace_in_key() -> Result<()> {
 fn test_queue_validate_rejects_empty_custom_field_key() -> Result<()> {
     let temp_dir = TempDir::new()?;
     let repo_root = temp_dir.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
 
     // Create task with empty custom field key
     let mut custom_fields = HashMap::new();
@@ -263,10 +263,10 @@ fn test_queue_validate_rejects_empty_custom_field_key() -> Result<()> {
 fn test_queue_validate_rejects_whitespace_in_custom_field_key() -> Result<()> {
     let temp_dir = TempDir::new()?;
     let repo_root = temp_dir.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
 
     // Create task with whitespace in custom field key
     let mut custom_fields = HashMap::new();

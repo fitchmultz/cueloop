@@ -44,7 +44,7 @@ fn write_graph_fixture(dir: &std::path::Path) -> Result<()> {
 fn graph_tree_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_graph_fixture(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "graph"]);
@@ -64,7 +64,7 @@ fn graph_tree_snapshot() -> Result<()> {
 fn graph_dot_focus_task_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_graph_fixture(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(
@@ -87,7 +87,7 @@ fn graph_dot_focus_task_snapshot() -> Result<()> {
 fn graph_rejects_unknown_task_id() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_graph_fixture(dir.path())?;
 
     let (status, _stdout, stderr) =
@@ -104,7 +104,7 @@ fn graph_rejects_unknown_task_id() -> Result<()> {
 fn graph_list_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_graph_fixture(dir.path())?;
 
     let (status, stdout, stderr) =

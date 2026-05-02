@@ -10,10 +10,10 @@ Purpose: Document CueLoop's JSON configuration layout, defaults, override preced
 
 ## Overview
 
-CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. The primary executable is `cueloop`, the legacy `ralph` executable remains a compatibility alias, and the package is `cueloop-agent-loop`.
+CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. The primary executable is `cueloop`, the legacy `cueloop` executable remains a compatibility alias, and the package is `cueloop-agent-loop`.
 
-- Global: `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
-- Project: `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)
+- Global: `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/cueloop/config.jsonc`)
+- Project: `.cueloop/config.jsonc` (legacy fallback: `.cueloop/config.jsonc`)
 
 CLI flags override both for a single run. Defaults are defined by `schemas/config.schema.json`.
 
@@ -45,8 +45,8 @@ Detailed trust and profile rules live in [Trust and precedence](configuration/tr
 1. CLI flags for the current command.
 2. Task-specific overrides where supported.
 3. Selected profile patches where supported.
-4. Project config (`.cueloop/config.jsonc`, with legacy `.ralph/config.jsonc` fallback), subject to repo trust for execution-sensitive values.
-5. Global config (`~/.config/cueloop/config.jsonc`, with legacy `~/.config/ralph/config.jsonc` fallback).
+4. Project config (`.cueloop/config.jsonc`, with legacy `.cueloop/config.jsonc` fallback), subject to repo trust for execution-sensitive values.
+5. Global config (`~/.config/cueloop/config.jsonc`, with legacy `~/.config/cueloop/config.jsonc` fallback).
 6. Schema defaults (`schemas/config.schema.json`).
 
 ## Minimal example

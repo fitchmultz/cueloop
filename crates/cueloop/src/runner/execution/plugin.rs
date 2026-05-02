@@ -14,18 +14,18 @@
 //! Protocol (required):
 //! - `bin run --model <id> --output-format stream-json [--session <id>]` reads prompt from stdin.
 //! - `bin resume --session <id> --model <id> --output-format stream-json <message>` OR stdin message (choose one; below uses arg).
-//! - The runner MUST emit newline-delimited JSON objects compatible with Ralph's streaming parser.
+//! - The runner MUST emit newline-delimited JSON objects compatible with CueLoop's streaming parser.
 //!
 //! Env passed:
-//! - `RALPH_PLUGIN_ID`
-//! - `RALPH_PLUGIN_CONFIG_JSON` (opaque; may be empty)
-//! - `RALPH_RUNNER_CLI_JSON` (resolved normalized options)
+//! - `CUELOOP_PLUGIN_ID`
+//! - `CUELOOP_PLUGIN_CONFIG_JSON` (opaque; may be empty)
+//! - `CUELOOP_RUNNER_CLI_JSON` (resolved normalized options)
 //!
 //! Usage:
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::path::Path;
 use std::time::Duration;
@@ -86,9 +86,9 @@ pub(crate) fn run_plugin_runner(
     let cfg = plugin_config_json.unwrap_or_else(|| "{}".to_string());
 
     let mut builder = RunnerCommandBuilder::new(bin, work_dir)
-        .env("RALPH_PLUGIN_ID", plugin_id)
-        .env("RALPH_PLUGIN_CONFIG_JSON", &cfg)
-        .env("RALPH_RUNNER_CLI_JSON", &runner_cli_json)
+        .env("CUELOOP_PLUGIN_ID", plugin_id)
+        .env("CUELOOP_PLUGIN_CONFIG_JSON", &cfg)
+        .env("CUELOOP_RUNNER_CLI_JSON", &runner_cli_json)
         .env(ENV_RUNNER_USED, plugin_id)
         .env(ENV_MODEL_USED, model.as_str())
         .env(LEGACY_ENV_RUNNER_USED, plugin_id)
@@ -134,9 +134,9 @@ pub(crate) fn run_plugin_runner_resume(
     let cfg = plugin_config_json.unwrap_or_else(|| "{}".to_string());
 
     let builder = RunnerCommandBuilder::new(bin, work_dir)
-        .env("RALPH_PLUGIN_ID", plugin_id)
-        .env("RALPH_PLUGIN_CONFIG_JSON", &cfg)
-        .env("RALPH_RUNNER_CLI_JSON", &runner_cli_json)
+        .env("CUELOOP_PLUGIN_ID", plugin_id)
+        .env("CUELOOP_PLUGIN_CONFIG_JSON", &cfg)
+        .env("CUELOOP_RUNNER_CLI_JSON", &runner_cli_json)
         .env(ENV_RUNNER_USED, plugin_id)
         .env(ENV_MODEL_USED, model.as_str())
         .env(LEGACY_ENV_RUNNER_USED, plugin_id)

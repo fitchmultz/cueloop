@@ -22,7 +22,7 @@
 //!
 //! Invariants/assumptions:
 //! - LOC counting excludes comments and empty lines for accurate measurement.
-//! - Hidden directories, target/, and .ralph/cache/ are skipped during scanning.
+//! - Hidden directories, target/, and .cueloop/cache/ are skipped during scanning.
 //! - File grouping uses test file naming conventions for relationship detection.
 //! - Batch mode determines grouping strategy (Auto, Never, Aggressive).
 
@@ -159,15 +159,15 @@ fn scan_directory_recursive(
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
 
-        // Skip hidden dirs, target/, and .ralph/cache/
+        // Skip hidden dirs, target/, and .cueloop/cache/
         if path.is_dir() {
             if name_str.starts_with('.') || name_str == "target" {
                 continue;
             }
-            // Skip .ralph/cache/ to avoid scanning generated/temp files
+            // Skip .cueloop/cache/ to avoid scanning generated/temp files
             if path
                 .components()
-                .any(|c| c.as_os_str() == ".ralph" || c.as_os_str() == "cache")
+                .any(|c| c.as_os_str() == ".cueloop" || c.as_os_str() == "cache")
             {
                 continue;
             }

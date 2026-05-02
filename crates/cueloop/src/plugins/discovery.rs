@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Current CueLoop plugin roots override legacy Ralph roots with the same plugin id.
+//! - Current CueLoop plugin roots override legacy CueLoop roots with the same plugin id.
 //! - Project plugins override global plugins with the same plugin id.
 
 use std::collections::BTreeMap;
@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn discover_falls_back_to_legacy_project_plugin() {
         let tmp = TempDir::new().unwrap();
-        let plugin_dir = tmp.path().join(".ralph/plugins/my.plugin");
+        let plugin_dir = tmp.path().join(".cueloop/plugins/my.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         write_manifest(&plugin_dir, "my.plugin").unwrap();
 
@@ -217,7 +217,7 @@ mod tests {
     fn current_roots_override_legacy_roots_with_same_scope() {
         let tmp = TempDir::new().unwrap();
         let fake_home = tmp.path().join("home");
-        let legacy_global_plugin = fake_home.join(".config/ralph/plugins/shared.plugin");
+        let legacy_global_plugin = fake_home.join(".config/cueloop/plugins/shared.plugin");
         let current_global_plugin = fake_home.join(".config/cueloop/plugins/shared.plugin");
         std::fs::create_dir_all(&legacy_global_plugin).unwrap();
         std::fs::create_dir_all(&current_global_plugin).unwrap();
@@ -231,7 +231,7 @@ mod tests {
         assert_eq!(got.scope, PluginScope::Global);
         assert_eq!(got.manifest.name, "current-global");
 
-        let legacy_project_plugin = tmp.path().join(".ralph/plugins/shared.plugin");
+        let legacy_project_plugin = tmp.path().join(".cueloop/plugins/shared.plugin");
         let current_project_plugin = tmp.path().join(".cueloop/plugins/shared.plugin");
         std::fs::create_dir_all(&legacy_project_plugin).unwrap();
         std::fs::create_dir_all(&current_project_plugin).unwrap();

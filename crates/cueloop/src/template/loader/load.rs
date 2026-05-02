@@ -13,7 +13,7 @@
 //! - Called by CLI task-creation surfaces that need template resolution.
 //!
 //! Invariants/Assumptions:
-//! - Custom templates under `.ralph/templates/{name}.json` override built-ins.
+//! - Custom templates under `.cueloop/templates/{name}.json` override built-ins.
 //! - Strict mode fails on unknown template variables.
 //! - Non-strict mode preserves unknown placeholders and returns warnings.
 
@@ -32,10 +32,10 @@ use super::types::{LoadedTemplate, TemplateError, TemplateSource};
 
 /// Load a template by name.
 ///
-/// Checks `.ralph/templates/{name}.json` first, then falls back to built-in templates.
+/// Checks `.cueloop/templates/{name}.json` first, then falls back to built-in templates.
 pub fn load_template(name: &str, project_root: &Path) -> Result<(Task, TemplateSource)> {
     let custom_path = project_root
-        .join(".ralph/templates")
+        .join(".cueloop/templates")
         .join(format!("{}.json", name));
     if custom_path.exists() {
         let content = std::fs::read_to_string(&custom_path)
@@ -67,7 +67,7 @@ pub fn load_template(name: &str, project_root: &Path) -> Result<(Task, TemplateS
 
 /// Load a template by name with variable substitution.
 ///
-/// Checks `.ralph/templates/{name}.json` first, then falls back to built-in templates.
+/// Checks `.cueloop/templates/{name}.json` first, then falls back to built-in templates.
 /// Substitutes template variables (`{{target}}`, `{{module}}`, `{{file}}`, `{{branch}}`) with
 /// context-aware values.
 ///

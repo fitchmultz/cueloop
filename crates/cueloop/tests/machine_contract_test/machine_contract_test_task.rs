@@ -19,14 +19,14 @@
 //! - Input payload shapes and assertions match the legacy suite exactly.
 //! - Repo setup flows through the shared public CLI bootstrap helpers.
 
-use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo, write_json_file};
+use super::machine_contract_test_support::{run_in_dir, setup_cueloop_repo, write_json_file};
 use anyhow::Result;
 use cueloop::contracts::{TaskPriority, TaskStatus};
 use serde_json::Value;
 
 #[test]
 fn machine_task_create_and_mutate_round_trip() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let create_request = serde_json::json!({
         "version": 1,
@@ -122,7 +122,7 @@ fn machine_task_create_and_mutate_round_trip() -> Result<()> {
 
 #[test]
 fn task_mutate_json_uses_shared_continuation_document() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let create_request = serde_json::json!({
         "version": 1,

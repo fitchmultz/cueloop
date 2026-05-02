@@ -20,7 +20,7 @@ use tempfile::TempDir;
 
 fn create_test_context(dir: &TempDir) -> MigrationContext {
     let repo_root = dir.path().to_path_buf();
-    let project_config_path = repo_root.join(".ralph/config.jsonc");
+    let project_config_path = repo_root.join(".cueloop/config.jsonc");
 
     MigrationContext {
         repo_root,
@@ -36,9 +36,9 @@ fn cleanup_migration_pending_when_legacy_json_remains_after_rename_migration() {
     let dir = TempDir::new().unwrap();
     let mut ctx = create_test_context(&dir);
 
-    std::fs::create_dir_all(dir.path().join(".ralph")).unwrap();
-    std::fs::write(dir.path().join(".ralph/queue.json"), "{}").unwrap();
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), "{}").unwrap();
+    std::fs::create_dir_all(dir.path().join(".cueloop")).unwrap();
+    std::fs::write(dir.path().join(".cueloop/queue.json"), "{}").unwrap();
+    std::fs::write(dir.path().join(".cueloop/queue.jsonc"), "{}").unwrap();
 
     ctx.migration_history
         .applied_migrations

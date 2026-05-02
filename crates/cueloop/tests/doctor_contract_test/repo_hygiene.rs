@@ -4,7 +4,7 @@
 //! - Doctor repo-hygiene auto-fix tests.
 //!
 //! Responsibilities:
-//! - Verify doctor detects missing `.ralph/logs/` gitignore entries.
+//! - Verify doctor detects missing `.cueloop/logs/` gitignore entries.
 //! - Verify doctor auto-fix repairs repo hygiene issues in place.
 //!
 //! Not handled here:
@@ -21,15 +21,15 @@
 use super::*;
 
 #[test]
-fn doctor_detects_missing_ralph_logs_gitignore() -> Result<()> {
+fn doctor_detects_missing_cueloop_logs_gitignore() -> Result<()> {
     let dir = setup_doctor_repo()?;
 
     std::fs::write(
         dir.path().join(".gitignore"),
-        ".ralph/lock\n.ralph/cache/\n",
+        ".cueloop/lock\n.cueloop/cache/\n",
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 
@@ -39,17 +39,17 @@ fn doctor_detects_missing_ralph_logs_gitignore() -> Result<()> {
 
     assert_eq!(
         json["success"], false,
-        "doctor should fail when .ralph/logs/ is not gitignored"
+        "doctor should fail when .cueloop/logs/ is not gitignored"
     );
 
     let checks = json["checks"].as_array().unwrap();
     let logs_check = checks
         .iter()
-        .find(|c| c["category"] == "project" && c["check"] == "gitignore_ralph_logs");
+        .find(|c| c["category"] == "project" && c["check"] == "gitignore_cueloop_logs");
 
     assert!(
         logs_check.is_some(),
-        "should have a gitignore_ralph_logs check. Checks: {:?}",
+        "should have a gitignore_cueloop_logs check. Checks: {:?}",
         checks
     );
     let logs_check = logs_check.unwrap();
@@ -63,23 +63,23 @@ fn doctor_detects_missing_ralph_logs_gitignore() -> Result<()> {
         logs_check["suggested_fix"]
             .as_str()
             .unwrap_or("")
-            .contains(".ralph/logs/"),
-        "suggested_fix should mention .ralph/logs/"
+            .contains(".cueloop/logs/"),
+        "suggested_fix should mention .cueloop/logs/"
     );
 
     Ok(())
 }
 
 #[test]
-fn doctor_auto_fix_adds_ralph_logs_gitignore() -> Result<()> {
+fn doctor_auto_fix_adds_cueloop_logs_gitignore() -> Result<()> {
     let dir = setup_doctor_repo()?;
 
     std::fs::write(
         dir.path().join(".gitignore"),
-        ".ralph/lock\n.ralph/cache/\n",
+        ".cueloop/lock\n.cueloop/cache/\n",
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json", "--auto-fix"])
         .output()?;
 
@@ -90,11 +90,11 @@ fn doctor_auto_fix_adds_ralph_logs_gitignore() -> Result<()> {
     let checks = json["checks"].as_array().unwrap();
     let logs_check = checks
         .iter()
-        .find(|c| c["category"] == "project" && c["check"] == "gitignore_ralph_logs");
+        .find(|c| c["category"] == "project" && c["check"] == "gitignore_cueloop_logs");
 
     assert!(
         logs_check.is_some(),
-        "should have a gitignore_ralph_logs check"
+        "should have a gitignore_cueloop_logs check"
     );
     let logs_check = logs_check.unwrap();
 
@@ -105,8 +105,8 @@ fn doctor_auto_fix_adds_ralph_logs_gitignore() -> Result<()> {
 
     let gitignore_content = std::fs::read_to_string(dir.path().join(".gitignore"))?;
     assert!(
-        gitignore_content.contains(".ralph/logs/"),
-        ".gitignore should now contain .ralph/logs/. Content: {}",
+        gitignore_content.contains(".cueloop/logs/"),
+        ".gitignore should now contain .cueloop/logs/. Content: {}",
         gitignore_content
     );
 

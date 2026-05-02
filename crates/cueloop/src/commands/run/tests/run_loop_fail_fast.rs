@@ -40,7 +40,7 @@ fn git_init(dir: &Path) -> anyhow::Result<()> {
     git_status_ok(dir, &["init", "--quiet"], "git init failed")?;
 
     let gitignore_path = dir.join(".gitignore");
-    std::fs::write(&gitignore_path, ".ralph/lock\n.ralph/cache/\nbin/\n")?;
+    std::fs::write(&gitignore_path, ".cueloop/lock\n.cueloop/cache/\nbin/\n")?;
     git_status_ok(dir, &["add", ".gitignore"], "git add .gitignore failed")?;
     git_status_ok(
         dir,
@@ -57,7 +57,7 @@ fn resolved_with_missing_runner(repo_root: std::path::PathBuf) -> crate::config:
             agent: AgentConfig {
                 runner: Some(Runner::Opencode),
                 model: Some(crate::contracts::Model::Gpt53),
-                opencode_bin: Some("__ralph_missing_runner_for_fail_fast_test__".to_string()),
+                opencode_bin: Some("__cueloop_missing_runner_for_fail_fast_test__".to_string()),
                 git_revert_mode: Some(crate::contracts::GitRevertMode::Disabled),
                 runner_retry: crate::contracts::RunnerRetryConfig {
                     max_attempts: Some(1),
@@ -70,19 +70,19 @@ fn resolved_with_missing_runner(repo_root: std::path::PathBuf) -> crate::config:
                 ..AgentConfig::default()
             },
             queue: QueueConfig {
-                file: Some(std::path::PathBuf::from(".ralph/queue.json")),
-                done_file: Some(std::path::PathBuf::from(".ralph/done.json")),
+                file: Some(std::path::PathBuf::from(".cueloop/queue.json")),
+                done_file: Some(std::path::PathBuf::from(".cueloop/done.json")),
                 ..QueueConfig::default()
             },
             ..Config::default()
         },
         repo_root: repo_root.clone(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".cueloop/queue.json"),
+        done_path: repo_root.join(".cueloop/done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".cueloop/config.json")),
     }
 }
 
@@ -96,7 +96,7 @@ fn sequential_run_loop_aborts_after_single_task_failure() -> anyhow::Result<()> 
 
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     git_init(&repo_root)?;
 
     let resolved = resolved_with_missing_runner(repo_root.clone());

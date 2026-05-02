@@ -46,7 +46,7 @@ Loop limits:\n\
   - `--git-publish-mode` controls post-run git behavior: off, commit, or commit_and_push.\n\
   - `--parallel` is experimental and runs loop tasks concurrently in workspaces (clone-based).\n\
   - Experimental parallel workers push directly to the target branch after phase execution.\n\
-  - Clean-repo checks allow changes to `.cueloop/config.jsonc`, `.cueloop/queue.jsonc`, `.cueloop/done.jsonc`, and legacy `.ralph` equivalents; use `--force` to bypass entirely.\n\
+  - Clean-repo checks allow changes to `.cueloop/config.jsonc`, `.cueloop/queue.jsonc`, `.cueloop/done.jsonc`, and legacy `.cueloop` equivalents; use `--force` to bypass entirely.\n\
  \n\
 Phase-specific overrides:\n\
   Use --runner-phaseN, --model-phaseN, --effort-phaseN to override settings for a specific phase.\n\
@@ -61,7 +61,7 @@ Phase-specific overrides:\n\
     5) Task global override (task.agent.runner/model/model_effort)\n\
     6) Config defaults (agent.*)\n\
  \n\
- To change defaults for this repo, edit .cueloop/config.jsonc (or legacy .ralph/config.jsonc):\n\
+ To change defaults for this repo, edit .cueloop/config.jsonc (or legacy .cueloop/config.jsonc):\n\
   version: 2\n\
   agent:\n\
   runner: codex\n\

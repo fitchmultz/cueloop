@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - `.ralph/logs/` should always be gitignored to prevent secret leakage.
+//! - `.cueloop/logs/` should always be gitignored to prevent secret leakage.
 //! - Auto-fixes are conservative and idempotent.
 //! - Make-based CI gates should narrate CI-blocking reasons through the canonical blocking contract.
 
@@ -69,7 +69,7 @@ fn check_ci_gate_prerequisites(report: &mut DoctorReport, resolved: &config::Res
                 )
                 .with_blocking(doctor_ci_blocked(
                     "makefile_missing",
-                    "Ralph is stalled because the project CI gate is unavailable.",
+                    "CueLoop is stalled because the project CI gate is unavailable.",
                     format!(
                         "The configured CI gate expects a Makefile target '{target}', but {} is missing.",
                         makefile_path.display()
@@ -105,7 +105,7 @@ fn check_ci_gate_prerequisites(report: &mut DoctorReport, resolved: &config::Res
                         )
                         .with_blocking(doctor_ci_blocked(
                             "ci_target_missing",
-                            "Ralph is stalled because the project CI gate is unavailable.",
+                            "CueLoop is stalled because the project CI gate is unavailable.",
                             format!(
                                 "The repository Makefile does not define the configured CI target '{target}'."
                             ),
@@ -172,7 +172,7 @@ fn make_target_exists(content: &str, target: &str) -> bool {
         .any(|line| line.starts_with(&needle))
 }
 
-/// Check if `.ralph/logs/` is in repo root `.gitignore`.
+/// Check if `.cueloop/logs/` is in repo root `.gitignore`.
 ///
 /// This check inspects the repo-local `.gitignore` file content directly
 /// (not using `git check-ignore`, which would incorrectly pass on machines
@@ -190,7 +190,7 @@ pub(crate) fn check_gitignore_runtime_logs(
             Err(e) => {
                 report.add(CheckResult::error(
                     "project",
-                    "gitignore_ralph_logs",
+                    "gitignore_cueloop_logs",
                     &format!("failed to read .gitignore: {}", e),
                     false,
                     Some("Check file permissions"),
@@ -204,14 +204,14 @@ pub(crate) fn check_gitignore_runtime_logs(
 
     let has_logs_entry = content.lines().any(|line| {
         let trimmed = line.trim();
-        trimmed == ".ralph/logs/" || trimmed == ".ralph/logs"
+        trimmed == ".cueloop/logs/" || trimmed == ".cueloop/logs"
     });
 
     if has_logs_entry {
         report.add(CheckResult::success(
             "project",
-            "gitignore_ralph_logs",
-            ".gitignore contains .ralph/logs/ (debug logs will not be committed)",
+            "gitignore_cueloop_logs",
+            ".gitignore contains .cueloop/logs/ (debug logs will not be committed)",
         ));
         return;
     }
@@ -219,10 +219,10 @@ pub(crate) fn check_gitignore_runtime_logs(
     let fix_available = true;
     let mut result = CheckResult::error(
         "project",
-        "gitignore_ralph_logs",
-        ".gitignore missing ignore rule for .ralph/logs/ (debug logs may contain secrets)",
+        "gitignore_cueloop_logs",
+        ".gitignore missing ignore rule for .cueloop/logs/ (debug logs may contain secrets)",
         fix_available,
-        Some("Add this to your repo root .gitignore:\n\n.ralph/logs/\n"),
+        Some("Add this to your repo root .gitignore:\n\n.cueloop/logs/\n"),
     );
 
     if auto_fix && fix_available {
@@ -233,14 +233,14 @@ pub(crate) fn check_gitignore_runtime_logs(
                 Ok(new_content) => {
                     let now_has_entry = new_content.lines().any(|line| {
                         let trimmed = line.trim();
-                        trimmed == ".ralph/logs/" || trimmed == ".ralph/logs"
+                        trimmed == ".cueloop/logs/" || trimmed == ".cueloop/logs"
                     });
                     if now_has_entry {
-                        log::info!("Auto-fixed: added .ralph/logs/ to .gitignore");
+                        log::info!("Auto-fixed: added .cueloop/logs/ to .gitignore");
                         result = CheckResult::success(
                             "project",
-                            "gitignore_ralph_logs",
-                            ".gitignore now contains .ralph/logs/ (auto-fixed)",
+                            "gitignore_cueloop_logs",
+                            ".gitignore now contains .cueloop/logs/ (auto-fixed)",
                         )
                         .with_fix_applied(true);
                     } else {

@@ -1,10 +1,10 @@
-//! Canonical built-in profile definitions for Ralph configuration.
+//! Canonical built-in profile definitions for CueLoop configuration.
 //!
 //! Purpose:
-//! - Canonical built-in profile definitions for Ralph configuration.
+//! - Canonical built-in profile definitions for CueLoop configuration.
 //!
 //! Responsibilities:
-//! - Define the reserved built-in profiles shipped with Ralph.
+//! - Define the reserved built-in profiles shipped with CueLoop.
 //! - Provide helpers for resolving and validating reserved profile names.
 //!
 //! Not handled here:

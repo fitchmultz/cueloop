@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn cli_parses_context_init() {
-        let cli = crate::cli::Cli::try_parse_from(["ralph", "context", "init"]).expect("parse");
+        let cli = crate::cli::Cli::try_parse_from(["cueloop", "context", "init"]).expect("parse");
         match cli.command {
             crate::cli::Command::Context(args) => match args.command {
                 ContextCommand::Init(init_args) => {
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn cli_parses_context_init_with_force() {
-        let cli = crate::cli::Cli::try_parse_from(["ralph", "context", "init", "--force"])
+        let cli = crate::cli::Cli::try_parse_from(["cueloop", "context", "init", "--force"])
             .expect("parse");
         match cli.command {
             crate::cli::Command::Context(args) => match args.command {
@@ -245,9 +245,14 @@ mod tests {
 
     #[test]
     fn cli_parses_context_init_with_project_type() {
-        let cli =
-            crate::cli::Cli::try_parse_from(["ralph", "context", "init", "--project-type", "rust"])
-                .expect("parse");
+        let cli = crate::cli::Cli::try_parse_from([
+            "cueloop",
+            "context",
+            "init",
+            "--project-type",
+            "rust",
+        ])
+        .expect("parse");
         match cli.command {
             crate::cli::Command::Context(args) => match args.command {
                 ContextCommand::Init(init_args) => {
@@ -262,7 +267,7 @@ mod tests {
     #[test]
     fn cli_parses_context_init_with_output() {
         let cli = crate::cli::Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "context",
             "init",
             "--output",
@@ -283,7 +288,7 @@ mod tests {
     #[test]
     fn cli_parses_context_update_with_section() {
         let cli = crate::cli::Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "context",
             "update",
             "--section",
@@ -305,7 +310,7 @@ mod tests {
     #[test]
     fn cli_parses_context_update_with_multiple_sections() {
         let cli = crate::cli::Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "context",
             "update",
             "--section",
@@ -327,7 +332,7 @@ mod tests {
 
     #[test]
     fn cli_parses_context_update_with_dry_run() {
-        let cli = crate::cli::Cli::try_parse_from(["ralph", "context", "update", "--dry-run"])
+        let cli = crate::cli::Cli::try_parse_from(["cueloop", "context", "update", "--dry-run"])
             .expect("parse");
         match cli.command {
             crate::cli::Command::Context(args) => match args.command {
@@ -342,7 +347,8 @@ mod tests {
 
     #[test]
     fn cli_parses_context_validate() {
-        let cli = crate::cli::Cli::try_parse_from(["ralph", "context", "validate"]).expect("parse");
+        let cli =
+            crate::cli::Cli::try_parse_from(["cueloop", "context", "validate"]).expect("parse");
         match cli.command {
             crate::cli::Command::Context(args) => match args.command {
                 ContextCommand::Validate(validate_args) => {
@@ -357,7 +363,7 @@ mod tests {
 
     #[test]
     fn cli_parses_context_validate_with_strict() {
-        let cli = crate::cli::Cli::try_parse_from(["ralph", "context", "validate", "--strict"])
+        let cli = crate::cli::Cli::try_parse_from(["cueloop", "context", "validate", "--strict"])
             .expect("parse");
         match cli.command {
             crate::cli::Command::Context(args) => match args.command {

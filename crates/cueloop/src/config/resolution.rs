@@ -1,11 +1,11 @@
 //! Configuration resolution for CueLoop.
 //!
 //! Purpose:
-//! - Configuration resolution for CueLoop's transitional `ralph` CLI.
+//! - Configuration resolution for CueLoop's transitional `cueloop` CLI.
 //!
 //! Responsibilities:
 //! - Resolve configuration from multiple layers: global, project, and defaults.
-//! - Discover repository root via current `.cueloop/`, legacy `.ralph/`, or `.git/` markers.
+//! - Discover repository root via current `.cueloop/`, legacy `.cueloop/`, or `.git/` markers.
 //! - Resolve active runtime layout and queue/done file paths.
 //! - Apply profile patches after base config resolution.
 //!
@@ -21,9 +21,9 @@
 //! - Config layers are applied in order: defaults, legacy global, current global, project.
 //! - Paths are resolved relative to repo root unless absolute.
 //! - Current global config resolves from `~/.config/cueloop/config.jsonc`.
-//! - Legacy global config at `~/.config/ralph/config.jsonc` remains a fallback.
+//! - Legacy global config at `~/.config/cueloop/config.jsonc` remains a fallback.
 //! - Project config resolves from the active runtime dir: `.cueloop/config.jsonc` for
-//!   current/uninitialized repos, `.ralph/config.jsonc` for legacy repos.
+//!   current/uninitialized repos, `.cueloop/config.jsonc` for legacy repos.
 
 use crate::constants::defaults::DEFAULT_ID_WIDTH;
 use crate::constants::identity::{
@@ -71,7 +71,7 @@ const RUNTIME_MARKER_FILES: &[&str] = &[
 pub enum ProjectRuntimeLayout {
     /// Current CueLoop runtime directory (`.cueloop`).
     Current,
-    /// Legacy Ralph runtime directory (`.ralph`).
+    /// Legacy CueLoop runtime directory (`.cueloop`).
     Legacy,
     /// No runtime markers exist yet; new writes should use `.cueloop`.
     Uninitialized,
@@ -215,7 +215,7 @@ fn apply_profile_patch(cfg: &mut Config, name: &str) -> Result<()> {
             let names = crate::agent::all_profile_names(cfg.profiles.as_ref());
             if names.is_empty() {
                 anyhow::anyhow!(
-                    "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or legacy .ralph/config.jsonc."
+                    "Unknown profile: {name:?}. No profiles are configured. Define profiles under the `profiles` key in .cueloop/config.jsonc or legacy .cueloop/config.jsonc."
                 )
             } else {
                 anyhow::anyhow!(
@@ -388,7 +388,7 @@ fn has_runtime_marker(runtime_dir: &Path) -> bool {
 
 /// Find the repository root starting from a given path.
 ///
-/// Searches upward for current `.cueloop/` marker files, then legacy `.ralph/` marker files,
+/// Searches upward for current `.cueloop/` marker files, then legacy `.cueloop/` marker files,
 /// then a `.git/` directory.
 pub fn find_repo_root(start: &Path) -> PathBuf {
     log::debug!("searching for repo root starting from: {}", start.display());

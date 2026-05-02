@@ -43,9 +43,9 @@ pub struct DaemonArgs {
 
 #[derive(Subcommand)]
 pub enum DaemonCommand {
-    /// Start Ralph as a background daemon (continuous execution mode).
+    /// Start CueLoop as a background daemon (continuous execution mode).
     #[command(
-        about = "Start Ralph as a background daemon",
+        about = "Start CueLoop as a background daemon",
         after_long_help = "Examples:
  cueloop daemon start
  cueloop daemon start --empty-poll-ms 5000
@@ -179,7 +179,7 @@ mod tests {
 
     #[test]
     fn daemon_start_wait_poll_ms_rejects_below_minimum() {
-        let args = vec!["ralph", "daemon", "start", "--wait-poll-ms", "10"];
+        let args = vec!["cueloop", "daemon", "start", "--wait-poll-ms", "10"];
         let result = Cli::try_parse_from(args);
         assert!(
             result.is_err(),
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn daemon_start_empty_poll_ms_rejects_below_minimum() {
-        let args = vec!["ralph", "daemon", "start", "--empty-poll-ms", "10"];
+        let args = vec!["cueloop", "daemon", "start", "--empty-poll-ms", "10"];
         let result = Cli::try_parse_from(args);
         assert!(
             result.is_err(),
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn daemon_start_wait_poll_ms_accepts_minimum() {
-        let args = vec!["ralph", "daemon", "start", "--wait-poll-ms", "50"];
+        let args = vec!["cueloop", "daemon", "start", "--wait-poll-ms", "50"];
         let result = Cli::try_parse_from(args);
         assert!(
             result.is_ok(),
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn daemon_start_empty_poll_ms_accepts_minimum() {
-        let args = vec!["ralph", "daemon", "start", "--empty-poll-ms", "50"];
+        let args = vec!["cueloop", "daemon", "start", "--empty-poll-ms", "50"];
         let result = Cli::try_parse_from(args);
         assert!(
             result.is_ok(),

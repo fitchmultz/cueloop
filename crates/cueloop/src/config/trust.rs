@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Define the local trust file contract for execution-sensitive project settings.
-//! - Load active `.cueloop/trust.jsonc` or legacy `.ralph/trust.jsonc` files with JSONC support.
+//! - Load active `.cueloop/trust.jsonc` or legacy `.cueloop/trust.jsonc` files with JSONC support.
 //! - Provide helpers for source-aware trust checks during config resolution.
 //!
 //! Not handled here:
@@ -155,23 +155,23 @@ mod tests {
     #[test]
     fn project_trust_path_uses_legacy_runtime_when_marked() {
         let repo_root = TempDir::new().expect("temp dir");
-        let ralph_dir = repo_root.path().join(".ralph");
-        fs::create_dir_all(&ralph_dir).expect("create .ralph");
-        fs::write(ralph_dir.join("config.jsonc"), r#"{"version":2}"#).expect("write config");
+        let cueloop_dir = repo_root.path().join(".cueloop");
+        fs::create_dir_all(&cueloop_dir).expect("create .cueloop");
+        fs::write(cueloop_dir.join("config.jsonc"), r#"{"version":2}"#).expect("write config");
 
         assert_eq!(
             project_trust_path(repo_root.path()),
-            repo_root.path().join(".ralph/trust.jsonc")
+            repo_root.path().join(".cueloop/trust.jsonc")
         );
     }
 
     #[test]
     fn load_repo_trust_ignores_legacy_json_file() {
         let repo_root = TempDir::new().expect("temp dir");
-        let ralph_dir = repo_root.path().join(".ralph");
-        fs::create_dir_all(&ralph_dir).expect("create .ralph");
+        let cueloop_dir = repo_root.path().join(".cueloop");
+        fs::create_dir_all(&cueloop_dir).expect("create .cueloop");
         fs::write(
-            ralph_dir.join("trust.json"),
+            cueloop_dir.join("trust.json"),
             r#"{"allow_project_commands":true}"#,
         )
         .expect("write legacy trust file");

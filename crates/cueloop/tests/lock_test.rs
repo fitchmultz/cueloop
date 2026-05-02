@@ -36,7 +36,7 @@ fn test_queue_lock_dir() {
     let repo_root = dir.path();
 
     let lock_dir = lock::queue_lock_dir(repo_root);
-    assert_eq!(lock_dir, repo_root.join(".ralph").join("lock"));
+    assert_eq!(lock_dir, repo_root.join(".cueloop").join("lock"));
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn test_acquire_dir_lock_auto_clears_stale_pid() {
 #[test]
 fn test_acquire_dir_lock_creates_parent_dir() {
     let dir = TempDir::new().expect("create temp dir");
-    let lock_dir = dir.path().join("nested").join(".ralph").join("lock");
+    let lock_dir = dir.path().join("nested").join(".cueloop").join("lock");
 
     let lock = lock::acquire_dir_lock(&lock_dir, "test", false).unwrap();
     assert!(lock_dir.exists());
@@ -195,7 +195,7 @@ fn test_acquire_dir_lock_concurrent() {
 #[test]
 fn test_parse_lock_owner_valid() {
     let _raw =
-        "pid: 12345\nstarted_at: 2025-01-19T00:00:00Z\ncommand: ralph test\nlabel: test_label";
+        "pid: 12345\nstarted_at: 2025-01-19T00:00:00Z\ncommand: cueloop test\nlabel: test_label";
     // This is tested indirectly through acquire_dir_lock
     // Direct testing would require making parse_lock_owner public
     let dir = TempDir::new().expect("create temp dir");

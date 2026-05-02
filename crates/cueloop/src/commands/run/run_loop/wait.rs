@@ -64,9 +64,9 @@ impl QueueFileWatcher {
             Config::default(),
         )?;
 
-        let ralph_dir = resolved.repo_root.join(".ralph");
-        if ralph_dir.exists() {
-            watcher.watch(&ralph_dir, RecursiveMode::Recursive)?;
+        let cueloop_dir = resolved.repo_root.join(".cueloop");
+        if cueloop_dir.exists() {
+            watcher.watch(&cueloop_dir, RecursiveMode::Recursive)?;
         }
 
         Ok(Self {
@@ -97,7 +97,7 @@ pub(super) fn wait_for_work(
 ) -> Result<WaitExit> {
     use std::time::{Duration, Instant};
 
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
     let blocked_poll_ms = blocked_poll_ms.max(50);
     let empty_poll_ms = empty_poll_ms.max(50);
     let start = Instant::now();
@@ -312,7 +312,7 @@ fn notify_queue_unblocked(
         use notify_rust::{Notification, Timeout};
         crate::notification::prepare_platform_notification_delivery();
         if let Err(e) = Notification::new()
-            .summary("Ralph: tasks runnable")
+            .summary("CueLoop: tasks runnable")
             .body(&note)
             .timeout(Timeout::Milliseconds(notify_config.timeout_ms))
             .show()

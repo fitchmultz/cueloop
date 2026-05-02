@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, bail};
 use schemars::JsonSchema;
@@ -110,7 +110,7 @@ pub struct WebhookConfig {
     pub allow_private_targets: Option<bool>,
 
     /// Secret key for HMAC-SHA256 signature generation.
-    /// When set, webhooks include an X-Ralph-Signature header.
+    /// When set, webhooks include an X-CueLoop-Signature header.
     pub secret: Option<String>,
 
     /// Events to subscribe to (default: legacy task events only).
@@ -447,19 +447,21 @@ mod tests {
 
     #[test]
     fn validate_destination_accepts_public_https() {
-        validate_webhook_destination_url("https://hooks.example.com/ralph", false, false).unwrap();
+        validate_webhook_destination_url("https://hooks.example.com/cueloop", false, false)
+            .unwrap();
     }
 
     #[test]
     fn validate_destination_rejects_http_by_default() {
-        let err = validate_webhook_destination_url("http://hooks.example.com/ralph", false, false)
-            .unwrap_err();
+        let err =
+            validate_webhook_destination_url("http://hooks.example.com/cueloop", false, false)
+                .unwrap_err();
         assert!(err.to_string().contains("http://"));
     }
 
     #[test]
     fn validate_destination_allows_http_when_opted_in() {
-        validate_webhook_destination_url("http://hooks.example.com/ralph", true, false).unwrap();
+        validate_webhook_destination_url("http://hooks.example.com/cueloop", true, false).unwrap();
     }
 
     #[test]

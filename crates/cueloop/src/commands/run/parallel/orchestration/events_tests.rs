@@ -104,8 +104,8 @@ fn test_resolved(repo_root: &Path) -> config::Resolved {
     config::Resolved {
         config: Config::default(),
         repo_root: repo_root.to_path_buf(),
-        queue_path: repo_root.join(".ralph/queue.jsonc"),
-        done_path: repo_root.join(".ralph/done.jsonc"),
+        queue_path: repo_root.join(".cueloop/queue.jsonc"),
+        done_path: repo_root.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -134,10 +134,16 @@ fn initialized_remote_backed_repo(temp: &TempDir) -> Result<(std::path::PathBuf,
     let repo_root = temp.path().join("repo");
     std::fs::create_dir_all(&repo_root)?;
     git_test::init_repo(&repo_root)?;
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     std::fs::write(repo_root.join("README.md"), "test repo")?;
-    crate::queue::save_queue(&repo_root.join(".ralph/queue.jsonc"), &QueueFile::default())?;
-    crate::queue::save_queue(&repo_root.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    crate::queue::save_queue(
+        &repo_root.join(".cueloop/queue.jsonc"),
+        &QueueFile::default(),
+    )?;
+    crate::queue::save_queue(
+        &repo_root.join(".cueloop/done.jsonc"),
+        &QueueFile::default(),
+    )?;
     git_test::commit_all(&repo_root, "initial commit")?;
     let branch = git_test::git_output(&repo_root, &["rev-parse", "--abbrev-ref", "HEAD"])?;
     git_test::add_remote(&repo_root, "origin", &remote)?;
@@ -200,7 +206,7 @@ fn finished_blocked_push_retains_workspace_and_records_attempts() -> Result<()> 
 
     let marker_path = workspace
         .path
-        .join(".ralph/cache/parallel/blocked_push.json");
+        .join(".cueloop/cache/parallel/blocked_push.json");
     std::fs::create_dir_all(marker_path.parent().expect("marker parent"))?;
     std::fs::write(
         &marker_path,
@@ -369,17 +375,20 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
     git_test::init_bare_repo(&remote)?;
 
     let repo_root = temp.path().join("repo");
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     git_test::init_repo(&repo_root)?;
-    std::fs::write(repo_root.join(".ralph/queue.jsonc"), "{stale_queue}")?;
-    std::fs::write(repo_root.join(".ralph/done.jsonc"), "{stale_done}")?;
+    std::fs::write(repo_root.join(".cueloop/queue.jsonc"), "{stale_queue}")?;
+    std::fs::write(repo_root.join(".cueloop/done.jsonc"), "{stale_done}")?;
     git_test::commit_all(&repo_root, "tracked stale bookkeeping")?;
     let branch = git_test::git_output(&repo_root, &["rev-parse", "--abbrev-ref", "HEAD"])?;
     git_test::add_remote(&repo_root, "origin", &remote)?;
     git_test::push_branch(&repo_root, &branch)?;
 
-    std::fs::write(repo_root.join(".ralph/queue.jsonc"), "{remote_fresh_queue}")?;
-    std::fs::write(repo_root.join(".ralph/done.jsonc"), "{remote_fresh_done}")?;
+    std::fs::write(
+        repo_root.join(".cueloop/queue.jsonc"),
+        "{remote_fresh_queue}",
+    )?;
+    std::fs::write(repo_root.join(".cueloop/done.jsonc"), "{remote_fresh_done}")?;
     git_test::commit_all(&repo_root, "remote fresh bookkeeping")?;
     git_test::push_branch(&repo_root, &branch)?;
     git_test::git_run(&repo_root, &["reset", "--hard", "HEAD~1"])?;
@@ -389,12 +398,15 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
     let workspace = worker_workspace(&temp, "RQ-0006")?;
-    std::fs::create_dir_all(workspace.path.join(".ralph"))?;
+    std::fs::create_dir_all(workspace.path.join(".cueloop"))?;
     std::fs::write(
-        workspace.path.join(".ralph/queue.jsonc"),
+        workspace.path.join(".cueloop/queue.jsonc"),
         "{workspace_queue}",
     )?;
-    std::fs::write(workspace.path.join(".ralph/done.jsonc"), "{workspace_done}")?;
+    std::fs::write(
+        workspace.path.join(".cueloop/done.jsonc"),
+        "{workspace_done}",
+    )?;
     register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
         "RQ-0006",
@@ -426,11 +438,11 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
         "unexpected error: {err:#}"
     );
     assert_eq!(
-        std::fs::read_to_string(repo_root.join(".ralph/queue.jsonc"))?,
+        std::fs::read_to_string(repo_root.join(".cueloop/queue.jsonc"))?,
         "{stale_queue}"
     );
     assert_eq!(
-        std::fs::read_to_string(repo_root.join(".ralph/done.jsonc"))?,
+        std::fs::read_to_string(repo_root.join(".cueloop/done.jsonc"))?,
         "{stale_done}"
     );
     assert_eq!(stats.succeeded(), 0);
@@ -442,11 +454,11 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
 fn finished_success_reconciles_ignored_source_bookkeeping_from_worker_done_task() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     git_test::init_repo(&repo_root)?;
     std::fs::write(
         repo_root.join(".gitignore"),
-        ".ralph/queue.jsonc\n.ralph/done.jsonc\n.ralph/cache/\n",
+        ".cueloop/queue.jsonc\n.cueloop/done.jsonc\n.cueloop/cache/\n",
     )?;
     git_test::git_run(&repo_root, &["add", ".gitignore"])?;
     git_test::git_run(&repo_root, &["commit", "-m", "ignore bookkeeping"])?;
@@ -470,9 +482,9 @@ fn finished_success_reconciles_ignored_source_bookkeeping_from_worker_done_task(
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
     let workspace = worker_workspace(&temp, "RQ-0006")?;
-    std::fs::create_dir_all(workspace.path.join(".ralph"))?;
+    std::fs::create_dir_all(workspace.path.join(".cueloop"))?;
     crate::queue::save_queue(
-        &workspace.path.join(".ralph/done.jsonc"),
+        &workspace.path.join(".cueloop/done.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![task("RQ-0006", TaskStatus::Done)],

@@ -12,7 +12,7 @@
 //!   live in sibling modules.
 //!
 //! Usage:
-//! - Called anywhere Ralph must render user-visible output safely.
+//! - Called anywhere CueLoop must render user-visible output safely.
 //!
 //! Invariants/Assumptions:
 //! - Empty and whitespace-only strings round-trip unchanged.

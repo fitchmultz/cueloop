@@ -226,7 +226,7 @@ fn successful_retry_emits_no_warning_level_recovery_log() {
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
     crate::testsupport::git::init_repo(temp_dir.path()).expect("init git repo");
-    let cache_dir = temp_dir.path().join(".ralph/cache");
+    let cache_dir = temp_dir.path().join(".cueloop/cache");
     std::fs::create_dir_all(&cache_dir).expect("create cache dir");
     let cache_file = cache_dir.join("blocked");
     std::fs::write(&cache_file, "initial").expect("write tracked cache fixture");

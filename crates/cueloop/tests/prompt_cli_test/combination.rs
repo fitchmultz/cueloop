@@ -19,7 +19,7 @@ use super::*;
 #[test]
 fn prompt_worker_parses_full_combination() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "prompt",
         "worker",
         "--phase",
@@ -60,7 +60,7 @@ fn prompt_worker_parses_full_combination() {
 #[test]
 fn prompt_worker_parses_single_with_other_flags() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "prompt",
         "worker",
         "--single",
@@ -87,7 +87,7 @@ fn prompt_worker_parses_single_with_other_flags() {
 #[test]
 fn prompt_scan_parses_full_combination() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "prompt",
         "scan",
         "--focus",
@@ -116,7 +116,7 @@ fn prompt_scan_parses_full_combination() {
 #[test]
 fn prompt_task_builder_parses_full_combination() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "prompt",
         "task-builder",
         "--request",

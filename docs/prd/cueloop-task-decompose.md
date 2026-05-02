@@ -1,35 +1,35 @@
-# Ralph Task Decompose
+# CueLoop Task Decompose
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
 ## Introduction
 
-Ralph currently supports several task creation and task-structuring workflows, but none of them make recursive decomposition a first-class experience.
+CueLoop currently supports several task creation and task-structuring workflows, but none of them make recursive decomposition a first-class experience.
 
-- `ralph task build` creates one strong task from a freeform request.
-- `ralph task split` manually breaks one existing task into a fixed number of child tasks.
-- `ralph prd create` converts a document into one or more tasks.
-- `ralph scan` discovers opportunities and adds them to the queue.
+- `cueloop task build` creates one strong task from a freeform request.
+- `cueloop task split` manually breaks one existing task into a fixed number of child tasks.
+- `cueloop prd create` converts a document into one or more tasks.
+- `cueloop scan` discovers opportunities and adds them to the queue.
 
-This leaves a product gap for users who start from a high-level engineering goal and want Ralph to propose a structured tree of executable subtasks before any work runs.
+This leaves a product gap for users who start from a high-level engineering goal and want CueLoop to propose a structured tree of executable subtasks before any work runs.
 
-The proposed `ralph task decompose` command fills that gap. It brings a dedicated decomposition workflow into Ralph while preserving Ralph’s core architecture:
+The proposed `cueloop task decompose` command fills that gap. It brings a dedicated decomposition workflow into CueLoop while preserving CueLoop’s core architecture:
 
-- Queue-backed, durable state in `.ralph/queue.jsonc`
+- Queue-backed, durable state in `.cueloop/queue.jsonc`
 - Existing hierarchy support via `parent_id`
 - Preview-first workflow before mutating queue state
 - Separation between planning/decomposition and execution
 
-The feature should feel native to Ralph rather than bolted on. Users should be able to decompose a new goal or decompose an existing task using the same safety, validation, and undo expectations as the rest of the task surface.
+The feature should feel native to CueLoop rather than bolted on. Users should be able to decompose a new goal or decompose an existing task using the same safety, validation, and undo expectations as the rest of the task surface.
 
 ## Goals
 
-- Introduce `ralph task decompose` as the dedicated workflow for recursive task decomposition.
+- Introduce `cueloop task decompose` as the dedicated workflow for recursive task decomposition.
 - Let users decompose a freeform request, a plan file, or an existing queue task.
-- Generate durable Ralph tasks, not ephemeral planner-only output.
+- Generate durable CueLoop tasks, not ephemeral planner-only output.
 - Reuse existing task hierarchy, queue validation, ID generation, and undo mechanisms.
 - Keep the workflow preview-first so users can inspect the proposed tree before writing.
 - Preserve clean separation between decomposition and execution.
@@ -37,39 +37,39 @@ The feature should feel native to Ralph rather than bolted on. Users should be a
 ## Non-Goals
 
 - Automatically executing decomposed tasks as part of the same command.
-- Replacing `ralph task build`, `ralph task split`, `ralph prd create`, or `ralph scan`.
+- Replacing `cueloop task build`, `cueloop task split`, `cueloop prd create`, or `cueloop scan`.
 - Introducing another persistent queue field for decomposition actionability beyond the existing `Task.kind` actionability contract.
 - Automatically inferring dependencies outside the generated sibling group.
 - Merging or rewriting unrelated existing hierarchy automatically.
-- Replacing PRD-specific imports; `ralph prd create` remains a parser-backed PRD workflow while `ralph task decompose --from-file` is planner-backed for arbitrary plan documents.
+- Replacing PRD-specific imports; `cueloop prd create` remains a parser-backed PRD workflow while `cueloop task decompose --from-file` is planner-backed for arbitrary plan documents.
 
 ## User Stories
 
 ### US-001: Decompose a New Goal into a Task Tree
 
 As a user starting from a high-level engineering goal,
-I want to run `ralph task decompose "<SOURCE>"` and preview a structured task tree,
+I want to run `cueloop task decompose "<SOURCE>"` and preview a structured task tree,
 so that I can turn an abstract goal into reviewable, executable queue entries.
 
 #### Acceptance Criteria
 
-- Running `ralph task decompose "Build OAuth login with GitHub and Google"` produces a preview by default.
+- Running `cueloop task decompose "Build OAuth login with GitHub and Google"` produces a preview by default.
 - The preview includes a hierarchy tree, node counts, and warnings when limits or heuristics affect the result.
-- The preview does not modify `.ralph/queue.jsonc` unless `--write` is explicitly provided.
-- When `--write` is provided, Ralph creates a root task and descendant tasks with unique IDs and valid timestamps.
+- The preview does not modify `.cueloop/queue.jsonc` unless `--write` is explicitly provided.
+- When `--write` is provided, CueLoop creates a root task and descendant tasks with unique IDs and valid timestamps.
 - Created grouping/root/phase tasks persist `kind: group`; executable leaves remain `kind: work_item`.
 - Created tasks use `parent_id` to represent hierarchy.
-- Generated tasks can be viewed with existing commands such as `ralph queue tree` and `ralph task children`.
+- Generated tasks can be viewed with existing commands such as `cueloop queue tree` and `cueloop task children`.
 
 ### US-002: Decompose a Plan File into a Task Tree
 
 As a user with a plan document in the repository or on disk,
-I want to run `ralph task decompose --from-file <path>` and preview a queue tree for the whole plan,
-so that I can turn an existing plan into durable Ralph work without copying it into the shell.
+I want to run `cueloop task decompose --from-file <path>` and preview a queue tree for the whole plan,
+so that I can turn an existing plan into durable CueLoop work without copying it into the shell.
 
 #### Acceptance Criteria
 
-- Running `ralph task decompose --from-file docs/plans/oauth.md` reads the full file and previews by default.
+- Running `cueloop task decompose --from-file docs/plans/oauth.md` reads the full file and previews by default.
 - Relative paths are resolved from the process current directory; leading `~` is expanded.
 - Preview output and JSON include the recorded source path. Paths inside the repo are recorded repo-relative; outside files are recorded as absolute paths.
 - The full file content is passed to the planner but is not serialized into machine/app JSON preview payloads.
@@ -86,7 +86,7 @@ so that I can preserve the original task context while making the work more acti
 
 #### Acceptance Criteria
 
-- Running `ralph task decompose RQ-0123` previews child tasks under the existing task.
+- Running `cueloop task decompose RQ-0123` previews child tasks under the existing task.
 - By default, the existing task is preserved as the parent rather than rejected or archived.
 - Generated child tasks use `parent_id = RQ-0123`.
 - The preserved source task is marked `kind: group` when write mode turns it into a decomposition umbrella.
@@ -98,7 +98,7 @@ so that I can preserve the original task context while making the work more acti
 
 As a user with different planning needs,
 I want controls for decomposition depth and fanout,
-so that Ralph does not over-decompose or generate unmanageable trees.
+so that CueLoop does not over-decompose or generate unmanageable trees.
 
 #### Acceptance Criteria
 
@@ -106,7 +106,7 @@ so that Ralph does not over-decompose or generate unmanageable trees.
 - The command supports `--max-children` to cap per-node fanout.
 - The command supports a total-node safety cap, whether user-configurable or defaulted.
 - When a limit is reached, the preview and write output explain which limit applied.
-- When the model cannot confidently split a node further, Ralph treats it as a leaf and reports that behavior without failing the entire operation.
+- When the model cannot confidently split a node further, CueLoop treats it as a leaf and reports that behavior without failing the entire operation.
 
 ### US-006: Attach and Extend an Existing Epic
 
@@ -116,8 +116,8 @@ so that I can expand an established plan without replacing the parent itself.
 
 #### Acceptance Criteria
 
-- Running `ralph task decompose --attach-to RQ-0042 "Plan webhook reliability work"` previews a new subtree under `RQ-0042`.
-- When `--write` is provided, Ralph creates a new root child under the attach target and nests descendants beneath that new root.
+- Running `cueloop task decompose --attach-to RQ-0042 "Plan webhook reliability work"` previews a new subtree under `RQ-0042`.
+- When `--write` is provided, CueLoop creates a new root child under the attach target and nests descendants beneath that new root.
 - When the attach target already has children, `--child-policy fail|append|replace` governs write behavior deterministically.
 - `--child-policy replace` refuses the write when tasks outside the subtree still reference descendant IDs that would be removed.
 
@@ -129,14 +129,14 @@ so that I can review or consume decompositions programmatically.
 
 #### Acceptance Criteria
 
-- Running `ralph task decompose <SOURCE> --with-dependencies` resolves sibling-only `depends_on` edges from planner keys or sibling titles.
+- Running `cueloop task decompose <SOURCE> --with-dependencies` resolves sibling-only `depends_on` edges from planner keys or sibling titles.
 - Self-dependencies, unknown dependencies, and non-sibling references are dropped with warnings.
-- Running `ralph task decompose <SOURCE> --format json` emits a stable versioned JSON payload for preview or write mode.
+- Running `cueloop task decompose <SOURCE> --format json` emits a stable versioned JSON payload for preview or write mode.
 - JSON output includes actionability metadata identifying the root/group task and first actionable leaf without requiring consumers to parse human text.
 
 ### US-005: Use the Workflow Reliably in Non-Interactive Environments
 
-As a user running Ralph in non-interactive contexts,
+As a user running CueLoop in non-interactive contexts,
 I want decomposition to behave safely and predictably,
 so that it does not mutate queue state unless I explicitly request it.
 
@@ -149,46 +149,46 @@ so that it does not mutate queue state unless I explicitly request it.
 
 ## Functional Requirements
 
-1. Ralph SHALL add a new `ralph task decompose` subcommand under the existing `task` command group.
-2. Ralph SHALL accept a freeform request, a `--from-file <PATH>` plan document, or an existing task ID as the decomposition source.
-3. Ralph SHALL support a preview-first workflow and SHALL NOT mutate queue state unless `--write` is provided.
-4. Ralph SHALL generate durable queue tasks rather than ephemeral planner-only output.
-5. Ralph SHALL represent task hierarchy using the existing `parent_id` field.
-6. Ralph SHALL reuse existing queue ID allocation so generated task IDs remain unique across queue and done archives.
-7. Ralph SHALL create valid `created_at` and `updated_at` timestamps for all newly written tasks.
-8. Ralph SHALL preserve the decomposed source task by default when decomposing an existing active task.
-9. Ralph SHALL support configurable recursion depth limits.
-10. Ralph SHALL support configurable per-node fanout limits.
-11. Ralph SHALL enforce a total generated node safety limit before writing queue state.
-12. Ralph SHALL treat hierarchy and execution ordering as separate concepts.
-13. Ralph SHALL reuse queue locking and undo snapshot behavior for write operations.
-14. Ralph SHALL validate queue state before and after decomposition writes.
-15. Ralph SHALL include deterministic human-readable preview output that can be inspected before write.
-16. Ralph SHALL integrate with existing hierarchy navigation commands such as `ralph queue tree`, `ralph task children`, and `ralph task parent`.
-17. Ralph SHALL support runner, model, reasoning-effort, RepoPrompt, and runner CLI override flags consistent with other runner-backed task creation flows.
-18. Ralph SHALL use a dedicated decomposition prompt/template rather than overloading task-builder or scan prompts.
-19. Ralph SHALL fail safely when planner output is malformed, incomplete, or inconsistent with queue rules.
-20. Ralph SHALL support `--attach-to <TASK_ID>` for freeform request and plan-file decomposition under an existing active parent task.
-21. Ralph SHALL support `--child-policy fail|append|replace` for effective parents with existing child trees.
-22. Ralph SHALL support optional sibling dependency inference behind `--with-dependencies`.
-23. Ralph SHALL emit stable versioned JSON output when `--format json` is requested.
-24. Ralph SHALL persist generated decomposition grouping nodes as `kind: group` and generated leaves as `kind: work_item`.
-25. Ralph SHALL report root/group and first actionable leaf metadata in preview and write outputs.
+1. CueLoop SHALL add a new `cueloop task decompose` subcommand under the existing `task` command group.
+2. CueLoop SHALL accept a freeform request, a `--from-file <PATH>` plan document, or an existing task ID as the decomposition source.
+3. CueLoop SHALL support a preview-first workflow and SHALL NOT mutate queue state unless `--write` is provided.
+4. CueLoop SHALL generate durable queue tasks rather than ephemeral planner-only output.
+5. CueLoop SHALL represent task hierarchy using the existing `parent_id` field.
+6. CueLoop SHALL reuse existing queue ID allocation so generated task IDs remain unique across queue and done archives.
+7. CueLoop SHALL create valid `created_at` and `updated_at` timestamps for all newly written tasks.
+8. CueLoop SHALL preserve the decomposed source task by default when decomposing an existing active task.
+9. CueLoop SHALL support configurable recursion depth limits.
+10. CueLoop SHALL support configurable per-node fanout limits.
+11. CueLoop SHALL enforce a total generated node safety limit before writing queue state.
+12. CueLoop SHALL treat hierarchy and execution ordering as separate concepts.
+13. CueLoop SHALL reuse queue locking and undo snapshot behavior for write operations.
+14. CueLoop SHALL validate queue state before and after decomposition writes.
+15. CueLoop SHALL include deterministic human-readable preview output that can be inspected before write.
+16. CueLoop SHALL integrate with existing hierarchy navigation commands such as `cueloop queue tree`, `cueloop task children`, and `cueloop task parent`.
+17. CueLoop SHALL support runner, model, reasoning-effort, RepoPrompt, and runner CLI override flags consistent with other runner-backed task creation flows.
+18. CueLoop SHALL use a dedicated decomposition prompt/template rather than overloading task-builder or scan prompts.
+19. CueLoop SHALL fail safely when planner output is malformed, incomplete, or inconsistent with queue rules.
+20. CueLoop SHALL support `--attach-to <TASK_ID>` for freeform request and plan-file decomposition under an existing active parent task.
+21. CueLoop SHALL support `--child-policy fail|append|replace` for effective parents with existing child trees.
+22. CueLoop SHALL support optional sibling dependency inference behind `--with-dependencies`.
+23. CueLoop SHALL emit stable versioned JSON output when `--format json` is requested.
+24. CueLoop SHALL persist generated decomposition grouping nodes as `kind: group` and generated leaves as `kind: work_item`.
+25. CueLoop SHALL report root/group and first actionable leaf metadata in preview and write outputs.
 
 ## User Experience
 
 ### Primary CLI Examples
 
 ```bash
-ralph task decompose "Build OAuth login with GitHub and Google"
-ralph task decompose "Improve webhook reliability" --write
-ralph task decompose RQ-0123 --max-depth 3 --preview
-ralph task decompose RQ-0123 --child-policy append --with-dependencies --write
-ralph task decompose --from-file docs/plans/oauth.md
-ralph task decompose --from-file docs/plans/oauth.md --preview
-ralph task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
-ralph task decompose --from-file docs/plans/oauth.md --format json
-ralph task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
+cueloop task decompose "Build OAuth login with GitHub and Google"
+cueloop task decompose "Improve webhook reliability" --write
+cueloop task decompose RQ-0123 --max-depth 3 --preview
+cueloop task decompose RQ-0123 --child-policy append --with-dependencies --write
+cueloop task decompose --from-file docs/plans/oauth.md
+cueloop task decompose --from-file docs/plans/oauth.md --preview
+cueloop task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
+cueloop task decompose --from-file docs/plans/oauth.md --format json
+cueloop task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
 ```
 
 ### Preview Output Expectations
@@ -214,7 +214,7 @@ Write output should communicate:
 
 ## Data Model and State
 
-The implementation uses the existing Ralph task schema and the durable actionability contract.
+The implementation uses the existing CueLoop task schema and the durable actionability contract.
 
 Recommended persistent representation:
 
@@ -277,7 +277,7 @@ Planner guidance should emphasize:
 
 ### Done or Rejected Source Task
 
-- Ralph should refuse to decompose done or rejected tasks by default.
+- CueLoop should refuse to decompose done or rejected tasks by default.
 - If future support is added, it should require explicit opt-in and remain preview-first.
 
 ### Degenerate Planner Output
@@ -302,7 +302,7 @@ Planner guidance should emphasize:
 
 Preview SHALL be the hard default in all environments.
 
-- `ralph task decompose <SOURCE>` performs a preview only.
+- `cueloop task decompose <SOURCE>` performs a preview only.
 - Queue mutation requires explicit `--write`.
 - There is no TTY-only “safety behavior” split for preview vs write.
 - This keeps the command predictable, scriptable, and safe.
@@ -349,7 +349,7 @@ Rationale:
 - Generated trees are valid under existing queue validation rules.
 - Preview-to-write flow is understandable and safe.
 - Users can immediately inspect results with existing `queue tree` and `task children` commands.
-- A representative ordered plan-file fixture decomposes into a complete queue subtree whose tasks cover all source sections, preserve logical execution order, validate with `ralph queue validate`, and can be inspected with `ralph queue tree` and `ralph task children`.
+- A representative ordered plan-file fixture decomposes into a complete queue subtree whose tasks cover all source sections, preserve logical execution order, validate with `cueloop queue validate`, and can be inspected with `cueloop queue tree` and `cueloop task children`.
 - The feature reduces manual queue shaping for multi-step goals.
 
 ## Implementation Status
@@ -361,7 +361,7 @@ The implementation now includes:
 - `--attach-to` subtree attachment for freeform requests and plan files
 - `--child-policy fail|append|replace`
 - optional sibling dependency inference via `--with-dependencies`
-- stable versioned JSON output via `--format json` and `ralph machine task decompose`
+- stable versioned JSON output via `--format json` and `cueloop machine task decompose`
 - CueLoopMac workspace/model/UI support for plan-file decomposition
 
 Richer visual review/edit flows can build on the same machine JSON contract rather than introducing a separate decomposition path.

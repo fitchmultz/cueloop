@@ -169,11 +169,11 @@ mod tests {
 
     fn setup_test_queue(temp: &TempDir, tasks: Vec<Task>) -> Resolved {
         let repo_root = temp.path();
-        let ralph_dir = repo_root.join(".ralph");
-        std::fs::create_dir_all(&ralph_dir).unwrap();
+        let cueloop_dir = repo_root.join(".cueloop");
+        std::fs::create_dir_all(&cueloop_dir).unwrap();
 
-        let queue_path = ralph_dir.join("queue.json");
-        let done_path = ralph_dir.join("done.json");
+        let queue_path = cueloop_dir.join("queue.json");
+        let done_path = cueloop_dir.join("done.json");
 
         let queue_file = QueueFile { version: 1, tasks };
         let queue_json = serde_json::to_string_pretty(&queue_file).unwrap();
@@ -281,11 +281,11 @@ mod tests {
         done_tasks: Vec<Task>,
     ) -> Resolved {
         let repo_root = temp.path();
-        let ralph_dir = repo_root.join(".ralph");
-        std::fs::create_dir_all(&ralph_dir).unwrap();
+        let cueloop_dir = repo_root.join(".cueloop");
+        std::fs::create_dir_all(&cueloop_dir).unwrap();
 
-        let queue_path = ralph_dir.join("queue.json");
-        let done_path = ralph_dir.join("done.json");
+        let queue_path = cueloop_dir.join("queue.json");
+        let done_path = cueloop_dir.join("done.json");
 
         let queue_file = QueueFile {
             version: 1,

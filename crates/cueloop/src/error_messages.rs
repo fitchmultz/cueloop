@@ -82,7 +82,7 @@ pub fn task_not_found_with_operation(operation: &str, task_id: &str) -> String {
     format!(
         "Queue query failed (operation={operation}): \
          target task not found: {task_id}. \
-         Ensure it exists in .ralph/queue.jsonc."
+         Ensure it exists in .cueloop/queue.jsonc."
     )
 }
 
@@ -95,7 +95,7 @@ pub fn task_not_found_in_done_archive(task_id: &str, context: &str) -> String {
 pub fn task_not_found_for_edit(operation: &str, task_id: &str) -> String {
     format!(
         "Queue {operation} failed (task_id={task_id}): \
-         task not found in .ralph/queue.jsonc."
+         task not found in .cueloop/queue.jsonc."
     )
 }
 
@@ -187,7 +187,7 @@ mod tests {
     fn task_not_found_for_edit_matches_contract() {
         assert_eq!(
             task_not_found_for_edit("status", "RQ-100"),
-            "Queue status failed (task_id=RQ-100): task not found in .ralph/queue.jsonc."
+            "Queue status failed (task_id=RQ-100): task not found in .cueloop/queue.jsonc."
         );
     }
 
@@ -195,7 +195,7 @@ mod tests {
     fn task_not_found_with_operation_matches_contract() {
         assert_eq!(
             task_not_found_with_operation("edit", "RQ-100"),
-            "Queue query failed (operation=edit): target task not found: RQ-100. Ensure it exists in .ralph/queue.jsonc."
+            "Queue query failed (operation=edit): target task not found: RQ-100. Ensure it exists in .cueloop/queue.jsonc."
         );
     }
 

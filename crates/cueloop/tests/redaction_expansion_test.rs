@@ -9,7 +9,7 @@
 //! - Integration-style redaction checks only.
 //!
 //! Usage:
-//! - Runs with the Ralph integration test suite.
+//! - Runs with the CueLoop integration test suite.
 //!
 //! Invariants/Assumptions:
 //! - Legitimate standalone hashes stay readable unless context marks them as

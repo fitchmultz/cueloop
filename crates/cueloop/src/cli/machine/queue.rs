@@ -58,7 +58,7 @@ pub(crate) fn handle_queue(args: MachineQueueArgs, force: bool) -> Result<()> {
             let done_ref = done
                 .as_ref()
                 .and_then(|done| done_queue_ref(done, &resolved.done_path));
-            let cache_dir = resolved.repo_root.join(".ralph/cache");
+            let cache_dir = resolved.repo_root.join(".cueloop/cache");
             let productivity = crate::productivity::load_productivity_stats(&cache_dir).ok();
             let dashboard = crate::reports::build_dashboard_report(
                 &active,
@@ -93,8 +93,8 @@ pub(crate) fn handle_queue(args: MachineQueueArgs, force: bool) -> Result<()> {
                         MachineQueueUnlockCondition::Live,
                         Some(inspection.blocking_state),
                         false,
-                        "Queue lock is held by an active Ralph process".to_string(),
-                        "Wait for the owning Ralph process to finish or inspect the current lock owner before retrying.".to_string(),
+                        "Queue lock is held by an active CueLoop process".to_string(),
+                        "Wait for the owning CueLoop process to finish or inspect the current lock owner before retrying.".to_string(),
                     ),
                     crate::commands::run::QueueLockCondition::Stale => (
                         MachineQueueUnlockCondition::Stale,
@@ -108,14 +108,14 @@ pub(crate) fn handle_queue(args: MachineQueueArgs, force: bool) -> Result<()> {
                         Some(inspection.blocking_state),
                         false,
                         "Queue lock owner metadata is missing".to_string(),
-                        "Confirm no other Ralph process is active before clearing the broken lock record.".to_string(),
+                        "Confirm no other CueLoop process is active before clearing the broken lock record.".to_string(),
                     ),
                     crate::commands::run::QueueLockCondition::OwnerUnreadable => (
                         MachineQueueUnlockCondition::OwnerUnreadable,
                         Some(inspection.blocking_state),
                         false,
                         "Queue lock owner metadata is unreadable".to_string(),
-                        "Confirm no other Ralph process is active before clearing the broken lock record.".to_string(),
+                        "Confirm no other CueLoop process is active before clearing the broken lock record.".to_string(),
                     ),
                 },
             };

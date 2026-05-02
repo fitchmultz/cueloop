@@ -56,7 +56,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
     let ci_pass = temp.path().join("ci-pass.txt");
     let mut resolved = resolved_for_repo(temp.path());
     std::fs::write(
-        temp.path().join(".ralph/trust.jsonc"),
+        temp.path().join(".cueloop/trust.jsonc"),
         r#"{"allow_project_commands": true}"#,
     )?;
     resolved.config.agent.ci_gate = Some(CiGateConfig {

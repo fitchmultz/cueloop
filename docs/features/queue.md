@@ -27,8 +27,8 @@ CueLoop uses two primary queue files:
 
 | File | Purpose | Location |
 |------|---------|----------|
-| **Active Queue** | Source of truth for active work | `.ralph/queue.jsonc` |
-| **Done Archive** | Archive for completed/rejected tasks | `.ralph/done.jsonc` |
+| **Active Queue** | Source of truth for active work | `.cueloop/queue.jsonc` |
+| **Done Archive** | Archive for completed/rejected tasks | `.cueloop/done.jsonc` |
 
 ### Key Principles
 
@@ -110,7 +110,7 @@ Tasks progress through a well-defined status lifecycle:
 | `todo` | `doing` | Auto-started by runner | Sets `started_at` timestamp |
 | `doing` | `done` | `cueloop task done <id>` | Completes task, moves to done archive |
 | `doing` | `rejected` | `cueloop task reject <id>` | Marks as rejected, moves to done archive |
-| `done`/`rejected` | - | `cueloop queue archive` | Moves terminal tasks to `.ralph/done.jsonc` |
+| `done`/`rejected` | - | `cueloop queue archive` | Moves terminal tasks to `.cueloop/done.jsonc` |
 
 ### Status Definitions
 
@@ -127,7 +127,7 @@ Tasks progress through a well-defined status lifecycle:
 Tasks with status `done` or `rejected` **must** have:
 - `completed_at` timestamp (RFC3339 UTC)
 
-These tasks are eligible for archiving to `.ralph/done.jsonc`.
+These tasks are eligible for archiving to `.cueloop/done.jsonc`.
 
 ---
 
@@ -301,7 +301,7 @@ cueloop queue archive --force
 The archive operation:
 1. Identifies tasks with `done` or `rejected` status
 2. Stamps missing `completed_at` timestamps
-3. Moves tasks to `.ralph/done.jsonc`
+3. Moves tasks to `.cueloop/done.jsonc`
 4. Validates the resulting queue state
 
 ### Prune
@@ -419,7 +419,7 @@ Duplicate handling (`--on-duplicate`):
 
 ### Lock Mechanism
 
-CueLoop uses a directory-based lock at `.ralph/lock/` to coordinate access:
+CueLoop uses a directory-based lock at `.cueloop/lock/` to coordinate access:
 
 ```bash
 # Lock is automatically acquired by most commands
@@ -442,7 +442,7 @@ The lock directory contains:
 CueLoop detects stale locks by checking if the holding PID is still running:
 
 ```
-Queue lock already held at: /project/.ralph/lock
+Queue lock already held at: /project/.cueloop/lock
 
 Lock Holder:
   PID: 12345
@@ -484,7 +484,7 @@ Task operations (running actual tasks) use a shared lock mode that allows:
 Auto-archive automatically moves terminal tasks to done.json after a configured age:
 
 ```json
-// .ralph/config.jsonc
+// .cueloop/config.jsonc
 {
   "queue": {
     "auto_archive_after_days": 7
@@ -574,7 +574,7 @@ Totals (15 tasks)
 Customize aging thresholds in config:
 
 ```json
-// .ralph/config.jsonc
+// .cueloop/config.jsonc
 {
   "queue": {
     "aging_thresholds": {

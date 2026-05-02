@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Rules track Ralph's supported subset of `git check-ref-format`.
+//! - Rules track CueLoop's supported subset of `git check-ref-format`.
 
 pub fn git_ref_invalid_reason(branch: &str) -> Option<String> {
     if branch.is_empty() {

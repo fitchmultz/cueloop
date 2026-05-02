@@ -271,7 +271,7 @@ fn build_phase2_prompt(
 
 fn explain_header(repo_root: &Path, task_id: &str, opts: &WorkerPromptOptions) -> String {
     let mut header = String::new();
-    header.push_str("# RALPH PROMPT PREVIEW (worker)\n\n");
+    header.push_str("# CUELOOP PROMPT PREVIEW (worker)\n\n");
     header.push_str(&format!("- task_id: {}\n", task_id));
     header.push_str(&format!("- mode: {}\n", worker_mode_label(opts.mode)));
     header.push_str(&format!(

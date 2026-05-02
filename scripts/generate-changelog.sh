@@ -134,7 +134,7 @@ update_changelog() {
 
     # Create a temporary file
     local temp_file
-    temp_file=$(mktemp_file "ralph-changelog")
+    temp_file=$(mktemp_file "cueloop-changelog")
 
     # Clean up the entries - remove leading/trailing blank lines but preserve structure
     local cleaned_entries

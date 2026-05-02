@@ -25,7 +25,7 @@ use crate::config::Resolved;
 use crate::signal;
 
 pub(crate) fn handle(resolved: &Resolved) -> Result<()> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
 
     signal::request_stop_signal(&cache_dir)?;
 

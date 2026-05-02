@@ -34,7 +34,7 @@ const EXPECTED_TOP_LEVEL_KEYS: &[&str] = &[
     "plugins",
 ];
 
-/// Setup an isolated ralph repo in a temp directory.
+/// Setup an isolated cueloop repo in a temp directory.
 /// Returns the temp directory.
 fn setup_isolated_repo() -> tempfile::TempDir {
     let _lock = test_support::env_lock().lock();
@@ -43,7 +43,7 @@ fn setup_isolated_repo() -> tempfile::TempDir {
     // Initialize git repo
     test_support::git_init(dir.path()).expect("git init should succeed");
 
-    // Initialize ralph (non-interactive)
+    // Initialize cueloop (non-interactive)
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     assert!(

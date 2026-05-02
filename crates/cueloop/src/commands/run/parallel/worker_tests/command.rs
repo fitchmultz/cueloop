@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -24,13 +24,13 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     let workspace_path = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace_path)?;
 
-    let ralph_dir = temp.path().join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = temp.path().join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
     let resolved = config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: temp.path().to_path_buf(),
-        queue_path: ralph_dir.join("queue.json"),
-        done_path: ralph_dir.join("done.json"),
+        queue_path: cueloop_dir.join("queue.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -68,7 +68,7 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     // Default overrides should not emit git publish flags.
     assert!(!args.contains(&"--git-publish-mode".to_string()));
     // Default overrides should not emit runner/model/phase flags.
-    // Workers must resolve these from workspace-local .ralph/config.jsonc.
+    // Workers must resolve these from workspace-local .cueloop/config.jsonc.
     assert!(!args.contains(&"--runner".to_string()));
     assert!(!args.contains(&"--model".to_string()));
     assert!(!args.contains(&"--effort".to_string()));
@@ -99,8 +99,8 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     assert_eq!(args.get(id_pos + 1), Some(&"RQ-1234".to_string()));
 
     // Verify workspace queue/done paths are passed via CLI flags
-    let expected_workspace_queue = workspace_path.join(".ralph").join("queue.json");
-    let expected_workspace_done = workspace_path.join(".ralph").join("done.json");
+    let expected_workspace_queue = workspace_path.join(".cueloop").join("queue.json");
+    let expected_workspace_done = workspace_path.join(".cueloop").join("done.json");
     let queue_path_pos = args
         .iter()
         .position(|arg| arg == "--coordinator-queue-path")
@@ -200,13 +200,13 @@ fn build_worker_command_emits_git_publish_mode_commit_and_push_when_overridden()
     let workspace_path = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace_path)?;
 
-    let ralph_dir = temp.path().join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = temp.path().join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
     let resolved = config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: temp.path().to_path_buf(),
-        queue_path: ralph_dir.join("queue.json"),
-        done_path: ralph_dir.join("done.json"),
+        queue_path: cueloop_dir.join("queue.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -239,13 +239,13 @@ fn build_worker_command_emits_git_publish_mode_off_when_overridden() -> Result<(
     let workspace_path = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace_path)?;
 
-    let ralph_dir = temp.path().join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = temp.path().join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
     let resolved = config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: temp.path().to_path_buf(),
-        queue_path: ralph_dir.join("queue.json"),
-        done_path: ralph_dir.join("done.json"),
+        queue_path: cueloop_dir.join("queue.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,

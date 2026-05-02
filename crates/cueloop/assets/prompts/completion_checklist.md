@@ -11,13 +11,13 @@ Complete these in order.
 
 2. Follow-up proposals
    - follow-ups cannot substitute for finishing the active task's current scope.
-   - Create `.ralph/cache/followups/{{TASK_ID}}.json` only for independent out-of-scope work or explicit discovery/queue-shaping deliverables.
+   - Create `.cueloop/cache/followups/{{TASK_ID}}.json` only for independent out-of-scope work or explicit discovery/queue-shaping deliverables.
    - `RUN_MODE=normal`: apply proposals with `cueloop task followups apply --task {{TASK_ID}}` before terminal bookkeeping.
    - `RUN_MODE=parallel-worker`: do not apply the proposal; leave the artifact for coordinator integration.
    - If there is no independent follow-up work, skip the artifact.
 
 3. Validation
-   - CI Gate (configured validation only; never a run toggle): `agent.ci_gate.enabled=false` skips Ralph-managed CI validation only. It does NOT disable this run, task execution, queue bookkeeping, or git publish behavior.
+   - CI Gate (configured validation only; never a run toggle): `agent.ci_gate.enabled=false` skips CueLoop-managed CI validation only. It does NOT disable this run, task execution, queue bookkeeping, or git publish behavior.
    - If no files changed, you may skip the configured CI gate and say why.
    - If files changed and `agent.ci_gate.enabled` is true (`{{config.agent.ci_gate_enabled}}`), run `{{config.agent.ci_gate_display}}` and fix failures before ending.
    - If files changed and `agent.ci_gate.enabled=false`, do not invent that CI requirement; state that configured CI validation was skipped because `agent.ci_gate.enabled=false`, and list other checks run.
@@ -25,13 +25,13 @@ Complete these in order.
 
 4. Task bookkeeping
    - `RUN_MODE=normal`: finish with `cueloop task done --note "<note>" {{TASK_ID}}` or `cueloop task reject --note "<note>" {{TASK_ID}}`.
-   - `RUN_MODE=parallel-worker`: do not run `cueloop task done` or manually rewrite queue/done; Ralph reconciles bookkeeping after integration.
+   - `RUN_MODE=parallel-worker`: do not run `cueloop task done` or manually rewrite queue/done; CueLoop reconciles bookkeeping after integration.
    - Do not run `cueloop queue archive` for single-task completion.
    - If stopping incomplete, leave the task active and clearly report state and next step; do not set `blocked`.
 
 5. Git hygiene
-   - If `{{config.agent.git_publish_mode}}` is `commit_and_push`, do not manually commit or push; Ralph handles publish.
-   - In `parallel-worker` mode, leave the workspace rebased, conflict-free, committed, and CI-clean when enabled; Ralph validates bookkeeping and pushes.
+   - If `{{config.agent.git_publish_mode}}` is `commit_and_push`, do not manually commit or push; CueLoop handles publish.
+   - In `parallel-worker` mode, leave the workspace rebased, conflict-free, committed, and CI-clean when enabled; CueLoop validates bookkeeping and pushes.
 
 # Final Response Shape
 - Summary of completed outcome

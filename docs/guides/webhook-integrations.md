@@ -54,14 +54,14 @@ import requests
 
 app = Flask(__name__)
 
-RALPH_SECRET = os.environ.get('RALPH_WEBHOOK_SECRET', '').encode()
+CUELOOP_SECRET = os.environ.get('CUELOOP_WEBHOOK_SECRET', '').encode()
 SLACK_WEBHOOK_URL = os.environ.get('SLACK_WEBHOOK_URL')
 
 
-def verify_ralph_signature(body: bytes, signature: str) -> bool:
-    if not RALPH_SECRET:
+def verify_cueloop_signature(body: bytes, signature: str) -> bool:
+    if not CUELOOP_SECRET:
         return True  # Skip verification if no secret configured
-    expected = 'sha256=' + hmac.new(RALPH_SECRET, body, hashlib.sha256).hexdigest()
+    expected = 'sha256=' + hmac.new(CUELOOP_SECRET, body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
@@ -123,7 +123,7 @@ def handle_webhook():
     signature = request.headers.get('X-CueLoop-Signature', '')
     body = request.get_data()
 
-    if not verify_ralph_signature(body, signature):
+    if not verify_cueloop_signature(body, signature):
         return jsonify({'error': 'Invalid signature'}), 401
 
     payload = request.get_json()
@@ -149,7 +149,7 @@ if __name__ == '__main__':
 pip install flask requests
 
 # Set environment variables
-export RALPH_WEBHOOK_SECRET="your-random-secret"
+export CUELOOP_WEBHOOK_SECRET="your-random-secret"
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T00/B00/XXX"
 
 # Run the proxy
@@ -214,14 +214,14 @@ import requests
 
 app = Flask(__name__)
 
-RALPH_SECRET = os.environ.get('RALPH_WEBHOOK_SECRET', '').encode()
+CUELOOP_SECRET = os.environ.get('CUELOOP_WEBHOOK_SECRET', '').encode()
 DISCORD_WEBHOOK_URL = os.environ.get('DISCORD_WEBHOOK_URL')
 
 
-def verify_ralph_signature(body: bytes, signature: str) -> bool:
-    if not RALPH_SECRET:
+def verify_cueloop_signature(body: bytes, signature: str) -> bool:
+    if not CUELOOP_SECRET:
         return True
-    expected = 'sha256=' + hmac.new(RALPH_SECRET, body, hashlib.sha256).hexdigest()
+    expected = 'sha256=' + hmac.new(CUELOOP_SECRET, body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
@@ -296,7 +296,7 @@ def handle_webhook():
     signature = request.headers.get('X-CueLoop-Signature', '')
     body = request.get_data()
 
-    if not verify_ralph_signature(body, signature):
+    if not verify_cueloop_signature(body, signature):
         return jsonify({'error': 'Invalid signature'}), 401
 
     payload = request.get_json()
@@ -321,7 +321,7 @@ if __name__ == '__main__':
 pip install flask requests
 
 # Set environment variables
-export RALPH_WEBHOOK_SECRET="your-random-secret"
+export CUELOOP_WEBHOOK_SECRET="your-random-secret"
 export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/000/xxx"
 
 # Run the proxy
@@ -368,16 +368,16 @@ GitHub Actions can receive webhooks via the `repository_dispatch` event, which a
 
 ### Step 1: Create GitHub Actions Workflow
 
-Create `.github/workflows/ralph-webhook.yml` in your repository:
+Create `.github/workflows/cueloop-webhook.yml` in your repository:
 
 ```yaml
-# .github/workflows/ralph-webhook.yml
+# .github/workflows/cueloop-webhook.yml
 # Receives CueLoop webhooks and triggers conditional actions
 name: CueLoop Webhook Receiver
 
 on:
   repository_dispatch:
-    types: [ralph-task-completed, ralph-task-failed, ralph-event]
+    types: [cueloop-task-completed, cueloop-task-failed, cueloop-event]
 
 jobs:
   process-webhook:
@@ -442,25 +442,25 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-RALPH_SECRET = os.environ.get('RALPH_WEBHOOK_SECRET', '').encode()
+CUELOOP_SECRET = os.environ.get('CUELOOP_WEBHOOK_SECRET', '').encode()
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')  # Personal access token with repo scope
 GITHUB_REPO = os.environ.get('GITHUB_REPO')    # e.g., "owner/repo"
 
 
-def verify_ralph_signature(body: bytes, signature: str) -> bool:
-    if not RALPH_SECRET:
+def verify_cueloop_signature(body: bytes, signature: str) -> bool:
+    if not CUELOOP_SECRET:
         return True
-    expected = 'sha256=' + hmac.new(RALPH_SECRET, body, hashlib.sha256).hexdigest()
+    expected = 'sha256=' + hmac.new(CUELOOP_SECRET, body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
 def get_event_type(event: str) -> str:
     """Map CueLoop events to GitHub repository_dispatch event types."""
     mapping = {
-        'task_completed': 'ralph-task-completed',
-        'task_failed': 'ralph-task-failed',
+        'task_completed': 'cueloop-task-completed',
+        'task_failed': 'cueloop-task-failed',
     }
-    return mapping.get(event, 'ralph-event')
+    return mapping.get(event, 'cueloop-event')
 
 
 @app.route('/webhook', methods=['POST'])
@@ -468,7 +468,7 @@ def handle_webhook():
     signature = request.headers.get('X-CueLoop-Signature', '')
     body = request.get_data()
 
-    if not verify_ralph_signature(body, signature):
+    if not verify_cueloop_signature(body, signature):
         return jsonify({'error': 'Invalid signature'}), 401
 
     payload = request.get_json()
@@ -504,7 +504,7 @@ if __name__ == '__main__':
 pip install flask requests
 
 # Set environment variables
-export RALPH_WEBHOOK_SECRET="your-random-secret"
+export CUELOOP_WEBHOOK_SECRET="your-random-secret"
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"  # Your Personal Access Token
 export GITHUB_REPO="yourusername/yourrepo"  # e.g., "acme-corp/my-project"
 

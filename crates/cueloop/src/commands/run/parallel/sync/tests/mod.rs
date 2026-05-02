@@ -33,8 +33,8 @@ pub(super) fn build_test_resolved(
     queue_path: Option<PathBuf>,
     done_path: Option<PathBuf>,
 ) -> crate::config::Resolved {
-    let queue_path = queue_path.unwrap_or_else(|| repo_root.join(".ralph/queue.json"));
-    let done_path = done_path.unwrap_or_else(|| repo_root.join(".ralph/done.json"));
+    let queue_path = queue_path.unwrap_or_else(|| repo_root.join(".cueloop/queue.json"));
+    let done_path = done_path.unwrap_or_else(|| repo_root.join(".cueloop/done.json"));
     crate::config::Resolved {
         config: Config::default(),
         repo_root: repo_root.to_path_buf(),

@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use crate::contracts::Config;
 use crate::fsutil;
@@ -37,7 +37,7 @@ pub struct PromptPolicy {
 }
 
 pub const PHASE1_TASK_REFRESH_REQUIRED_INSTRUCTION: &str = r#"## Task Refresh Step
-Before writing the final plan, refresh only the current task in `.ralph/queue.jsonc` when repo reality has changed.
+Before writing the final plan, refresh only the current task in `.cueloop/queue.jsonc` when repo reality has changed.
 
 Allowed fields: `scope`, `evidence`, `plan`, `notes`, `tags`, `depends_on`, and `updated_at`.
 Preserve task identity/status fields: `id`, `title`, `status`, `priority`, `created_at`, `request`, and `agent`.
@@ -46,13 +46,13 @@ Do not add, remove, complete, or reject tasks.
 After any update, re-read the task data and use the refreshed facts in the plan."#;
 
 pub const PHASE1_TASK_REFRESH_DISABLED_INSTRUCTION: &str = r#"## Task Refresh Step
-Parallel worker mode is active. Do not edit `.ralph/queue.jsonc`.
+Parallel worker mode is active. Do not edit `.cueloop/queue.jsonc`.
 Use current task metadata as evidence and continue with planning only."#;
 
 /// Path to the cached plan for a given task ID.
 pub fn plan_cache_path(repo_root: &Path, task_id: &str) -> PathBuf {
     repo_root
-        .join(".ralph/cache/plans")
+        .join(".cueloop/cache/plans")
         .join(format!("{}.md", task_id))
 }
 
@@ -69,7 +69,7 @@ pub fn write_plan_cache(repo_root: &Path, task_id: &str, plan_text: &str) -> Res
 /// Path to the cached Phase 2 final response for a given task ID.
 pub fn phase2_final_response_cache_path(repo_root: &Path, task_id: &str) -> PathBuf {
     repo_root
-        .join(".ralph/cache/phase2_final")
+        .join(".cueloop/cache/phase2_final")
         .join(format!("{}.md", task_id))
 }
 
@@ -131,7 +131,7 @@ pub fn build_phase1_prompt(
     policy: &PromptPolicy,
     config: &Config,
 ) -> Result<String> {
-    let plan_path = format!(".ralph/cache/plans/{}.md", task_id.trim());
+    let plan_path = format!(".cueloop/cache/plans/{}.md", task_id.trim());
     prompts::render_worker_phase1_prompt(
         template,
         base_worker_prompt,

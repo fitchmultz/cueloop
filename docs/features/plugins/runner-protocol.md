@@ -36,11 +36,11 @@ Required only when `supports_resume` is `true` in the manifest:
 
 | Variable | Description |
 |----------|-------------|
-| `RALPH_PLUGIN_ID` | Plugin ID (for example `my.plugin`) |
-| `RALPH_PLUGIN_CONFIG_JSON` | Opaque plugin config JSON (`{}` when unset) |
-| `RALPH_RUNNER_CLI_JSON` | Resolved runner CLI options |
+| `CUELOOP_PLUGIN_ID` | Plugin ID (for example `my.plugin`) |
+| `CUELOOP_PLUGIN_CONFIG_JSON` | Opaque plugin config JSON (`{}` when unset) |
+| `CUELOOP_RUNNER_CLI_JSON` | Resolved runner CLI options |
 
-`RALPH_RUNNER_CLI_JSON` example:
+`CUELOOP_RUNNER_CLI_JSON` example:
 
 ```json
 {

@@ -58,7 +58,7 @@ pub(super) fn should_retry_with_repo_state(
 ) -> Result<RetryAdmission> {
     let dirty_only_allowed = match crate::git::clean::repo_dirty_only_allowed_paths(
         repo_root,
-        crate::git::clean::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+        crate::git::clean::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
     ) {
         Ok(value) => value,
         Err(err) => {

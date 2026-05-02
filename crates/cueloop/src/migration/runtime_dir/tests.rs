@@ -1,7 +1,7 @@
 //! Regression tests for explicit runtime-dir migration.
 //!
 //! Purpose:
-//! - Verify `.ralph` -> `.cueloop` runtime-dir migration behavior.
+//! - Verify `.cueloop` -> `.cueloop` runtime-dir migration behavior.
 //!
 //! Responsibilities:
 //! - Cover state classification, safe apply, collision refusal, legacy JSON preflight,
@@ -35,7 +35,7 @@ fn write_minimal_legacy_runtime(repo_root: &Path) -> Result<()> {
     fs::write(runtime.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#)?;
     fs::write(
         runtime.join("config.jsonc"),
-        r#"{"version":2,"queue":{"file":".ralph/queue.jsonc","done_file":".ralph/done.jsonc"}}"#,
+        r#"{"version":2,"queue":{"file":".cueloop/queue.jsonc","done_file":".cueloop/done.jsonc"}}"#,
     )?;
     Ok(())
 }
@@ -108,9 +108,9 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     write_minimal_legacy_runtime(temp.path())?;
     fs::write(
         temp.path().join(".gitignore"),
-        ".ralph/logs/\n.ralph/workspaces/\n.ralph/trust.jsonc\n.ralph/trust.json\n.ralph/cache/\n.ralph/undo/\n.ralph/webhooks/\n",
+        ".cueloop/logs/\n.cueloop/workspaces/\n.cueloop/trust.jsonc\n.cueloop/trust.json\n.cueloop/cache/\n.cueloop/undo/\n.cueloop/webhooks/\n",
     )?;
-    fs::create_dir_all(temp.path().join(".ralph/cache"))?;
+    fs::create_dir_all(temp.path().join(".cueloop/cache"))?;
     history::save_migration_history(temp.path(), &history::MigrationHistory::default())?;
 
     let report = apply_runtime_dir_migration(temp.path())?;
@@ -126,7 +126,7 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     let config = fs::read_to_string(temp.path().join(".cueloop/config.jsonc"))?;
     assert!(config.contains(".cueloop/queue.jsonc"));
     assert!(config.contains(".cueloop/done.jsonc"));
-    assert!(!config.contains(".ralph/queue.jsonc"));
+    assert!(!config.contains(".cueloop/queue.jsonc"));
 
     let gitignore = fs::read_to_string(temp.path().join(".gitignore"))?;
     assert!(gitignore.contains(".cueloop/logs/"));
@@ -136,7 +136,7 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     assert!(gitignore.contains(".cueloop/cache/"));
     assert!(gitignore.contains(".cueloop/undo/"));
     assert!(gitignore.contains(".cueloop/webhooks/"));
-    assert!(!gitignore.contains(".ralph/"));
+    assert!(!gitignore.contains(".cueloop/"));
 
     let loaded = history::load_migration_history(temp.path())?;
     assert!(
@@ -159,7 +159,7 @@ fn apply_refuses_collision_before_mutation() -> Result<()> {
     let err = apply_runtime_dir_migration(temp.path()).unwrap_err();
 
     assert!(err.to_string().contains("Runtime-dir migration is blocked"));
-    assert!(temp.path().join(".ralph/config.jsonc").exists());
+    assert!(temp.path().join(".cueloop/config.jsonc").exists());
     assert!(temp.path().join(".cueloop/config.jsonc").exists());
     Ok(())
 }
@@ -168,7 +168,7 @@ fn apply_refuses_collision_before_mutation() -> Result<()> {
 fn apply_blocks_legacy_json_files_before_mutation() -> Result<()> {
     let temp = TempDir::new()?;
     write_minimal_legacy_runtime(temp.path())?;
-    fs::write(temp.path().join(".ralph/config.json"), r#"{"version":1}"#)?;
+    fs::write(temp.path().join(".cueloop/config.json"), r#"{"version":1}"#)?;
 
     let err = apply_runtime_dir_migration(temp.path()).unwrap_err();
 
@@ -177,7 +177,7 @@ fn apply_blocks_legacy_json_files_before_mutation() -> Result<()> {
             .contains("legacy JSON runtime files still exist")
     );
     assert!(err.to_string().contains("cueloop migrate --apply"));
-    assert!(temp.path().join(".ralph/config.json").exists());
+    assert!(temp.path().join(".cueloop/config.json").exists());
     assert!(!temp.path().join(".cueloop").exists());
     Ok(())
 }
@@ -187,8 +187,8 @@ fn apply_refreshes_moved_generated_readme() -> Result<()> {
     let temp = TempDir::new()?;
     write_minimal_legacy_runtime(temp.path())?;
     fs::write(
-        temp.path().join(".ralph/README.md"),
-        "<!-- RALPH_README_VERSION: 1 -->\n# Old Ralph runtime files\n",
+        temp.path().join(".cueloop/README.md"),
+        "<!-- CUELOOP_README_VERSION: 1 -->\n# Old CueLoop runtime files\n",
     )?;
 
     let report = apply_runtime_dir_migration(temp.path())?;
@@ -197,7 +197,7 @@ fn apply_refreshes_moved_generated_readme() -> Result<()> {
     let readme = fs::read_to_string(temp.path().join(".cueloop/README.md"))?;
     assert!(readme.contains("CUELOOP_README_VERSION"));
     assert!(readme.contains("CueLoop runtime files"));
-    assert!(!readme.contains("Old Ralph runtime files"));
+    assert!(!readme.contains("Old CueLoop runtime files"));
     Ok(())
 }
 
@@ -206,7 +206,7 @@ fn gitignore_conversion_avoids_duplicate_current_entries() -> Result<()> {
     let temp = TempDir::new()?;
     fs::write(
         temp.path().join(".gitignore"),
-        ".cueloop/logs/\n.ralph/logs/\n  .ralph/workspaces/  \n!.ralph/done.jsonc\n",
+        ".cueloop/logs/\n.cueloop/logs/\n  .cueloop/workspaces/  \n!.cueloop/done.jsonc\n",
     )?;
 
     assert!(update_gitignore_runtime_dir_references(temp.path())?);
@@ -215,6 +215,6 @@ fn gitignore_conversion_avoids_duplicate_current_entries() -> Result<()> {
     assert_eq!(gitignore.matches(".cueloop/logs/").count(), 1);
     assert!(gitignore.contains("  .cueloop/workspaces/  "));
     assert!(gitignore.contains("!.cueloop/done.jsonc"));
-    assert!(!gitignore.contains("!.ralph/done.jsonc"));
+    assert!(!gitignore.contains("!.cueloop/done.jsonc"));
     Ok(())
 }

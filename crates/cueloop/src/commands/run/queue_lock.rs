@@ -115,9 +115,9 @@ pub(crate) fn inspect_queue_lock(repo_root: &Path) -> Option<QueueLockInspection
                             owner_pid,
                         },
                         None,
-                        "Ralph is stalled on a stale queue lock.",
+                        "CueLoop is stalled on a stale queue lock.",
                         format!(
-                            "The queue lock at {} was left behind by Ralph process {} (pid {}). Ralph will auto-clear this verified stale lock on the next queue-lock acquisition.",
+                            "The queue lock at {} was left behind by CueLoop process {} (pid {}). CueLoop will auto-clear this verified stale lock on the next queue-lock acquisition.",
                             lock_dir.display(),
                             owner.label,
                             owner.pid
@@ -150,9 +150,9 @@ pub(crate) fn inspect_queue_lock(repo_root: &Path) -> Option<QueueLockInspection
                     owner_pid: None,
                 },
                 None,
-                "Ralph is stalled on queue lock metadata cleanup.",
+                "CueLoop is stalled on queue lock metadata cleanup.",
                 format!(
-                    "The queue lock at {} exists, but its owner metadata is missing. Confirm no other Ralph process is running, then clear the lock before resuming execution.",
+                    "The queue lock at {} exists, but its owner metadata is missing. Confirm no other CueLoop process is running, then clear the lock before resuming execution.",
                     lock_dir.display()
                 ),
             )
@@ -168,9 +168,9 @@ pub(crate) fn inspect_queue_lock(repo_root: &Path) -> Option<QueueLockInspection
                     owner_pid: None,
                 },
                 None,
-                "Ralph is stalled on unreadable queue lock metadata.",
+                "CueLoop is stalled on unreadable queue lock metadata.",
                 format!(
-                    "The queue lock at {} exists, but Ralph could not read its owner metadata. Confirm no other Ralph process is running, then clear the lock before resuming execution.",
+                    "The queue lock at {} exists, but CueLoop could not read its owner metadata. Confirm no other CueLoop process is running, then clear the lock before resuming execution.",
                     lock_dir.display()
                 ),
             )

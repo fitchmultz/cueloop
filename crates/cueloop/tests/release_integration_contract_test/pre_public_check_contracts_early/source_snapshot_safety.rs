@@ -4,7 +4,7 @@
 //! - Split `--allow-no-git` source-snapshot coverage into smaller behavior modules.
 //!
 //! Responsibilities:
-//! - Keep runtime-artifact and `.ralph`-path regressions focused without changing assertions.
+//! - Keep runtime-artifact and `.cueloop`-path regressions focused without changing assertions.
 //!
 //! Scope:
 //! - Limited to early `pre-public-check.sh` source-snapshot coverage.

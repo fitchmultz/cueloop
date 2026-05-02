@@ -14,8 +14,8 @@
 //!
 //! Invariants/Assumptions:
 //! - The suite preserves end-to-end CLI coverage and does not bypass the command implementation.
-//! - Repo bootstrap uses cached git+`.ralph/` fixtures instead of repeating per-test init work.
-//! - Search operates on `.ralph/queue.jsonc` and `.ralph/done.jsonc` within the disposable repo.
+//! - Repo bootstrap uses cached git+`.cueloop/` fixtures instead of repeating per-test init work.
+//! - Search operates on `.cueloop/queue.jsonc` and `.cueloop/done.jsonc` within the disposable repo.
 
 #[path = "queue_search_test/support.rs"]
 mod support;

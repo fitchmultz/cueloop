@@ -36,8 +36,8 @@ Execution context:
 
 - working directory: repository root
 - environment:
-  - `RALPH_PLUGIN_ID`
-  - `RALPH_PLUGIN_CONFIG_JSON`
+  - `CUELOOP_PLUGIN_ID`
+  - `CUELOOP_PLUGIN_CONFIG_JSON`
 
 ## Processor Ordering
 

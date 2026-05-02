@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Provide the shared release transaction facade for Ralph.
+# Purpose: Provide the shared release transaction facade for CueLoop.
 # Responsibilities:
 # - Validate prerequisites and repository state before release mutation.
 # - Verify release-note/changelog contract before snapshot preparation.
@@ -12,10 +12,10 @@
 # Invariants/assumptions:
 # - Caller sets VERSION, REPO_ROOT, and release paths before invoking functions.
 
-if [ -n "${RALPH_RELEASE_PIPELINE_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_PIPELINE_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_PIPELINE_SOURCED=1
+CUELOOP_RELEASE_PIPELINE_SOURCED=1
 set -euo pipefail
 
 source "$SCRIPT_DIR/lib/release_verify_pipeline.sh"
@@ -125,9 +125,9 @@ release_verify_plan() {
     local preview_file
     local preview_changelog
     local preview_checksums
-    preview_file=$(cueloop_mktemp_file "ralph-release-preview")
-    preview_changelog=$(cueloop_mktemp_file "ralph-release-preview-changelog")
-    preview_checksums=$(cueloop_mktemp_file "ralph-release-preview-checksums")
+    preview_file=$(cueloop_mktemp_file "cueloop-release-preview")
+    preview_changelog=$(cueloop_mktemp_file "cueloop-release-preview-changelog")
+    preview_checksums=$(cueloop_mktemp_file "cueloop-release-preview-checksums")
     printf 'Preview changelog entry\n' > "$preview_changelog"
     printf 'cueloop-%s-sample.tar.gz  abcdef\n' "$VERSION" > "$preview_checksums"
 

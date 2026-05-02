@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::contracts::{Config, GitPublishMode, GitRevertMode};
 use super::super::prompts_internal::validate_instruction_file_paths;
@@ -202,7 +202,7 @@ fn validate_config_rejects_invalid_parallel_ignored_file_allowlist_entries() {
         "../escape.json",
         "config/./local.json",
         "target/local.json",
-        ".ralph/cache/session.json",
+        ".cueloop/cache/session.json",
         "fixtures/",
     ] {
         let mut cfg = Config::default();

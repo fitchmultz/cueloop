@@ -4,7 +4,7 @@
 //! - GitHub Issue helpers using the `gh` CLI.
 //!
 //! Responsibilities:
-//! - Create and edit GitHub issues for Ralph tasks via `gh issue`.
+//! - Create and edit GitHub issues for CueLoop tasks via `gh issue`.
 //! - Parse issue URLs/numbers from `gh` output for persistence.
 //!
 //! Not handled here:

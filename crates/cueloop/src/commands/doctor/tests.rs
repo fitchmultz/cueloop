@@ -39,8 +39,8 @@ fn find_definitely_dead_pid() -> u32 {
 fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
     crate::config::Resolved {
         config: crate::contracts::Config::default(),
-        queue_path: repo_root.join(".ralph/queue.jsonc"),
-        done_path: repo_root.join(".ralph/done.jsonc"),
+        queue_path: repo_root.join(".cueloop/queue.jsonc"),
+        done_path: repo_root.join(".cueloop/done.jsonc"),
         repo_root,
         id_prefix: "RQ".to_string(),
         id_width: 4,
@@ -171,7 +171,7 @@ fn derive_check_blocking_state_prefers_lock_over_runner_recovery() {
         "codex not found",
     );
     let lock = BlockingState::lock_blocked(
-        Some("/tmp/.ralph/lock".to_string()),
+        Some("/tmp/.cueloop/lock".to_string()),
         Some("cueloop run loop".to_string()),
         Some(1234),
     );
@@ -223,7 +223,7 @@ fn check_lock_health_reads_canonical_queue_lock_layout() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
     let resolved = resolved_with_repo_root(repo_root.clone());
-    let lock_dir = repo_root.join(".ralph/lock");
+    let lock_dir = repo_root.join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     let stale_pid = find_definitely_dead_pid();
     std::fs::write(
@@ -258,7 +258,7 @@ fn check_lock_health_auto_fix_removes_confirmed_stale_queue_lock() -> anyhow::Re
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
     let resolved = resolved_with_repo_root(repo_root.clone());
-    let lock_dir = repo_root.join(".ralph/lock");
+    let lock_dir = repo_root.join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     let stale_pid = find_definitely_dead_pid();
     std::fs::write(

@@ -4,7 +4,7 @@
 //! - Provide suite-local repo bootstrap and JSON request helpers for machine contract tests.
 //!
 //! Responsibilities:
-//! - Initialize disposable git and Ralph repositories through the public test harness.
+//! - Initialize disposable git and CueLoop repositories through the public test harness.
 //! - Wrap the shared integration helpers in a machine-suite-local surface.
 //! - Keep repeated request-file creation and trust setup out of scenario modules.
 //!
@@ -14,7 +14,7 @@
 //!
 //! Usage:
 //! - Use `setup_git_repo()` when a test only needs git state.
-//! - Use `setup_ralph_repo()` when a test needs a fully initialized Ralph repo.
+//! - Use `setup_cueloop_repo()` when a test needs a fully initialized CueLoop repo.
 //! - Use `write_json_file()` for machine input payloads that are passed via `--input`.
 //!
 //! Invariants/assumptions callers must respect:
@@ -37,9 +37,9 @@ pub(super) fn setup_git_repo() -> Result<TempDir> {
     Ok(dir)
 }
 
-pub(super) fn setup_ralph_repo() -> Result<TempDir> {
+pub(super) fn setup_cueloop_repo() -> Result<TempDir> {
     let dir = setup_git_repo()?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     Ok(dir)
 }
 

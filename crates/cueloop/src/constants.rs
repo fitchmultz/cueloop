@@ -1,7 +1,7 @@
-//! Centralized constants for CueLoop's transitional `ralph` CLI.
+//! Centralized constants for CueLoop's transitional `cueloop` CLI.
 //!
 //! Purpose:
-//! - Centralized constants for CueLoop's transitional `ralph` CLI.
+//! - Centralized constants for CueLoop's transitional `cueloop` CLI.
 //!
 //! This module consolidates all magic numbers, limits, and default values
 //! to improve maintainability and prevent drift between duplicated values.
@@ -71,7 +71,7 @@ pub mod limits {
     pub const MAX_SIGNAL_RESUMES: u8 = 5;
 
     /// Number of consecutive CI failures with the same error pattern before escalation.
-    /// After this many identical failures, Ralph stops retrying and requires intervention.
+    /// After this many identical failures, CueLoop stops retrying and requires intervention.
     pub const CI_FAILURE_ESCALATION_THRESHOLD: u8 = 3;
 
     /// Maximum consecutive failures before aborting run loop.
@@ -117,7 +117,7 @@ pub mod timeouts {
     /// Files older than this are cleaned up:
     /// - On CLI startup (main.rs)
     /// - When building runner commands (with_temp_prompt_file)
-    /// - When running `ralph cleanup` command
+    /// - When running `cueloop cleanup` command
     ///
     /// Default: 7 days. This balances keeping safeguard dumps available for
     /// debugging against preventing indefinite accumulation.
@@ -190,31 +190,31 @@ pub mod identity {
     pub const DISPLAY_NAME: &str = "CueLoop";
 
     /// Legacy user-facing product name retained for compatibility messaging.
-    pub const LEGACY_DISPLAY_NAME: &str = "Ralph";
+    pub const LEGACY_DISPLAY_NAME: &str = "CueLoop";
 
     /// Current primary CLI executable name.
     pub const CLI_BIN_NAME: &str = "cueloop";
 
     /// Legacy CLI executable name retained as a compatibility alias.
-    pub const LEGACY_CLI_BIN_NAME: &str = "ralph";
+    pub const LEGACY_CLI_BIN_NAME: &str = "cueloop";
 
     /// Current repo-local runtime directory.
     pub const PROJECT_RUNTIME_DIR: &str = ".cueloop";
 
     /// Legacy repo-local runtime directory.
-    pub const LEGACY_PROJECT_RUNTIME_DIR: &str = ".ralph";
+    pub const LEGACY_PROJECT_RUNTIME_DIR: &str = ".cueloop";
 
     /// Current per-user config directory under XDG_CONFIG_HOME or ~/.config.
     pub const GLOBAL_CONFIG_DIR: &str = "cueloop";
 
     /// Legacy per-user config directory under XDG_CONFIG_HOME or ~/.config.
-    pub const LEGACY_GLOBAL_CONFIG_DIR: &str = "ralph";
+    pub const LEGACY_GLOBAL_CONFIG_DIR: &str = "cueloop";
 
     /// Current generated runtime README version marker.
     pub const README_MARKER: &str = "CUELOOP_README_VERSION";
 
     /// Legacy generated runtime README version marker.
-    pub const LEGACY_README_MARKER: &str = "RALPH_README_VERSION";
+    pub const LEGACY_README_MARKER: &str = "CUELOOP_README_VERSION";
 }
 
 /// Queue configuration constants.
@@ -232,13 +232,13 @@ pub mod queue {
     pub const DEFAULT_CONFIG_FILE: &str = ".cueloop/config.jsonc";
 
     /// Legacy default queue file path (relative to repo root).
-    pub const LEGACY_DEFAULT_QUEUE_FILE: &str = ".ralph/queue.jsonc";
+    pub const LEGACY_DEFAULT_QUEUE_FILE: &str = ".cueloop/queue.jsonc";
 
     /// Legacy default done file path (relative to repo root).
-    pub const LEGACY_DEFAULT_DONE_FILE: &str = ".ralph/done.jsonc";
+    pub const LEGACY_DEFAULT_DONE_FILE: &str = ".cueloop/done.jsonc";
 
     /// Legacy default config file path (relative to repo root).
-    pub const LEGACY_DEFAULT_CONFIG_FILE: &str = ".ralph/config.jsonc";
+    pub const LEGACY_DEFAULT_CONFIG_FILE: &str = ".cueloop/config.jsonc";
 
     /// Default maximum dependency depth.
     pub const DEFAULT_MAX_DEPENDENCY_DEPTH: u8 = 10;
@@ -256,7 +256,7 @@ pub mod queue {
 /// Git-related constants.
 pub mod git {
     /// Default branch prefix for parallel execution.
-    pub const DEFAULT_BRANCH_PREFIX: &str = "ralph/";
+    pub const DEFAULT_BRANCH_PREFIX: &str = "cueloop/";
 
     /// Sample task ID for branch validation.
     pub const SAMPLE_TASK_ID: &str = "RQ-0001";
@@ -291,19 +291,19 @@ pub mod paths {
     pub const STOP_SIGNAL_FILE: &str = "stop_requested";
 
     /// Migration history file path.
-    pub const MIGRATION_HISTORY_PATH: &str = ".ralph/cache/migrations.jsonc";
+    pub const MIGRATION_HISTORY_PATH: &str = ".cueloop/cache/migrations.jsonc";
 
     /// Productivity stats filename.
     pub const STATS_FILENAME: &str = "productivity.jsonc";
 
     /// CueLoop temp directory name. Value stays legacy-compatible during migration.
-    pub const CUELOOP_TEMP_DIR_NAME: &str = "ralph";
+    pub const CUELOOP_TEMP_DIR_NAME: &str = "cueloop";
 
     /// Legacy prompt temp file prefix.
-    pub const LEGACY_PROMPT_PREFIX: &str = "ralph_prompt_";
+    pub const LEGACY_PROMPT_PREFIX: &str = "cueloop_prompt_";
 
     /// CueLoop temp file prefix. Value stays legacy-compatible during migration.
-    pub const CUELOOP_TEMP_PREFIX: &str = "ralph_";
+    pub const CUELOOP_TEMP_PREFIX: &str = "cueloop_";
 
     /// Current worker prompt override path.
     pub const WORKER_OVERRIDE_PATH: &str = ".cueloop/prompts/worker.md";
@@ -318,26 +318,26 @@ pub mod paths {
     pub const ENV_RAW_DUMP: &str = "CUELOOP_RAW_DUMP";
 
     /// Legacy environment variable for raw dump mode.
-    pub const LEGACY_ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
+    pub const LEGACY_ENV_RAW_DUMP: &str = "CUELOOP_RAW_DUMP";
 
     /// Primary environment variable for the runner actually used (set by CueLoop when spawning runners).
     /// Used for analytics tracking in task custom fields.
     pub const ENV_RUNNER_USED: &str = "CUELOOP_RUNNER_USED";
 
     /// Legacy environment variable for the runner actually used.
-    pub const LEGACY_ENV_RUNNER_USED: &str = "RALPH_RUNNER_USED";
+    pub const LEGACY_ENV_RUNNER_USED: &str = "CUELOOP_RUNNER_USED";
 
     /// Primary environment variable for the model actually used (set by CueLoop when spawning runners).
     /// Used for analytics tracking in task custom fields.
     pub const ENV_MODEL_USED: &str = "CUELOOP_MODEL_USED";
 
     /// Legacy environment variable for the model actually used.
-    pub const LEGACY_ENV_MODEL_USED: &str = "RALPH_MODEL_USED";
+    pub const LEGACY_ENV_MODEL_USED: &str = "CUELOOP_MODEL_USED";
 }
 
 /// Version constants for schemas and templates.
 pub mod versions {
-    /// Cursor SDK package version Ralph's local bridge is validated against.
+    /// Cursor SDK package version CueLoop's local bridge is validated against.
     pub const CURSOR_SDK_VERSION: &str = "1.0.11";
 
     /// README template version.
@@ -452,7 +452,7 @@ pub mod custom_fields {
 pub mod error_messages {
     /// Config update instruction suffix.
     pub const CONFIG_UPDATE_INSTRUCTION: &str =
-        "Update project config (.cueloop/config.jsonc, or legacy .ralph/config.jsonc)";
+        "Update project config (.cueloop/config.jsonc, or legacy .cueloop/config.jsonc)";
 
     /// Template for invalid config value errors.
     pub fn invalid_config_value(
@@ -461,7 +461,7 @@ pub mod error_messages {
         reason: &str,
     ) -> String {
         format!(
-            "Invalid {field}: {value}. {reason}. Update project config (.cueloop/config.jsonc, or legacy .ralph/config.jsonc)."
+            "Invalid {field}: {value}. {reason}. Update project config (.cueloop/config.jsonc, or legacy .cueloop/config.jsonc)."
         )
     }
 }

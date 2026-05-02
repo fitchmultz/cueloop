@@ -146,12 +146,12 @@ mod tests {
         config::Resolved {
             config: cfg,
             repo_root: repo_root.clone(),
-            queue_path: repo_root.join(".ralph/queue.jsonc"),
-            done_path: repo_root.join(".ralph/done.jsonc"),
+            queue_path: repo_root.join(".cueloop/queue.jsonc"),
+            done_path: repo_root.join(".cueloop/done.jsonc"),
             id_prefix: "RQ".to_string(),
             id_width: 4,
             global_config_path: None,
-            project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+            project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
         }
     }
 

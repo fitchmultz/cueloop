@@ -29,7 +29,7 @@ cueloop plugin init mycompany.custom-llm --with-runner --scope global
 
 ```python
 #!/usr/bin/env python3
-# ~/.config/ralph/plugins/mycompany.custom-llm/runner.py
+# ~/.config/cueloop/plugins/mycompany.custom-llm/runner.py
 
 import json
 import sys
@@ -58,7 +58,7 @@ def main():
     prompt = sys.stdin.read()
 
     # Get config from environment
-    config = json.loads(os.environ.get('RALPH_PLUGIN_CONFIG_JSON', '{}'))
+    config = json.loads(os.environ.get('CUELOOP_PLUGIN_CONFIG_JSON', '{}'))
 
     if command == 'run':
         response = call_custom_api(
@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
 **Step 3: Configure and enable**
 ```bash
-chmod +x ~/.config/ralph/plugins/mycompany.custom-llm/runner.py
+chmod +x ~/.config/cueloop/plugins/mycompany.custom-llm/runner.py
 ```
 
 ```json
@@ -126,7 +126,7 @@ chmod +x ~/.config/ralph/plugins/mycompany.custom-llm/runner.py
 
 ```python
 #!/usr/bin/env python3
-# .ralph/plugins/acme.task-validator/validator.py
+# .cueloop/plugins/acme.task-validator/validator.py
 
 import json
 import sys
@@ -143,7 +143,7 @@ def main():
     with open(filepath) as f:
         task = json.load(f)
 
-    config = json.loads(os.environ.get('RALPH_PLUGIN_CONFIG_JSON', '{}'))
+    config = json.loads(os.environ.get('CUELOOP_PLUGIN_CONFIG_JSON', '{}'))
     required_tags = config.get('required_tags', [])
 
     errors = []
@@ -193,13 +193,13 @@ if __name__ == '__main__':
 
 ```bash
 # Test runner directly
-echo "Test prompt" | ~/.config/ralph/plugins/my.plugin/runner.sh run --model test
+echo "Test prompt" | ~/.config/cueloop/plugins/my.plugin/runner.sh run --model test
 
 # Test processor hook
-~/.config/ralph/plugins/my.plugin/processor.sh validate_task RQ-0001 /tmp/test-task.json
+~/.config/cueloop/plugins/my.plugin/processor.sh validate_task RQ-0001 /tmp/test-task.json
 
 # Debug environment variables
-RALPH_LOG=debug cueloop run one --id RQ-0001
+CUELOOP_LOG=debug cueloop run one --id RQ-0001
 
 # Check plugin discovery
 cueloop plugin list
@@ -229,7 +229,7 @@ cueloop daemon stop
 
 **systemd Service (Linux):**
 
-Create `~/.config/systemd/user/ralph.service`:
+Create `~/.config/systemd/user/cueloop.service`:
 ```ini
 [Unit]
 Description=CueLoop Daemon
@@ -259,7 +259,7 @@ journalctl --user -u cueloop -f
 
 **launchd Service (macOS):**
 
-Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
+Create `~/Library/LaunchAgents/com.cueloop.daemon.plist`:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
@@ -267,7 +267,7 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ralph.daemon</string>
+    <string>com.cueloop.daemon</string>
     <key>ProgramArguments</key>
     <array>
         <string>/Users/username/.local/bin/cueloop</string>
@@ -287,8 +287,8 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
 
 Load and start:
 ```bash
-launchctl load ~/Library/LaunchAgents/com.ralph.daemon.plist
-launchctl start com.ralph.daemon
+launchctl load ~/Library/LaunchAgents/com.cueloop.daemon.plist
+launchctl start com.cueloop.daemon
 ```
 
 ### Watch Mode Integration
@@ -318,14 +318,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  ralph:
+  cueloop:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup CueLoop
         run: |
-          curl -fsSL https://ralph.dev/install.sh | sh
+          curl -fsSL https://cueloop.dev/install.sh | sh
           cueloop doctor --auto-fix
 
       - name: Run Tasks
@@ -341,8 +341,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ralph-logs
-          path: .ralph/logs/
+          name: cueloop-logs
+          path: .cueloop/logs/
 ```
 
 **Pre-commit Hook:**
@@ -384,7 +384,7 @@ cueloop run loop --profile ci-check --max-tasks 1 --non-interactive
   "agent": {
     "webhook": {
       "enabled": true,
-      "url": "https://dashboard.example.com/webhooks/ralph",
+      "url": "https://dashboard.example.com/webhooks/cueloop",
       "events": ["*"],
       "queue_capacity": 500,
       "queue_policy": "block_with_timeout"

@@ -1,6 +1,6 @@
-# Repository Guidelines (Ralph)
+# Repository Guidelines (CueLoop)
 
-Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue.
 
 This file provides fast-path guidance for contributors and agents. For deeper architectural detail, start with `docs/index.md` and `CONTRIBUTING.md`.
 Repo-wide source-of-truth, cutover, downstream sync, and validation rules live in `AGENTS.md` and `docs/guides/project-operating-constitution.md`.
@@ -9,7 +9,7 @@ Repo-wide source-of-truth, cutover, downstream sync, and validation rules live i
 
 ## Project Overview
 
-**Ralph** is a Rust-based CLI tool that manages AI agent workflows through a structured JSON task queue. It orchestrates AI runners (Claude, Codex, OpenCode, Gemini, Kimi, Cursor, Pi) to execute tasks in phases (Plan → Implement → Review) with support for dependency management, parallel execution, and session recovery.
+**CueLoop** is a Rust-based CLI tool that manages AI agent workflows through a structured JSON task queue. It orchestrates AI runners (Claude, Codex, OpenCode, Gemini, Kimi, Cursor, Pi) to execute tasks in phases (Plan → Implement → Review) with support for dependency management, parallel execution, and session recovery.
 
 ### Key Features
 
@@ -20,7 +20,7 @@ Repo-wide source-of-truth, cutover, downstream sync, and validation rules live i
 - **Session Management**: Crash recovery and resumption
 - **Plugin System**: Extensible architecture for custom processors
 - **Webhooks**: HTTP event notifications for task events
-- **macOS App**: SwiftUI companion app (`apps/RalphMac/`)
+- **macOS App**: SwiftUI companion app (`apps/CueLoopMac/`)
 
 ---
 
@@ -45,9 +45,9 @@ Repo-wide source-of-truth, cutover, downstream sync, and validation rules live i
 
 ```
 apps/
-  RalphMac/           # macOS SwiftUI app (thin client that shells out to the bundled ralph CLI)
+  CueLoopMac/           # macOS SwiftUI app (thin client that shells out to the bundled cueloop CLI)
 crates/
-  ralph/              # Primary Rust CLI crate
+  cueloop/              # Primary Rust CLI crate
     src/              # CLI commands, runner integration, queue management
       cli/            # CLI argument parsing and command handlers
       commands/       # Command implementations
@@ -62,7 +62,7 @@ crates/
 docs/                 # CLI + workflow + configuration docs
 schemas/              # Generated JSON schemas (committed)
 scripts/              # Maintenance + release helper scripts
-.ralph/               # Repo-local runtime state
+.cueloop/               # Repo-local runtime state
   queue.jsonc         # Active tasks (source of truth)
   done.jsonc          # Archived tasks
   config.jsonc        # Project config (overrides global)
@@ -115,7 +115,7 @@ The required local gate is `make agent-ci`, which routes the current uncommitted
 |---------|---------|
 | `make agent-ci` | Required pre-commit gate — routes to the correct validation tier |
 | `make macos-ci` | macOS-only ship gate (Rust CI + Xcode build + Xcode tests) |
-| `make install` | Install `ralph` to `~/.local/bin/ralph` (or writable fallback) |
+| `make install` | Install `cueloop` to `~/.local/bin/cueloop` (or writable fallback) |
 | `make test` | Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing) |
 | `make lint` | Run Clippy with `-D warnings` (warnings are errors) |
 | `make format` | Run `cargo fmt --all` |
@@ -166,7 +166,7 @@ cargo test -p cueloop-agent-loop -- --include-ignored
 INSTA_UPDATE=always cargo test -p cueloop-agent-loop
 
 # Keep temp directories for debugging
-RALPH_CI_KEEP_TMP=1 make test
+CUELOOP_CI_KEEP_TMP=1 make test
 ```
 
 ### Lint and Format
@@ -199,7 +199,7 @@ make type-check
 
 ### Error Handling
 
-Ralph uses a two-tier strategy: `anyhow` for general propagation, `thiserror` for domain-specific errors.
+CueLoop uses a two-tier strategy: `anyhow` for general propagation, `thiserror` for domain-specific errors.
 
 | Scenario | Pattern | Example |
 |----------|---------|---------|
@@ -214,7 +214,7 @@ See `docs/error-handling.md` for full guidelines.
 ### Security-Conscious Patterns
 
 - **Redaction**: Use `RedactedString` for runner output; apply `redact_text()` before logging
-- **Debug Logs**: Never commit debug logs (`.ralph/logs/debug.log`); they contain raw unredacted output
+- **Debug Logs**: Never commit debug logs (`.cueloop/logs/debug.log`); they contain raw unredacted output
 - **Secrets**: Never commit `.env` files or secrets to version control
 
 ---
@@ -245,9 +245,9 @@ anyhow::ensure!(status.success(), "...\nstdout:\n{stdout}\nstderr:\n{stderr}");
 
 ### Test Isolation
 
-- Tests run in isolated temp directories (`${TMPDIR:-/tmp}/ralph-ci.*`)
+- Tests run in isolated temp directories (`${TMPDIR:-/tmp}/cueloop-ci.*`)
 - Use `--non-interactive` flag when calling `cueloop init` in tests
-- Set `RALPH_CI_KEEP_TMP=1` to preserve temp directories for debugging
+- Set `CUELOOP_CI_KEEP_TMP=1` to preserve temp directories for debugging
 - Use `serial_test` for tests that modify global state
 
 ---
@@ -257,13 +257,13 @@ anyhow::ensure!(status.success(), "...\nstdout:\n{stdout}\nstderr:\n{stderr}");
 ### Sensitive Data Handling
 
 - **Redaction**: Built-in redaction masks API keys, tokens, AWS keys, SSH keys
-- **Debug Mode**: `--debug` flag writes raw (unredacted) output to `.ralph/logs/debug.log`
-- **Safeguard Dumps**: Use redacted dumps by default; raw dumps require `CUELOOP_RAW_DUMP=1` (legacy `RALPH_RAW_DUMP=1` still accepted) or `--debug`
+- **Debug Mode**: `--debug` flag writes raw (unredacted) output to `.cueloop/logs/debug.log`
+- **Safeguard Dumps**: Use redacted dumps by default; raw dumps require `CUELOOP_RAW_DUMP=1` (legacy `CUELOOP_RAW_DUMP=1` still accepted) or `--debug`
 
 ### What to Never Commit
 
 - `.env` files (MUST be in `.gitignore`)
-- `.ralph/logs/` directory
+- `.cueloop/logs/` directory
 - `*.bak` files in source directories
 - Debug logs or raw safeguard dumps
 
@@ -302,8 +302,8 @@ Derived summary; `docs/configuration.md` is the configuration source of truth.
 Config precedence (highest to lowest):
 
 1. CLI flags
-2. Project config: `.ralph/config.jsonc`
-3. Global config: `~/.config/ralph/config.jsonc`
+2. Project config: `.cueloop/config.jsonc`
+3. Global config: `~/.config/cueloop/config.jsonc`
 4. Schema defaults: `schemas/config.schema.json`
 
 See `docs/configuration.md` for key fields (runner/model/phases/RepoPrompt toggles/CI gate settings).
@@ -315,21 +315,21 @@ Runner/model configuration specifics live in `docs/configuration.md`; `README.md
 
 ### Queue and Prompts
 
-- **Queue is the source of truth**: `.ralph/queue.jsonc` (active) and `.ralph/done.jsonc` (archive)
+- **Queue is the source of truth**: `.cueloop/queue.jsonc` (active) and `.cueloop/done.jsonc` (archive)
 - **Task ordering**: Queue file order is execution order (top runs first). Draft tasks are skipped unless `--include-draft`
-- **Prompt composition**: Embedded defaults in `crates/cueloop/assets/prompts/`, overridden by `.ralph/prompts/*.md`
-- **Planning cache**: Phase 1 plans are written to `.ralph/cache/plans/<TASK_ID>.md`
+- **Prompt composition**: Embedded defaults in `crates/cueloop/assets/prompts/`, overridden by `.cueloop/prompts/*.md`
+- **Planning cache**: Phase 1 plans are written to `.cueloop/cache/plans/<TASK_ID>.md`
 
 See `docs/workflow.md` and `docs/queue-and-tasks.md` for full contract and schema details.
 
 ### Runner Session Handling
 
-Ralph manages runner sessions explicitly for reliable crash recovery:
+CueLoop manages runner sessions explicitly for reliable crash recovery:
 
 **Session ID Format**: `{task_id}-p{phase}-{timestamp}`  
 **Example**: `RQ-0001-p2-1704153600`
 
-Note: `timestamp` is Unix epoch seconds. No `ralph-` prefix; no pid suffix.
+Note: `timestamp` is Unix epoch seconds. No `cueloop-` prefix; no pid suffix.
 
 **Key Behaviors**:
 - Each phase (1, 2, 3) generates its own unique session ID at phase start
@@ -349,7 +349,7 @@ When making breaking changes to config keys or file formats, use the migration s
 - **Migration registry**: `crates/cueloop/src/migration/registry.rs`
 - **Migration facades**: `crates/cueloop/src/migration/{config_migrations/,file_migrations/}`
 - **Migration types**: `ConfigKeyRename`, `ConfigKeyRemove`, `FileRename`, `ReadmeUpdate`
-- **History tracking**: `.cueloop/cache/migrations.jsonc` primary, `.ralph/cache/migrations.jsonc` legacy fallback (auto-generated)
+- **History tracking**: `.cueloop/cache/migrations.jsonc` primary, `.cueloop/cache/migrations.jsonc` legacy fallback (auto-generated)
 - **CLI command**: `cueloop migrate` (check/list/apply)
 
 See `crates/cueloop/src/migration/mod.rs` for invariants/assumptions (idempotency, JSONC comment preservation, backups).
@@ -376,7 +376,7 @@ When making changes, keep docs in sync:
 - **Test coverage**: All new/changed behavior must be covered (success + failure modes)
 - **Feature parity**: When changing user-visible workflows, maintain parity between the CLI and the macOS app; if parity is blocked, record the explicit blocked status in `crates/cueloop/src/cli/app_parity.rs` rather than creating unmanaged divergence
 - **CLI help**: User-facing commands/flags MUST have `--help` text with examples (keep `docs/cli.md` in sync)
-- **Secrets**: Never commit or print secrets; redact runner output before copying into `.ralph/queue.jsonc` notes
+- **Secrets**: Never commit or print secrets; redact runner output before copying into `.cueloop/queue.jsonc` notes
 
 ---
 
@@ -387,5 +387,5 @@ When making changes, keep docs in sync:
 | CI failing | Run `make agent-ci`; first failing step is printed (common: formatting, Clippy warnings, tests) |
 | `.env tracked` error | Run `git rm --cached .env` and ensure `.env` is in `.gitignore` |
 | `Backup artifacts` error | Remove any `*.bak` files under `crates/cueloop/src/` |
-| Queue lock | Confirmed-dead PID locks auto-clear on acquisition; investigate `.ralph/lock` before forcing active or indeterminate locks |
+| Queue lock | Confirmed-dead PID locks auto-clear on acquisition; investigate `.cueloop/lock` before forcing active or indeterminate locks |
 | Runner issues | Verify runner binary is on `PATH` (e.g., `codex --help`) and check runner/model settings in config |

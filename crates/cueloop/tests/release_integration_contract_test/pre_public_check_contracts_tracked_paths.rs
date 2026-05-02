@@ -4,7 +4,7 @@
 //! - Group exact-path rejection contracts into smaller behavior modules.
 //!
 //! Responsibilities:
-//! - Keep `.ralph`, runtime-artifact, and `.DS_Store` regressions separate and readable.
+//! - Keep `.cueloop`, runtime-artifact, and `.DS_Store` regressions separate and readable.
 //!
 //! Scope:
 //! - Limited to this file's owning feature boundary.

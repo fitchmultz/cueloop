@@ -16,10 +16,10 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Doctor coverage runs against a disposable initialized Ralph repo.
+//! - Doctor coverage runs against a disposable initialized CueLoop repo.
 //! - Assertions preserve the legacy suite’s contract expectations.
 
-use super::machine_contract_test_support::{run_in_dir, setup_git_repo, setup_ralph_repo};
+use super::machine_contract_test_support::{run_in_dir, setup_cueloop_repo, setup_git_repo};
 use anyhow::Result;
 use serde_json::Value;
 
@@ -41,7 +41,7 @@ fn machine_system_info_reports_cli_version() -> Result<()> {
 
 #[test]
 fn machine_doctor_report_returns_versioned_blocking_document() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "doctor", "report"]);
     assert!(

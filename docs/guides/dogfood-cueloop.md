@@ -20,7 +20,7 @@ The default run uses:
 - requested model: `zai-glm-5.1`
 - effective pi model id: `zai/glm-5.1`
 - phases: `3`
-- fixture location: `target/dogfood-cueloop/<timestamp>/ralph-dogfood-fixture`
+- fixture location: `target/dogfood-cueloop/<timestamp>/cueloop-dogfood-fixture`
 - report: `target/dogfood-cueloop/<timestamp>/report.md`
 
 Use `--skip-real-agent` for a fast non-runner check of fixture creation, `cueloop init`, config/doctor/prompt preview, queue/task surfaces, machine queue read, and run dry-run.
@@ -36,7 +36,7 @@ Use `--skip-real-agent` for a fast non-runner check of fixture creation, `cueloo
 
 ### Phase 2 — Command-surface breadth sweep
 
-- Seeds `.ralph/queue.jsonc` with a deterministic task.
+- Seeds `.cueloop/queue.jsonc` with a deterministic task.
 - Exercises representative read, dry-run, preview, machine, and safe write paths across config, daemon status, queue, task, prompt, context, PRD, migrate, cleanup, webhook, productivity, plugin, runner, undo, run dry-run, and app help surfaces.
 - Commits the initialized CueLoop runtime state so the real run starts from a clean git tree.
 

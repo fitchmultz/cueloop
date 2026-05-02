@@ -102,7 +102,7 @@ fn undo_removes_used_snapshot() -> Result<()> {
     let (status, _stdout, stderr) = run_in_dir(dir.path(), &["task", "done", "RQ-0001"]);
     anyhow::ensure!(status.success(), "task done failed\nstderr:\n{stderr}");
 
-    let undo_dir = dir.path().join(".ralph/cache/undo");
+    let undo_dir = dir.path().join(".cueloop/cache/undo");
     anyhow::ensure!(
         undo_dir.exists(),
         "undo directory should exist after mutation"

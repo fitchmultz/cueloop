@@ -13,7 +13,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::process::Command;
 
@@ -201,7 +201,7 @@ fn release_policy_keeps_rename_into_ignored_dirty_paths_visible() {
     ] {
         copy_repo_file(relative_path, repo_root);
     }
-    std::fs::create_dir_all(repo_root.join(".ralph")).expect("create .ralph dir");
+    std::fs::create_dir_all(repo_root.join(".cueloop")).expect("create .cueloop dir");
 
     Command::new("git")
         .args(["init", "-b", "main"])
@@ -230,7 +230,7 @@ fn release_policy_keeps_rename_into_ignored_dirty_paths_visible() {
         .expect("commit fixture repo");
 
     Command::new("git")
-        .args(["mv", "scripts/pre-public-check.sh", ".ralph/trust.json"])
+        .args(["mv", "scripts/pre-public-check.sh", ".cueloop/trust.json"])
         .current_dir(repo_root)
         .output()
         .expect("rename script into ignored dirty path");
@@ -269,8 +269,8 @@ fn release_scripts_do_not_blanket_ignore_all_cueloop_paths_in_cleanliness_checks
 
     for script in [&verify_pipeline, &release_pipeline] {
         assert!(
-            !script.contains("grep -vE '^..[[:space:]]+\\.ralph/'"),
-            "release cleanliness checks should not blanket-ignore all .ralph paths"
+            !script.contains("grep -vE '^..[[:space:]]+\\.cueloop/'"),
+            "release cleanliness checks should not blanket-ignore all .cueloop paths"
         );
         assert!(
             script.contains("release_filter_dirty_lines"),

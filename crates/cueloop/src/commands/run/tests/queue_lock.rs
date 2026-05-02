@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::{find_definitely_dead_pid, resolved_with_repo_root, task_with_status};
 use crate::commands::run::run_session::create_session_for_task;
@@ -36,7 +36,7 @@ fn run_one_with_id_locked_skips_reacquiring_queue_lock() -> anyhow::Result<()> {
     let repo_root = temp.path().to_path_buf();
     let resolved = resolved_with_repo_root(repo_root.clone());
 
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     let task = crate::contracts::Task {
         id: "RQ-0001".to_string(),
         status: TaskStatus::Done,
@@ -114,7 +114,7 @@ fn run_one_with_id_locked_skips_reacquiring_queue_lock() -> anyhow::Result<()> {
 fn clear_stale_queue_lock_for_resume_removes_stale_lock() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
 
     let lock_dir = crate::lock::queue_lock_dir(&repo_root);
     std::fs::create_dir_all(&lock_dir)?;
@@ -142,7 +142,7 @@ fn clear_stale_queue_lock_for_resume_removes_stale_lock() -> anyhow::Result<()> 
 fn clear_stale_queue_lock_for_resume_does_not_remove_live_lock() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
 
     let lock_dir = crate::lock::queue_lock_dir(&repo_root);
     let _held = queue::acquire_queue_lock(&repo_root, "live holder", false)?;
@@ -163,7 +163,7 @@ fn clear_stale_queue_lock_for_resume_does_not_remove_live_lock() -> anyhow::Resu
 fn inspect_queue_lock_reports_stale_lock_as_stale_operator_state() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
 
     let lock_dir = crate::lock::queue_lock_dir(&repo_root);
     std::fs::create_dir_all(&lock_dir)?;
@@ -207,7 +207,7 @@ fn inspect_queue_lock_reports_stale_lock_as_stale_operator_state() -> anyhow::Re
 fn inspect_queue_lock_reports_pid_reuse_review_for_aged_live_owner() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
 
     let lock_dir = crate::lock::queue_lock_dir(&repo_root);
     std::fs::create_dir_all(&lock_dir)?;
@@ -266,7 +266,7 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
 
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph/cache"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop/cache"))?;
 
     let resolved = resolved_with_repo_root(repo_root.clone());
 
@@ -287,7 +287,7 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
         1,
         None,
     );
-    crate::session::save_session(&repo_root.join(".ralph/cache"), &session)?;
+    crate::session::save_session(&repo_root.join(".cueloop/cache"), &session)?;
 
     // Stale queue lock left behind by a dead process.
     let lock_dir = crate::lock::queue_lock_dir(&repo_root);
@@ -354,10 +354,10 @@ fn run_one_parallel_worker_acquires_queue_lock() -> anyhow::Result<()> {
 
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile {
         version: 1,
         tasks: vec![],

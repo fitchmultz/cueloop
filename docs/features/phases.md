@@ -28,7 +28,7 @@ The phase system is CueLoop's core execution model, designed to balance automati
 │                                                                         │
 │  Phase 1: Planning                                                      │
 │  ├── Agent analyzes task and creates implementation plan                │
-│  ├── Plan cached to .ralph/cache/plans/<TASK_ID>.md                     │
+│  ├── Plan cached to .cueloop/cache/plans/<TASK_ID>.md                     │
 │  └── Enforcement: Plan-only (no code changes allowed)                   │
 │                              ↓                                          │
 │  Phase 2: Implementation + CI                                           │
@@ -64,14 +64,14 @@ Phase 1 is the **thinking phase**. The AI agent analyzes the task requirements a
 3. Execute the runner with the planning prompt
 4. Enforce plan-only constraints
 
-**Output**: Plan cached at `.ralph/cache/plans/<TASK_ID>.md`
+**Output**: Plan cached at `.cueloop/cache/plans/<TASK_ID>.md`
 
 ### Plan-Only Enforcement
 
 Phase 1 is strictly **read-only** except for:
-- `.ralph/queue.jsonc` - Task status updates
-- `.ralph/done.jsonc` - Archive operations
-- `.ralph/cache/plans/<TASK_ID>.md` - The plan cache itself
+- `.cueloop/queue.jsonc` - Task status updates
+- `.cueloop/done.jsonc` - Archive operations
+- `.cueloop/cache/plans/<TASK_ID>.md` - The plan cache itself
 
 **INTENDED BEHAVIOR**: If Phase 1 makes any changes outside these allowed paths, CueLoop should detect this and prompt the user for action.
 
@@ -85,7 +85,7 @@ Phase 1 is strictly **read-only** except for:
 
 ### Plan Cache Format
 
-The plan is stored as non-empty Markdown in `.ralph/cache/plans/<TASK_ID>.md`.
+The plan is stored as non-empty Markdown in `.cueloop/cache/plans/<TASK_ID>.md`.
 CueLoop does not parse a fixed heading structure; the layout below is an illustrative example, not a required format:
 
 ```markdown
@@ -197,7 +197,7 @@ This design provides a **supervision checkpoint** where you can:
 
 ### Phase 2 Final Response Cache
 
-The runner's final response is cached at `.ralph/cache/phase2_final/<TASK_ID>.md` for Phase 3 reference.
+The runner's final response is cached at `.cueloop/cache/phase2_final/<TASK_ID>.md` for Phase 3 reference.
 
 ## Phase 3: Review + Completion
 
@@ -240,7 +240,7 @@ cueloop task reject <TASK_ID> [--note "rejection reason"]
 **Enforcement**:
 - Phase 3 loops until the task is archived to `done.json`
 - If task is not done/rejected, user is prompted based on `git_revert_mode`
-- With `git_publish_mode = "commit_and_push"`, rejected tasks allow dirty files in `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/`
+- With `git_publish_mode = "commit_and_push"`, rejected tasks allow dirty files in `.cueloop/queue.{json,jsonc}`, `.cueloop/done.{json,jsonc}`, `.cueloop/config.{json,jsonc}`, and `.cueloop/cache/`
 
 ### Code Review Context
 
@@ -253,7 +253,7 @@ Phase 3 generates a code review prompt that includes:
 ### Completion Signals
 
 When the runner marks a task done/rejected in **sequential mode**, CueLoop writes a completion signal:
-- Location: `.ralph/cache/completions/<TASK_ID>.json`
+- Location: `.cueloop/cache/completions/<TASK_ID>.json`
 - Contains: status, notes, runner_used, model_used
 - Used for: Analytics, webhook events, custom fields patching
 
@@ -324,7 +324,7 @@ Two-phase mode includes planning and implementation without separate review:
 
 ### Setting Default Phases
 
-Configure the default number of phases in `.cueloop/config.jsonc` (legacy `.ralph/config.jsonc` remains supported):
+Configure the default number of phases in `.cueloop/config.jsonc` (legacy `.cueloop/config.jsonc` remains supported):
 
 ```json
 {
@@ -395,7 +395,7 @@ cueloop run one --runner-phase3 codex --model-phase3 gpt-5.4 --effort-phase3 hig
 
 ### Configuration
 
-Set per-phase overrides in `.ralph/config.jsonc`:
+Set per-phase overrides in `.cueloop/config.jsonc`:
 
 ```json
 {
@@ -490,7 +490,7 @@ Session management is primarily for **Kimi** (which doesn't emit session IDs in 
 
 ### Continue Session State
 
-Session state is persisted to `.ralph/cache/session.jsonc`:
+Session state is persisted to `.cueloop/cache/session.jsonc`:
 
 ```json
 {
@@ -630,7 +630,7 @@ cueloop run one --runner codex \
 ### Example 6: Configuration-Based Workflow
 
 ```json
-// .ralph/config.jsonc
+// .cueloop/config.jsonc
 {
   "version": 2,
   "agent": {
@@ -662,11 +662,11 @@ Each phase uses specific prompt templates that can be overridden:
 
 | Phase | Default Prompt | Override Path |
 |-------|---------------|---------------|
-| 1 | `worker_phase1.md` | `.ralph/prompts/worker_phase1.md` |
-| 2 (2-phase) | `worker_phase2.md` | `.ralph/prompts/worker_phase2.md` |
-| 2 (3-phase) | `worker_phase2_handoff.md` | `.ralph/prompts/worker_phase2_handoff.md` |
-| 3 | `worker_phase3.md` | `.ralph/prompts/worker_phase3.md` |
-| Single | `worker_single_phase.md` | `.ralph/prompts/worker_single_phase.md` |
+| 1 | `worker_phase1.md` | `.cueloop/prompts/worker_phase1.md` |
+| 2 (2-phase) | `worker_phase2.md` | `.cueloop/prompts/worker_phase2.md` |
+| 2 (3-phase) | `worker_phase2_handoff.md` | `.cueloop/prompts/worker_phase2_handoff.md` |
+| 3 | `worker_phase3.md` | `.cueloop/prompts/worker_phase3.md` |
+| Single | `worker_single_phase.md` | `.cueloop/prompts/worker_single_phase.md` |
 
 Override prompts must preserve required placeholders (e.g., `{{USER_REQUEST}}`).
 

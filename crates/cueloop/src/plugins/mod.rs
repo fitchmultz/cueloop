@@ -20,9 +20,9 @@
 //! Invariants/assumptions:
 //! - Plugins are discovered from current and legacy roots:
 //!   - Current global:  ~/.config/cueloop/plugins/<plugin_id>/plugin.json
-//!   - Legacy global:   ~/.config/ralph/plugins/<plugin_id>/plugin.json
+//!   - Legacy global:   ~/.config/cueloop/plugins/<plugin_id>/plugin.json
 //!   - Current project: .cueloop/plugins/<plugin_id>/plugin.json
-//!   - Legacy project:  .ralph/plugins/<plugin_id>/plugin.json
+//!   - Legacy project:  .cueloop/plugins/<plugin_id>/plugin.json
 //! - Current roots override legacy roots; project plugins override global plugins of the same id.
 //! - Plugins are disabled unless enabled in config.
 //! - Plugin executables are NOT sandboxed by CueLoop; enabling a plugin is equivalent to trusting it.

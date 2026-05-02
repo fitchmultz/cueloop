@@ -1,15 +1,15 @@
-//! `.ralph` runtime tree synchronization.
+//! `.cueloop` runtime tree synchronization.
 //!
 //! Purpose:
-//! - `.ralph` runtime tree synchronization.
+//! - `.cueloop` runtime tree synchronization.
 //!
 //! Responsibilities:
-//! - Copy repo-local `.ralph` runtime content into worker workspaces.
+//! - Copy repo-local `.cueloop` runtime content into worker workspaces.
 //! - Exclude queue/done bookkeeping files that are seeded from resolved paths.
 //! - Skip coordinator-only runtime directories such as cache, logs, locks, and workspaces.
 //!
 //! Non-scope:
-//! - Gitignored non-`.ralph` allowlist syncing.
+//! - Gitignored non-`.cueloop` allowlist syncing.
 //! - Bookkeeping path mapping into workspace roots.
 //!
 //!

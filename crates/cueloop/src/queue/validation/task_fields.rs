@@ -142,7 +142,7 @@ pub(crate) fn validate_task_id(
     let prefix = prefix_raw.trim().to_uppercase();
     if prefix != expected_prefix {
         bail!(
-            "Mismatched task ID prefix: task at index {} has prefix '{}' but expected '{}'. Update the task ID to '{}' or change the prefix in .ralph/config.jsonc.",
+            "Mismatched task ID prefix: task at index {} has prefix '{}' but expected '{}'. Update the task ID to '{}' or change the prefix in .cueloop/config.jsonc.",
             index,
             prefix,
             expected_prefix,

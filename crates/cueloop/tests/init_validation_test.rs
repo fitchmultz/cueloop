@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use cueloop::commands::init::{InitOptions, run_init};
@@ -24,9 +24,9 @@ use tempfile::TempDir;
 
 fn resolved_for(dir: &TempDir) -> Resolved {
     let repo_root = dir.path().to_path_buf();
-    let queue_path = repo_root.join(".ralph/queue.jsonc");
-    let done_path = repo_root.join(".ralph/done.jsonc");
-    let project_config_path = Some(repo_root.join(".ralph/config.jsonc"));
+    let queue_path = repo_root.join(".cueloop/queue.jsonc");
+    let done_path = repo_root.join(".cueloop/done.jsonc");
+    let project_config_path = Some(repo_root.join(".cueloop/config.jsonc"));
     Resolved {
         config: Config::default(),
         repo_root,
@@ -43,7 +43,7 @@ fn resolved_for(dir: &TempDir) -> Resolved {
 fn init_fails_on_invalid_config_json() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
 
     // Write invalid JSON to config
     std::fs::write(resolved.project_config_path.as_ref().unwrap(), "NOT JSON")?;
@@ -69,7 +69,7 @@ fn init_fails_on_invalid_config_json() -> Result<()> {
 fn init_fails_on_structurally_invalid_queue() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
 
     // Create a queue with missing required fields (structurally invalid for domain logic)
     // Here we omit created_at/updated_at/etc

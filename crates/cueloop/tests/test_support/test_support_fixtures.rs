@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Build realistic queue/task fixtures for CLI and rendering tests.
-//! - Read and write queue/done files under temporary Ralph repos.
+//! - Read and write queue/done files under temporary CueLoop repos.
 //! - Snapshot queue state for isolation assertions.
 //!
 //! Non-scope:

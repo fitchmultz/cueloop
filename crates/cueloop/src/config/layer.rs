@@ -1,7 +1,7 @@
-//! Configuration layer handling for Ralph.
+//! Configuration layer handling for CueLoop.
 //!
 //! Purpose:
-//! - Configuration layer handling for Ralph.
+//! - Configuration layer handling for CueLoop.
 //!
 //! Responsibilities:
 //! - Define `ConfigLayer` for partial config from JSON files.
@@ -79,7 +79,7 @@ pub fn apply_layer(mut base: Config, layer: ConfigLayer) -> Result<Config> {
     if let Some(version) = layer.version {
         if version != 2 {
             bail!(
-                "Unsupported config version: {}. Ralph requires version 2. Upgrade your config file to the 0.3 contract and set `version` to 2.",
+                "Unsupported config version: {}. CueLoop requires version 2. Upgrade your config file to the 0.3 contract and set `version` to 2.",
                 version
             );
         }

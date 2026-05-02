@@ -4,7 +4,7 @@
 //! - Shared fixtures and command helpers for queue sorting CLI integration tests.
 //!
 //! Responsibilities:
-//! - Initialize disposable Ralph repos for sorting scenarios.
+//! - Initialize disposable CueLoop repos for sorting scenarios.
 //! - Build canonical priority and timestamp-rich queue fixtures using shared task builders.
 //! - Provide stable helpers for running sort/list commands and reading task ordering assertions.
 //!
@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Fixture queues always live at `.ralph/queue.jsonc`.
+//! - Fixture queues always live at `.cueloop/queue.jsonc`.
 //! - Helpers expect `queue list` output to stay tab-separated.
 
 use crate::test_support;
@@ -29,7 +29,7 @@ use tempfile::TempDir;
 
 pub(super) fn setup_repo() -> Result<TempDir> {
     let dir = test_support::temp_dir_outside_repo();
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     Ok(dir)
 }
 
@@ -223,6 +223,6 @@ pub(super) fn queue_sort_output(dir: &Path, args: &[&str]) -> Result<String> {
 }
 
 pub(super) fn read_queue_json(dir: &Path) -> Result<String> {
-    let path = dir.join(".ralph/queue.jsonc");
+    let path = dir.join(".cueloop/queue.jsonc");
     std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))
 }

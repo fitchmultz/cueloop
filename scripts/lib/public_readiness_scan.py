@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Purpose: Scan the Ralph working tree for public-readiness issues.
+Purpose: Scan the CueLoop working tree for public-readiness issues.
 Responsibilities:
 - Walk the repository working tree with explicit exclude rules.
 - Validate markdown links across repo-local documentation files.
@@ -18,7 +18,7 @@ Usage:
 Invariants/assumptions:
 - The caller provides the repository root as the final argument.
 - Markdown link targets must resolve within the repository root.
-- Excludes are provided through RALPH_PUBLIC_SCAN_EXCLUDES as newline-separated prefixes.
+- Excludes are provided through CUELOOP_PUBLIC_SCAN_EXCLUDES as newline-separated prefixes.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from typing import Iterator
 
 MARKDOWN_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 MARKDOWN_JSON_FENCE_RE = re.compile(r"```json\s*\n(?P<body>[\s\S]*?)\n```", re.MULTILINE)
-STALE_SESSION_CACHE_PATH_RE = re.compile(r"\.ralph/cache/session\.json(?!c)")
+STALE_SESSION_CACHE_PATH_RE = re.compile(r"\.cueloop/cache/session\.json(?!c)")
 AWS_EXAMPLE_KEY = "AK" "IA" "IOSFODNN7EXAMPLE"
 OPENSSH_PRIVATE_KEY_TAG = "OPEN" "SSH PRIVATE KEY"
 RSA_PRIVATE_KEY_TAG = "RSA PRIVATE KEY"
@@ -134,12 +134,12 @@ def read_env_lines(name: str) -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def read_excludes() -> tuple[str, ...]:
-    return tuple(line.rstrip("/") for line in read_env_lines("RALPH_PUBLIC_SCAN_EXCLUDES"))
+    return tuple(line.rstrip("/") for line in read_env_lines("CUELOOP_PUBLIC_SCAN_EXCLUDES"))
 
 
 @lru_cache(maxsize=1)
 def read_local_only_basenames() -> tuple[str, ...]:
-    configured = read_env_lines("RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES")
+    configured = read_env_lines("CUELOOP_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES")
     if configured:
         return configured
     return (".DS_Store", ".env", ".envrc", ".scratchpad.md", ".FIX_TRACKING.md")
@@ -147,7 +147,7 @@ def read_local_only_basenames() -> tuple[str, ...]:
 
 @lru_cache(maxsize=1)
 def read_local_only_basename_prefixes() -> tuple[str, ...]:
-    configured = read_env_lines("RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES")
+    configured = read_env_lines("CUELOOP_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES")
     if configured:
         return configured
     return (".env.",)
@@ -268,7 +268,7 @@ def collect_session_path_problems(rel_path: str, text: str) -> list[str]:
     problems: list[str] = []
     for line_number, line in enumerate(text.splitlines(), start=1):
         if STALE_SESSION_CACHE_PATH_RE.search(line):
-            problems.append(f"{rel_path}:{line_number}: use .ralph/cache/session.jsonc")
+            problems.append(f"{rel_path}:{line_number}: use .cueloop/cache/session.jsonc")
     return problems
 
 

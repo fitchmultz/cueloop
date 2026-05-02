@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Uses current `.cueloop` or legacy `.ralph` runtime markers when discovering projects.
+//! - Uses current `.cueloop` or legacy `.cueloop` runtime markers when discovering projects.
 //! - `--apply` requires explicit user action (not automatic).
 //! - `migrate runtime-dir --apply` is explicit and is never part of normal `migrate --apply`.
 //! - Exit code 1 from `--check` when migrations are pending for CI integration.
@@ -37,8 +37,8 @@ use colored::Colorize;
   cueloop migrate --apply      # Apply all pending config/file migrations
   cueloop migrate --list       # List all migrations and their status
   cueloop migrate status       # Show detailed migration status
-  cueloop migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop
-  cueloop migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop
+  cueloop migrate runtime-dir --check  # Check whether .cueloop should be moved to .cueloop
+  cueloop migrate runtime-dir --apply  # Explicitly move .cueloop project state to .cueloop
 "
 )]
 pub struct MigrateArgs {
@@ -67,7 +67,7 @@ pub struct MigrateArgs {
 pub enum MigrateCommand {
     /// Show detailed migration status.
     Status,
-    /// Explicitly check or apply the `.ralph` -> `.cueloop` runtime directory migration.
+    /// Explicitly check or apply the `.cueloop` -> `.cueloop` runtime directory migration.
     #[command(name = "runtime-dir")]
     RuntimeDir(RuntimeDirArgs),
 }
@@ -78,7 +78,7 @@ pub struct RuntimeDirArgs {
     #[arg(long, conflicts_with = "apply")]
     pub check: bool,
 
-    /// Move `.ralph` project runtime state to `.cueloop` when safe.
+    /// Move `.cueloop` project runtime state to `.cueloop` when safe.
     #[arg(long, conflicts_with = "check")]
     pub apply: bool,
 }
@@ -362,7 +362,7 @@ fn apply_runtime_dir_migration(repo_root: &std::path::Path) -> Result<()> {
 
     println!(
         "{}",
-        "✓ Moved project runtime directory from .ralph to .cueloop".green()
+        "✓ Moved project runtime directory from .cueloop to .cueloop".green()
     );
     if report.gitignore_updated {
         println!("{}", "✓ Updated .gitignore runtime path references".green());

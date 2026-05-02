@@ -108,7 +108,7 @@ impl ThreadSpawner for TrackingSpawner {
 fn enabled_config() -> WebhookConfig {
     WebhookConfig {
         enabled: Some(true),
-        url: Some("https://example.com/ralph-webhook".to_string()),
+        url: Some("https://example.com/cueloop-webhook".to_string()),
         ..Default::default()
     }
 }
@@ -166,7 +166,7 @@ fn inactive_config_tears_down_existing_runtime() {
 
     let inactive = WebhookConfig {
         enabled: Some(false),
-        url: Some("https://example.com/ralph-webhook".to_string()),
+        url: Some("https://example.com/cueloop-webhook".to_string()),
         ..Default::default()
     };
     let dispatcher = dispatcher_for_config_with_spawner(&inactive, &tracking);

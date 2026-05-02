@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Execute Ralph releases as explicit verify/execute/reconcile transactions.
+# Purpose: Execute CueLoop releases as explicit verify/execute/reconcile transactions.
 # Responsibilities:
 # - Prepare and record a publish-ready local release snapshot before any remote mutation.
 # - Publish only from a previously verified release snapshot.
@@ -40,7 +40,7 @@ VERSION="${2:-}"
 
 usage() {
     cat <<'EOF'
-Ralph release transaction workflow.
+CueLoop release transaction workflow.
 
 Usage:
   scripts/release.sh verify <version>

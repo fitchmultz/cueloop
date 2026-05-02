@@ -35,7 +35,7 @@ edition = "2021"
 [dependencies]
 "#;
 
-const SAMPLE_LIB_RS: &str = r#"//! Tutorial project for Ralph onboarding.
+const SAMPLE_LIB_RS: &str = r#"//! Tutorial project for CueLoop onboarding.
 //!
 //! Add your code here.
 
@@ -87,12 +87,12 @@ impl TutorialSandbox {
         run_tutorial_git(
             &path,
             "configure tutorial git user.name",
-            &["config", "user.name", "Ralph Tutorial"],
+            &["config", "user.name", "CueLoop Tutorial"],
         )?;
         run_tutorial_git(
             &path,
             "configure tutorial git user.email",
-            &["config", "user.email", "tutorial@ralph.invalid"],
+            &["config", "user.email", "tutorial@cueloop.invalid"],
         )?;
 
         // Create sample project files
@@ -103,7 +103,7 @@ impl TutorialSandbox {
         // Create .gitignore
         std::fs::write(
             path.join(".gitignore"),
-            "/target\n.ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
+            "/target\n.cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n",
         )?;
 
         run_tutorial_git(&path, "stage tutorial sandbox files", &["add", "."])?;

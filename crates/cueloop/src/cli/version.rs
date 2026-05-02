@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn cli_parses_version_command() {
-        let cli = Cli::try_parse_from(["ralph", "version"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "version"]).expect("parse");
         match cli.command {
             Command::Version(args) => {
                 assert!(!args.verbose);
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn cli_parses_version_verbose() {
-        let cli = Cli::try_parse_from(["ralph", "version", "--verbose"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "version", "--verbose"]).expect("parse");
         match cli.command {
             Command::Version(args) => {
                 assert!(args.verbose);
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn cli_parses_version_verbose_short() {
-        let cli = Cli::try_parse_from(["ralph", "version", "-v"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "version", "-v"]).expect("parse");
         match cli.command {
             Command::Version(args) => {
                 assert!(args.verbose);

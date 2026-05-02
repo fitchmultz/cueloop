@@ -4,7 +4,7 @@
 //! - Tree normalization helpers for task decomposition.
 //!
 //! Responsibilities:
-//! - Normalize planner JSON into bounded Ralph decomposition trees.
+//! - Normalize planner JSON into bounded CueLoop decomposition trees.
 //! - Resolve sibling dependency references within normalized child groups.
 //! - Produce preview metadata like node counts and dependency edges.
 //!

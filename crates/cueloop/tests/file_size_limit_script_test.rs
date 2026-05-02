@@ -223,7 +223,7 @@ fn check_file_size_limits_ignores_default_runtime_bookkeeping_excludes() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
-    write_lines(&repo_path.join(".ralph/done.jsonc"), 1500);
+    write_lines(&repo_path.join(".cueloop/done.jsonc"), 1500);
     write_lines(&repo_path.join(".cueloop/done.jsonc"), 1500);
 
     let output = run_check_script(repo_path, &[]);
@@ -235,7 +235,7 @@ fn check_file_size_limits_ignores_default_runtime_bookkeeping_excludes() {
         "excluded runtime bookkeeping paths should not fail policy\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
-        !stdout.contains(".ralph/done.jsonc"),
+        !stdout.contains(".cueloop/done.jsonc"),
         "excluded legacy bookkeeping path should not be listed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(

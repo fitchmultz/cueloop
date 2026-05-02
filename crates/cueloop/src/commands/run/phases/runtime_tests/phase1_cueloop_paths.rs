@@ -1,7 +1,7 @@
-//! Phase 1 `.ralph` dirty-path allowance tests.
+//! Phase 1 `.cueloop` dirty-path allowance tests.
 //!
 //! Purpose:
-//! - Phase 1 `.ralph` dirty-path allowance tests.
+//! - Phase 1 `.cueloop` dirty-path allowance tests.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -14,12 +14,12 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
 #[test]
-fn phase1_allows_arbitrary_ralph_file_changes() -> Result<()> {
+fn phase1_allows_arbitrary_cueloop_file_changes() -> Result<()> {
     // Synchronize with tests that modify the interrupt flag.
     let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
     let _interrupt_guard = interrupt_mutex.lock().unwrap();
@@ -27,15 +27,15 @@ fn phase1_allows_arbitrary_ralph_file_changes() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
-    std::fs::create_dir_all(temp.path().join(".ralph/state"))?;
-    let ralph_state = temp.path().join(".ralph/state/worker.json");
-    std::fs::write(&ralph_state, "{ \"v\": 1 }\n")?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/state"))?;
+    let cueloop_state = temp.path().join(".cueloop/state/worker.json");
+    std::fs::write(&cueloop_state, "{ \"v\": 1 }\n")?;
 
     git_status_ok(
         temp.path(),
-        &["add", "-f", ".ralph/state/worker.json"],
-        "git add .ralph/state/worker.json failed",
+        &["add", "-f", ".cueloop/state/worker.json"],
+        "git add .cueloop/state/worker.json failed",
     )?;
     git_status_ok(
         temp.path(),
@@ -46,8 +46,8 @@ fn phase1_allows_arbitrary_ralph_file_changes() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
-state="{root}/.ralph/state/worker.json"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+state="{root}/.cueloop/state/worker.json"
 echo '{{"v":2}}' > "$state"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
@@ -117,8 +117,8 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
     let mut paths = git::status_paths(temp.path())?;
     paths.sort();
     anyhow::ensure!(
-        paths == vec![".ralph/state/worker.json".to_string()],
-        "expected only dirty .ralph state path, got: {:?}",
+        paths == vec![".cueloop/state/worker.json".to_string()],
+        "expected only dirty .cueloop state path, got: {:?}",
         paths
     );
 

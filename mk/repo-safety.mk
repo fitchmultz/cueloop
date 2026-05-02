@@ -1,4 +1,4 @@
-# Purpose: Define Ralph repository safety and guardrail targets included by the root Makefile.
+# Purpose: Define CueLoop repository safety and guardrail targets included by the root Makefile.
 # Responsibilities: Own environment safety, backup-artifact checks, file-size checks, repo-safety aliases, and pre-commit composition.
 # Scope: Target bodies only; public help text and phony aggregation stay in ../Makefile.
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.

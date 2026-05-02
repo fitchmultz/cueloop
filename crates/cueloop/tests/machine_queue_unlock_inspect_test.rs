@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use serde_json::Value;
@@ -24,7 +24,7 @@ use std::path::Path;
 mod test_support;
 
 fn create_lock_with_pid(dir: &Path, pid: u32) -> Result<()> {
-    let lock_dir = dir.join(".ralph").join("lock");
+    let lock_dir = dir.join(".cueloop").join("lock");
     fs::create_dir_all(&lock_dir)?;
     let owner_path = lock_dir.join("owner");
     let content = format!(

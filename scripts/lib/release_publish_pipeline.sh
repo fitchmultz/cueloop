@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Execute the remote-facing Ralph release transaction phases.
+# Purpose: Execute the remote-facing CueLoop release transaction phases.
 # Responsibilities:
 # - Create the release commit/tag only after a verified snapshot is accepted.
 # - Publish reversible remote state before the crates.io cutover.
@@ -13,10 +13,10 @@
 # - Caller already initialized transaction state before invoking these helpers.
 # - crates.io publish is the only intentionally irreversible phase in the transaction.
 
-if [ -n "${RALPH_RELEASE_PUBLISH_PIPELINE_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_PUBLISH_PIPELINE_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_PUBLISH_PIPELINE_SOURCED=1
+CUELOOP_RELEASE_PUBLISH_PIPELINE_SOURCED=1
 set -euo pipefail
 
 release_query_github_release_state() {
@@ -56,7 +56,7 @@ release_crate_is_published() {
     local base_tmp
     base_tmp="${TMPDIR:-/tmp}"
     base_tmp="${base_tmp%/}"
-    probe_dir=$(mktemp -d "${base_tmp}/ralph-crate-probe.XXXXXX")
+    probe_dir=$(mktemp -d "${base_tmp}/cueloop-crate-probe.XXXXXX")
 
     if (
         cd "$probe_dir"

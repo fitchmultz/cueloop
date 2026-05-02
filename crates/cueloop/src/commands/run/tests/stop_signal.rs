@@ -14,14 +14,14 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use crate::signal;
 
 #[test]
 fn stop_signal_is_detected_after_task_completion() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
-    let cache_dir = temp.path().join(".ralph/cache");
+    let cache_dir = temp.path().join(".cueloop/cache");
 
     // Create stop signal
     signal::create_stop_signal(&cache_dir)?;
@@ -38,7 +38,7 @@ fn stop_signal_is_detected_after_task_completion() -> anyhow::Result<()> {
 #[test]
 fn stop_signal_clear_is_idempotent() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
-    let cache_dir = temp.path().join(".ralph/cache");
+    let cache_dir = temp.path().join(".cueloop/cache");
 
     // Clearing non-existent signal returns Ok(false)
     let cleared = signal::clear_stop_signal(&cache_dir)?;
@@ -50,7 +50,7 @@ fn stop_signal_clear_is_idempotent() -> anyhow::Result<()> {
 #[test]
 fn stop_signal_create_is_idempotent() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
-    let cache_dir = temp.path().join(".ralph/cache");
+    let cache_dir = temp.path().join(".cueloop/cache");
 
     // First creation
     signal::create_stop_signal(&cache_dir)?;
@@ -67,7 +67,7 @@ fn stop_signal_create_is_idempotent() -> anyhow::Result<()> {
 #[test]
 fn stop_signal_cleared_on_sequential_loop_exit() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
-    let cache_dir = temp.path().join(".ralph/cache");
+    let cache_dir = temp.path().join(".cueloop/cache");
 
     // Create stop signal
     signal::create_stop_signal(&cache_dir)?;
@@ -85,7 +85,7 @@ fn stop_signal_cleared_on_sequential_loop_exit() -> anyhow::Result<()> {
 #[test]
 fn stop_signal_clear_is_idempotent_for_loop_exit() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
-    let cache_dir = temp.path().join(".ralph/cache");
+    let cache_dir = temp.path().join(".cueloop/cache");
 
     // Clear non-existent signal should return Ok(false)
     let cleared = signal::clear_stop_signal(&cache_dir)?;

@@ -165,7 +165,7 @@ pub fn resolve_run_session_decision(
                 task_id: None,
                 message: "Resume: no interrupted session was found; starting a fresh run."
                     .to_string(),
-                detail: "No persisted session state exists under .ralph/cache/session.jsonc."
+                detail: "No persisted session state exists under .cueloop/cache/session.jsonc."
                     .to_string(),
             }),
         },
@@ -186,7 +186,7 @@ pub fn resolve_run_session_decision(
                             session.task_id
                         ),
                         detail: format!(
-                            "Saved session belongs to {}, so Ralph will honor the explicit task selection.",
+                            "Saved session belongs to {}, so CueLoop will honor the explicit task selection.",
                             session.task_id
                         ),
                     }),
@@ -260,7 +260,7 @@ pub fn resolve_run_session_decision(
                                         "Resume: starting fresh after declining the interrupted session for task {}.",
                                         session.task_id
                                     ),
-                                    detail: "The saved session remains readable, but Ralph will begin a new invocation instead of reusing it.".to_string(),
+                                    detail: "The saved session remains readable, but CueLoop will begin a new invocation instead of reusing it.".to_string(),
                                 }),
                             }
                         }
@@ -379,7 +379,7 @@ fn corrupt_cache_resolution(
                 message: "Resume: starting fresh because the saved session cache is corrupt or unreadable."
                     .to_string(),
                 detail: format!(
-                    "Ralph could not read {}: {}.{}",
+                    "CueLoop could not read {}: {}.{}",
                     corruption.path.display(),
                     corruption.diagnostic,
                     quarantine_detail
@@ -405,7 +405,7 @@ fn corrupt_cache_resolution(
             message: "Resume: refusing to guess because the saved session cache is corrupt or unreadable."
                 .to_string(),
             detail: format!(
-                "Ralph could not read {}: {}.{} {next_step}",
+                "CueLoop could not read {}: {}.{} {next_step}",
                 corruption.path.display(),
                 corruption.diagnostic,
                 quarantine_detail

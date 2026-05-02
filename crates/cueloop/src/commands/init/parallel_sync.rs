@@ -102,9 +102,9 @@ fn has_parent_or_prefix_component(path: &str) -> bool {
 
 fn is_denied_candidate(path: &str) -> bool {
     path.starts_with(".git/")
-        || path.starts_with(".ralph/cache/")
-        || path.starts_with(".ralph/logs/")
-        || path.starts_with(".ralph/workspaces/")
+        || path.starts_with(".cueloop/cache/")
+        || path.starts_with(".cueloop/logs/")
+        || path.starts_with(".cueloop/workspaces/")
         || path.starts_with("target/")
         || path.starts_with("build/")
         || path.starts_with("dist/")

@@ -140,12 +140,12 @@ pub enum ClaudePermissionMode {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RunnerOutputFormat {
-    /// Newline-delimited JSON objects (required for Ralph's streaming parser).
+    /// Newline-delimited JSON objects (required for CueLoop's streaming parser).
     #[default]
     StreamJson,
-    /// JSON output (may not be streaming; currently treated as unsupported by Ralph execution).
+    /// JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).
     Json,
-    /// Plain text output (currently treated as unsupported by Ralph execution).
+    /// Plain text output (currently treated as unsupported by CueLoop execution).
     Text,
 }
 

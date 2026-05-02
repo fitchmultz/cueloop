@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::task_with_id_and_status;
 use crate::commands::run::{
@@ -139,7 +139,7 @@ fn validate_resumed_task_falls_back_when_task_rejected() -> anyhow::Result<()> {
 fn validate_resumed_task_clears_session_when_invalid() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let cache_dir = repo_root.join(".ralph/cache");
+    let cache_dir = repo_root.join(".cueloop/cache");
     std::fs::create_dir_all(&cache_dir)?;
 
     // Create a session for a task
@@ -173,7 +173,7 @@ fn validate_resumed_task_clears_session_when_invalid() -> anyhow::Result<()> {
 fn validate_resumed_task_clears_session_when_terminal() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let cache_dir = repo_root.join(".ralph/cache");
+    let cache_dir = repo_root.join(".cueloop/cache");
     std::fs::create_dir_all(&cache_dir)?;
 
     // Create a session for a done task
@@ -274,7 +274,7 @@ fn invalid_phases_edge_cases() {
 fn resumed_loop_uses_persisted_progress_for_max_tasks() -> anyhow::Result<()> {
     let temp = tempfile::TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let cache_dir = repo_root.join(".ralph/cache");
+    let cache_dir = repo_root.join(".cueloop/cache");
     std::fs::create_dir_all(&cache_dir)?;
 
     // Create a session that simulates 2 tasks already completed

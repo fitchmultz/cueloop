@@ -16,7 +16,7 @@
 //! Invariants/assumptions callers must respect:
 //! - Queue fixture contents intentionally match the pre-split monolith exactly.
 //! - `configure_runner()` is a thin delegate to the shared config helper; do not reintroduce inline JSON config mutation here.
-//! - Helpers preserve end-to-end CLI coverage and do not bypass `ralph` commands.
+//! - Helpers preserve end-to-end CLI coverage and do not bypass `cueloop` commands.
 
 use super::test_support;
 use super::*;

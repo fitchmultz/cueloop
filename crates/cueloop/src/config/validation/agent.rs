@@ -64,7 +64,7 @@ pub(crate) fn validate_instruction_files_entries(
     for raw in paths {
         if raw.as_os_str().is_empty() || raw.to_string_lossy().trim().is_empty() {
             bail!(
-                "Invalid {label}.instruction_files: each entry must be a non-empty path. Remove blank list items or fix the path string in .ralph/config.jsonc."
+                "Invalid {label}.instruction_files: each entry must be a non-empty path. Remove blank list items or fix the path string in .cueloop/config.jsonc."
             );
         }
     }

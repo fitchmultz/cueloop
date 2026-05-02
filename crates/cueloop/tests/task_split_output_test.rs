@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
 use cueloop::config::project_runtime_dir;
@@ -47,7 +47,7 @@ fn task_split_output_shows_actual_child_ids() -> Result<()> {
     // Setup: Create temp repo outside of current repo
     let dir = temp_dir_outside_repo();
 
-    // Initialize git and ralph
+    // Initialize git and cueloop
     git_init(dir.path()).context("git init")?;
     cueloop_init(dir.path()).context("cueloop init")?;
 
@@ -152,7 +152,7 @@ fn task_split_output_with_empty_queue() -> Result<()> {
     // Setup: Create temp repo outside of current repo
     let dir = temp_dir_outside_repo();
 
-    // Initialize git and ralph
+    // Initialize git and cueloop
     git_init(dir.path()).context("git init")?;
     cueloop_init(dir.path()).context("cueloop init")?;
 

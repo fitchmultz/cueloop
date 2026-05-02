@@ -90,7 +90,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
             config_key
         );
         let guidance = format!(
-            "Move agent.{config_key} to trusted global config or create .ralph/trust.jsonc before running doctor checks that execute runner binaries. Config file: {}",
+            "Move agent.{config_key} to trusted global config or create .cueloop/trust.jsonc before running doctor checks that execute runner binaries. Config file: {}",
             config_path.display()
         );
         report.add(
@@ -104,7 +104,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
             .with_blocking(runner_blocking_state(
                 "runner",
                 "project_runner_override_untrusted",
-                "Ralph is stalled because project runner overrides are blocked until the repo is trusted.",
+                "CueLoop is stalled because project runner overrides are blocked until the repo is trusted.",
                 guidance.clone(),
             )),
         );
@@ -122,18 +122,18 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
 
         let guidance = if runner_configured {
             format!(
-                "Install the runner binary, or configure a custom path in .ralph/config.jsonc: {{ \"agent\": {{ \"{}\": \"/path/to/{}\" }} }}",
+                "Install the runner binary, or configure a custom path in .cueloop/config.jsonc: {{ \"agent\": {{ \"{}\": \"/path/to/{}\" }} }}",
                 config_key, bin_name
             )
         } else {
             format!(
-                "Install the default runner binary, or configure agent.runner plus agent.{config_key} in .ralph/config.jsonc before running Ralph."
+                "Install the default runner binary, or configure agent.runner plus agent.{config_key} in .cueloop/config.jsonc before running CueLoop."
             )
         };
         let blocking = runner_blocking_state(
             "runner",
             "runner_binary_missing",
-            format!("Ralph is stalled because runner binary '{bin_name}' is unavailable."),
+            format!("CueLoop is stalled because runner binary '{bin_name}' is unavailable."),
             format!(
                 "Configured/default runner {:?} cannot execute because '{}' is not on PATH or not executable.",
                 runner, bin_name
@@ -146,7 +146,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         log::error!("");
         log::error!("To fix this issue:");
         log::error!("  1. Install the runner binary, or");
-        log::error!("  2. Configure a custom path in .ralph/config.jsonc:");
+        log::error!("  2. Configure a custom path in .cueloop/config.jsonc:");
         log::error!("     {{");
         log::error!("       \"agent\": {{");
         log::error!("         \"{}\": \"/path/to/{}\"", config_key, bin_name);
@@ -165,7 +165,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         let blocking = runner_blocking_state(
             "runner",
             "cursor_sdk_node_unsupported",
-            "Ralph is stalled because the Cursor SDK requires Node 18 or newer.",
+            "CueLoop is stalled because the Cursor SDK requires Node 18 or newer.",
             guidance,
         );
         report.add(
@@ -186,12 +186,12 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         let message = format!("Cursor SDK package check failed for '{}': {}", bin_name, e);
         let guidance = format!(
             "Install the SDK in this workspace with `npm install --save-exact @cursor/sdk@{CURSOR_SDK_VERSION}`, \
-                        or set RALPH_CURSOR_SDK_MODULE_PATH to the SDK entrypoint."
+                        or set CUELOOP_CURSOR_SDK_MODULE_PATH to the SDK entrypoint."
         );
         let blocking = runner_blocking_state(
             "runner",
             "cursor_sdk_missing",
-            "Ralph is stalled because the Cursor SDK package is unavailable.",
+            "CueLoop is stalled because the Cursor SDK package is unavailable.",
             guidance.clone(),
         );
         report.add(
@@ -208,11 +208,11 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         log::error!("{guidance}");
     } else if runner == Runner::Cursor && !cursor_api_key_configured() {
         let message = "Cursor SDK API key is not configured";
-        let guidance = "Export CURSOR_API_KEY before running Ralph with the Cursor runner.";
+        let guidance = "Export CURSOR_API_KEY before running CueLoop with the Cursor runner.";
         let blocking = runner_blocking_state(
             "runner",
             "cursor_api_key_missing",
-            "Ralph is stalled because CURSOR_API_KEY is required for Cursor SDK runs.",
+            "CueLoop is stalled because CURSOR_API_KEY is required for Cursor SDK runs.",
             guidance,
         );
         report.add(
@@ -249,7 +249,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
             .with_blocking(runner_blocking_state(
                 "runner",
                 "model_incompatible",
-                "Ralph is stalled because the selected runner/model combination is invalid.",
+                "CueLoop is stalled because the selected runner/model combination is invalid.",
                 e.to_string(),
             )),
         );
@@ -312,7 +312,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
                 "AGENTS.md exists at repo root but is not configured for injection. \
                  To enable, add 'AGENTS.md' to agent.instruction_files in your config.",
                 false,
-                Some("Add 'AGENTS.md' to agent.instruction_files in .ralph/config.jsonc"),
+                Some("Add 'AGENTS.md' to agent.instruction_files in .cueloop/config.jsonc"),
             ));
         }
     } else {
@@ -444,7 +444,7 @@ const path = require('path');
 const { createRequire } = require('module');
 const { pathToFileURL } = require('url');
 
-const expectedVersion = '__RALPH_CURSOR_SDK_VERSION__';
+const expectedVersion = '__CUELOOP_CURSOR_SDK_VERSION__';
 
 function normalizeSdkModule(moduleNamespace) {
   const candidates = [
@@ -498,7 +498,7 @@ function assertCursorSdkVersion(entrypoint) {
 }
 
 (async () => {
-const configured = process.env.RALPH_CURSOR_SDK_MODULE_PATH;
+const configured = process.env.CUELOOP_CURSOR_SDK_MODULE_PATH;
 if (configured) {
   assertCursorSdkVersion(configured);
   normalizeSdkModule(await import(pathToFileURL(configured).href));
@@ -512,7 +512,7 @@ assertCursorSdkVersion(resolved);
   process.exit(1);
 });
 "#
-    .replace("__RALPH_CURSOR_SDK_VERSION__", CURSOR_SDK_VERSION);
+    .replace("__CUELOOP_CURSOR_SDK_VERSION__", CURSOR_SDK_VERSION);
     let mut command = Command::new(node_bin);
     command
         .current_dir(cwd)

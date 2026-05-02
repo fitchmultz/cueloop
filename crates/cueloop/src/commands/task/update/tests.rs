@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Test queues use local temp directories and repo-scoped `.ralph` files.
+//! - Test queues use local temp directories and repo-scoped `.cueloop` files.
 //! - Restore-on-failure logic must preserve the pre-update queue snapshot.
 
 use super::state::{load_validate_and_save_queue_after_update, restore_queue_from_backup};
@@ -65,14 +65,14 @@ fn task_with_timestamps(
 
 fn create_test_resolved(temp: &TempDir) -> Result<Resolved> {
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
     Ok(Resolved {
         config: Config::default(),
         repo_root,
-        queue_path: ralph_dir.join("queue.json"),
-        done_path: ralph_dir.join("done.jsonc"),
+        queue_path: cueloop_dir.join("queue.json"),
+        done_path: cueloop_dir.join("done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -124,7 +124,7 @@ fn load_validate_and_save_queue_restores_on_parse_failure() -> Result<()> {
     };
     queue::save_queue(&resolved.queue_path, &initial)?;
 
-    let backup_dir = resolved.repo_root.join(".ralph/cache");
+    let backup_dir = resolved.repo_root.join(".cueloop/cache");
     let backup_path = queue::backup_queue(&resolved.queue_path, &backup_dir)?;
 
     std::fs::write(&resolved.queue_path, "{ not valid json }")?;
@@ -162,7 +162,7 @@ fn load_validate_and_save_queue_restores_on_validation_failure() -> Result<()> {
     };
     queue::save_queue(&resolved.queue_path, &initial)?;
 
-    let backup_dir = resolved.repo_root.join(".ralph/cache");
+    let backup_dir = resolved.repo_root.join(".cueloop/cache");
     let backup_path = queue::backup_queue(&resolved.queue_path, &backup_dir)?;
 
     std::fs::write(
@@ -203,7 +203,7 @@ fn load_validate_and_save_queue_succeeds_with_valid_queue() -> Result<()> {
     };
     queue::save_queue(&resolved.queue_path, &initial)?;
 
-    let backup_dir = resolved.repo_root.join(".ralph/cache");
+    let backup_dir = resolved.repo_root.join(".cueloop/cache");
     let backup_path = queue::backup_queue(&resolved.queue_path, &backup_dir)?;
 
     let updated = QueueFile {

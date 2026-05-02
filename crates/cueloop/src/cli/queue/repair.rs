@@ -29,7 +29,7 @@ use crate::config::Resolved;
 /// Arguments for `cueloop queue repair`.
 #[derive(Args)]
 pub struct RepairArgs {
-    /// Show what Ralph would normalize without writing queue files.
+    /// Show what CueLoop would normalize without writing queue files.
     #[arg(long)]
     pub dry_run: bool,
 }

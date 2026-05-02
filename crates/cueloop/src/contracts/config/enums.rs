@@ -13,7 +13,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ pub enum GitPublishMode {
     Off,
     /// Create a local commit but do not push.
     Commit,
-    /// Create a local commit and push it using Ralph's guarded push flow.
+    /// Create a local commit and push it using CueLoop's guarded push flow.
     CommitAndPush,
 }
 

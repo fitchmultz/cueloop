@@ -14,8 +14,8 @@
 //! - Assertions inspect queue, done, and parallel-state files through suite-local helpers.
 //!
 //! Invariants/Assumptions:
-//! - Tests preserve end-to-end CLI coverage; they do not bypass `ralph` commands.
-//! - Repo/bootstrap uses cached git+`.ralph/` fixtures instead of repeated real `cueloop init` calls.
+//! - Tests preserve end-to-end CLI coverage; they do not bypass `cueloop` commands.
+//! - Repo/bootstrap uses cached git+`.cueloop/` fixtures instead of repeated real `cueloop init` calls.
 //! - The fake runner is configured by explicit path, so suite tests must not serialize on `env_lock()`.
 
 #[path = "parallel_done_json_safety_test/support.rs"]

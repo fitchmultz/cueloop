@@ -71,7 +71,7 @@ fn release_script_derives_repo_url_from_origin_remote() {
         "release pipeline should derive the repo URL from git remote origin"
     );
     assert!(
-        !script.contains("https://github.com/fitchmultz/ralph/compare"),
+        !script.contains("https://github.com/fitchmultz/cueloop/compare"),
         "release pipeline should not hardcode compare links to a specific owner"
     );
 }
@@ -205,11 +205,11 @@ fn release_script_reconciles_without_legacy_skip_flags() {
         "release.sh should document durable transaction-state reconciliation"
     );
     assert!(
-        !script.contains("RALPH_RELEASE_SKIP_PUBLISH"),
+        !script.contains("CUELOOP_RELEASE_SKIP_PUBLISH"),
         "release.sh should not rely on the old manual skip-publish recovery flag"
     );
     assert!(
-        !script.contains("RALPH_RELEASE_ALLOW_EXISTING_TAG"),
+        !script.contains("CUELOOP_RELEASE_ALLOW_EXISTING_TAG"),
         "release.sh should not retain the old existing-tag override flag"
     );
 }

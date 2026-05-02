@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::support::{make_task, resolved_for_repo, write_done_tasks, write_queue};
 use crate::commands::run::supervision::{PushPolicy, post_run_supervise};
@@ -93,7 +93,7 @@ fn post_run_supervise_runs_ci_after_queue_maintenance_dirties_repo() -> anyhow::
         vec![archived_done_task_with_non_utc_timestamps()],
     )?;
     queue::save_queue(
-        &temp.path().join(".ralph/queue.jsonc"),
+        &temp.path().join(".cueloop/queue.jsonc"),
         &crate::contracts::QueueFile {
             version: 1,
             tasks: vec![],
@@ -142,7 +142,7 @@ fn post_run_supervise_skips_ci_for_clean_already_archived_done_noop() -> anyhow:
         vec![make_task("RQ-0001", "Archived task", TaskStatus::Done)],
     )?;
     queue::save_queue(
-        &temp.path().join(".ralph/queue.jsonc"),
+        &temp.path().join(".cueloop/queue.jsonc"),
         &crate::contracts::QueueFile {
             version: 1,
             tasks: vec![],
@@ -200,7 +200,7 @@ fn post_run_supervise_successful_maintenance_repair_publish_off_leaves_dirty_rep
         vec![archived_done_task_with_non_utc_timestamps()],
     )?;
     queue::save_queue(
-        &temp.path().join(".ralph/queue.jsonc"),
+        &temp.path().join(".cueloop/queue.jsonc"),
         &crate::contracts::QueueFile {
             version: 1,
             tasks: vec![],

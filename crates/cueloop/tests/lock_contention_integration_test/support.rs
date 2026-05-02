@@ -53,21 +53,21 @@ impl Drop for LockHolderHandle {
 }
 
 pub(super) fn spawn_lock_holder(repo_root: &Path, label: Option<&str>) -> Result<LockHolderHandle> {
-    std::fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
+    std::fs::create_dir_all(repo_root.join(".cueloop")).context("create .cueloop dir")?;
 
     let mut command = Command::new(super::lock_holder::current_exe());
     command
         .arg("--exact")
         .arg("lock_holder_process")
         .arg("--nocapture")
-        .env("RALPH_TEST_LOCK_HOLD", "1")
-        .env("RALPH_TEST_REPO_ROOT", repo_root)
+        .env("CUELOOP_TEST_LOCK_HOLD", "1")
+        .env("CUELOOP_TEST_REPO_ROOT", repo_root)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
 
     if let Some(label) = label {
-        command.env("RALPH_TEST_LOCK_LABEL", label);
+        command.env("CUELOOP_TEST_LOCK_LABEL", label);
     }
 
     let mut child = command.spawn().context("spawn lock holder process")?;
@@ -121,14 +121,14 @@ pub(super) struct RunLoopFixture {
 pub(super) fn setup_run_loop_fixture(relates_to: Vec<String>) -> Result<RunLoopFixture> {
     let dir = TempDir::new().context("create temp dir")?;
     let repo_root = dir.path().to_path_buf();
-    std::fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
+    std::fs::create_dir_all(repo_root.join(".cueloop")).context("create .cueloop dir")?;
 
     let queue = QueueFile {
         version: 1,
         tasks: vec![test_task(relates_to)],
     };
-    let queue_path = repo_root.join(".ralph/queue.jsonc");
-    let done_path = repo_root.join(".ralph/done.jsonc");
+    let queue_path = repo_root.join(".cueloop/queue.jsonc");
+    let done_path = repo_root.join(".cueloop/done.jsonc");
     cueloop::queue::save_queue(&queue_path, &queue)?;
     cueloop::queue::save_queue(&done_path, &QueueFile::default())?;
 
@@ -140,7 +140,7 @@ pub(super) fn setup_run_loop_fixture(relates_to: Vec<String>) -> Result<RunLoopF
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+        project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
     };
 
     Ok(RunLoopFixture {

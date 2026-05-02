@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::cell::RefCell;
 
@@ -127,9 +127,9 @@ pub(crate) fn generate_phase_session_id(task_id: &str, phase: u8) -> String {
     format!("{}-p{}-{}", task_id, phase, timestamp)
 }
 
-/// Build a phase session ID only for runners that require Ralph-managed IDs.
+/// Build a phase session ID only for runners that require CueLoop-managed IDs.
 ///
-/// Kimi does not emit session IDs in its JSON output, so Ralph must supply one.
+/// Kimi does not emit session IDs in its JSON output, so CueLoop must supply one.
 pub(crate) fn phase_session_id_for_runner(
     runner: Runner,
     task_id: &str,

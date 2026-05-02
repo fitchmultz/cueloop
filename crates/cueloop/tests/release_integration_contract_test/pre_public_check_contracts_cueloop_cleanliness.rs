@@ -1,10 +1,10 @@
-//! `pre-public-check.sh` contract coverage (`.ralph` cleanliness and symlink cases).
+//! `pre-public-check.sh` contract coverage (`.cueloop` cleanliness and symlink cases).
 //!
 //! Purpose:
-//! - `pre-public-check.sh` contract coverage (`.ralph` cleanliness and symlink cases).
+//! - `pre-public-check.sh` contract coverage (`.cueloop` cleanliness and symlink cases).
 //!
 //! Responsibilities:
-//! - Allowlisted `.ralph` path checks, trust-file siblings, and symlinked allowlisted files.
+//! - Allowlisted `.cueloop` path checks, trust-file siblings, and symlinked allowlisted files.
 //!
 //! Scope:
 //! - Limited to this file's owning feature boundary.
@@ -13,14 +13,14 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::process::Command;
 
 use super::support::{copy_repo_file, write_file};
 
 #[test]
-fn pre_public_check_rejects_dirty_allowlisted_ralph_readme() {
+fn pre_public_check_rejects_dirty_allowlisted_cueloop_readme() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path();
 
@@ -45,7 +45,7 @@ fn pre_public_check_rejects_dirty_allowlisted_ralph_readme() {
     ] {
         copy_repo_file(relative_path, repo_root);
     }
-    write_file(&repo_root.join(".ralph/README.md"), "baseline\n");
+    write_file(&repo_root.join(".cueloop/README.md"), "baseline\n");
 
     Command::new("git")
         .args(["init", "-b", "main"])
@@ -73,18 +73,18 @@ fn pre_public_check_rejects_dirty_allowlisted_ralph_readme() {
         .output()
         .expect("commit fixture repo");
 
-    write_file(&repo_root.join(".ralph/README.md"), "dirty\n");
+    write_file(&repo_root.join(".cueloop/README.md"), "dirty\n");
 
     let output = Command::new("bash")
         .arg(repo_root.join("scripts/pre-public-check.sh"))
         .args(["--skip-ci", "--skip-links", "--skip-secrets"])
         .current_dir(repo_root)
         .output()
-        .expect("run pre-public-check with dirty allowlisted .ralph readme");
+        .expect("run pre-public-check with dirty allowlisted .cueloop readme");
 
     assert!(
         !output.status.success(),
-        "pre-public-check should reject dirty allowlisted .ralph files\nstdout:\n{}\nstderr:\n{}",
+        "pre-public-check should reject dirty allowlisted .cueloop files\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -94,8 +94,8 @@ fn pre_public_check_rejects_dirty_allowlisted_ralph_readme() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(
-        combined.contains("Working tree is not clean") && combined.contains(".ralph/README.md"),
-        "dirty allowlisted .ralph file should be surfaced by cleanliness checks\noutput:\n{}",
+        combined.contains("Working tree is not clean") && combined.contains(".cueloop/README.md"),
+        "dirty allowlisted .cueloop file should be surfaced by cleanliness checks\noutput:\n{}",
         combined
     );
 }
@@ -126,7 +126,7 @@ fn pre_public_check_rejects_trust_file_siblings_in_cleanliness_checks() {
     ] {
         copy_repo_file(relative_path, repo_root);
     }
-    write_file(&repo_root.join(".ralph/README.md"), "baseline\n");
+    write_file(&repo_root.join(".cueloop/README.md"), "baseline\n");
 
     Command::new("git")
         .args(["init", "-b", "main"])
@@ -159,8 +159,8 @@ fn pre_public_check_rejects_trust_file_siblings_in_cleanliness_checks() {
         .output()
         .expect("commit fixture repo");
 
-    write_file(&repo_root.join(".ralph/trust.json.backup"), "{}\n");
-    write_file(&repo_root.join(".ralph/trust.jsonc.backup"), "{}\n");
+    write_file(&repo_root.join(".cueloop/trust.json.backup"), "{}\n");
+    write_file(&repo_root.join(".cueloop/trust.jsonc.backup"), "{}\n");
 
     let output = Command::new("bash")
         .arg(repo_root.join("scripts/pre-public-check.sh"))
@@ -171,7 +171,7 @@ fn pre_public_check_rejects_trust_file_siblings_in_cleanliness_checks() {
 
     assert!(
         !output.status.success(),
-        "pre-public-check should reject .ralph trust-file siblings\nstdout:\n{}\nstderr:\n{}",
+        "pre-public-check should reject .cueloop trust-file siblings\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -182,8 +182,8 @@ fn pre_public_check_rejects_trust_file_siblings_in_cleanliness_checks() {
     );
     assert!(
         combined.contains("Working tree is not clean")
-            && combined.contains(".ralph/trust.json.backup")
-            && combined.contains(".ralph/trust.jsonc.backup"),
+            && combined.contains(".cueloop/trust.json.backup")
+            && combined.contains(".cueloop/trust.jsonc.backup"),
         "trust-file siblings should not be hidden by ignored dirty-path filtering\noutput:\n{}",
         combined
     );
@@ -191,7 +191,7 @@ fn pre_public_check_rejects_trust_file_siblings_in_cleanliness_checks() {
 
 #[cfg(unix)]
 #[test]
-fn pre_public_check_rejects_symlinked_allowlisted_ralph_files() {
+fn pre_public_check_rejects_symlinked_allowlisted_cueloop_files() {
     use std::os::unix::fs::symlink;
 
     let temp_dir = tempfile::tempdir().expect("create temp dir");
@@ -219,14 +219,14 @@ fn pre_public_check_rejects_symlinked_allowlisted_ralph_files() {
     ] {
         copy_repo_file(relative_path, repo_root);
     }
-    std::fs::create_dir_all(repo_root.join(".ralph")).expect("create .ralph dir");
+    std::fs::create_dir_all(repo_root.join(".cueloop")).expect("create .cueloop dir");
     std::fs::write(outside_dir.path().join("outside.md"), "outside\n")
         .expect("write outside markdown");
     symlink(
         outside_dir.path().join("outside.md"),
-        repo_root.join(".ralph/README.md"),
+        repo_root.join(".cueloop/README.md"),
     )
-    .expect("create symlinked allowlisted .ralph readme");
+    .expect("create symlinked allowlisted .cueloop readme");
 
     Command::new("git")
         .args(["init", "-b", "main"])
@@ -264,11 +264,11 @@ fn pre_public_check_rejects_symlinked_allowlisted_ralph_files() {
         .args(["--skip-ci", "--skip-links", "--skip-secrets"])
         .current_dir(repo_root)
         .output()
-        .expect("run pre-public-check with symlinked allowlisted .ralph file");
+        .expect("run pre-public-check with symlinked allowlisted .cueloop file");
 
     assert!(
         !output.status.success(),
-        "pre-public-check should reject symlinked allowlisted .ralph files\nstdout:\n{}\nstderr:\n{}",
+        "pre-public-check should reject symlinked allowlisted .cueloop files\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -279,8 +279,8 @@ fn pre_public_check_rejects_symlinked_allowlisted_ralph_files() {
     );
     assert!(
         combined.contains("Tracked runtime state files outside the public allowlist detected")
-            && combined.contains(".ralph/README.md"),
-        "symlinked allowlisted .ralph file rejection should explain the offending path\noutput:\n{}",
+            && combined.contains(".cueloop/README.md"),
+        "symlinked allowlisted .cueloop file rejection should explain the offending path\noutput:\n{}",
         combined
     );
 }

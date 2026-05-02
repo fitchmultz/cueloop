@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use crate::cli::machine::MachineQueueUndoArgs;
 use crate::config;
@@ -129,11 +129,11 @@ mod tests {
 
     fn create_test_resolved(temp_dir: &TempDir) -> config::Resolved {
         let repo_root = temp_dir.path();
-        let ralph_dir = repo_root.join(".ralph");
-        std::fs::create_dir_all(&ralph_dir).unwrap();
+        let cueloop_dir = repo_root.join(".cueloop");
+        std::fs::create_dir_all(&cueloop_dir).unwrap();
 
-        let queue_path = ralph_dir.join("queue.json");
-        let done_path = ralph_dir.join("done.json");
+        let queue_path = cueloop_dir.join("queue.json");
+        let done_path = cueloop_dir.join("done.json");
 
         let queue = QueueFile {
             version: 1,

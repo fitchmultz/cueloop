@@ -45,7 +45,7 @@ pub(super) fn show_watch_notification(count: usize, timeout_ms: u32) -> anyhow::
     } else {
         format!("{} new tasks detected from code comments", count)
     };
-    show_notification("Ralph: Watch Mode", &body, timeout_ms)
+    show_notification("CueLoop: Watch Mode", &body, timeout_ms)
 }
 
 pub(super) fn show_task_notification(
@@ -56,11 +56,11 @@ pub(super) fn show_task_notification(
 ) -> anyhow::Result<()> {
     let (summary, body) = match notification_type {
         NotificationType::TaskComplete => (
-            "Ralph: Task Complete",
+            "CueLoop: Task Complete",
             format!("{} - {}", task_id, task_title),
         ),
         NotificationType::TaskFailed => (
-            "Ralph: Task Failed",
+            "CueLoop: Task Failed",
             format!("{} - {}", task_id, task_title),
         ),
         NotificationType::LoopComplete { .. } => {
@@ -87,7 +87,7 @@ pub(super) fn show_failure_notification(
         error.to_string()
     };
     show_notification(
-        "Ralph: Task Failed",
+        "CueLoop: Task Failed",
         &format!("{} - {}\nError: {}", task_id, task_title, error_summary),
         timeout_ms,
     )
@@ -100,7 +100,7 @@ pub(super) fn show_loop_notification(
     timeout_ms: u32,
 ) -> anyhow::Result<()> {
     show_notification(
-        "Ralph: Loop Complete",
+        "CueLoop: Loop Complete",
         &format!(
             "{} tasks completed ({} succeeded, {} failed)",
             tasks_total, tasks_succeeded, tasks_failed

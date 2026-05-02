@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use serde::Serialize;
 
@@ -35,7 +35,7 @@ pub struct RunnerCapabilityReport {
     pub name: String,
     /// Whether session resumption is supported.
     pub supports_session_resume: bool,
-    /// Whether Ralph must manage session IDs (e.g., Kimi).
+    /// Whether CueLoop must manage session IDs (e.g., Kimi).
     pub requires_managed_session_id: bool,
     /// Supported features.
     pub features: RunnerFeatures,
@@ -282,7 +282,7 @@ fn get_bin_name(runner: &Runner) -> String {
         Runner::Opencode => "opencode".into(),
         Runner::Gemini => "gemini".into(),
         Runner::Claude => "claude".into(),
-        Runner::Cursor => "node".into(), // Cursor uses Ralph's Node-based SDK bridge
+        Runner::Cursor => "node".into(), // Cursor uses CueLoop's Node-based SDK bridge
         Runner::Kimi => "kimi".into(),
         Runner::Pi => "pi".into(),
         Runner::Plugin(id) => id.clone(),
@@ -329,7 +329,7 @@ fn print_capabilities_text(report: &RunnerCapabilityReport) {
         }
     );
     if report.requires_managed_session_id {
-        println!("  Managed session ID: required (Ralph supplies session ID)");
+        println!("  Managed session ID: required (CueLoop supplies session ID)");
     }
     println!(
         "  Reasoning effort: {}",

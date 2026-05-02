@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - The Ralph binary is runnable in a temporary initialized repo.
+//! - The CueLoop binary is runnable in a temporary initialized repo.
 
 use anyhow::Result;
 

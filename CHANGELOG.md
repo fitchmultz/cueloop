@@ -14,11 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CueLoopMac and machine integrations now cover more of the CLI contract, including workspace overview, parallel run-control support, machine error documents, and fail-fast version checks.
 - Webhook delivery gained configurable retry backoff, retry counts in app/config surfaces, safer diagnostics, replay hardening, and reloadable runtime behavior.
 - Watch mode can emit desktop notifications, with matching CLI, configuration, app, and documentation support.
-- Repository trust setup is easier to bootstrap with CLI-supported `.ralph/trust.jsonc` flows and clearer built-in profile safety summaries.
+- Repository trust setup is easier to bootstrap with CLI-supported `.cueloop/trust.jsonc` flows and clearer built-in profile safety summaries.
 
 ### Changed
 
-- Parallel worker integration now lets Ralph rebuild queue/done bookkeeping from the latest target branch, archive the finished task, retry push races, and refresh the coordinator branch after worker success.
+- Parallel worker integration now lets CueLoop rebuild queue/done bookkeeping from the latest target branch, archive the finished task, retry push races, and refresh the coordinator branch after worker success.
 - Run, doctor, queue repair, task mutation, and recovery surfaces now share clearer blocking/resume-state narration across CLI, machine output, and CueLoopMac.
 - Managed subprocess, wait, runner invocation, queue repair, webhook runtime, release, and macOS test code paths were split into smaller focused modules for more predictable behavior and maintenance.
 - Release verification now preserves curated `Unreleased` changelog notes when they are already present, while still auto-generating entries for blank release notes.
@@ -52,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking (`0.3`)**: Ralph now requires the `0.3` config contract: config files must use `"version": 2`, `agent.git_publish_mode`, and the reserved built-in profiles `safe` / `power-user`; legacy `git_commit_push_enabled`, `quick`, and `thorough` flows are no longer the active contract. Run `ralph migrate --apply` after upgrading older repos.
+- **Breaking (`0.3`)**: CueLoop now requires the `0.3` config contract: config files must use `"version": 2`, `agent.git_publish_mode`, and the reserved built-in profiles `safe` / `power-user`; legacy `git_commit_push_enabled`, `quick`, and `thorough` flows are no longer the active contract. Run `cueloop migrate --apply` after upgrading older repos.
 - Config, queue, and done workflows now center on the JSONC/runtime-cutover model, with clearer validation/migration messaging and no legacy JSON fallback guidance.
 - `make release-verify` now prepares and records a publish-ready local snapshot under `target/release-verifications/`, and `make release` publishes only if that exact snapshot still matches `HEAD`, release metadata, release notes, and artifacts.
 - Public-readiness scans, release artifact packaging, and CLI/app bundling now run through one hardened local release pipeline.
@@ -60,14 +60,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Repo-local CI gates, runner overrides, and project plugins are now trust-gated through local `.ralph/trust.jsonc`, and CI gate shell-string launchers are rejected.
+- Repo-local CI gates, runner overrides, and project plugins are now trust-gated through local `.cueloop/trust.jsonc`, and CI gate shell-string launchers are rejected.
 
 ## [0.2.2] - 2026-03-08
 
 ### Added
 
 - Durable watch-task identity metadata and reconciliation rules so scan/remove flows only mutate the files processed in the current batch.
-- Atomic task mutation support for the macOS app through `ralph task mutate`, including optimistic locking and status-derived field updates in a single transaction path.
+- Atomic task mutation support for the macOS app through `cueloop task mutate`, including optimistic locking and status-derived field updates in a single transaction path.
 - Repo execution trust controls for project-local CI gate, runner override, and plugin execution settings.
 
 ### Changed
@@ -90,22 +90,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - macOS SwiftUI app (`apps/CueLoopMac/`) that drives CueLoop by executing the bundled `cueloop` CLI.
 - `cueloop app open` (macOS-only) to launch the installed app (bundle id: `com.mitchfultz.cueloop`).
-- Hidden GUI/tooling contract: `ralph __cli-spec --format json` (emitted from clap's command model).
-- `ralph task decompose` to recursively plan task trees from a freeform goal or an existing queue task, preview the hierarchy, and write durable child tasks back into the queue.
+- Hidden GUI/tooling contract: `cueloop __cli-spec --format json` (emitted from clap's command model).
+- `cueloop task decompose` to recursively plan task trees from a freeform goal or an existing queue task, preview the hierarchy, and write durable child tasks back into the queue.
 - Dedicated decomposition prompt plumbing, queue-safe subtree materialization, optional sibling dependency inference, attach/replace child policies, and machine-readable preview/write output for automation.
 - Full macOS app parity for task decomposition, including dedicated UI flows, toolbar/menu entry points, preview/write behavior, and regression coverage.
 
 ### Removed
 
-- Rust terminal UI (`ralph tui`) and interactive `-i/--interactive` entrypoints.
+- Rust terminal UI (`cueloop tui`) and interactive `-i/--interactive` entrypoints.
 - TUI-only dependencies (`ratatui`, `crossterm`, and related crates).
 
 ## [0.1.0] - 2026-01-27
 
 ### Added
 
-- Initial release of Ralph, a Rust CLI for managing AI agent loops with a structured JSON task queue.
-- Queue management: JSON-based task queue (`.ralph/queue.json`) with priority, status, and dependency tracking.
+- Initial release of CueLoop, a Rust CLI for managing AI agent loops with a structured JSON task queue.
+- Queue management: JSON-based task queue (`.cueloop/queue.json`) with priority, status, and dependency tracking.
 - Task lifecycle: Create, update, complete, reject, and archive tasks with automatic timestamp tracking.
 - Multi-phase workflow: Configurable 1, 2, or 3-phase execution (planning → implementation → review).
 - Runner integration: Support for Codex, OpenCode, Gemini, Claude, and Cursor CLIs.
@@ -124,11 +124,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/ralph/compare/v0.4.0...HEAD
-[0.4.0]: https://github.com/fitchmultz/ralph/compare/v0.3.1...v0.4.0
-[0.3.1]: https://github.com/fitchmultz/ralph/compare/v0.3.0...v0.3.1
-[0.3.0]: https://github.com/fitchmultz/ralph/compare/v0.2.2...v0.3.0
-[0.2.2]: https://github.com/fitchmultz/ralph/compare/v0.2.1...v0.2.2
-[0.2.1]: https://github.com/fitchmultz/ralph/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/fitchmultz/ralph/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/fitchmultz/ralph/releases/tag/v0.1.0
+[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/fitchmultz/cueloop/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/fitchmultz/cueloop/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/fitchmultz/cueloop/compare/v0.2.2...v0.3.0
+[0.2.2]: https://github.com/fitchmultz/cueloop/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/fitchmultz/cueloop/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/fitchmultz/cueloop/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/fitchmultz/cueloop/releases/tag/v0.1.0

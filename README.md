@@ -1,12 +1,15 @@
 # CueLoop
 
+> Naming note: CueLoop was formerly Ralph.
+
+
 [![crates.io](https://img.shields.io/crates/v/cueloop-agent-loop.svg)](https://crates.io/crates/cueloop-agent-loop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop-agent-loop)](https://docs.rs/cueloop-agent-loop)
-[![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/ralph)](https://github.com/fitchmultz/ralph/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/cueloop)](https://github.com/fitchmultz/cueloop/releases)
 
 CueLoop is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
 
-The primary executable and package are now `cueloop` and `cueloop-agent-loop`. The legacy `ralph` executable remains available as a compatibility alias during the migration window. New repositories use `.cueloop/` for runtime state; legacy `.ralph/` repositories remain supported and can move with `cueloop migrate runtime-dir --apply`.
+The primary executable and package are now `cueloop` and `cueloop-agent-loop`. The legacy `cueloop` executable remains available as a compatibility alias during the migration window. New repositories use `.cueloop/` for runtime state; legacy `.cueloop/` repositories remain supported and can move with `cueloop migrate runtime-dir --apply`.
 
 Teams use CueLoop when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
 
@@ -36,14 +39,14 @@ It provides:
 ### Non-goals
 
 - Hosted SaaS orchestration (CueLoop is local-first)
-- Hidden black-box state (queue and done files are plain JSONC in `.cueloop/`; legacy `.ralph/` remains supported)
+- Hidden black-box state (queue and done files are plain JSONC in `.cueloop/`; legacy `.cueloop/` remains supported)
 - Replacing your existing developer tooling; CueLoop integrates with it
 
 ## Core Operating Model
 
 CueLoop centers on an operator-started run loop over repo-local tasks:
 
-1. Tasks live in `.cueloop/queue.jsonc` and completed work is archived to `.cueloop/done.jsonc` by default; legacy `.ralph/queue.jsonc` and `.ralph/done.jsonc` are still read.
+1. Tasks live in `.cueloop/queue.jsonc` and completed work is archived to `.cueloop/done.jsonc` by default; legacy `.cueloop/queue.jsonc` and `.cueloop/done.jsonc` are still read.
 2. A human starts `cueloop run one`, `cueloop run loop`, or `cueloop run loop --parallel <N>`.
 3. CueLoop invokes the configured runner through supervised one-, two-, or three-phase execution.
 4. In three-phase mode, Phase 3 reviews the implementation, resolves issues, and records completion.
@@ -70,14 +73,14 @@ From crates.io:
 cargo install cueloop-agent-loop
 ```
 
-This installs the primary `cueloop` executable and the legacy `ralph` compatibility alias.
+This installs the primary `cueloop` executable and the legacy `cueloop` compatibility alias.
 
 From source:
 
 > GNU Make >= 4 is required for project targets. On macOS, install via `brew install make` and use `gmake` unless GNU Make is already your default `make`.
 
 ```bash
-git clone https://github.com/fitchmultz/ralph cueloop
+git clone https://github.com/fitchmultz/cueloop cueloop
 cd cueloop
 make install
 # macOS/Homebrew GNU Make users: gmake install
@@ -108,7 +111,7 @@ cueloop run one --profile safe
 cueloop queue list
 ```
 
-`cueloop init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.cueloop/trust.jsonc` for current repos (`.ralph/trust.jsonc` remains supported for legacy repos; both are gitignored by init).
+`cueloop init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.cueloop/trust.jsonc` for current repos (`.cueloop/trust.jsonc` remains supported for legacy repos; both are gitignored by init).
 Interactive init also lets you choose shared-vs-local queue tracking and opt into additional ignored local files for parallel worker sync; non-interactive init keeps the deterministic `.env*` sync default only.
 Use `--profile power-user` only when you explicitly want the higher-blast-radius behavior, including commit_and_push automation.
 On macOS, app-launched runs remain noninteractive: the app can supervise and disclose safety posture, but interactive approvals are still terminal-only.
@@ -174,7 +177,7 @@ Full scripted version: [docs/guides/local-smoke-test.md](docs/guides/local-smoke
 CueLoop is local-first, but selected runner CLIs may transmit prompts/context to external APIs depending on your runner configuration.
 
 - Do not place secrets in task text, notes, or tracked config
-- Keep runtime artifacts local (`.cueloop/cache/`, `.cueloop/logs/`, `.cueloop/workspaces/`, `.cueloop/undo/`, `.cueloop/webhooks/`; legacy `.ralph/` paths remain supported)
+- Keep runtime artifacts local (`.cueloop/cache/`, `.cueloop/logs/`, `.cueloop/workspaces/`, `.cueloop/undo/`, `.cueloop/webhooks/`; legacy `.cueloop/` paths remain supported)
 - Use `make pre-public-check` before public release windows
 
 Security references:
@@ -224,7 +227,7 @@ Policies:
 ## Repository Runtime State
 
 This repository may keep small sanitized runtime state for reproducible examples and documentation.
-In most consumer repositories, `.cueloop/` is project-local runtime state managed by `cueloop init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Legacy `.ralph/` state is still supported; use `cueloop migrate runtime-dir --apply` when ready to move it.
+In most consumer repositories, `.cueloop/` is project-local runtime state managed by `cueloop init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Legacy `.cueloop/` state is still supported; use `cueloop migrate runtime-dir --apply` when ready to move it.
 
 ## Development
 

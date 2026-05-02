@@ -35,7 +35,7 @@ use std::path::Component;
 pub fn validate_config(cfg: &Config) -> Result<()> {
     if cfg.version != 2 {
         bail!(
-            "Unsupported config version: {}. Ralph requires version 2. Upgrade your config file to the 0.3 contract and set `version` to 2.",
+            "Unsupported config version: {}. CueLoop requires version 2. Upgrade your config file to the 0.3 contract and set `version` to 2.",
             cfg.version
         );
     }
@@ -47,7 +47,7 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         && !(MIN_PHASES..=MAX_PHASES).contains(&phases)
     {
         bail!(
-            "Invalid agent.phases: {}. Supported values are {}, {}, or {}. Update .ralph/config.jsonc or CLI flags.",
+            "Invalid agent.phases: {}. Supported values are {}, {}, or {}. Update .cueloop/config.jsonc or CLI flags.",
             phases,
             MIN_PHASES,
             MIN_PHASES + 1,
@@ -59,7 +59,7 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         && iterations < MIN_ITERATIONS
     {
         bail!(
-            "Invalid agent.iterations: {}. Iterations must be at least {}. Update .ralph/config.jsonc.",
+            "Invalid agent.iterations: {}. Iterations must be at least {}. Update .cueloop/config.jsonc.",
             iterations,
             MIN_ITERATIONS
         );
@@ -69,7 +69,7 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         && workers < MIN_PARALLEL_WORKERS
     {
         bail!(
-            "Invalid parallel.workers: {}. Parallel workers must be >= {}. Update .ralph/config.jsonc or CLI flags.",
+            "Invalid parallel.workers: {}. Parallel workers must be >= {}. Update .cueloop/config.jsonc or CLI flags.",
             workers,
             MIN_PARALLEL_WORKERS
         );
@@ -102,7 +102,7 @@ pub fn validate_config(cfg: &Config) -> Result<()> {
         && timeout == 0
     {
         bail!(
-            "Invalid agent.session_timeout_hours: {}. Session timeout must be greater than 0. Update .ralph/config.jsonc.",
+            "Invalid agent.session_timeout_hours: {}. Session timeout must be greater than 0. Update .cueloop/config.jsonc.",
             timeout
         );
     }

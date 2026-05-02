@@ -42,7 +42,7 @@ pub(super) fn resolve_resume_state(
     resolved: &config::Resolved,
     opts: &RunLoopOptions,
 ) -> Result<ResumeResolution> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
     let queue_file = crate::queue::load_queue(&resolved.queue_path)?;
     let resolution = session::resolve_run_session_decision(
         &cache_dir,

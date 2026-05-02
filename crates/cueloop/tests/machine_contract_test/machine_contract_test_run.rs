@@ -25,7 +25,7 @@
 
 use super::machine_contract_test_support::{
     configure_ci_gate, configure_runner, create_fake_runner, git_add_all_commit, make_test_task,
-    run_in_dir, setup_ralph_repo, trust_project_commands, write_done, write_queue,
+    run_in_dir, setup_cueloop_repo, trust_project_commands, write_done, write_queue,
 };
 use anyhow::{Context, Result};
 use cueloop::contracts::{Runner, SessionState, TaskStatus};
@@ -73,7 +73,7 @@ fn configure_parallel_origin(dir: &Path) -> Result<()> {
 
 #[test]
 fn machine_run_one_without_id_reports_selected_task_via_events_and_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let queue = serde_json::json!({
         "version": 1,
@@ -89,7 +89,7 @@ fn machine_run_one_without_id_reports_selected_task_via_events_and_summary() -> 
         ]
     });
     std::fs::write(
-        dir.path().join(".ralph/queue.jsonc"),
+        dir.path().join(".cueloop/queue.jsonc"),
         serde_json::to_string_pretty(&queue)?,
     )
     .context("write queue fixture")?;
@@ -142,7 +142,7 @@ printf '{"type":"assistant","message":{"content":[{"type":"output_text","text":"
 
 #[test]
 fn machine_run_loop_empty_repo_reports_no_candidates_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "loop"]);
     assert!(
@@ -167,7 +167,7 @@ fn machine_run_loop_empty_repo_reports_no_candidates_summary() -> Result<()> {
 
 #[test]
 fn machine_run_loop_parallel_empty_repo_reports_no_candidates_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     trust_project_commands(dir.path())?;
     configure_parallel_origin(dir.path())?;
 
@@ -197,7 +197,7 @@ fn machine_run_loop_parallel_empty_repo_reports_no_candidates_summary() -> Resul
 
 #[test]
 fn machine_run_loop_dependency_blocked_repo_reports_blocked_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let mut blocked = make_test_task("RQ-2001", "Scheduled task", TaskStatus::Todo);
     blocked.scheduled_start = Some("2099-01-01T00:00:00Z".to_string());
@@ -227,7 +227,7 @@ fn machine_run_loop_dependency_blocked_repo_reports_blocked_summary() -> Result<
 
 #[test]
 fn machine_run_loop_parallel_blocked_repo_reports_blocked_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     trust_project_commands(dir.path())?;
     configure_parallel_origin(dir.path())?;
 
@@ -262,7 +262,7 @@ fn machine_run_loop_parallel_blocked_repo_reports_blocked_summary() -> Result<()
 
 #[test]
 fn machine_run_stop_creates_stop_marker_document() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "stop"]);
     assert!(
@@ -281,15 +281,15 @@ fn machine_run_stop_creates_stop_marker_document() -> Result<()> {
         .context("expected marker path string")?;
     assert_eq!(
         std::fs::canonicalize(actual_path)?,
-        std::fs::canonicalize(dir.path().join(".ralph/cache/stop_requested"))?
+        std::fs::canonicalize(dir.path().join(".cueloop/cache/stop_requested"))?
     );
     Ok(())
 }
 
 #[test]
 fn machine_run_stop_reports_already_present_marker() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    let cache_dir = dir.path().join(".ralph/cache");
+    let dir = setup_cueloop_repo()?;
+    let cache_dir = dir.path().join(".cueloop/cache");
     cueloop::signal::create_stop_signal(&cache_dir)?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "stop"]);
@@ -307,7 +307,7 @@ fn machine_run_stop_reports_already_present_marker() -> Result<()> {
 
 #[test]
 fn machine_run_stop_dry_run_previews_marker_without_writing() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "stop", "--dry-run"]);
     assert!(
@@ -320,15 +320,15 @@ fn machine_run_stop_dry_run_previews_marker_without_writing() -> Result<()> {
     assert_eq!(document["action"], "would_create");
     assert_eq!(document["marker"]["existed_before"], false);
     assert_eq!(document["marker"]["exists_after"], false);
-    assert!(!dir.path().join(".ralph/cache/stop_requested").exists());
+    assert!(!dir.path().join(".cueloop/cache/stop_requested").exists());
     Ok(())
 }
 
 #[test]
 fn machine_run_stop_uses_runtime_parallel_state_for_guidance() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     std::fs::write(
-        dir.path().join(".ralph/config.jsonc"),
+        dir.path().join(".cueloop/config.jsonc"),
         r#"{"version":2,"parallel":{"workers":2}}"#,
     )
     .context("write parallel config fixture")?;
@@ -344,7 +344,7 @@ fn machine_run_stop_uses_runtime_parallel_state_for_guidance() -> Result<()> {
     assert_eq!(document["blocking"], Value::Null);
     assert_eq!(
         document["continuation"]["detail"],
-        "The stop marker is recorded. Ralph should exit after the current task completes."
+        "The stop marker is recorded. CueLoop should exit after the current task completes."
     );
     let next_steps = document["continuation"]["next_steps"]
         .as_array()
@@ -367,8 +367,8 @@ fn machine_run_stop_uses_runtime_parallel_state_for_guidance() -> Result<()> {
 
 #[test]
 fn machine_run_stop_startup_failure_emits_only_machine_error() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    let cache_dir = dir.path().join(".ralph/cache");
+    let dir = setup_cueloop_repo()?;
+    let cache_dir = dir.path().join(".cueloop/cache");
     std::fs::write(&cache_dir, "not a directory").context("block cache dir creation")?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "stop"]);
@@ -386,7 +386,7 @@ fn machine_run_stop_startup_failure_emits_only_machine_error() -> Result<()> {
 
 #[test]
 fn machine_run_loop_override_startup_failure_emits_only_machine_error() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) =
         run_in_dir(dir.path(), &["machine", "run", "loop", "--runner", "nope"]);
@@ -407,14 +407,14 @@ fn machine_run_loop_override_startup_failure_emits_only_machine_error() -> Resul
 
 #[test]
 fn machine_run_loop_resume_refusal_reports_stalled_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let mut task = make_test_task("RQ-3001", "Resume candidate", TaskStatus::Doing);
     task.started_at = Some("2026-04-20T00:00:00Z".to_string());
     write_queue(dir.path(), &[task])?;
     write_done(dir.path(), &[])?;
 
-    let cache_dir = dir.path().join(".ralph/cache");
+    let cache_dir = dir.path().join(".cueloop/cache");
     let session = SessionState {
         version: 1,
         session_id: "session-RQ-3001".to_string(),
@@ -461,7 +461,7 @@ fn machine_run_loop_resume_refusal_reports_stalled_summary() -> Result<()> {
 
 #[test]
 fn machine_run_loop_runtime_failure_still_emits_terminal_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let task = make_test_task("RQ-4001", "Fails CI after run starts", TaskStatus::Todo);
     write_queue(dir.path(), &[task])?;
@@ -513,7 +513,7 @@ exit 1
 
 #[test]
 fn machine_run_loop_queue_lock_failure_emits_stalled_terminal_summary() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let task = make_test_task(
         "RQ-4002",

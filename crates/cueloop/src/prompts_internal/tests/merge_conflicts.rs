@@ -120,13 +120,13 @@ fn rendered_prompt_includes_queue_guidance_with_done_conflicts() -> Result<()> {
     let template_meta = prompt_template(PromptTemplateId::MergeConflicts);
     let template = template_meta.embedded_default;
 
-    let files = vec![".ralph/done.jsonc".to_string(), "README.md".to_string()];
+    let files = vec![".cueloop/done.jsonc".to_string(), "README.md".to_string()];
     let config = default_config();
     let rendered = render_merge_conflict_prompt(template, &files, &config)?;
 
     // Check that conflict files are listed
     assert!(
-        rendered.contains("- .ralph/done.jsonc"),
+        rendered.contains("- .cueloop/done.jsonc"),
         "Rendered prompt should list done.jsonc"
     );
     assert!(

@@ -1,7 +1,7 @@
-//! Integration tests for ralph CLI behavior against real git repositories.
+//! Integration tests for cueloop CLI behavior against real git repositories.
 //!
 //! Purpose:
-//! - Integration tests for ralph CLI behavior against real git repositories.
+//! - Integration tests for cueloop CLI behavior against real git repositories.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
 mod test_support;
@@ -45,7 +45,7 @@ fn run_one_reverts_changes_when_ci_fails() -> Result<()> {
 
     // Create a "dirty runner" that creates a file and exits 0.
     // Drain stdin first because Codex reads prompts from stdin and otherwise the
-    // fake runner can exit before Ralph finishes writing, causing a flaky broken pipe.
+    // fake runner can exit before CueLoop finishes writing, causing a flaky broken pipe.
     let dirty_file = dir.path().join("dirty-file.txt");
     let script = format!(
         "#!/bin/sh\ncat >/dev/null\necho 'creating dirty file' > {}\nexit 0\n",

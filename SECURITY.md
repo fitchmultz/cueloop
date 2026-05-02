@@ -1,10 +1,10 @@
 # Security Policy
 
-Purpose: Document vulnerability reporting, data handling guidelines, and redaction behavior for Ralph.
+Purpose: Document vulnerability reporting, data handling guidelines, and redaction behavior for CueLoop.
 
 ## Reporting Vulnerabilities
 
-If you discover a security vulnerability in Ralph, please report it responsibly:
+If you discover a security vulnerability in CueLoop, please report it responsibly:
 
 1. **Do not open a public issue** for security vulnerabilities.
 2. Preferred: use GitHub private vulnerability reporting in the repository Security tab (`Security` → `Report a vulnerability`).
@@ -14,12 +14,12 @@ If you discover a security vulnerability in Ralph, please report it responsibly:
 
 ## Data Handling Guidelines
 
-When sharing logs, error reports, or debugging output from Ralph, be aware that certain data may contain sensitive information:
+When sharing logs, error reports, or debugging output from CueLoop, be aware that certain data may contain sensitive information:
 
 ### What to Avoid Sharing Publicly
 
 - **Runner outputs**: AI runner output (Codex, OpenCode, Gemini, Claude, Cursor) may contain secrets from your codebase, environment variables, or API keys.
-- **Debug logs**: When `--debug` is enabled, raw runner output is written to `.ralph/logs/debug.log` without redaction. These logs may contain secrets.
+- **Debug logs**: When `--debug` is enabled, raw runner output is written to `.cueloop/logs/debug.log` without redaction. These logs may contain secrets.
 - **Safeguard dumps**: Error recovery dumps may contain sensitive data from the runner output or environment.
 - **Queue files with raw runner output**: Task notes that include runner output should be reviewed before sharing.
 
@@ -31,7 +31,7 @@ When sharing logs, error reports, or debugging output from Ralph, be aware that 
 
 ## Redaction Behavior
 
-Ralph includes built-in redaction for sensitive data. The following patterns are masked with `[REDACTED]`:
+CueLoop includes built-in redaction for sensitive data. The following patterns are masked with `[REDACTED]`:
 
 **Important**: Redaction is pattern-based and best-effort. It may miss secrets in unexpected formats, encoded data, or novel patterns. Always review output before sharing, even when redaction is applied.
 
@@ -62,23 +62,23 @@ let path = safeguard_text_dump_redacted("error_context", &content)?;
 
 The `safeguard_text_dump()` function writes raw, unredacted content. This requires explicit opt-in via:
 
-- Environment variable: `RALPH_RAW_DUMP=1` or `RALPH_RAW_DUMP=true`
-- Debug mode: Passing `--debug` flag to Ralph commands
+- Environment variable: `CUELOOP_RAW_DUMP=1` or `CUELOOP_RAW_DUMP=true`
+- Debug mode: Passing `--debug` flag to CueLoop commands
 
 ```bash
 # Enable raw dumps via environment variable
-RALPH_RAW_DUMP=1 ralph run one
-RALPH_RAW_DUMP=true ralph run one
+CUELOOP_RAW_DUMP=1 cueloop run one
+CUELOOP_RAW_DUMP=true cueloop run one
 
 # Or use --debug flag (also enables raw dumps and raw debug logs)
-ralph run one --debug
+cueloop run one --debug
 ```
 
 **Security Warning**: Raw dumps may contain secrets. Only use raw dumps when necessary for debugging and keep them secure. Never commit raw dumps to version control.
 
 ## Debug Logging
 
-When the `--debug` flag is used, Ralph writes detailed logs to `.ralph/logs/debug.log`:
+When the `--debug` flag is used, CueLoop writes detailed logs to `.cueloop/logs/debug.log`:
 
 - Log records (redacted in console output, **raw in debug log**)
 - Raw runner stdout/stderr streams
@@ -87,17 +87,17 @@ When the `--debug` flag is used, Ralph writes detailed logs to `.ralph/logs/debu
 
 **Best practices for debug logs:**
 - Only use `--debug` when necessary for troubleshooting
-- Treat `.ralph/logs/debug.log` as sensitive data
+- Treat `.cueloop/logs/debug.log` as sensitive data
 - Clean up debug logs after use:
 
 ```bash
-rm -rf .ralph/logs/
+rm -rf .cueloop/logs/
 ```
-- Never commit debug logs to version control (ensure `.ralph/logs/` is in your repo root `.gitignore`)
+- Never commit debug logs to version control (ensure `.cueloop/logs/` is in your repo root `.gitignore`)
 
 ## Supported Versions
 
-Security updates are provided for the latest released version of Ralph. Users should keep their installation up to date:
+Security updates are provided for the latest released version of CueLoop. Users should keep their installation up to date:
 
 ```bash
 cargo install cueloop-agent-loop --force
@@ -107,9 +107,9 @@ cargo install cueloop-agent-loop --force
 
 1. **Review runner output**: AI runners may echo environment variables or file contents that contain secrets. Review before copying into task notes.
 2. **Use redacted dumps**: When reporting issues, use the default redacted safeguard dumps. Remember that redaction is best-effort and may miss secrets.
-3. **Limit debug mode**: Only use `--debug` when necessary and clean up `.ralph/logs/` afterward. Debug logs contain raw, unredacted output.
-4. **Safeguard dump locations**: Redacted dumps are written to temporary directories (e.g., `/tmp/ralph/`). Clean these up periodically as they persist via `TempDir::keep()`.
-5. **Sanitize queue files**: Before committing `.ralph/queue.json` or `.ralph/done.json` to version control, ensure no secrets are present in task notes or evidence fields.
+3. **Limit debug mode**: Only use `--debug` when necessary and clean up `.cueloop/logs/` afterward. Debug logs contain raw, unredacted output.
+4. **Safeguard dump locations**: Redacted dumps are written to temporary directories (e.g., `/tmp/cueloop/`). Clean these up periodically as they persist via `TempDir::keep()`.
+5. **Sanitize queue files**: Before committing `.cueloop/queue.json` or `.cueloop/done.json` to version control, ensure no secrets are present in task notes or evidence fields.
 6. **Environment variable hygiene**: Be cautious about what environment variables are set when running AI agents, as runners may have access to the full environment.
 
 ## Implementation Details

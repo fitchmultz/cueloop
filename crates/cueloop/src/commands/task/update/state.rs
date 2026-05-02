@@ -33,7 +33,7 @@ pub(super) struct PreparedTaskUpdate {
 }
 
 pub(super) fn backup_queue_for_update(resolved: &config::Resolved) -> Result<PathBuf> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
     let backup_path = queue::backup_queue(&resolved.queue_path, &cache_dir)
         .with_context(|| "failed to create queue backup before task update")?;
     log::debug!("Created queue backup at: {}", backup_path.display());

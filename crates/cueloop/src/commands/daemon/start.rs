@@ -44,7 +44,7 @@ use super::{
 pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
     #[cfg(unix)]
     {
-        let cache_dir = resolved.repo_root.join(".ralph/cache");
+        let cache_dir = resolved.repo_root.join(".cueloop/cache");
         let daemon_start_lock_dir = cache_dir.join(DAEMON_START_LOCK_DIR);
 
         // Check if daemon is already running
@@ -100,7 +100,7 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
         }
 
         // Set up stdio redirection
-        let log_dir = resolved.repo_root.join(".ralph/logs");
+        let log_dir = resolved.repo_root.join(".cueloop/logs");
         fs::create_dir_all(&log_dir).context("Failed to create log directory")?;
         let log_file = std::fs::File::create(log_dir.join(DAEMON_LOG_FILE_NAME))
             .context("Failed to create daemon log file")?;
@@ -135,7 +135,7 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
             println!("Daemon started successfully (PID: {})", pid);
             Ok(())
         } else {
-            bail!("Daemon failed to start. Check .ralph/logs/daemon.log for details.");
+            bail!("Daemon failed to start. Check .cueloop/logs/daemon.log for details.");
         }
     }
 

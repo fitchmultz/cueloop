@@ -56,7 +56,7 @@ fn public_readiness_scan_all_mode_combines_content_checks() {
         .expect("write markdown fixture");
     std::fs::write(
         repo_root.join("AGENTS.md"),
-        "session cache: .ralph/cache/session.json\n",
+        "session cache: .cueloop/cache/session.json\n",
     )
     .expect("write session-path fixture");
     std::fs::write(repo_root.join("notes.txt"), format!("{secret_token}\n"))
@@ -66,7 +66,7 @@ fn public_readiness_scan_all_mode_combines_content_checks() {
         .arg(public_readiness_scan_python_path())
         .arg("all")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness combined scan helper");
 
@@ -79,7 +79,7 @@ fn public_readiness_scan_all_mode_combines_content_checks() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         stdout.contains("README.md: missing target -> missing.md")
-            && stdout.contains("AGENTS.md:1: use .ralph/cache/session.jsonc")
+            && stdout.contains("AGENTS.md:1: use .cueloop/cache/session.jsonc")
             && stdout.contains("notes.txt:1: github_classic_token: [REDACTED length=24]"),
         "combined scan should report markdown, session-path, and secret findings\nstdout:\n{}",
         stdout
@@ -99,7 +99,7 @@ fn public_readiness_scan_docs_mode_skips_secret_scan() {
         .arg(public_readiness_scan_python_path())
         .arg("docs")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness docs scan helper");
 

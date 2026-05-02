@@ -34,7 +34,7 @@ fn run_in_dir(dir: &Path, args: &[&str]) -> (std::process::ExitStatus, String, S
 }
 
 fn init_repo(dir: &Path) -> Result<()> {
-    test_support::seed_ralph_dir(dir)?;
+    test_support::seed_cueloop_dir(dir)?;
     Ok(())
 }
 
@@ -56,7 +56,7 @@ fn write_queue_with_todo(dir: &Path) -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(dir.join(".cueloop/queue.jsonc"), queue)?;
     Ok(())
 }
 
@@ -91,7 +91,7 @@ fn write_queue_with_mixed_status(dir: &Path) -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.join(".ralph/queue.jsonc"), queue)?;
+    std::fs::write(dir.join(".cueloop/queue.jsonc"), queue)?;
     Ok(())
 }
 

@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::path::Path;
 
@@ -56,12 +56,12 @@ pub fn build_agent_integration_prompt(
 You are finalizing task `{task_id}` (`{task_title}`) for integration into `origin/{target_branch}`.
 
 ## Goal
-Integrate the task branch with the latest target branch so Ralph can safely reconcile bookkeeping and push after your turn returns.
+Integrate the task branch with the latest target branch so CueLoop can safely reconcile bookkeeping and push after your turn returns.
 
 ## Hard Requirement
 You MUST execute integration git operations yourself in this turn. Do not stop early.
 You are NOT done until all required checks are satisfied.
-Ralph will reconcile queue/done bookkeeping and push after your turn returns.
+CueLoop will reconcile queue/done bookkeeping and push after your turn returns.
 
 ## Context
 - Phase summary: {phase_summary}
@@ -78,7 +78,7 @@ Ralph will reconcile queue/done bookkeeping and push after your turn returns.
    - Continue rebase until complete (`git add ...`, `git rebase --continue`).
 4. Do not manually edit shared bookkeeping:
    - Leave `{queue_path_display}` and `{done_path_display}` alone unless they have conflict markers that must be resolved to complete the rebase.
-   - Ralph will rebuild those files from the latest target branch and archive `{task_id}` after your turn.
+   - CueLoop will rebuild those files from the latest target branch and archive `{task_id}` after your turn.
 5. Stage and commit any remaining implementation changes needed for integration.
 6. {ci_block}
 7. Do not push. Stop after the workspace is rebased, conflict-free, committed, and CI-clean.

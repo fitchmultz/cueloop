@@ -19,14 +19,14 @@ Plugins can execute arbitrary commands, access files/environment variables, make
    - Plugins default to disabled.
 2. **Trust boundaries matter**
    - Project plugins override global plugins with the same ID.
-   - Project-scope plugins run only in trusted repos; untrusted repos ignore `.ralph/plugins/*` at runtime.
+   - Project-scope plugins run only in trusted repos; untrusted repos ignore `.cueloop/plugins/*` at runtime.
 3. **Path confinement is enforced**
    - Manifest executable paths must be plugin-dir-relative.
    - Absolute paths and `..` escapes are rejected.
    - Existing symlinked files and ancestor directories must canonicalize within the plugin directory.
 4. **Treat plugin config as sensitive**
    - CueLoop redacts sensitive plugin stderr before display.
-   - Do not log full `RALPH_PLUGIN_CONFIG_JSON` from plugin scripts.
+   - Do not log full `CUELOOP_PLUGIN_CONFIG_JSON` from plugin scripts.
 
 ## Operator Checklist
 

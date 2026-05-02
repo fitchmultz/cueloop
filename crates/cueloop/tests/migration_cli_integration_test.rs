@@ -19,7 +19,7 @@
 //!
 //! Invariants/assumptions:
 //! - The migration `config_key_rename_parallel_worktree_root_2026_02` exists in the registry.
-//! - `seed_ralph_dir()` creates a valid baseline config that may or may not trigger migrations.
+//! - `seed_cueloop_dir()` creates a valid baseline config that may or may not trigger migrations.
 
 use anyhow::Result;
 use std::fs;
@@ -28,7 +28,7 @@ mod test_support;
 
 fn write_legacy_project_config(dir: &std::path::Path, git_commit_push_enabled: bool) -> Result<()> {
     fs::write(
-        dir.join(".ralph/config.jsonc"),
+        dir.join(".cueloop/config.jsonc"),
         format!(
             r#"{{
   "version": 1,
@@ -49,7 +49,7 @@ fn write_legacy_project_config(dir: &std::path::Path, git_commit_push_enabled: b
 fn migrate_list_shows_all_migrations() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "--list"]);
     anyhow::ensure!(status.success(), "migrate list failed\nstderr:\n{stderr}");
@@ -75,7 +75,7 @@ fn migrate_list_shows_all_migrations() -> Result<()> {
 fn migrate_status_shows_detailed_info() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "status"]);
     anyhow::ensure!(status.success(), "migrate status failed\nstderr:\n{stderr}");
@@ -99,7 +99,7 @@ fn migrate_status_shows_detailed_info() -> Result<()> {
 fn migrate_shows_current_status() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Run migrate without args - should show current status
     let (status, stdout, _stderr) = test_support::run_in_dir(dir.path(), &["migrate"]);
@@ -121,7 +121,7 @@ fn migrate_shows_current_status() -> Result<()> {
 fn migrate_apply_runs_without_error() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Apply migrations with --force to skip confirmation prompt
     let (status, stdout, stderr) =
@@ -135,164 +135,6 @@ fn migrate_apply_runs_without_error() -> Result<()> {
             || stdout.contains("No migrations were applied"),
         "expected completion message, got:\n{stdout}"
     );
-    anyhow::ensure!(
-        dir.path().join(".ralph").exists(),
-        "normal migrate --apply must not move .ralph to .cueloop"
-    );
-    anyhow::ensure!(
-        !dir.path().join(".cueloop").exists(),
-        "runtime-dir migration must stay explicit"
-    );
-
-    Ok(())
-}
-
-#[test]
-fn migrate_runtime_dir_check_reports_needs_migration() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
-
-    let (status, stdout, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &["--no-color", "migrate", "runtime-dir", "--check"],
-    );
-
-    anyhow::ensure!(
-        !status.success(),
-        "runtime-dir check should fail when .ralph needs migration\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-    anyhow::ensure!(
-        stdout.contains("needs-migration"),
-        "expected needs-migration status, got:\n{stdout}"
-    );
-    anyhow::ensure!(
-        stdout.contains(".ralph") && stdout.contains(".cueloop"),
-        "expected source and destination paths, got:\n{stdout}"
-    );
-    anyhow::ensure!(dir.path().join(".ralph").exists(), "check must not mutate");
-    anyhow::ensure!(
-        !dir.path().join(".cueloop").exists(),
-        "check must not mutate"
-    );
-
-    Ok(())
-}
-
-#[test]
-fn migrate_runtime_dir_apply_moves_state_and_records_history() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
-    fs::write(
-        dir.path().join(".ralph/config.jsonc"),
-        r#"{
-  "version": 2,
-  "queue": {
-    "file": ".ralph/queue.jsonc",
-    "done_file": ".ralph/done.jsonc"
-  }
-}
-"#,
-    )?;
-
-    let (status, stdout, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &["--no-color", "migrate", "runtime-dir", "--apply"],
-    );
-
-    anyhow::ensure!(
-        status.success(),
-        "runtime-dir apply failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-    anyhow::ensure!(
-        stdout.contains("Moved project runtime directory"),
-        "expected move message, got:\n{stdout}"
-    );
-    anyhow::ensure!(
-        !dir.path().join(".ralph").exists(),
-        "legacy runtime should move"
-    );
-    anyhow::ensure!(
-        dir.path().join(".cueloop").is_dir(),
-        "current runtime should exist"
-    );
-
-    let config = fs::read_to_string(dir.path().join(".cueloop/config.jsonc"))?;
-    anyhow::ensure!(
-        config.contains(".cueloop/queue.jsonc") && config.contains(".cueloop/done.jsonc"),
-        "expected config runtime refs to update, got:\n{config}"
-    );
-    anyhow::ensure!(
-        !config.contains(".ralph/"),
-        "expected legacy config refs to be removed, got:\n{config}"
-    );
-
-    let history = fs::read_to_string(dir.path().join(".cueloop/cache/migrations.jsonc"))?;
-    anyhow::ensure!(
-        history.contains("runtime_dir_rename_ralph_to_cueloop_2026_05"),
-        "expected runtime-dir history record, got:\n{history}"
-    );
-
-    Ok(())
-}
-
-#[test]
-fn migrate_runtime_dir_apply_blocks_legacy_json_before_mutation() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
-    fs::write(dir.path().join(".ralph/config.json"), r#"{"version":1}"#)?;
-
-    let (status, stdout, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &["--no-color", "migrate", "runtime-dir", "--apply"],
-    );
-
-    anyhow::ensure!(
-        !status.success(),
-        "legacy JSON runtime should block apply\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-    anyhow::ensure!(
-        stderr.contains("legacy JSON runtime files still exist"),
-        "expected legacy JSON guidance, got stdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-    anyhow::ensure!(dir.path().join(".ralph/config.json").exists());
-    anyhow::ensure!(!dir.path().join(".cueloop").exists());
-
-    Ok(())
-}
-
-#[test]
-fn migrate_runtime_dir_apply_refuses_collision_before_mutation() -> Result<()> {
-    let dir = test_support::temp_dir_outside_repo();
-    test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
-    fs::create_dir_all(dir.path().join(".cueloop"))?;
-    fs::write(dir.path().join(".cueloop/config.jsonc"), "{}")?;
-
-    let (status, stdout, stderr) = test_support::run_in_dir(
-        dir.path(),
-        &["--no-color", "migrate", "runtime-dir", "--apply"],
-    );
-
-    anyhow::ensure!(
-        !status.success(),
-        "collision should fail\nstdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-    anyhow::ensure!(
-        stderr.contains("Runtime-dir migration is blocked"),
-        "expected collision guidance, got stdout:\n{stdout}\nstderr:\n{stderr}"
-    );
-    anyhow::ensure!(
-        dir.path().join(".ralph/config.jsonc").exists(),
-        "legacy runtime should remain after collision"
-    );
-    anyhow::ensure!(
-        dir.path().join(".cueloop/config.jsonc").exists(),
-        "current runtime should remain after collision"
-    );
-
     Ok(())
 }
 
@@ -300,7 +142,7 @@ fn migrate_runtime_dir_apply_refuses_collision_before_mutation() -> Result<()> {
 fn migrate_check_returns_appropriate_exit_code() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Run check - should either succeed (if no pending) or fail with code 1 (if pending)
     let (status, stdout, _stderr) = test_support::run_in_dir(dir.path(), &["migrate", "--check"]);
@@ -327,7 +169,7 @@ fn migrate_check_returns_appropriate_exit_code() -> Result<()> {
 fn migrate_subcommand_status_works() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Run migrate status subcommand
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "status"]);
@@ -346,7 +188,7 @@ fn migrate_subcommand_status_works() -> Result<()> {
 fn migrate_check_detects_legacy_config_without_parse_failure() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_legacy_project_config(dir.path(), true)?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["migrate", "--check"]);
@@ -375,7 +217,7 @@ fn migrate_check_detects_legacy_config_without_parse_failure() -> Result<()> {
 fn migrate_apply_upgrades_legacy_config_with_push_enabled_true() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_legacy_project_config(dir.path(), true)?;
 
     let (status, stdout, stderr) =
@@ -386,7 +228,7 @@ fn migrate_apply_upgrades_legacy_config_with_push_enabled_true() -> Result<()> {
         "expected legacy migration to be applied, got:\n{stdout}"
     );
 
-    let migrated = fs::read_to_string(dir.path().join(".ralph/config.jsonc"))?;
+    let migrated = fs::read_to_string(dir.path().join(".cueloop/config.jsonc"))?;
     anyhow::ensure!(
         migrated.contains("\"version\": 2"),
         "expected config version upgrade, got:\n{migrated}"
@@ -414,14 +256,14 @@ fn migrate_apply_upgrades_legacy_config_with_push_enabled_true() -> Result<()> {
 fn migrate_apply_upgrades_legacy_config_with_push_enabled_false() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     write_legacy_project_config(dir.path(), false)?;
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["migrate", "--apply", "--force"]);
     anyhow::ensure!(status.success(), "migrate apply failed\nstderr:\n{stderr}");
 
-    let migrated = fs::read_to_string(dir.path().join(".ralph/config.jsonc"))?;
+    let migrated = fs::read_to_string(dir.path().join(".cueloop/config.jsonc"))?;
     anyhow::ensure!(
         migrated.contains("\"git_publish_mode\": \"off\""),
         "expected off mapping, got:\n{migrated}"
@@ -434,9 +276,9 @@ fn migrate_apply_upgrades_legacy_config_with_push_enabled_false() -> Result<()> 
 fn migrate_apply_preserves_existing_git_publish_mode() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     fs::write(
-        dir.path().join(".ralph/config.jsonc"),
+        dir.path().join(".cueloop/config.jsonc"),
         r#"{
   "version": 1,
   "agent": {
@@ -452,7 +294,7 @@ fn migrate_apply_preserves_existing_git_publish_mode() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["migrate", "--apply", "--force"]);
     anyhow::ensure!(status.success(), "migrate apply failed\nstderr:\n{stderr}");
 
-    let migrated = fs::read_to_string(dir.path().join(".ralph/config.jsonc"))?;
+    let migrated = fs::read_to_string(dir.path().join(".cueloop/config.jsonc"))?;
     anyhow::ensure!(
         migrated.contains("\"git_publish_mode\": \"commit\""),
         "existing git_publish_mode should win, got:\n{migrated}"

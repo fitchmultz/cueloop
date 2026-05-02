@@ -25,7 +25,7 @@ Use this page as the task-system index. Detailed guidance lives in focused child
 
 ## Overview
 
-A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tasks are stored in `.ralph/queue.jsonc` for active work and `.ralph/done.jsonc` for completed or rejected work.
+A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tasks are stored in `.cueloop/queue.jsonc` for active work and `.cueloop/done.jsonc` for completed or rejected work.
 
 Tasks capture identity, state, context, relationships, and execution configuration. They are the interface between operators and AI agents: they preserve the original request, guide execution, track progress, and support recovery.
 

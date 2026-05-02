@@ -40,8 +40,8 @@ fn blocked_marker_json(task_id: &str, attempt: u32, max_attempts: u32) -> String
 #[test]
 fn parallel_status_describes_retained_blocked_workspace() -> Result<()> {
     let temp = TempDir::new()?;
-    let workspace_path = temp.path().join(".ralph/workspaces/RQ-1001");
-    std::fs::create_dir_all(workspace_path.join(".ralph/cache/parallel"))?;
+    let workspace_path = temp.path().join(".cueloop/workspaces/RQ-1001");
+    std::fs::create_dir_all(workspace_path.join(".cueloop/cache/parallel"))?;
     std::fs::write(
         workspace_path.join(BLOCKED_PUSH_MARKER_FILE),
         blocked_marker_json("RQ-1001", 3, 5),
@@ -122,8 +122,8 @@ fn parallel_status_describes_retained_blocked_workspace() -> Result<()> {
 #[test]
 fn parallel_status_distinguishes_success_failure_and_action_required() -> Result<()> {
     let temp = TempDir::new()?;
-    let blocked_workspace = temp.path().join(".ralph/workspaces/RQ-3003");
-    std::fs::create_dir_all(blocked_workspace.join(".ralph/cache/parallel"))?;
+    let blocked_workspace = temp.path().join(".cueloop/workspaces/RQ-3003");
+    std::fs::create_dir_all(blocked_workspace.join(".cueloop/cache/parallel"))?;
     std::fs::write(
         blocked_workspace.join(BLOCKED_PUSH_MARKER_FILE),
         blocked_marker_json("RQ-3003", 2, 5),
@@ -133,7 +133,7 @@ fn parallel_status_distinguishes_success_failure_and_action_required() -> Result
 
     let mut completed = WorkerRecord::new(
         "RQ-3001",
-        temp.path().join(".ralph/workspaces/RQ-3001"),
+        temp.path().join(".cueloop/workspaces/RQ-3001"),
         "2026-03-21T12:00:00Z".to_string(),
     );
     completed.mark_completed("2026-03-21T12:10:00Z".to_string());
@@ -141,7 +141,7 @@ fn parallel_status_distinguishes_success_failure_and_action_required() -> Result
 
     let mut failed = WorkerRecord::new(
         "RQ-3002",
-        temp.path().join(".ralph/workspaces/RQ-3002"),
+        temp.path().join(".cueloop/workspaces/RQ-3002"),
         "2026-03-21T12:00:00Z".to_string(),
     );
     failed.mark_failed(
@@ -193,7 +193,7 @@ fn parallel_status_distinguishes_success_failure_and_action_required() -> Result
 #[test]
 fn parallel_status_surfaces_cleanup_drift_without_active_workers() -> Result<()> {
     let temp = TempDir::new()?;
-    let workspace_path = temp.path().join(".ralph/workspaces/RQ-2001");
+    let workspace_path = temp.path().join(".cueloop/workspaces/RQ-2001");
     std::fs::create_dir_all(&workspace_path)?;
 
     let mut state = ParallelStateFile::new("2026-03-21T12:00:00Z", "main");

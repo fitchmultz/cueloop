@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 use log::{LevelFilter, Log, Metadata, Record};
@@ -100,10 +100,10 @@ fn select_next_task_locked_suppresses_non_blocking_validation_warnings() -> Resu
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let dependency = selection_test_task("RQ-0001", "Incomplete dependency");
     let mut dependent = selection_test_task("RQ-0002", "Blocked dependent");
     dependent.depends_on = vec![dependency.id.clone()];
@@ -119,7 +119,7 @@ fn select_next_task_locked_suppresses_non_blocking_validation_warnings() -> Resu
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path,
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -155,10 +155,10 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
 
     // Add tasks in non-ID order: RQ-0003 first, RQ-0001 second, RQ-0002 third
@@ -250,7 +250,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
 
     // Create state file with terminal workers for RQ-0003 (Completed) and RQ-0001 (Failed)
     // These should NOT be excluded from selection - terminal state doesn't block re-selection
-    let state_path = ralph_dir.join("cache/parallel/state.json");
+    let state_path = cueloop_dir.join("cache/parallel/state.json");
     let mut state =
         state::ParallelStateFile::new("2026-01-01T00:00:00Z".to_string(), "main".to_string());
 
@@ -279,7 +279,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -323,10 +323,10 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
 
     // Add tasks: RQ-0001 first (will be blocked), RQ-0002 second
@@ -389,7 +389,7 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
     queue::save_queue(&queue_path, &queue_file)?;
 
     // Create state with BlockedPush worker for RQ-0001 (SHOULD block selection)
-    let state_path = ralph_dir.join("cache/parallel/state.json");
+    let state_path = cueloop_dir.join("cache/parallel/state.json");
     let mut state =
         state::ParallelStateFile::new("2026-01-01T00:00:00Z".to_string(), "main".to_string());
     let mut blocked_worker = state::WorkerRecord::new(
@@ -407,7 +407,7 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,

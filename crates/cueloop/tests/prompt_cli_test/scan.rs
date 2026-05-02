@@ -19,7 +19,7 @@ use super::*;
 #[test]
 fn prompt_scan_parses_focus() {
     let cli =
-        Cli::try_parse_from(["ralph", "prompt", "scan", "--focus", "CI gaps"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "prompt", "scan", "--focus", "CI gaps"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Scan(s) => {
@@ -34,7 +34,7 @@ fn prompt_scan_parses_focus() {
 #[test]
 fn prompt_scan_parses_mode_maintenance() {
     let cli =
-        Cli::try_parse_from(["ralph", "prompt", "scan", "--mode", "maintenance"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "prompt", "scan", "--mode", "maintenance"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Scan(s) => {
@@ -49,7 +49,7 @@ fn prompt_scan_parses_mode_maintenance() {
 #[test]
 fn prompt_scan_parses_mode_innovation() {
     let cli =
-        Cli::try_parse_from(["ralph", "prompt", "scan", "--mode", "innovation"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "prompt", "scan", "--mode", "innovation"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Scan(s) => {
@@ -63,8 +63,8 @@ fn prompt_scan_parses_mode_innovation() {
 
 #[test]
 fn prompt_scan_parses_repo_prompt_tools() {
-    let cli =
-        Cli::try_parse_from(["ralph", "prompt", "scan", "--repo-prompt", "tools"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "scan", "--repo-prompt", "tools"])
+        .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Scan(s) => {
@@ -78,7 +78,7 @@ fn prompt_scan_parses_repo_prompt_tools() {
 
 #[test]
 fn prompt_scan_parses_explain() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "scan", "--explain"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "scan", "--explain"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Scan(s) => {

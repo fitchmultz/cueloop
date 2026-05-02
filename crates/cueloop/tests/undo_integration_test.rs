@@ -25,7 +25,7 @@ pub(crate) use std::fs;
 pub(crate) use support::{setup_undo_repo, snapshot_ids_from_list_output};
 pub(crate) use tempfile::TempDir;
 pub(crate) use test_support::{
-    git_init, make_test_task, read_done, read_queue, run_in_dir, seed_ralph_dir,
+    git_init, make_test_task, read_done, read_queue, run_in_dir, seed_cueloop_dir,
     temp_dir_outside_repo, write_done, write_queue,
 };
 

@@ -75,9 +75,9 @@ Use `${VAR}` or `$VAR` in string values to inject environment-based values (for 
 
 Unsupported path override variables:
 
-- `RALPH_REPO_ROOT_OVERRIDE`
-- `RALPH_QUEUE_PATH_OVERRIDE`
-- `RALPH_DONE_PATH_OVERRIDE`
+- `CUELOOP_REPO_ROOT_OVERRIDE`
+- `CUELOOP_QUEUE_PATH_OVERRIDE`
+- `CUELOOP_DONE_PATH_OVERRIDE`
 
 ---
 

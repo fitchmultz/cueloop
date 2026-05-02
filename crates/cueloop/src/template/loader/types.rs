@@ -25,7 +25,7 @@ use crate::template::variables::TemplateWarning;
 /// Source of a loaded template.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TemplateSource {
-    /// Custom template from `.ralph/templates/`.
+    /// Custom template from `.cueloop/templates/`.
     Custom(PathBuf),
     /// Built-in embedded template (stores the name, not the content).
     Builtin(String),

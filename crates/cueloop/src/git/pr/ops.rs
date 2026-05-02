@@ -121,7 +121,7 @@ pub(super) fn merge_method_flag(method: MergeMethod) -> &'static str {
 
 fn normalized_body(body: &str) -> &str {
     if body.trim().is_empty() {
-        "Automated by Ralph."
+        "Automated by CueLoop."
     } else {
         body
     }

@@ -154,7 +154,7 @@ fn acquire_dir_lock_auto_clears_stale_lock_without_force() -> anyhow::Result<()>
 fn lock_error_suggestions_do_not_emit_manual_rm_commands() {
     let owner = test_owner("2026-04-09T00:00:00Z");
     let message = format_lock_error(
-        std::path::Path::new("/tmp/ralph-lock"),
+        std::path::Path::new("/tmp/cueloop-lock"),
         Some(&owner),
         true,
         false,
@@ -175,7 +175,7 @@ fn lock_error_explains_pid_reuse_review_policy() {
     let staleness = classify_lock_owner_at(&owner, now, PidLiveness::Running);
 
     let message = format_lock_error(
-        std::path::Path::new("/tmp/ralph-lock"),
+        std::path::Path::new("/tmp/cueloop-lock"),
         Some(&owner),
         staleness.is_stale(),
         false,
@@ -183,6 +183,6 @@ fn lock_error_explains_pid_reuse_review_policy() {
     );
 
     assert!(message.contains("PID REUSE REVIEW"));
-    assert!(message.contains("Ralph does not auto-clear it"));
+    assert!(message.contains("CueLoop does not auto-clear it"));
     assert!(message.contains("verify the PID, command, and timestamp"));
 }

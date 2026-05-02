@@ -13,12 +13,12 @@ Get CueLoop running in a repository in a few minutes.
 cargo install cueloop-agent-loop
 ```
 
-This installs the primary `cueloop` executable and the legacy `ralph` compatibility alias.
+This installs the primary `cueloop` executable and the legacy `cueloop` compatibility alias.
 
 Or from source:
 
 ```bash
-git clone https://github.com/fitchmultz/ralph cueloop
+git clone https://github.com/fitchmultz/cueloop cueloop
 cd cueloop
 make install
 ```
@@ -123,7 +123,7 @@ Default runtime files:
 - `.cueloop/done.jsonc`
 - `.cueloop/config.jsonc`
 
-This repository intentionally keeps sanitized `.cueloop/` state for dogfooding and reproducible demos. Legacy `.ralph/` runtime directories remain supported during the migration window.
+This repository intentionally keeps sanitized `.cueloop/` state for dogfooding and reproducible demos. Legacy `.cueloop/` runtime directories remain supported during the migration window.
 
 ## Next Docs
 

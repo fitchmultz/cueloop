@@ -367,7 +367,7 @@ Scan prompts are rendered from templates that define the agent's mission, evalua
 | V1 | `scan_maintenance_v1.md`, `scan_innovation_v1.md` | No |
 | V2 | `scan_general_v2.md`, `scan_maintenance_v2.md`, `scan_innovation_v2.md` | **Yes** |
 
-Configure in `.ralph/config.jsonc`:
+Configure in `.cueloop/config.jsonc`:
 ```json
 {
   "agent": {
@@ -386,10 +386,10 @@ Configure in `.ralph/config.jsonc`:
 
 ### Customizing Scan Prompts
 
-You can override the default templates by creating files in `.cueloop/prompts/` (legacy `.ralph/prompts/` remains supported):
+You can override the default templates by creating files in `.cueloop/prompts/` (legacy `.cueloop/prompts/` remains supported):
 
 ```
-.ralph/
+.cueloop/
   prompts/
     scan_general_v2.md        # General scan mode (v2)
     scan_maintenance_v1.md    # Maintenance scan mode (v1)
@@ -430,7 +430,7 @@ Custom variables can be defined in config:
 
 After a successful scan, the agent:
 
-1. **Adds tasks to `.ralph/queue.jsonc`**
+1. **Adds tasks to `.cueloop/queue.jsonc`**
    - Tasks are inserted near the top in priority order
    - Higher priority tasks come first
    - Includes evidence, plan, scope, and tags
@@ -571,7 +571,7 @@ cueloop scan --mode maintenance "add null checks"
 
 ### Safety Considerations
 
-- **Clean repo check**: Scan requires a clean repository (except for `.ralph/queue.jsonc` and `.ralph/done.jsonc`)
+- **Clean repo check**: Scan requires a clean repository (except for `.cueloop/queue.jsonc` and `.cueloop/done.jsonc`)
 - **Git revert on failure**: If scan fails, changes are automatically reverted
 - **Queue validation**: Queue is validated before and after scanning
 - **Force flag**: Use `--force` to bypass clean-repo check if needed
@@ -694,7 +694,7 @@ Enable debug mode for troubleshooting:
 cueloop scan --mode maintenance --debug "debug scan"
 ```
 
-This saves raw (unredacted) output to `.ralph/logs/debug.log` for investigation.
+This saves raw (unredacted) output to `.cueloop/logs/debug.log` for investigation.
 
 ---
 

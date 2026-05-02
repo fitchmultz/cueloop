@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible issue in Ralph
+about: Report a reproducible issue in CueLoop
 title: "Bug: <short summary>"
 labels: [bug]
 assignees: []
@@ -26,7 +26,7 @@ What happened instead?
 
 ## Environment
 
-- Ralph version (`ralph --version`):
+- CueLoop version (`cueloop --version`):
 - OS:
 - Runner (codex / claude / gemini / opencode / cursor / kimi / pi):
 
@@ -35,7 +35,7 @@ What happened instead?
 Paste relevant, redacted output:
 
 ```bash
-ralph doctor
+cueloop doctor
 ```
 
 ```text

@@ -1,7 +1,7 @@
 //! Purpose: Apply discovery follow-up proposals into the active task queue.
 //!
 //! Responsibilities:
-//! - Parse `followups@v1` proposal documents from `.ralph/cache/followups`.
+//! - Parse `followups@v1` proposal documents from `.cueloop/cache/followups`.
 //! - Validate proposal-local keys, dependency references, and source-task binding.
 //! - Materialize proposal entries as normal queue tasks with allocated IDs.
 //! - Persist validated queue updates and remove applied proposal artifacts.
@@ -92,7 +92,7 @@ pub struct FollowupApplyOptions<'a> {
 
 pub fn default_followups_path(repo_root: &Path, task_id: &str) -> PathBuf {
     repo_root
-        .join(".ralph")
+        .join(".cueloop")
         .join("cache")
         .join("followups")
         .join(format!("{}.json", task_id.trim()))
@@ -258,7 +258,7 @@ fn validate_document_header<'a>(
 ) -> Result<&'a str> {
     if document.version != FOLLOWUPS_VERSION {
         bail!(
-            "Unsupported followups proposal version: {}. Ralph requires version {}.",
+            "Unsupported followups proposal version: {}. CueLoop requires version {}.",
             document.version,
             FOLLOWUPS_VERSION
         );

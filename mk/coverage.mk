@@ -1,4 +1,4 @@
-# Purpose: Define Ralph coverage report targets included by the root Makefile.
+# Purpose: Define CueLoop coverage report targets included by the root Makefile.
 # Responsibilities: Own coverage output configuration, report generation, and coverage artifact cleanup.
 # Scope: Coverage target bodies only; public help text and phony aggregation stay in ../Makefile.
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.

@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::prompter::TutorialPrompter;
 use super::sandbox::TutorialSandbox;
@@ -25,13 +25,13 @@ use colored::Colorize;
 /// Run the welcome phase.
 pub fn phase_welcome(prompter: &dyn TutorialPrompter) -> Result<()> {
     prompter.info("");
-    prompter.info(&format!("{}", "Welcome to Ralph!".bright_cyan().bold()));
+    prompter.info(&format!("{}", "Welcome to CueLoop!".bright_cyan().bold()));
     prompter.info("");
-    prompter.info("Ralph is an AI task queue for structured agent workflows.");
+    prompter.info("CueLoop is an AI task queue for structured agent workflows.");
     prompter.info("This tutorial will guide you through the basics in a sandbox environment.");
     prompter.info("");
     prompter.info("You will learn how to:");
-    prompter.info("  1. Initialize Ralph in a project");
+    prompter.info("  1. Initialize CueLoop in a project");
     prompter.info("  2. Create a task");
     prompter.info("  3. Preview running a task (dry-run)");
     prompter.info("  4. Review the results");
@@ -65,11 +65,11 @@ pub fn phase_init(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) ->
     prompter.info("");
     prompter.info(&format!(
         "{}",
-        "Phase 1: Initialize Ralph".bright_cyan().bold()
+        "Phase 1: Initialize CueLoop".bright_cyan().bold()
     ));
     prompter.info("");
-    prompter.info("First, let's initialize Ralph in the sandbox project.");
-    prompter.info("This creates the .ralph/ directory with config, queue, and done files.");
+    prompter.info("First, let's initialize CueLoop in the sandbox project.");
+    prompter.info("This creates the .cueloop/ directory with config, queue, and done files.");
     prompter.info("");
     prompter.info("Running: cueloop init --non-interactive");
     prompter.info("");
@@ -100,15 +100,15 @@ pub fn phase_init(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) ->
     prompter.info("Created files:");
     prompter.info(&format!(
         "  - {}",
-        sandbox.path.join(".ralph/config.jsonc").display()
+        sandbox.path.join(".cueloop/config.jsonc").display()
     ));
     prompter.info(&format!(
         "  - {}",
-        sandbox.path.join(".ralph/queue.jsonc").display()
+        sandbox.path.join(".cueloop/queue.jsonc").display()
     ));
     prompter.info(&format!(
         "  - {}",
-        sandbox.path.join(".ralph/done.jsonc").display()
+        sandbox.path.join(".cueloop/done.jsonc").display()
     ));
     prompter.info("");
 
@@ -270,10 +270,10 @@ pub fn phase_review(prompter: &dyn TutorialPrompter, sandbox: &TutorialSandbox) 
     }
 
     prompter.info("");
-    prompter.info("Great job! You've completed the basic Ralph tutorial.");
+    prompter.info("Great job! You've completed the basic CueLoop tutorial.");
     prompter.info("");
     prompter.info("Key takeaways:");
-    prompter.info("  - cueloop init: Set up Ralph in a project");
+    prompter.info("  - cueloop init: Set up CueLoop in a project");
     prompter.info("  - cueloop task: Create tasks for AI agents");
     prompter.info("  - cueloop run one: Execute a task");
     prompter.info("  - cueloop queue list: View your tasks");

@@ -126,7 +126,7 @@ pub struct Task {
     pub duplicates: Option<String>,
 
     /// Custom user-defined fields (key-value pairs for extensibility).
-    /// Values may be written as string/number/boolean; Ralph coerces them to strings when loading.
+    /// Values may be written as string/number/boolean; CueLoop coerces them to strings when loading.
     #[serde(default, deserialize_with = "deserialize_custom_fields")]
     #[schemars(schema_with = "custom_fields_schema")]
     pub custom_fields: HashMap<String, String>,

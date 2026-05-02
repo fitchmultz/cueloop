@@ -225,10 +225,10 @@ fn send_request(
     let mut request = agent
         .post(url)
         .header("Content-Type", "application/json")
-        .header("User-Agent", concat!("ralph/", env!("CARGO_PKG_VERSION")));
+        .header("User-Agent", concat!("cueloop/", env!("CARGO_PKG_VERSION")));
 
     if let Some(sig) = signature {
-        request = request.header("X-Ralph-Signature", sig);
+        request = request.header("X-CueLoop-Signature", sig);
     }
 
     let response = request.send(body)?;

@@ -187,7 +187,7 @@ fn classifier_routes_schemas_working_tree_to_macos_ci() {
 }
 
 #[test]
-fn classifier_routes_apps_ralphmac_working_tree_to_macos_ci() {
+fn classifier_routes_apps_cueloopmac_working_tree_to_macos_ci() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
@@ -321,11 +321,11 @@ fn classifier_emit_eval_exports_assignments() {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("RALPH_AGENT_CI_TARGET=") && stdout.contains("noop"),
-        "emit-eval should assign RALPH_AGENT_CI_TARGET=noop on clean tree:\n{stdout}"
+        stdout.contains("CUELOOP_AGENT_CI_TARGET=") && stdout.contains("noop"),
+        "emit-eval should assign CUELOOP_AGENT_CI_TARGET=noop on clean tree:\n{stdout}"
     );
     assert!(
-        stdout.contains("RALPH_AGENT_CI_REASON="),
-        "emit-eval should assign RALPH_AGENT_CI_REASON:\n{stdout}"
+        stdout.contains("CUELOOP_AGENT_CI_REASON="),
+        "emit-eval should assign CUELOOP_AGENT_CI_REASON:\n{stdout}"
     );
 }

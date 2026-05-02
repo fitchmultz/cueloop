@@ -12,10 +12,10 @@
 # - VERSION is a validated semver string before transaction initialization.
 # - STATE_FILE points at an env-style file owned by the release transaction.
 
-if [ -n "${RALPH_RELEASE_STATE_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_STATE_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_STATE_SOURCED=1
+CUELOOP_RELEASE_STATE_SOURCED=1
 set -euo pipefail
 
 release_state_reset_vars() {

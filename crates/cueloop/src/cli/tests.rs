@@ -100,7 +100,7 @@ fn app_parity_registry_proof_anchors_point_to_real_tests() {
 
 #[test]
 fn cli_parses_queue_list_smoke() {
-    let cli = Cli::try_parse_from(["ralph", "queue", "list"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "queue", "list"]).expect("parse");
     match cli.command {
         Command::Queue(_) => {}
         other => panic!(
@@ -112,7 +112,7 @@ fn cli_parses_queue_list_smoke() {
 
 #[test]
 fn cli_parses_queue_archive_subcommand() {
-    let cli = Cli::try_parse_from(["ralph", "queue", "archive"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "queue", "archive"]).expect("parse");
     match cli.command {
         Command::Queue(queue::QueueArgs { command }) => match command {
             queue::QueueCommand::Archive(_) => {}
@@ -124,7 +124,7 @@ fn cli_parses_queue_archive_subcommand() {
 
 #[test]
 fn cli_rejects_invalid_prompt_phase() {
-    let err = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "4"])
+    let err = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "4"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();
@@ -133,7 +133,7 @@ fn cli_rejects_invalid_prompt_phase() {
 
 #[test]
 fn cli_parses_run_git_revert_mode() {
-    let cli = Cli::try_parse_from(["ralph", "run", "one", "--git-revert-mode", "disabled"])
+    let cli = Cli::try_parse_from(["cueloop", "run", "one", "--git-revert-mode", "disabled"])
         .expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
@@ -149,7 +149,7 @@ fn cli_parses_run_git_revert_mode() {
 #[test]
 fn cli_parses_run_git_publish_mode() {
     let cli =
-        Cli::try_parse_from(["ralph", "run", "one", "--git-publish-mode", "off"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "run", "one", "--git-publish-mode", "off"]).expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
             run::RunCommand::One(args) => {
@@ -163,7 +163,7 @@ fn cli_parses_run_git_publish_mode() {
 
 #[test]
 fn cli_parses_run_include_draft() {
-    let cli = Cli::try_parse_from(["ralph", "run", "one", "--include-draft"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "run", "one", "--include-draft"]).expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
             run::RunCommand::One(args) => {
@@ -177,7 +177,7 @@ fn cli_parses_run_include_draft() {
 
 #[test]
 fn cli_parses_run_one_debug() {
-    let cli = Cli::try_parse_from(["ralph", "run", "one", "--debug"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "run", "one", "--debug"]).expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
             run::RunCommand::One(args) => {
@@ -191,7 +191,7 @@ fn cli_parses_run_one_debug() {
 
 #[test]
 fn cli_parses_run_loop_debug() {
-    let cli = Cli::try_parse_from(["ralph", "run", "loop", "--debug"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "run", "loop", "--debug"]).expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
             run::RunCommand::Loop(args) => {
@@ -205,8 +205,8 @@ fn cli_parses_run_loop_debug() {
 
 #[test]
 fn cli_parses_machine_run_loop_parallel_override() {
-    let cli =
-        Cli::try_parse_from(["ralph", "machine", "run", "loop", "--parallel", "3"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "machine", "run", "loop", "--parallel", "3"])
+        .expect("parse");
     match cli.command {
         Command::Machine(args) => match args.command {
             machine::MachineCommand::Run(args) => match args.command {
@@ -224,7 +224,7 @@ fn cli_parses_machine_run_loop_parallel_override() {
 #[test]
 fn cli_parses_machine_run_loop_parallel_default_missing_value() {
     let cli =
-        Cli::try_parse_from(["ralph", "machine", "run", "loop", "--parallel"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "machine", "run", "loop", "--parallel"]).expect("parse");
     match cli.command {
         Command::Machine(args) => match args.command {
             machine::MachineCommand::Run(args) => match args.command {
@@ -241,7 +241,8 @@ fn cli_parses_machine_run_loop_parallel_default_missing_value() {
 
 #[test]
 fn cli_parses_machine_run_stop_dry_run() {
-    let cli = Cli::try_parse_from(["ralph", "machine", "run", "stop", "--dry-run"]).expect("parse");
+    let cli =
+        Cli::try_parse_from(["cueloop", "machine", "run", "stop", "--dry-run"]).expect("parse");
     match cli.command {
         Command::Machine(args) => match args.command {
             machine::MachineCommand::Run(args) => match args.command {
@@ -259,7 +260,7 @@ fn cli_parses_machine_run_stop_dry_run() {
 #[test]
 fn cli_parses_machine_task_build_input() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "machine",
         "task",
         "build",
@@ -283,7 +284,7 @@ fn cli_parses_machine_task_build_input() {
 
 #[test]
 fn cli_parses_run_one_id() {
-    let cli = Cli::try_parse_from(["ralph", "run", "one", "--id", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]).expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
             run::RunCommand::One(args) => {
@@ -297,7 +298,7 @@ fn cli_parses_run_one_id() {
 
 #[test]
 fn cli_parses_task_update_without_id() {
-    let cli = Cli::try_parse_from(["ralph", "task", "update"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "update"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Update(args)) => {
@@ -311,7 +312,7 @@ fn cli_parses_task_update_without_id() {
 
 #[test]
 fn cli_parses_task_update_with_id() {
-    let cli = Cli::try_parse_from(["ralph", "task", "update", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "update", "RQ-0001"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Update(args)) => {
@@ -325,7 +326,7 @@ fn cli_parses_task_update_with_id() {
 
 #[test]
 fn cli_rejects_removed_run_one_interactive_flag_short() {
-    let err = Cli::try_parse_from(["ralph", "run", "one", "-i"])
+    let err = Cli::try_parse_from(["cueloop", "run", "one", "-i"])
         .err()
         .expect("parse failure");
     let msg = err.to_string().to_lowercase();
@@ -337,7 +338,7 @@ fn cli_rejects_removed_run_one_interactive_flag_short() {
 
 #[test]
 fn cli_rejects_removed_run_one_interactive_flag_long() {
-    let err = Cli::try_parse_from(["ralph", "run", "one", "--interactive"])
+    let err = Cli::try_parse_from(["cueloop", "run", "one", "--interactive"])
         .err()
         .expect("parse failure");
     let msg = err.to_string().to_lowercase();
@@ -349,7 +350,7 @@ fn cli_rejects_removed_run_one_interactive_flag_long() {
 
 #[test]
 fn cli_parses_task_default_subcommand() {
-    let cli = Cli::try_parse_from(["ralph", "task", "Add", "tests"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "Add", "tests"]).expect("parse");
     match cli.command {
         Command::Task(args) => {
             assert!(args.command.is_none(), "expected implicit build subcommand");
@@ -364,7 +365,7 @@ fn cli_parses_task_default_subcommand() {
 
 #[test]
 fn cli_parses_task_ready_subcommand() {
-    let cli = Cli::try_parse_from(["ralph", "task", "ready", "RQ-0005"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "ready", "RQ-0005"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Ready(args)) => {
@@ -378,7 +379,7 @@ fn cli_parses_task_ready_subcommand() {
 
 #[test]
 fn cli_parses_task_done_subcommand() {
-    let cli = Cli::try_parse_from(["ralph", "task", "done", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "done", "RQ-0001"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Done(args)) => {
@@ -392,7 +393,7 @@ fn cli_parses_task_done_subcommand() {
 
 #[test]
 fn cli_parses_task_reject_subcommand() {
-    let cli = Cli::try_parse_from(["ralph", "task", "reject", "RQ-0002"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "reject", "RQ-0002"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Reject(args)) => {
@@ -406,7 +407,7 @@ fn cli_parses_task_reject_subcommand() {
 
 #[test]
 fn cli_rejects_queue_set_status_subcommand() {
-    let result = Cli::try_parse_from(["ralph", "queue", "set-status", "RQ-0001", "doing"]);
+    let result = Cli::try_parse_from(["cueloop", "queue", "set-status", "RQ-0001", "doing"]);
     assert!(result.is_err(), "expected queue set-status to be rejected");
     let msg = result
         .err()
@@ -421,7 +422,7 @@ fn cli_rejects_queue_set_status_subcommand() {
 
 #[test]
 fn cli_rejects_removed_run_loop_interactive_flag_short() {
-    let err = Cli::try_parse_from(["ralph", "run", "loop", "-i"])
+    let err = Cli::try_parse_from(["cueloop", "run", "loop", "-i"])
         .err()
         .expect("parse failure");
     let msg = err.to_string().to_lowercase();
@@ -433,7 +434,7 @@ fn cli_rejects_removed_run_loop_interactive_flag_short() {
 
 #[test]
 fn cli_rejects_removed_run_loop_interactive_flag_long() {
-    let err = Cli::try_parse_from(["ralph", "run", "loop", "--interactive"])
+    let err = Cli::try_parse_from(["cueloop", "run", "loop", "--interactive"])
         .err()
         .expect("parse failure");
     let msg = err.to_string().to_lowercase();
@@ -445,7 +446,7 @@ fn cli_rejects_removed_run_loop_interactive_flag_long() {
 
 #[test]
 fn cli_rejects_removed_tui_command() {
-    let err = Cli::try_parse_from(["ralph", "tui"])
+    let err = Cli::try_parse_from(["cueloop", "tui"])
         .err()
         .expect("parse failure");
     let msg = err.to_string().to_lowercase();
@@ -457,7 +458,7 @@ fn cli_rejects_removed_tui_command() {
 
 #[test]
 fn cli_rejects_run_loop_with_id_flag() {
-    let err = Cli::try_parse_from(["ralph", "run", "loop", "--id", "RQ-0001"])
+    let err = Cli::try_parse_from(["cueloop", "run", "loop", "--id", "RQ-0001"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();

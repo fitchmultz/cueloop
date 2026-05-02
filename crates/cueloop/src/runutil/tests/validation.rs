@@ -78,7 +78,7 @@ fn is_queue_validation_error_detects_invalid_prefix_errors() {
     let err = anyhow::anyhow!("Empty id_prefix: prefix is required");
     assert!(crate::runutil::is_queue_validation_error(&err));
 
-    let err = anyhow::anyhow!("Unsupported queue.json version: 2. Ralph requires version 1");
+    let err = anyhow::anyhow!("Unsupported queue.json version: 2. CueLoop requires version 1");
     assert!(crate::runutil::is_queue_validation_error(&err));
 }
 

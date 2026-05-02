@@ -34,10 +34,10 @@ use super::ProcessorExecutor;
 use std::os::unix::fs::PermissionsExt;
 
 fn trust_repo(repo_root: &Path) {
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).unwrap();
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).unwrap();
     std::fs::write(
-        ralph_dir.join("trust.jsonc"),
+        cueloop_dir.join("trust.jsonc"),
         r#"{"allow_project_commands": true}"#,
     )
     .unwrap();
@@ -127,7 +127,7 @@ fn test_no_enabled_processors_is_noop() {
 fn test_validate_task_invokes_processor() {
     let tmp = TempDir::new().unwrap();
     trust_repo(tmp.path());
-    let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+    let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
 
     let script = r#"#!/bin/bash
 HOOK="$1"
@@ -163,7 +163,7 @@ exit 0
 fn test_pre_prompt_mutates_prompt() {
     let tmp = TempDir::new().unwrap();
     trust_repo(tmp.path());
-    let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+    let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
 
     let script = r#"#!/bin/bash
 HOOK="$1"
@@ -176,7 +176,7 @@ fi
 exit 0
 "#;
     create_processor_plugin(&plugin_dir, "test.plugin", vec!["pre_prompt"], script).unwrap();
-    let plugin_root = tmp.path().join(".ralph/plugins");
+    let plugin_root = tmp.path().join(".cueloop/plugins");
     let discovered = crate::plugins::discovery::discover_plugins(tmp.path()).unwrap();
     assert!(
         discovered.contains_key("test.plugin"),
@@ -216,8 +216,8 @@ fn test_multiple_processors_chain_in_order() {
     let tmp = TempDir::new().unwrap();
     trust_repo(tmp.path());
 
-    let plugin_a_dir = tmp.path().join(".ralph/plugins/a.plugin");
-    let plugin_b_dir = tmp.path().join(".ralph/plugins/b.plugin");
+    let plugin_a_dir = tmp.path().join(".cueloop/plugins/a.plugin");
+    let plugin_b_dir = tmp.path().join(".cueloop/plugins/b.plugin");
 
     let script_a = r#"#!/bin/bash
 HOOK="$1"
@@ -270,7 +270,7 @@ exit 0
 fn test_hook_filtering_plugin_without_hook_not_invoked() {
     let tmp = TempDir::new().unwrap();
     trust_repo(tmp.path());
-    let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+    let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
 
     let script = r#"#!/bin/bash
 echo "CALLED" > /tmp/should_not_exist.txt
@@ -300,7 +300,7 @@ exit 0
 fn test_non_zero_exit_surfaces_error() {
     let tmp = TempDir::new().unwrap();
     trust_repo(tmp.path());
-    let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+    let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
 
     let script = r#"#!/bin/bash
 echo "Validation failed!" >&2
@@ -334,7 +334,7 @@ exit 1
 fn test_processor_uses_manifest_bin() {
     let tmp = TempDir::new().unwrap();
     trust_repo(tmp.path());
-    let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+    let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
 
     let script = r#"#!/bin/bash
 echo "manifest" >> "$3"

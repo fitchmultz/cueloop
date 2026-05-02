@@ -269,7 +269,7 @@ Todo → Doing → Done (or Rejected)
 
 ### Completion Signals
 
-Phase 3 writes a completion signal to `.ralph/cache/completions/{TASK_ID}.json`:
+Phase 3 writes a completion signal to `.cueloop/cache/completions/{TASK_ID}.json`:
 
 ```json
 {
@@ -321,7 +321,7 @@ The Phase 2 → Phase 3 handoff includes a completion checklist that ensures imp
 
 ### Checklist Items
 
-The Phase 2 handoff checklist (`.ralph/prompts/phase2_handoff_checklist.md`) typically includes:
+The Phase 2 handoff checklist (`.cueloop/prompts/phase2_handoff_checklist.md`) typically includes:
 
 - **CI Gate**: the configured CI gate passes with no warnings (`make agent-ci` in this repo)
 - **No deferrals**: Phase 2 closes follow-ups it discovers; only true blockers may remain, with explicit remediation steps
@@ -337,7 +337,7 @@ The runner is prompted to verify checklist items before signaling completion. Th
 
 ### Customization
 
-Override the default checklist by creating `.cueloop/prompts/phase2_handoff_checklist.md` (legacy `.ralph/prompts/phase2_handoff_checklist.md` remains supported):
+Override the default checklist by creating `.cueloop/prompts/phase2_handoff_checklist.md` (legacy `.cueloop/prompts/phase2_handoff_checklist.md` remains supported):
 
 ```markdown
 # Phase 2 Handoff Checklist

@@ -18,7 +18,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - State file path is under `.ralph/cache/parallel/state.json`.
+//! - State file path is under `.cueloop/cache/parallel/state.json`.
 //! - Target branch changes are only allowed when no active work is in flight.
 
 use crate::git;

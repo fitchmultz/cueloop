@@ -45,9 +45,9 @@ pub fn config_has_key(ctx: &MigrationContext, key: &str) -> bool {
 /// always prefers the JSONC path for stable layering, but migrations must inspect legacy `.json`
 /// when only that file exists.
 pub(crate) fn project_migration_config_disk_paths(repo_root: &Path) -> Vec<PathBuf> {
-    let ralph = repo_root.join(".ralph");
-    let jsonc = ralph.join("config.jsonc");
-    let json = ralph.join("config.json");
+    let cueloop = repo_root.join(".cueloop");
+    let jsonc = cueloop.join("config.jsonc");
+    let json = cueloop.join("config.json");
     let mut paths = Vec::new();
     if jsonc.exists() {
         paths.push(jsonc);

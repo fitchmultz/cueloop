@@ -101,7 +101,7 @@ fn blocked_preview_continuation_has_no_placeholder_ellipsis() {
 fn test_checkpoint() -> DecompositionPreviewCheckpointRef {
     DecompositionPreviewCheckpointRef {
         id: "dp-test-123".to_string(),
-        path: ".ralph/cache/decompose-previews/dp-test-123.json".to_string(),
+        path: ".cueloop/cache/decompose-previews/dp-test-123.json".to_string(),
         created_at: "2026-04-30T00:00:00Z".to_string(),
         expires_at: "2026-05-07T00:00:00Z".to_string(),
     }

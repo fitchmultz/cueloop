@@ -32,7 +32,7 @@ pub enum TaskMutateFormatArg {
 pub struct TaskMutateArgs {
     /// Read the mutation request from a JSON file.
     ///
-    /// When omitted, Ralph reads the JSON request from stdin.
+    /// When omitted, CueLoop reads the JSON request from stdin.
     #[arg(long, value_name = "PATH")]
     pub input: Option<String>,
 

@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::support::{make_task, resolved_for_repo, write_done_tasks, write_queue};
 use crate::commands::run::supervision::{PushPolicy, post_run_supervise};
@@ -26,7 +26,7 @@ use tempfile::TempDir;
 
 fn write_empty_queue(repo_root: &Path) -> anyhow::Result<()> {
     queue::save_queue(
-        &repo_root.join(".ralph/queue.jsonc"),
+        &repo_root.join(".cueloop/queue.jsonc"),
         &crate::contracts::QueueFile {
             version: 1,
             tasks: vec![],
@@ -290,7 +290,7 @@ fn post_run_supervise_allows_productivity_json_dirty() -> anyhow::Result<()> {
     write_queue(temp.path(), TaskStatus::Done)?;
     git_test::commit_all(temp.path(), "init")?;
 
-    let cache_dir = temp.path().join(".ralph").join("cache");
+    let cache_dir = temp.path().join(".cueloop").join("cache");
     std::fs::create_dir_all(&cache_dir)?;
     std::fs::write(
         cache_dir.join("productivity.json"),

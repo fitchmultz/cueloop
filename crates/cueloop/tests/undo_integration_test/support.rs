@@ -12,7 +12,7 @@
 //! - Call `snapshot_ids_from_list_output()` when a test needs to parse `cueloop undo --list` output.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Helpers preserve the original end-to-end CLI setup flow: temp dir outside repo, git init, seed `.ralph/`.
+//! - Helpers preserve the original end-to-end CLI setup flow: temp dir outside repo, git init, seed `.cueloop/`.
 //! - Snapshot ID parsing intentionally preserves the original `ID:`-based extraction logic exactly.
 
 use super::*;
@@ -20,7 +20,7 @@ use super::*;
 pub(crate) fn setup_undo_repo() -> Result<TempDir> {
     let dir = temp_dir_outside_repo();
     git_init(dir.path())?;
-    seed_ralph_dir(dir.path())?;
+    seed_cueloop_dir(dir.path())?;
     Ok(dir)
 }
 

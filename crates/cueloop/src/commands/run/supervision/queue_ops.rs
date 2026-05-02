@@ -154,7 +154,7 @@ pub(crate) fn ensure_task_done_dirty_or_revert(
                 "{}",
                 runutil::format_revert_failure_message(
                     &format!(
-                        "Task inconsistency: task {task_id} is archived in .ralph/done.jsonc but its status is not 'done'. Review the task state in .ralph/done.jsonc."
+                        "Task inconsistency: task {task_id} is archived in .cueloop/done.jsonc but its status is not 'done'. Review the task state in .cueloop/done.jsonc."
                     ),
                     outcome,
                 )
@@ -178,7 +178,7 @@ pub(crate) fn ensure_task_done_clean_or_bail(
     if task_status != TaskStatus::Done {
         if in_done {
             bail!(
-                "Task inconsistency: task {task_id} is archived in .ralph/done.jsonc but its status is not 'done'. Review the task state in .ralph/done.jsonc."
+                "Task inconsistency: task {task_id} is archived in .cueloop/done.jsonc but its status is not 'done'. Review the task state in .cueloop/done.jsonc."
             );
         }
         let now = timeutil::now_utc_rfc3339()?;

@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::stream::{StreamSink, spawn_reader};
 use crate::debuglog::{enable, reset_for_tests, test_lock};
@@ -45,7 +45,7 @@ fn spawn_reader_writes_raw_chunks_to_debug_log() {
     );
     handle.join().expect("join").expect("reader ok");
 
-    let debug_log = dir.path().join(".ralph/logs/debug.log");
+    let debug_log = dir.path().join(".cueloop/logs/debug.log");
     let contents = fs::read_to_string(&debug_log).expect("read log");
     assert!(
         contents.contains("[RUNNER STDERR]"),

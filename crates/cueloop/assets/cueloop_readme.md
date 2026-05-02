@@ -1,7 +1,7 @@
 <!-- CUELOOP_README_VERSION: 9 -->
 # CueLoop runtime files
 
-This repo is using CueLoop. The `cueloop` executable is the primary command name; `ralph` remains a legacy alias for this phase. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`; legacy repos that already use `.ralph/` remain supported.
+This repo is using CueLoop. The `cueloop` executable is the primary command name; `cueloop` remains a legacy alias for this phase. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`; legacy repos that already use `.cueloop/` remain supported.
 
 > This file is generated and owned by CueLoop. `cueloop init` and agent-facing write-enabled commands may refresh it when CueLoop ships a newer template. Avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
@@ -14,7 +14,7 @@ This repo is using CueLoop. The `cueloop` executable is the primary command name
 - `{{RUNTIME_DIR}}/logs/` — debug logs; should stay gitignored.
 - `{{RUNTIME_DIR}}/trust.jsonc` — machine-local trust decision; should stay gitignored.
 
-Legacy `.ralph/` runtime directories are read in place. Do not rename `.ralph/` manually; use `cueloop migrate runtime-dir --check` to preview and `cueloop migrate runtime-dir --apply` to move project state to `.cueloop/` when ready.
+Legacy `.cueloop/` runtime directories are read in place. Do not rename `.cueloop/` manually; use `cueloop migrate runtime-dir --check` to preview and `cueloop migrate runtime-dir --apply` to move project state to `.cueloop/` when ready.
 
 ## Core commands
 
@@ -142,7 +142,7 @@ Standard placeholders like `{{USER_REQUEST}}` are still processed after variable
 
 ## Prompt overrides
 
-Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `{{RUNTIME_DIR}}/prompts/`; when both exist, `.cueloop/prompts/` takes precedence over legacy `.ralph/prompts/`.
+Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `{{RUNTIME_DIR}}/prompts/`; when both exist, `.cueloop/prompts/` takes precedence over legacy `.cueloop/prompts/`.
 
 Useful commands:
 
@@ -204,7 +204,7 @@ When runner operations fail, CueLoop writes safeguard dumps to temp directories 
 Raw, non-redacted dumps require explicit opt-in:
 
 ```bash
-RALPH_RAW_DUMP=1 cueloop run one
+CUELOOP_RAW_DUMP=1 cueloop run one
 cueloop run one --debug
 ```
 
@@ -212,7 +212,7 @@ Security notes:
 
 - Never commit safeguard dumps.
 - Debug mode writes raw runner output to `{{RUNTIME_DIR}}/logs/debug.log`.
-- Temp directories still use the legacy `/tmp/ralph/` root and `ralph_` prefixes until a later compatibility slice.
+- Temp directories still use the legacy `/tmp/cueloop/` root and `cueloop_` prefixes until a later compatibility slice.
 
 ## Common flags
 

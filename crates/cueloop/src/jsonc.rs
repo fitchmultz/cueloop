@@ -1,7 +1,7 @@
-//! JSONC parsing utilities for Ralph.
+//! JSONC parsing utilities for CueLoop.
 //!
 //! Purpose:
-//! - JSONC parsing utilities for Ralph.
+//! - JSONC parsing utilities for CueLoop.
 //!
 //! Responsibilities:
 //! - Provide JSONC (JSON with Comments) parsing with comment support.

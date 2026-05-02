@@ -1,7 +1,7 @@
-//! Integration tests for ralph CLI behavior against real git repositories.
+//! Integration tests for cueloop CLI behavior against real git repositories.
 //!
 //! Purpose:
-//! - Integration tests for ralph CLI behavior against real git repositories.
+//! - Integration tests for cueloop CLI behavior against real git repositories.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 mod test_support;

@@ -67,10 +67,10 @@ fn push_upstream_with_rebase_recovers_no_upstream_branch_behind_remote() -> anyh
     std::fs::write(seed.path().join("base.txt"), "base\n")?;
     git_test::commit_all(seed.path(), "init")?;
     git_test::git_run(seed.path(), &["push", "-u", "origin", "HEAD"])?;
-    git_test::git_run(seed.path(), &["checkout", "-b", "ralph/RQ-0940"])?;
+    git_test::git_run(seed.path(), &["checkout", "-b", "cueloop/RQ-0940"])?;
     std::fs::write(seed.path().join("task.txt"), "remote-only\n")?;
     git_test::commit_all(seed.path(), "remote task")?;
-    git_test::git_run(seed.path(), &["push", "-u", "origin", "ralph/RQ-0940"])?;
+    git_test::git_run(seed.path(), &["push", "-u", "origin", "cueloop/RQ-0940"])?;
 
     let local = TempDir::new()?;
     git_test::clone_repo(remote.path(), local.path())?;
@@ -81,11 +81,11 @@ fn push_upstream_with_rebase_recovers_no_upstream_branch_behind_remote() -> anyh
             "checkout",
             "--no-track",
             "-b",
-            "ralph/RQ-0940",
+            "cueloop/RQ-0940",
             "origin/main",
         ],
     )?;
-    git_test::git_run(local.path(), &["fetch", "origin", "ralph/RQ-0940"])?;
+    git_test::git_run(local.path(), &["fetch", "origin", "cueloop/RQ-0940"])?;
 
     assert!(git_test::git_run(local.path(), &["rev-parse", "--abbrev-ref", "@{u}"]).is_err());
     let before_counts = git_test::git_output(
@@ -94,7 +94,7 @@ fn push_upstream_with_rebase_recovers_no_upstream_branch_behind_remote() -> anyh
             "rev-list",
             "--left-right",
             "--count",
-            "origin/ralph/RQ-0940...HEAD",
+            "origin/cueloop/RQ-0940...HEAD",
         ],
     )?;
     assert_eq!(
@@ -108,7 +108,7 @@ fn push_upstream_with_rebase_recovers_no_upstream_branch_behind_remote() -> anyh
         local.path(),
         &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
     )?;
-    assert_eq!(upstream, "origin/ralph/RQ-0940");
+    assert_eq!(upstream, "origin/cueloop/RQ-0940");
 
     let after_counts = git_test::git_output(
         local.path(),

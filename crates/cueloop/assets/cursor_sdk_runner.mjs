@@ -1,17 +1,17 @@
 // Purpose:
-// - Bridge Ralph's Cursor runner integration to the local @cursor/sdk package.
+// - Bridge CueLoop's Cursor runner integration to the local @cursor/sdk package.
 //
 // Responsibilities:
 // - Read one JSON runner request from stdin and invoke Cursor SDK run/resume APIs.
-// - Normalize Cursor SDK stream events into Ralph's newline-delimited JSON protocol.
+// - Normalize Cursor SDK stream events into CueLoop's newline-delimited JSON protocol.
 // - Resolve @cursor/sdk from an explicit module path, the helper environment, or the workspace.
 //
 // Non-scope:
-// - Selecting Ralph tasks, resolving runner configuration, or managing subprocess lifetimes.
-// - Persisting queue/done state or interpreting Ralph phase semantics beyond request flags.
+// - Selecting CueLoop tasks, resolving runner configuration, or managing subprocess lifetimes.
+// - Persisting queue/done state or interpreting CueLoop phase semantics beyond request flags.
 //
 // Usage:
-// - Embedded by Ralph and executed as `node <helper>.mjs` with a serialized request on stdin.
+// - Embedded by CueLoop and executed as `node <helper>.mjs` with a serialized request on stdin.
 //
 // Invariants/Assumptions:
 // - The configured Node runtime is supported by @cursor/sdk.
@@ -51,7 +51,7 @@ async function readRequest() {
 }
 
 async function loadCursorSdk(cwd) {
-  const configuredPath = process.env.RALPH_CURSOR_SDK_MODULE_PATH;
+  const configuredPath = process.env.CUELOOP_CURSOR_SDK_MODULE_PATH;
   if (configuredPath) {
     try {
       return await importCursorSdkFromPath(configuredPath);
@@ -142,7 +142,7 @@ function normalizeCursorSdkModule(moduleNamespace) {
 
 function sdkLoadError(primaryError, directError, cwdError) {
   const error = new Error(
-    `Unable to load @cursor/sdk. Install it for the target workspace with \`npm install --save-exact @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}\`, or set RALPH_CURSOR_SDK_MODULE_PATH to the SDK entrypoint.`,
+    `Unable to load @cursor/sdk. Install it for the target workspace with \`npm install --save-exact @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}\`, or set CUELOOP_CURSOR_SDK_MODULE_PATH to the SDK entrypoint.`,
   );
   error.name = "CursorSdkLoadError";
   error.cause = {

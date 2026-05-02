@@ -120,7 +120,7 @@ exit 0
 
 /// Read parallel state file from a repo as raw JSON value.
 pub fn read_parallel_state(dir: &Path) -> Result<Option<serde_json::Value>> {
-    let state_path = dir.join(".ralph/cache/parallel/state.json");
+    let state_path = dir.join(".cueloop/cache/parallel/state.json");
     if !state_path.exists() {
         return Ok(None);
     }

@@ -4,7 +4,7 @@
 //! - Daemon stop command implementation.
 //!
 //! Responsibilities:
-//! - Stop a running Ralph daemon process gracefully.
+//! - Stop a running CueLoop daemon process gracefully.
 //! - Clean up daemon state and lock files after stopping.
 //! - Handle cases where daemon is not running or state is stale.
 //!
@@ -17,8 +17,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Daemon uses a dedicated lock at `.ralph/cache/daemon.lock`.
-//! - Daemon state is stored at `.ralph/cache/daemon.json`.
+//! - Daemon uses a dedicated lock at `.cueloop/cache/daemon.lock`.
+//! - Daemon state is stored at `.cueloop/cache/daemon.json`.
 //! - Stop signal is created via `crate::signal::create_stop_signal`.
 
 use crate::config::Resolved;
@@ -33,7 +33,7 @@ use super::{
 
 /// Stop the daemon gracefully.
 pub fn stop(resolved: &Resolved) -> Result<()> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
 
     // Check if daemon is running
     let state = match get_daemon_state(&cache_dir)? {

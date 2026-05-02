@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - `cueloop init --force --non-interactive` creates a usable `.ralph/` structure.
+//! - `cueloop init --force --non-interactive` creates a usable `.cueloop/` structure.
 //! - Auto-archive respects auto_archive_terminal_after_days config setting.
 
 use anyhow::Result;
@@ -29,7 +29,7 @@ mod test_support;
 fn task_edit_lists_archived_task_ids_in_output() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
@@ -38,7 +38,7 @@ fn task_edit_lists_archived_task_ids_in_output() -> Result<()> {
             "auto_archive_terminal_after_days": 0
         }
     }"#;
-    std::fs::write(dir.path().join(".ralph/config.jsonc"), config)?;
+    std::fs::write(dir.path().join(".cueloop/config.jsonc"), config)?;
 
     // Create tasks: one todo (to edit), two terminal (to be archived)
     let todo_task = test_support::make_test_task("RQ-0001", "Todo task", TaskStatus::Todo);
@@ -106,7 +106,7 @@ fn task_edit_lists_archived_task_ids_in_output() -> Result<()> {
 fn task_edit_no_auto_archive_flag_prevents_archiving() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
@@ -115,7 +115,7 @@ fn task_edit_no_auto_archive_flag_prevents_archiving() -> Result<()> {
             "auto_archive_terminal_after_days": 0
         }
     }"#;
-    std::fs::write(dir.path().join(".ralph/config.jsonc"), config)?;
+    std::fs::write(dir.path().join(".cueloop/config.jsonc"), config)?;
 
     // Create tasks: one todo (to edit), two terminal (should NOT be archived)
     let todo_task = test_support::make_test_task("RQ-0001", "Todo task", TaskStatus::Todo);
@@ -179,7 +179,7 @@ fn task_edit_no_auto_archive_flag_prevents_archiving() -> Result<()> {
 fn task_edit_no_archive_message_when_no_terminal_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create a config with auto_archive_terminal_after_days = 0 (immediate)
     let config = r#"{
@@ -188,7 +188,7 @@ fn task_edit_no_archive_message_when_no_terminal_tasks() -> Result<()> {
             "auto_archive_terminal_after_days": 0
         }
     }"#;
-    std::fs::write(dir.path().join(".ralph/config.jsonc"), config)?;
+    std::fs::write(dir.path().join(".cueloop/config.jsonc"), config)?;
 
     // Create only non-terminal tasks
     let todo_task = test_support::make_test_task("RQ-0001", "Todo task", TaskStatus::Todo);
@@ -221,7 +221,7 @@ fn task_edit_no_archive_message_when_no_terminal_tasks() -> Result<()> {
 fn task_edit_help_includes_no_auto_archive_flag() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "edit", "--help"]);

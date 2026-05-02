@@ -17,7 +17,7 @@
 //!
 //! Invariants/assumptions:
 //! - Helpers mirror the current run-command config contract closely enough for unit tests.
-//! - Queue paths remain rooted under `.ralph/` for all generated resolved configs.
+//! - Queue paths remain rooted under `.cueloop/` for all generated resolved configs.
 
 use crate::agent::AgentOverrides;
 use crate::config;
@@ -31,8 +31,8 @@ use tempfile::TempDir;
 
 fn default_queue_config() -> QueueConfig {
     QueueConfig {
-        file: Some(PathBuf::from(".ralph/queue.json")),
-        done_file: Some(PathBuf::from(".ralph/done.json")),
+        file: Some(PathBuf::from(".cueloop/queue.json")),
+        done_file: Some(PathBuf::from(".cueloop/done.json")),
         id_prefix: Some("RQ".to_string()),
         id_width: Some(4),
         size_warning_threshold_kb: Some(500),
@@ -83,12 +83,12 @@ fn build_resolved(repo_root: PathBuf, cfg: Config) -> config::Resolved {
     config::Resolved {
         config: cfg,
         repo_root: repo_root.clone(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".cueloop/queue.json"),
+        done_path: repo_root.join(".cueloop/done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".cueloop/config.json")),
     }
 }
 

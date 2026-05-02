@@ -38,16 +38,16 @@ use runtime::sync_cueloop_runtime_tree;
 
 /// Sync cueloop state files from repo root to workspace.
 ///
-/// Syncs `.ralph/` runtime files plus gitignored allowlisted files.
-/// Ephemeral `.ralph` runtime paths are intentionally NOT synchronized.
+/// Syncs `.cueloop/` runtime files plus gitignored allowlisted files.
+/// Ephemeral `.cueloop` runtime paths are intentionally NOT synchronized.
 /// Queue/done files are seeded explicitly using resolved queue/done paths so
-/// parallel workers work with `.jsonc` migrations and gitignored `.ralph` setups.
+/// parallel workers work with `.jsonc` migrations and gitignored `.cueloop` setups.
 pub(crate) fn sync_cueloop_state(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {
-    let target = workspace_path.join(".ralph");
+    let target = workspace_path.join(".cueloop");
     std::fs::create_dir_all(&target)
         .with_context(|| format!("create workspace cueloop dir {}", target.display()))?;
 
-    let source = resolved.repo_root.join(".ralph");
+    let source = resolved.repo_root.join(".cueloop");
     sync_cueloop_runtime_tree(resolved, &source, &target)?;
     sync_worker_bookkeeping_files(resolved, workspace_path)?;
     sync_gitignored(resolved, workspace_path)?;

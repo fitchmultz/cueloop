@@ -130,7 +130,7 @@ High-confidence first cut:
 - stop normalizing every `NSApp.windows` entry
 - skip untitled/system/helper windows
 - skip settings windows entirely
-- reserve reveal/placement logic for Ralph workspace windows only
+- reserve reveal/placement logic for CueLoop workspace windows only
 - remove `orderFrontRegardless()` from generic normalization if possible
 
 This should be the first live validation cut because it is the best match for the black `500x500` stray surface.
@@ -177,7 +177,7 @@ Add temporary logging in:
 
 Expected value of this instrumentation:
 
-- confirms whether the untitled `500x500` surface is being normalized/fronted by Ralph
+- confirms whether the untitled `500x500` surface is being normalized/fronted by CueLoop
 - confirms whether the rounded helper appears only while `isLoading == true`
 
 ## Bottom line
@@ -185,7 +185,7 @@ Expected value of this instrumentation:
 The current best explanation is not “two settings windows.” It is:
 
 1. SwiftUI/AppKit creates temporary settings-related windows or helper hosts.
-2. Ralph’s app delegate currently treats those like normal app windows and force-fronts them.
+2. CueLoop’s app delegate currently treats those like normal app windows and force-fronts them.
 3. Settings content also creates a material-backed loading overlay during first load, which likely accounts for the rounded high-layer helper surface.
 
 The highest-confidence next move is to scope `AppDelegate` window normalization to real workspace windows only, then remove the material-backed loading overlay and re-run CGWindow validation.

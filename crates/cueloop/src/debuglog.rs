@@ -4,7 +4,7 @@
 //! - Provide an opt-in sink for raw diagnostic output that must not appear in normal logs.
 //!
 //! Responsibilities:
-//! - Initialize `.ralph/logs/debug.log` when debug logging is enabled.
+//! - Initialize `.cueloop/logs/debug.log` when debug logging is enabled.
 //! - Rotate oversized debug logs with a bounded backup count.
 //! - Serialize concurrent writes through a shared mutex-protected file handle.
 //!
@@ -43,7 +43,7 @@ pub struct DebugLog {
 
 impl DebugLog {
     pub fn new(repo_root: &Path) -> Result<Self> {
-        let logs_dir = repo_root.join(".ralph").join("logs");
+        let logs_dir = repo_root.join(".cueloop").join("logs");
         if logs_dir.exists() && !logs_dir.is_dir() {
             bail!(
                 "debug logs path exists and is not a directory: {}",
@@ -252,7 +252,7 @@ mod tests {
         write_log_record(&record);
         write_runner_chunk(DebugStream::Stdout, "runner output\n");
 
-        let debug_log = dir.path().join(".ralph/logs/debug.log");
+        let debug_log = dir.path().join(".cueloop/logs/debug.log");
         let contents = fs::read_to_string(&debug_log).expect("read log");
         assert!(
             contents.contains("hello debug log"),
@@ -275,9 +275,9 @@ mod tests {
         let _guard = test_lock().lock().expect("debug log lock");
         reset_for_tests();
         let dir = tempdir().expect("tempdir");
-        let ralph_dir = dir.path().join(".ralph");
-        fs::create_dir_all(&ralph_dir).expect("mkdir");
-        let logs_path = ralph_dir.join("logs");
+        let cueloop_dir = dir.path().join(".cueloop");
+        fs::create_dir_all(&cueloop_dir).expect("mkdir");
+        let logs_path = cueloop_dir.join("logs");
         fs::write(&logs_path, "not a dir").expect("write logs file");
 
         let err = enable(dir.path()).expect_err("error");
@@ -300,7 +300,7 @@ mod tests {
         write_log_record(&record);
         write_runner_chunk(DebugStream::Stderr, "no runner\n");
 
-        let debug_log = dir.path().join(".ralph/logs/debug.log");
+        let debug_log = dir.path().join(".cueloop/logs/debug.log");
         assert!(!debug_log.exists(), "debug log should not exist");
         reset_for_tests();
     }
@@ -313,7 +313,7 @@ mod tests {
         let _guard = test_lock().lock().expect("debug log lock");
         reset_for_tests();
         let dir = tempdir().expect("tempdir");
-        let logs_dir = dir.path().join(".ralph/logs");
+        let logs_dir = dir.path().join(".cueloop/logs");
         fs::create_dir_all(&logs_dir).expect("mkdir");
 
         // Create an oversized log file

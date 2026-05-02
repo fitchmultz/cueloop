@@ -60,7 +60,7 @@ fn validate_blocks<'a>(
 
         if !all_task_ids.contains(blocked_id) {
             bail!(
-                "Invalid blocks relationship: task {} blocks non-existent task {}. Ensure the blocked task ID exists in .ralph/queue.jsonc or .ralph/done.jsonc.",
+                "Invalid blocks relationship: task {} blocks non-existent task {}. Ensure the blocked task ID exists in .cueloop/queue.jsonc or .cueloop/done.jsonc.",
                 task_id,
                 blocked_id
             );
@@ -89,7 +89,7 @@ fn validate_relates_to(task: &Task, all_task_ids: &HashSet<&str>) -> Result<()> 
 
         if !all_task_ids.contains(related_id) {
             bail!(
-                "Invalid relates_to relationship: task {} relates to non-existent task {}. Ensure the related task ID exists in .ralph/queue.jsonc or .ralph/done.jsonc.",
+                "Invalid relates_to relationship: task {} relates to non-existent task {}. Ensure the related task ID exists in .cueloop/queue.jsonc or .cueloop/done.jsonc.",
                 task_id,
                 related_id
             );
@@ -119,7 +119,7 @@ fn validate_duplicates(
 
     if !all_task_ids.contains(duplicates_id) {
         bail!(
-            "Invalid duplicates relationship: task {} duplicates non-existent task {}. Ensure the duplicated task ID exists in .ralph/queue.jsonc or .ralph/done.jsonc.",
+            "Invalid duplicates relationship: task {} duplicates non-existent task {}. Ensure the duplicated task ID exists in .cueloop/queue.jsonc or .cueloop/done.jsonc.",
             task_id,
             duplicates_id
         );

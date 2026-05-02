@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::any::Any;
 use std::io::Write;
@@ -219,7 +219,7 @@ pub struct CursorResponseParser;
 impl CursorResponseParser {
     /// Parse Cursor JSON response format.
     ///
-    /// Ralph's Cursor SDK helper emits normalized SDK stream events plus a terminal
+    /// CueLoop's Cursor SDK helper emits normalized SDK stream events plus a terminal
     /// `result` event with `run.wait().result`. Legacy Cursor Agent CLI envelopes are
     /// still accepted by tests and offline transcript parsing.
     ///

@@ -180,7 +180,7 @@ Built-in ignores (always applied):
 - `/node_modules/`
 - `/.git/`
 - `/vendor/`
-- `/.ralph/`
+- `/.cueloop/`
 
 **Custom ignores:**
 

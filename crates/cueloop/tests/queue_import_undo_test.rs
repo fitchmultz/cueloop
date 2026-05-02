@@ -16,7 +16,7 @@
 //!
 //! Invariants/assumptions:
 //! - Tests run in isolated temp directories outside the repo.
-//! - Each test creates its own git repo and ralph project via test_support helpers.
+//! - Each test creates its own git repo and cueloop project via test_support helpers.
 
 use anyhow::Result;
 use cueloop::contracts::TaskStatus;
@@ -28,7 +28,7 @@ mod test_support;
 fn queue_import_malformed_json_no_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create initial task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -70,7 +70,7 @@ fn queue_import_malformed_json_no_snapshot() -> Result<()> {
 fn queue_import_valid_json_creates_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create initial task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -120,7 +120,7 @@ fn queue_import_valid_json_creates_snapshot() -> Result<()> {
 fn queue_import_malformed_csv_no_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create initial task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -165,7 +165,7 @@ fn queue_import_malformed_csv_no_snapshot() -> Result<()> {
 fn queue_import_dry_run_no_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create initial task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -212,7 +212,7 @@ fn queue_import_dry_run_no_snapshot() -> Result<()> {
 fn queue_import_duplicate_fail_no_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create initial task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);
@@ -255,7 +255,7 @@ fn queue_import_duplicate_fail_no_snapshot() -> Result<()> {
 fn queue_import_missing_file_no_snapshot() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create initial task
     let task = test_support::make_test_task("RQ-0001", "Test task", TaskStatus::Todo);

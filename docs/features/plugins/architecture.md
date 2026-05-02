@@ -13,13 +13,13 @@ Purpose: Explain how CueLoop discovers plugins and validates plugin manifests.
 Plugins are discovered from two locations:
 
 ```text
-~/.config/ralph/plugins/          # Global plugins (all projects)
+~/.config/cueloop/plugins/          # Global plugins (all projects)
 ├── my.plugin/
 │   ├── plugin.json               # Required: Plugin manifest
 │   ├── runner.sh                 # Optional: Runner executable
 │   └── processor.sh              # Optional: Processor executable
 
-./.ralph/plugins/                 # Project plugins (override global)
+./.cueloop/plugins/                 # Project plugins (override global)
 ├── my.plugin/
 │   ├── plugin.json
 │   ├── runner.sh

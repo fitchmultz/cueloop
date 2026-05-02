@@ -1,7 +1,7 @@
-//! Integration tests for ignored RALPH_*_OVERRIDE environment variables.
+//! Integration tests for ignored CUELOOP_*_OVERRIDE environment variables.
 //!
 //! Purpose:
-//! - Integration tests for ignored RALPH_*_OVERRIDE environment variables.
+//! - Integration tests for ignored CUELOOP_*_OVERRIDE environment variables.
 //!
 //! Responsibilities:
 //! - Verify repository resolution is based on command CWD, not override env vars.
@@ -52,7 +52,7 @@ fn config_paths_ignores_repo_root_override_env() -> Result<()> {
     let output = Command::new(test_support::cueloop_bin())
         .current_dir(workspace.path())
         .env_remove("RUST_LOG")
-        .env("RALPH_REPO_ROOT_OVERRIDE", parent.path())
+        .env("CUELOOP_REPO_ROOT_OVERRIDE", parent.path())
         .args(["config", "paths"])
         .output()?;
 
@@ -69,7 +69,7 @@ fn config_paths_ignores_repo_root_override_env() -> Result<()> {
     assert_eq!(
         canonical_or_self(Path::new(&repo_root)),
         canonical_or_self(workspace.path()),
-        "repo_root should follow CWD, not RALPH_REPO_ROOT_OVERRIDE"
+        "repo_root should follow CWD, not CUELOOP_REPO_ROOT_OVERRIDE"
     );
 
     Ok(())
@@ -87,11 +87,11 @@ fn config_paths_ignores_queue_and_done_override_env() -> Result<()> {
         .current_dir(workspace.path())
         .env_remove("RUST_LOG")
         .env(
-            "RALPH_QUEUE_PATH_OVERRIDE",
+            "CUELOOP_QUEUE_PATH_OVERRIDE",
             parent.path().join("external-queue.json"),
         )
         .env(
-            "RALPH_DONE_PATH_OVERRIDE",
+            "CUELOOP_DONE_PATH_OVERRIDE",
             parent.path().join("external-done.json"),
         )
         .args(["config", "paths"])
@@ -112,12 +112,12 @@ fn config_paths_ignores_queue_and_done_override_env() -> Result<()> {
     assert_eq!(
         canonical_or_self(Path::new(&queue)),
         workspace_root.join(".cueloop/queue.jsonc"),
-        "queue path should ignore RALPH_QUEUE_PATH_OVERRIDE"
+        "queue path should ignore CUELOOP_QUEUE_PATH_OVERRIDE"
     );
     assert_eq!(
         canonical_or_self(Path::new(&done)),
         workspace_root.join(".cueloop/done.jsonc"),
-        "done path should ignore RALPH_DONE_PATH_OVERRIDE"
+        "done path should ignore CUELOOP_DONE_PATH_OVERRIDE"
     );
 
     Ok(())
@@ -134,13 +134,13 @@ fn queue_stop_writes_stop_signal_in_cwd_repo_even_with_override_env() -> Result<
     let output = Command::new(test_support::cueloop_bin())
         .current_dir(workspace.path())
         .env_remove("RUST_LOG")
-        .env("RALPH_REPO_ROOT_OVERRIDE", parent.path())
+        .env("CUELOOP_REPO_ROOT_OVERRIDE", parent.path())
         .env(
-            "RALPH_QUEUE_PATH_OVERRIDE",
+            "CUELOOP_QUEUE_PATH_OVERRIDE",
             parent.path().join("external-queue.json"),
         )
         .env(
-            "RALPH_DONE_PATH_OVERRIDE",
+            "CUELOOP_DONE_PATH_OVERRIDE",
             parent.path().join("external-done.json"),
         )
         .args(["queue", "stop"])
@@ -156,12 +156,12 @@ fn queue_stop_writes_stop_signal_in_cwd_repo_even_with_override_env() -> Result<
     assert!(
         workspace
             .path()
-            .join(".ralph/cache/stop_requested")
+            .join(".cueloop/cache/stop_requested")
             .exists(),
         "stop signal should be written to workspace repo"
     );
     assert!(
-        !parent.path().join(".ralph/cache/stop_requested").exists(),
+        !parent.path().join(".cueloop/cache/stop_requested").exists(),
         "stop signal should not be written to override-target parent repo"
     );
 

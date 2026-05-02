@@ -38,7 +38,7 @@ fn worker_phase1_includes_plan_cache_path_and_optional_rp() -> Result<()> {
     )?;
 
     assert!(prompt.contains("PLANNING MODE - PHASE 1 OF 3"));
-    assert!(prompt.contains(".ralph/cache/plans/RQ-0001.md"));
+    assert!(prompt.contains(".cueloop/cache/plans/RQ-0001.md"));
     assert!(prompt.contains(cueloop::prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(!prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
     Ok(())
@@ -75,7 +75,7 @@ fn worker_single_phase_includes_completion_workflow() -> Result<()> {
 
     assert!(prompt.contains("Task bookkeeping"));
     assert!(prompt.contains("cueloop task done"));
-    assert!(prompt.contains(".ralph/queue.jsonc"));
+    assert!(prompt.contains(".cueloop/queue.jsonc"));
     Ok(())
 }
 

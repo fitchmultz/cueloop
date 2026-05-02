@@ -58,7 +58,7 @@ cueloop task build "Fix race condition" --template bug
 cueloop task build "Add feature" --template feature --strict-templates
 ```
 
-The task builder uses the prompt at `.ralph/prompts/task_builder.md` (or embedded default) to guide AI task generation.
+The task builder uses the prompt at `.cueloop/prompts/task_builder.md` (or embedded default) to guide AI task generation.
 
 ### Template-Based Creation
 
@@ -83,7 +83,7 @@ cueloop task template build refactor "Split large module" --target src/main.rs
 - `test` - Test writing tasks
 - `docs` - Documentation tasks
 
-**Custom Templates:** Place JSON files in `.ralph/templates/` to override or extend.
+**Custom Templates:** Place JSON files in `.cueloop/templates/` to override or extend.
 
 ### Refactor Scan
 
@@ -177,7 +177,7 @@ cueloop task edit scope "src/auth.rs" RQ-0001 --dry-run
 | `blocks` | comma/newline separated | `RQ-0003` |
 | `relates_to` | comma/newline separated | `RQ-0004` |
 | `duplicates` | string or empty | `RQ-0005`, `""` |
-| `custom_fields` | key=value pairs | `severity=high,owner=ralph` |
+| `custom_fields` | key=value pairs | `severity=high,owner=cueloop` |
 
 ### Custom Field Editing
 
@@ -207,7 +207,7 @@ cueloop task update --fields all
 cueloop task update RQ-0001 --dry-run
 ```
 
-Uses the prompt at `.ralph/prompts/task_updater.md` to guide AI field updates.
+Uses the prompt at `.cueloop/prompts/task_updater.md` to guide AI field updates.
 
 ### Batch Operations
 
@@ -273,17 +273,17 @@ cueloop task template build refactor "Split module" --target src/main.rs
 ### Template Locations
 
 1. **Built-in**: Embedded in CueLoop binary
-2. **Custom**: `.ralph/templates/<name>.json`
+2. **Custom**: `.cueloop/templates/<name>.json`
 3. **Project overrides**: Custom templates shadow built-ins with same name
 
 ### Creating Custom Templates
 
 ```bash
 # Create template directory
-mkdir -p .ralph/templates
+mkdir -p .cueloop/templates
 
 # Create template file
-cat > .ralph/templates/security.json << 'EOF'
+cat > .cueloop/templates/security.json << 'EOF'
 {
   "tags": ["security"],
   "priority": "critical",

@@ -10,7 +10,7 @@
   "json.schemas": [
     {
       "fileMatch": [
-        "**/.ralph/config.json"
+        "**/.cueloop/config.json"
       ],
       "schema": true,
       "url": "./schemas/config.schema.json"

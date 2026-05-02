@@ -269,7 +269,7 @@ fn sample_view(merge_state_status: &str, state: &str) -> PrViewJson {
         merge_state_status: merge_state_status.to_string(),
         number: Some(1),
         url: Some("https://example.com/pr/1".to_string()),
-        head: Some("ralph/RQ-0001".to_string()),
+        head: Some("cueloop/RQ-0001".to_string()),
         base: Some("main".to_string()),
         is_draft: Some(true),
         state: Some(state.to_string()),

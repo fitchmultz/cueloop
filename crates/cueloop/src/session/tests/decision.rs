@@ -121,7 +121,7 @@ fn resume_decision_blocking_state_for_corrupt_cache() {
         message:
             "Resume: refusing to guess because the saved session cache is corrupt or unreadable."
                 .to_string(),
-        detail: "Inspect .ralph/cache/session.jsonc.".to_string(),
+        detail: "Inspect .cueloop/cache/session.jsonc.".to_string(),
     };
 
     let blocking = decision.blocking_state().expect("blocking state");

@@ -9,11 +9,11 @@
 //! - Unit-level repair helper behavior belongs in `crates/cueloop/src/queue/repair.rs`.
 //!
 //! Usage:
-//! - Run through Cargo integration tests for the `ralph` crate.
+//! - Run through Cargo integration tests for the `cueloop` crate.
 //!
 //! Invariants/Assumptions:
 //! - Test workspaces are created outside the repository to avoid nested repo detection.
-//! - Each scenario initializes its own Ralph workspace before replacing fixtures.
+//! - Each scenario initializes its own CueLoop workspace before replacing fixtures.
 
 use anyhow::Result;
 use cueloop::config::project_runtime_dir;

@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Define the versioned, serialized data model (`CliSpec`, `CommandSpec`, `ArgSpec`) for emitting
-//!   a machine-readable description of Ralph's clap CLI.
+//!   a machine-readable description of CueLoop's clap CLI.
 //! - Provide a stable contract suitable for tooling (docs generation, wrappers, completions).
 //!
 //! Not handled here:
@@ -18,7 +18,7 @@
 //!
 //! Invariants/assumptions:
 //! - `CliSpec.version` is bumped only for breaking JSON changes.
-//! - `CommandSpec.path` is the full command path from the root (e.g. `["ralph","run","one"]`).
+//! - `CommandSpec.path` is the full command path from the root (e.g. `["cueloop","run","one"]`).
 //! - `CommandSpec` and `ArgSpec` vectors are expected to be deterministically sorted by the emitter.
 //! - `ArgSpec.possible_values` is expected to be deterministically sorted by the emitter.
 

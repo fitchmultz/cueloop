@@ -47,7 +47,7 @@ CueLoop rejects incompatible plugin manifests, for example: `got 2, expected 1`.
 ## Best Practices
 
 - Use semantic versioning in plugin manifests.
-- Handle missing config (`RALPH_PLUGIN_CONFIG_JSON` may be `{}`).
+- Handle missing config (`CUELOOP_PLUGIN_CONFIG_JSON` may be `{}`).
 - Keep runner/processor behaviors idempotent where possible.
 - Emit clear stderr on failures.
 - Stream output incrementally for runners.

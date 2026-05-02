@@ -25,7 +25,7 @@
 //! - This function is internal and should not be called directly by users.
 //! - The daemon lock must be acquired before writing state.
 //! - State cleanup occurs regardless of the run_loop result.
-//! - Log output is redirected to `.ralph/logs/daemon.log` by the parent.
+//! - Log output is redirected to `.cueloop/logs/daemon.log` by the parent.
 
 use crate::cli::daemon::DaemonServeArgs;
 use crate::config::Resolved;
@@ -42,7 +42,7 @@ use crate::signal;
 /// Internal: Run the daemon serve loop.
 /// This should not be called directly by users.
 pub fn serve(resolved: &Resolved, args: DaemonServeArgs) -> Result<()> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
     let daemon_lock_dir = cache_dir.join(DAEMON_LOCK_DIR);
 
     // Acquire the daemon lock

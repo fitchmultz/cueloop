@@ -91,8 +91,8 @@ impl ProcessorExecutor<'_> {
             .arg(hook_str)
             .arg(task_id)
             .arg(file_path)
-            .env("RALPH_PLUGIN_ID", plugin_id)
-            .env("RALPH_PLUGIN_CONFIG_JSON", config_json);
+            .env("CUELOOP_PLUGIN_ID", plugin_id)
+            .env("CUELOOP_PLUGIN_CONFIG_JSON", config_json);
 
         let output = execute_managed_command(ManagedCommand::new(
             command,

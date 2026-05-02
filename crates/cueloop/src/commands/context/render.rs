@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::types::DetectedProjectType;
 use super::wizard;
@@ -138,7 +138,7 @@ fn build_repository_map(resolved: &config::Resolved) -> Result<String> {
         ("crates", "Rust workspace crates"),
         ("packages", "Package subdirectories"),
         ("scripts", "Utility scripts"),
-        (".ralph", "Ralph runtime state (queue, config)"),
+        (".cueloop", "CueLoop runtime state (queue, config)"),
     ];
 
     for (dir, desc) in &dirs_to_check {

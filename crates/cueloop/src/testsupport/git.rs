@@ -56,14 +56,14 @@ pub(crate) fn init_repo(repo_root: &Path) -> Result<()> {
     git_run(repo_root, &["config", "user.email", "test@example.com"])?;
     git_run(repo_root, &["config", "user.name", "Test User"])?;
     git_run(repo_root, &["config", "core.excludesFile", "/dev/null"])?;
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     Ok(())
 }
 
 pub(crate) fn commit_all(repo_root: &Path, message: &str) -> Result<()> {
     git_run(repo_root, &["add", "-A"])?;
-    if repo_root.join(".ralph").exists() {
-        git_run(repo_root, &["add", "-f", ".ralph"])?;
+    if repo_root.join(".cueloop").exists() {
+        git_run(repo_root, &["add", "-f", ".cueloop"])?;
     }
     git_run(repo_root, &["commit", "-m", message])?;
     Ok(())

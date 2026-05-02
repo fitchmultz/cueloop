@@ -52,13 +52,13 @@ use state_init::load_or_init_parallel_state;
 
 /// Marker file name for CI gate failure diagnostics.
 /// Written to workspace when CI fails so coordinator/status tooling can inspect failures.
-pub const CI_FAILURE_MARKER_FILE: &str = ".ralph/cache/ci-failure-marker";
+pub const CI_FAILURE_MARKER_FILE: &str = ".cueloop/cache/ci-failure-marker";
 
 /// Marker file name for blocked push outcomes from integration loop.
-pub const BLOCKED_PUSH_MARKER_FILE: &str = ".ralph/cache/parallel/blocked_push.json";
+pub const BLOCKED_PUSH_MARKER_FILE: &str = ".cueloop/cache/parallel/blocked_push.json";
 
 /// Fallback marker file used only when primary marker path is unavailable.
-pub const CI_FAILURE_MARKER_FALLBACK_FILE: &str = ".ralph-ci-failure-marker";
+pub const CI_FAILURE_MARKER_FALLBACK_FILE: &str = ".cueloop-ci-failure-marker";
 
 // Re-export public APIs from submodules
 pub use integration::{IntegrationConfig, IntegrationOutcome, RemediationHandoff};

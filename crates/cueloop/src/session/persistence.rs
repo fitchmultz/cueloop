@@ -4,7 +4,7 @@
 //! - Session file persistence helpers.
 //!
 //! Responsibilities:
-//! - Read, write, clear, and locate `.ralph/cache/session.jsonc`.
+//! - Read, write, clear, and locate `.cueloop/cache/session.jsonc`.
 //! - Resolve git HEAD metadata used by session tracking.
 //!
 //! Not handled here:

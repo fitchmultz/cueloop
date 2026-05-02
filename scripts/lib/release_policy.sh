@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Centralize release, public-readiness, and CI-surface policy for Ralph.
+# Purpose: Centralize release, public-readiness, and CI-surface policy for CueLoop.
 # Responsibilities:
 # - Define the canonical release metadata file set.
 # - Define repo-wide publication checks and CI surface classification rules.
@@ -12,10 +12,10 @@
 # Invariants/assumptions:
 # - Caller has already defined REPO_ROOT and sourced cueloop-shell helpers.
 
-if [ -n "${RALPH_RELEASE_POLICY_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_POLICY_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_POLICY_SOURCED=1
+CUELOOP_RELEASE_POLICY_SOURCED=1
 set -euo pipefail
 
 RELEASE_METADATA_PATHS=(
@@ -30,15 +30,15 @@ RELEASE_METADATA_PATHS=(
     "schemas/machine.schema.json"
 )
 
-RALPH_TRACKED_ALLOWLIST=(
+CUELOOP_TRACKED_ALLOWLIST=(
     ".cueloop/README.md"
     ".cueloop/queue.jsonc"
     ".cueloop/done.jsonc"
     ".cueloop/config.jsonc"
-    ".ralph/README.md"
-    ".ralph/queue.jsonc"
-    ".ralph/done.jsonc"
-    ".ralph/config.jsonc"
+    ".cueloop/README.md"
+    ".cueloop/queue.jsonc"
+    ".cueloop/done.jsonc"
+    ".cueloop/config.jsonc"
 )
 
 PUBLIC_REQUIRED_FILES=(
@@ -68,15 +68,15 @@ PUBLIC_SCAN_EXCLUDES=(
     ".cueloop/undo/"
     ".cueloop/webhooks/"
     ".cueloop/workspaces/"
-    ".ralph/cache/"
-    ".ralph/lock/"
-    ".ralph/logs/"
-    ".ralph/plugins/"
-    ".ralph/trust.json"
-    ".ralph/trust.jsonc"
-    ".ralph/undo/"
-    ".ralph/webhooks/"
-    ".ralph/workspaces/"
+    ".cueloop/cache/"
+    ".cueloop/lock/"
+    ".cueloop/logs/"
+    ".cueloop/plugins/"
+    ".cueloop/trust.json"
+    ".cueloop/trust.jsonc"
+    ".cueloop/undo/"
+    ".cueloop/webhooks/"
+    ".cueloop/workspaces/"
     "apps/CueLoopMac/build/"
     "apps/CueLoopMac/target/"
     ".venv/"
@@ -121,19 +121,19 @@ PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
     ".cueloop/workspaces/"
     ".cueloop/undo/"
     ".cueloop/webhooks/"
-    ".ralph/cache/"
-    ".ralph/lock/"
-    ".ralph/logs/"
-    ".ralph/workspaces/"
-    ".ralph/undo/"
-    ".ralph/webhooks/"
+    ".cueloop/cache/"
+    ".cueloop/lock/"
+    ".cueloop/logs/"
+    ".cueloop/workspaces/"
+    ".cueloop/undo/"
+    ".cueloop/webhooks/"
 )
 
 PUBLIC_IGNORED_DIRTY_PATHS=(
     ".cueloop/trust.json"
     ".cueloop/trust.jsonc"
-    ".ralph/trust.json"
-    ".ralph/trust.jsonc"
+    ".cueloop/trust.json"
+    ".cueloop/trust.jsonc"
 )
 
 PUBLIC_IGNORED_DIRTY_PATH_PREFIXES=(
@@ -144,13 +144,13 @@ PUBLIC_IGNORED_DIRTY_PATH_PREFIXES=(
     ".cueloop/undo/"
     ".cueloop/webhooks/"
     ".cueloop/workspaces/"
-    ".ralph/cache/"
-    ".ralph/lock/"
-    ".ralph/logs/"
-    ".ralph/plugins/"
-    ".ralph/undo/"
-    ".ralph/webhooks/"
-    ".ralph/workspaces/"
+    ".cueloop/cache/"
+    ".cueloop/lock/"
+    ".cueloop/logs/"
+    ".cueloop/plugins/"
+    ".cueloop/undo/"
+    ".cueloop/webhooks/"
+    ".cueloop/workspaces/"
 )
 
 RELEASE_TRANSACTION_DIR="$REPO_ROOT/target/release-transactions"
@@ -233,7 +233,7 @@ release_collect_git_output_z() {
     shift
 
     local output_file
-    output_file=$(cueloop_mktemp_file "ralph-git-output")
+    output_file=$(cueloop_mktemp_file "cueloop-git-output")
     if ! "$@" >"$output_file" 2>/dev/null; then
         rm -f "$output_file"
         cueloop_log_error "$context failed"
@@ -324,7 +324,7 @@ release_is_runtime_state_path() {
     local path="${1#./}"
 
     case "$path" in
-        .cueloop|.cueloop/*|.ralph|.ralph/*)
+        .cueloop|.cueloop/*|.cueloop|.cueloop/*)
             return 0
             ;;
     esac
@@ -335,7 +335,7 @@ release_is_runtime_state_path() {
 release_is_allowed_tracked_runtime_state_path() {
     local path="$1"
     local allowed
-    for allowed in "${RALPH_TRACKED_ALLOWLIST[@]}"; do
+    for allowed in "${CUELOOP_TRACKED_ALLOWLIST[@]}"; do
         if [ "$path" = "$allowed" ]; then
             return 0
         fi
@@ -343,7 +343,7 @@ release_is_allowed_tracked_runtime_state_path() {
     return 1
 }
 
-release_is_allowed_tracked_ralph_path() {
+release_is_allowed_tracked_cueloop_path() {
     release_is_allowed_tracked_runtime_state_path "$1"
 }
 

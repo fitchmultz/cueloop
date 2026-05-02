@@ -17,7 +17,7 @@
 //!
 //! Invariants/assumptions:
 //! - Exported prompts live under `.cueloop/prompts/`.
-//! - Legacy `.ralph/prompts/` overrides remain readable as fallback.
+//! - Legacy `.cueloop/prompts/` overrides remain readable as fallback.
 //! - Prompt version tracking is stored under `.cueloop/cache/prompt_versions.json` with legacy read fallback.
 //! - Digests use normalized-content SHA-256 with the `sha256:` prefix.
 
@@ -44,7 +44,7 @@ pub(crate) fn sync_template(
     repo_root: &std::path::Path,
     id: crate::prompts_internal::registry::PromptTemplateId,
     force: bool,
-    ralph_version: &str,
+    cueloop_version: &str,
 ) -> anyhow::Result<(bool, SyncStatus)> {
-    sync::sync_template(repo_root, id, force, ralph_version)
+    sync::sync_template(repo_root, id, force, cueloop_version)
 }

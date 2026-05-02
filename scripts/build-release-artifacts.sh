@@ -23,7 +23,7 @@ source "$SCRIPT_DIR/versioning.sh"
 RELEASE_ARTIFACTS_DIR="$REPO_ROOT/target/release-artifacts"
 MODE="current"
 VERSION=""
-JOBS="${RALPH_CI_JOBS:-}"
+JOBS="${CUELOOP_CI_JOBS:-}"
 
 target_to_platform() {
     local target="$1"

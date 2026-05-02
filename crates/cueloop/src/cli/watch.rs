@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn watch_parses_default_args() {
-        let cli = Cli::try_parse_from(["ralph", "watch"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "watch"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -192,7 +192,7 @@ mod tests {
 
     #[test]
     fn watch_parses_paths() {
-        let cli = Cli::try_parse_from(["ralph", "watch", "src/", "tests/"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "watch", "src/", "tests/"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn watch_parses_patterns() {
         let cli =
-            Cli::try_parse_from(["ralph", "watch", "--patterns", "*.rs,*.toml"]).expect("parse");
+            Cli::try_parse_from(["cueloop", "watch", "--patterns", "*.rs,*.toml"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -219,7 +219,8 @@ mod tests {
 
     #[test]
     fn watch_parses_debounce() {
-        let cli = Cli::try_parse_from(["ralph", "watch", "--debounce-ms", "1000"]).expect("parse");
+        let cli =
+            Cli::try_parse_from(["cueloop", "watch", "--debounce-ms", "1000"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -231,7 +232,7 @@ mod tests {
 
     #[test]
     fn watch_parses_auto_queue() {
-        let cli = Cli::try_parse_from(["ralph", "watch", "--auto-queue"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "watch", "--auto-queue"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -243,7 +244,7 @@ mod tests {
 
     #[test]
     fn watch_parses_notify() {
-        let cli = Cli::try_parse_from(["ralph", "watch", "--notify"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "watch", "--notify"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -256,7 +257,7 @@ mod tests {
     #[test]
     fn watch_parses_comments() {
         let cli =
-            Cli::try_parse_from(["ralph", "watch", "--comments", "todo,fixme"]).expect("parse");
+            Cli::try_parse_from(["cueloop", "watch", "--comments", "todo,fixme"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {
@@ -270,7 +271,7 @@ mod tests {
 
     #[test]
     fn watch_parses_ignore_patterns() {
-        let cli = Cli::try_parse_from(["ralph", "watch", "--ignore-patterns", "vendor/,target/"])
+        let cli = Cli::try_parse_from(["cueloop", "watch", "--ignore-patterns", "vendor/,target/"])
             .expect("parse");
 
         match cli.command {
@@ -283,7 +284,7 @@ mod tests {
 
     #[test]
     fn watch_parses_close_removed() {
-        let cli = Cli::try_parse_from(["ralph", "watch", "--close-removed"]).expect("parse");
+        let cli = Cli::try_parse_from(["cueloop", "watch", "--close-removed"]).expect("parse");
 
         match cli.command {
             crate::cli::Command::Watch(args) => {

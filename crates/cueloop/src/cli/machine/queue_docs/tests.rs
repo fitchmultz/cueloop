@@ -31,18 +31,18 @@ use tempfile::TempDir;
 
 fn create_test_resolved(temp_dir: &TempDir) -> crate::config::Resolved {
     let repo_root = temp_dir.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
 
     crate::config::Resolved {
         config: Config::default(),
         repo_root: repo_root.to_path_buf(),
-        queue_path: ralph_dir.join("queue.jsonc"),
-        done_path: ralph_dir.join("done.jsonc"),
+        queue_path: cueloop_dir.join("queue.jsonc"),
+        done_path: cueloop_dir.join("done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(ralph_dir.join("config.jsonc")),
+        project_config_path: Some(cueloop_dir.join("config.jsonc")),
     }
 }
 

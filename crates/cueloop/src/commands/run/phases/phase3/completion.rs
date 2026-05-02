@@ -144,16 +144,16 @@ pub fn ensure_phase3_completion(
             git::require_clean_repo_ignoring_paths(
                 &resolved.repo_root,
                 false,
-                git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+                git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
             )?;
         } else {
             git::require_clean_repo_ignoring_paths(
                 &resolved.repo_root,
                 false,
                 &[
-                    ".ralph/config.jsonc",
-                    ".ralph/cache/productivity.json",
-                    ".ralph/cache/productivity.jsonc",
+                    ".cueloop/config.jsonc",
+                    ".cueloop/cache/productivity.json",
+                    ".cueloop/cache/productivity.jsonc",
                 ],
             )?;
         }
@@ -187,12 +187,12 @@ mod tests {
         config::Resolved {
             config: Config::default(),
             repo_root: repo_root.clone(),
-            queue_path: repo_root.join(".ralph/queue.jsonc"),
-            done_path: repo_root.join(".ralph/done.jsonc"),
+            queue_path: repo_root.join(".cueloop/queue.jsonc"),
+            done_path: repo_root.join(".cueloop/done.jsonc"),
             id_prefix: "RQ".to_string(),
             id_width: 4,
             global_config_path: None,
-            project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+            project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
         }
     }
 
@@ -231,7 +231,7 @@ mod tests {
     fn apply_followups_for_finalization_applies_and_removes_default_proposal() -> Result<()> {
         let temp = TempDir::new()?;
         let resolved = resolved_for_repo(temp.path().to_path_buf());
-        std::fs::create_dir_all(temp.path().join(".ralph/cache/followups"))?;
+        std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
 
         queue::save_queue(
             &resolved.queue_path,
@@ -293,7 +293,7 @@ mod tests {
     fn apply_followups_for_finalization_without_proposal_is_noop() -> Result<()> {
         let temp = TempDir::new()?;
         let resolved = resolved_for_repo(temp.path().to_path_buf());
-        std::fs::create_dir_all(temp.path().join(".ralph/cache/followups"))?;
+        std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
 
         queue::save_queue(
             &resolved.queue_path,

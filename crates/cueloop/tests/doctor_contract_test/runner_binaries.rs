@@ -25,14 +25,14 @@ use super::*;
 #[test]
 fn doctor_blocks_untrusted_project_runner_override() -> Result<()> {
     let dir = setup_doctor_repo()?;
-    std::fs::remove_file(dir.path().join(".ralph/trust.jsonc"))?;
+    std::fs::remove_file(dir.path().join(".cueloop/trust.jsonc"))?;
 
     write_repo_config(
         dir.path(),
         r#"{"version":2,"agent":{"runner":"opencode","opencode_bin":"/tmp/fake-opencode"}}"#,
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -41,7 +41,7 @@ fn doctor_blocks_untrusted_project_runner_override() -> Result<()> {
     assert!(!output.status.success());
     assert!(combined.contains("execution-sensitive runner override"));
     assert!(combined.contains("repo is not trusted"));
-    assert!(combined.contains(".ralph/trust.jsonc"));
+    assert!(combined.contains(".cueloop/trust.jsonc"));
     Ok(())
 }
 
@@ -67,7 +67,7 @@ esac
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -88,7 +88,7 @@ fn doctor_fails_with_nonexistent_runner_binary() -> Result<()> {
         r#"{"version":2,"agent":{"runner":"opencode","opencode_bin":"this-binary-does-not-exist-xyz123"}}"#,
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -109,7 +109,7 @@ fn doctor_fails_with_nonexistent_gemini_binary() -> Result<()> {
         r#"{"version":2,"agent":{"runner":"gemini","gemini_bin":"this-gemini-does-not-exist-xyz123"}}"#,
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -130,7 +130,7 @@ fn doctor_fails_with_nonexistent_claude_binary() -> Result<()> {
         r#"{"version":2,"agent":{"runner":"claude","claude_bin":"this-claude-does-not-exist-xyz123"}}"#,
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -146,10 +146,10 @@ fn doctor_fails_with_nonexistent_claude_binary() -> Result<()> {
 fn doctor_fails_with_invalid_done_archive() -> Result<()> {
     let dir = setup_trusted_doctor_repo()?;
 
-    let done_path = dir.path().join(".ralph/done.jsonc");
+    let done_path = dir.path().join(".cueloop/done.jsonc");
     std::fs::write(&done_path, "invalid json: { [")?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -172,7 +172,7 @@ fn doctor_warns_when_instruction_files_missing() -> Result<()> {
         r#"{"version":2,"agent":{"instruction_files":["missing-global-agents.md"]}}"#,
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -205,7 +205,7 @@ esac
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{}\n{}", stdout, stderr);
@@ -239,7 +239,7 @@ esac
     std::fs::create_dir_all(dir.path().join("docs"))?;
     std::fs::write(dir.path().join("docs/other.md"), "# Other instructions\n")?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{}\n{}", stdout, stderr);
@@ -274,7 +274,7 @@ esac
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .env("HOME", &home_dir)
         .env_remove("XDG_CONFIG_HOME")
         .arg("doctor")
@@ -326,7 +326,7 @@ esac
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .env("HOME", &home_dir)
         .env_remove("XDG_CONFIG_HOME")
         .arg("doctor")
@@ -370,7 +370,7 @@ fn doctor_fails_with_runner_that_has_no_valid_flags() -> Result<()> {
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -397,7 +397,7 @@ fn doctor_error_includes_config_key_hint() -> Result<()> {
         r#"{"version":2,"agent":{"runner":"codex","codex_bin":"/nonexistent/path/codex"}}"#,
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -409,7 +409,7 @@ fn doctor_error_includes_config_key_hint() -> Result<()> {
         "error should mention codex_bin config key"
     );
     assert!(
-        combined.contains(".ralph/config.jsonc"),
+        combined.contains(".cueloop/config.jsonc"),
         "error should mention config file location"
     );
     Ok(())

@@ -4,7 +4,7 @@
 //! - Keep markdown target and symlink traversal coverage grouped together.
 //!
 //! Responsibilities:
-//! - Verify escaping-target rejection, in-repo symlink handling, and allowlisted `.ralph` link scanning.
+//! - Verify escaping-target rejection, in-repo symlink handling, and allowlisted `.cueloop` link scanning.
 //!
 //! Scope:
 //! - Limited to public-readiness link-scanning contracts.
@@ -35,7 +35,7 @@ fn public_readiness_scan_rejects_markdown_targets_outside_repo() {
         .arg(public_readiness_scan_python_path())
         .arg("links")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan helper");
 
@@ -68,7 +68,7 @@ fn public_readiness_scan_ignores_symlinked_repo_files_that_escape_repo() {
         .arg(public_readiness_scan_python_path())
         .arg("links")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan helper");
 
@@ -91,7 +91,7 @@ fn public_readiness_scan_skips_symlinks_into_excluded_repo_paths() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path().join("repo");
     std::fs::create_dir(&repo_root).expect("create temp repo root");
-    let excluded_dir = repo_root.join(".ralph/cache");
+    let excluded_dir = repo_root.join(".cueloop/cache");
     std::fs::create_dir_all(&excluded_dir).expect("create excluded dir");
     let secret_value = ["sk_live_", "abcdefghijklmnop"].concat();
     std::fs::write(
@@ -106,7 +106,7 @@ fn public_readiness_scan_skips_symlinks_into_excluded_repo_paths() {
         .arg(public_readiness_scan_python_path())
         .arg("secrets")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", ".ralph/cache/")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", ".cueloop/cache/")
         .output()
         .expect("run public-readiness scan helper");
 
@@ -142,7 +142,7 @@ fn public_readiness_scan_scans_symlinked_repo_files_that_resolve_within_repo() {
         .arg(public_readiness_scan_python_path())
         .arg("links")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan helper");
 
@@ -160,13 +160,13 @@ fn public_readiness_scan_scans_symlinked_repo_files_that_resolve_within_repo() {
 }
 
 #[test]
-fn public_readiness_scan_scans_allowlisted_ralph_markdown_links() {
+fn public_readiness_scan_scans_allowlisted_cueloop_markdown_links() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path();
 
     copy_public_readiness_scan_fixture(repo_root);
     write_file(
-        &repo_root.join(".ralph/README.md"),
+        &repo_root.join(".cueloop/README.md"),
         "[broken](./definitely-missing-file.md)\n",
     );
 
@@ -175,17 +175,17 @@ fn public_readiness_scan_scans_allowlisted_ralph_markdown_links() {
         .arg("links")
         .current_dir(repo_root)
         .output()
-        .expect("run public-readiness link scan over allowlisted .ralph file");
+        .expect("run public-readiness link scan over allowlisted .cueloop file");
 
     assert_eq!(
         output.status.code(),
         Some(1),
-        "public-readiness scan should inspect allowlisted .ralph markdown files"
+        "public-readiness scan should inspect allowlisted .cueloop markdown files"
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains(".ralph/README.md: missing target -> ./definitely-missing-file.md"),
-        "link scan should report missing targets inside allowlisted .ralph files\nstdout:\n{}",
+        stdout.contains(".cueloop/README.md: missing target -> ./definitely-missing-file.md"),
+        "link scan should report missing targets inside allowlisted .cueloop files\nstdout:\n{}",
         stdout
     );
 }

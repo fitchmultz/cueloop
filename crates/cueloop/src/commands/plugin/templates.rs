@@ -27,13 +27,13 @@ pub(super) const RUNNER_SCRIPT_TEMPLATE: &str = r#"#!/bin/bash
 # - Output newline-delimited JSON with text, tool_call, and finish types.
 #
 # Not handled here:
-# - Task planning (handled by Ralph before invocation).
+# - Task planning (handled by CueLoop before invocation).
 # - File operations outside the working directory.
 #
 # Assumptions:
 # - stdin contains the compiled prompt.
-# - Environment RALPH_PLUGIN_CONFIG_JSON contains plugin config.
-# - Environment RALPH_RUNNER_CLI_JSON contains CLI options.
+# - Environment CUELOOP_PLUGIN_CONFIG_JSON contains plugin config.
+# - Environment CUELOOP_RUNNER_CLI_JSON contains CLI options.
 
 set -euo pipefail
 
@@ -114,11 +114,11 @@ pub(super) const PROCESSOR_SCRIPT_TEMPLATE: &str = r#"#!/bin/bash
 #
 # Responsibilities:
 # - Process task lifecycle hooks: validate_task, pre_prompt, post_run.
-# - Called by Ralph with hook name and task ID as arguments.
+# - Called by CueLoop with hook name and task ID as arguments.
 #
 # Not handled here:
 # - Direct task execution (handled by runners).
-# - Queue modification (handled by Ralph).
+# - Queue modification (handled by CueLoop).
 #
 # Assumptions:
 # - First argument is the hook name.
@@ -152,7 +152,7 @@ Exit Codes:
   1    Validation/processing error
 
 Environment:
-  RALPH_PLUGIN_CONFIG_JSON    Plugin configuration as JSON string
+  CUELOOP_PLUGIN_CONFIG_JSON    Plugin configuration as JSON string
 EOF
 }
 

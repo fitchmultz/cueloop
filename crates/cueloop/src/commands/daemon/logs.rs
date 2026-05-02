@@ -94,7 +94,7 @@ impl LogFileWatcher {
 pub fn logs(resolved: &crate::config::Resolved, args: DaemonLogsArgs) -> Result<()> {
     let log_file = resolved
         .repo_root
-        .join(".ralph")
+        .join(".cueloop")
         .join("logs")
         .join(DAEMON_LOG_FILE_NAME);
 

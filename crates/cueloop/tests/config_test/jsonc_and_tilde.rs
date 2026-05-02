@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -136,8 +136,8 @@ fn test_load_layer_accepts_jsonc_with_comments() {
 #[test]
 fn test_load_queue_accepts_jsonc_with_comments() {
     let dir = TempDir::new().expect("create temp dir");
-    let ralph_dir = setup_ralph_dir(&dir);
-    let queue_path = ralph_dir.join("queue.jsonc");
+    let cueloop_dir = setup_cueloop_dir(&dir);
+    let queue_path = cueloop_dir.join("queue.jsonc");
 
     // Write JSONC with comments
     let jsonc_content = r#"{

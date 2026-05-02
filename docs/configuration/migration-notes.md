@@ -18,7 +18,7 @@ Use `cueloop migrate` without `--apply` first when you want a preview.
 
 ## CueLoop runtime directory migration
 
-New repositories default to `.cueloop/`. Legacy `.ralph/` runtime directories remain supported, including project config, queue/done files, plugins, prompts, caches, and trust files.
+New repositories default to `.cueloop/`. Legacy `.cueloop/` runtime directories remain supported, including project config, queue/done files, plugins, prompts, caches, and trust files.
 
 The runtime directory move is explicit and separate from normal config migrations:
 
@@ -27,7 +27,7 @@ cueloop migrate runtime-dir --check
 cueloop migrate runtime-dir --apply
 ```
 
-Use `--check` before `--apply`. The migration moves `.ralph/` to `.cueloop/` when safe and refuses to auto-merge when both directories exist. Do not rename runtime directories manually.
+Use `--check` before `--apply`. The migration moves `.cueloop/` to `.cueloop/` when safe and refuses to auto-merge when both directories exist. Do not rename runtime directories manually.
 
 ## Version 0.3 config changes
 
@@ -39,7 +39,7 @@ Use `--check` before `--apply`. The migration moves `.ralph/` to `.cueloop/` whe
 ## Runner and reasoning changes
 
 - `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
-- Cursor runner execution now uses CueLoop's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `cueloop migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk@1.0.11`; alternatively set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
+- Cursor runner execution now uses CueLoop's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `cueloop migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk@1.0.11`; alternatively set `CUELOOP_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
 
 ## Parallel configuration changes
 

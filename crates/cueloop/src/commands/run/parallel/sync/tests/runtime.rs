@@ -4,8 +4,8 @@
 //! - Runtime-tree sync tests for parallel workspace state synchronization.
 //!
 //! Responsibilities:
-//! - Verify `.ralph` runtime files are copied into worker workspaces.
-//! - Verify runtime exclusions for ephemeral `.ralph` directories.
+//! - Verify `.cueloop` runtime files are copied into worker workspaces.
+//! - Verify runtime exclusions for ephemeral `.cueloop` directories.
 //! - Verify config/prompt sync scenarios remain intact.
 //!
 //! Non-scope:
@@ -29,37 +29,37 @@ fn sync_cueloop_state_copies_config_prompts_and_resolved_queue_done() -> Result<
     let workspace_root = temp.path().join("workspace");
     fs::create_dir_all(&repo_root)?;
     git_test::init_repo(&repo_root)?;
-    fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/prompts"))?;
     fs::create_dir_all(&workspace_root)?;
-    fs::write(repo_root.join(".ralph/queue.json"), "{queue}")?;
-    fs::write(repo_root.join(".ralph/done.json"), "{done}")?;
-    fs::write(repo_root.join(".ralph/config.json"), "{config}")?;
-    fs::write(repo_root.join(".ralph/prompts/override.md"), "prompt")?;
+    fs::write(repo_root.join(".cueloop/queue.json"), "{queue}")?;
+    fs::write(repo_root.join(".cueloop/done.json"), "{done}")?;
+    fs::write(repo_root.join(".cueloop/config.json"), "{config}")?;
+    fs::write(repo_root.join(".cueloop/prompts/override.md"), "prompt")?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
     sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/queue.json"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/queue.json"))?,
         "{queue}"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/done.json"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/done.json"))?,
         "{done}"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/config.json"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/config.json"))?,
         "{config}"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/prompts/override.md"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/prompts/override.md"))?,
         "prompt"
     );
     Ok(())
 }
 
 #[test]
-fn sync_cueloop_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()> {
+fn sync_cueloop_state_copies_runtime_files_from_ignored_cueloop_dir() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
     let workspace_root = temp.path().join("workspace");
@@ -67,65 +67,65 @@ fn sync_cueloop_state_copies_runtime_files_from_ignored_ralph_dir() -> Result<()
     git_test::init_repo(&repo_root)?;
     fs::create_dir_all(&workspace_root)?;
 
-    fs::write(repo_root.join(".gitignore"), ".ralph/\n")?;
-    fs::create_dir_all(repo_root.join(".ralph/prompts"))?;
-    fs::create_dir_all(repo_root.join(".ralph/templates"))?;
-    fs::create_dir_all(repo_root.join(".ralph/cache/parallel"))?;
-    fs::create_dir_all(repo_root.join(".ralph/logs"))?;
-    fs::create_dir_all(repo_root.join(".ralph/workspaces"))?;
-    fs::create_dir_all(repo_root.join(".ralph/lock"))?;
-    fs::write(repo_root.join(".ralph/queue.json"), "{queue}")?;
-    fs::write(repo_root.join(".ralph/done.json"), "{done}")?;
+    fs::write(repo_root.join(".gitignore"), ".cueloop/\n")?;
+    fs::create_dir_all(repo_root.join(".cueloop/prompts"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/templates"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/cache/parallel"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/logs"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/workspaces"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/lock"))?;
+    fs::write(repo_root.join(".cueloop/queue.json"), "{queue}")?;
+    fs::write(repo_root.join(".cueloop/done.json"), "{done}")?;
     fs::write(
-        repo_root.join(".ralph/config.jsonc"),
+        repo_root.join(".cueloop/config.jsonc"),
         "{/*comment*/\"version\":1}",
     )?;
     fs::write(
-        repo_root.join(".ralph/prompts/worker.md"),
+        repo_root.join(".cueloop/prompts/worker.md"),
         "# Worker prompt",
     )?;
     fs::write(
-        repo_root.join(".ralph/templates/task.json"),
+        repo_root.join(".cueloop/templates/task.json"),
         "{\"template\":true}",
     )?;
     fs::write(
-        repo_root.join(".ralph/cache/parallel/state.json"),
+        repo_root.join(".cueloop/cache/parallel/state.json"),
         "{\"cached\":true}",
     )?;
-    fs::write(repo_root.join(".ralph/logs/debug.log"), "debug")?;
+    fs::write(repo_root.join(".cueloop/logs/debug.log"), "debug")?;
     fs::write(
-        repo_root.join(".ralph/workspaces/shared.txt"),
+        repo_root.join(".cueloop/workspaces/shared.txt"),
         "workspace state",
     )?;
-    fs::write(repo_root.join(".ralph/lock/queue.lock"), "lock")?;
+    fs::write(repo_root.join(".cueloop/lock/queue.lock"), "lock")?;
 
     let resolved = build_test_resolved(&repo_root, None, None);
     sync_cueloop_state(&resolved, &workspace_root)?;
 
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/config.jsonc"))?,
         "{/*comment*/\"version\":1}"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/prompts/worker.md"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/prompts/worker.md"))?,
         "# Worker prompt"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/templates/task.json"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/templates/task.json"))?,
         "{\"template\":true}"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/queue.json"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/queue.json"))?,
         "{queue}"
     );
     assert_eq!(
-        fs::read_to_string(workspace_root.join(".ralph/done.json"))?,
+        fs::read_to_string(workspace_root.join(".cueloop/done.json"))?,
         "{done}"
     );
-    assert!(!workspace_root.join(".ralph/cache").exists());
-    assert!(!workspace_root.join(".ralph/logs").exists());
-    assert!(!workspace_root.join(".ralph/workspaces").exists());
-    assert!(!workspace_root.join(".ralph/lock").exists());
+    assert!(!workspace_root.join(".cueloop/cache").exists());
+    assert!(!workspace_root.join(".cueloop/logs").exists());
+    assert!(!workspace_root.join(".cueloop/workspaces").exists());
+    assert!(!workspace_root.join(".cueloop/lock").exists());
 
     Ok(())
 }
@@ -139,11 +139,11 @@ fn sync_cueloop_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
     git_test::init_repo(&repo_root)?;
     fs::create_dir_all(&workspace_root)?;
 
-    fs::create_dir_all(repo_root.join(".ralph"))?;
-    fs::write(repo_root.join(".ralph/queue.jsonc"), "{queue}")?;
-    fs::write(repo_root.join(".ralph/done.jsonc"), "{done}")?;
+    fs::create_dir_all(repo_root.join(".cueloop"))?;
+    fs::write(repo_root.join(".cueloop/queue.jsonc"), "{queue}")?;
+    fs::write(repo_root.join(".cueloop/done.jsonc"), "{done}")?;
     fs::write(
-        repo_root.join(".ralph/config.jsonc"),
+        repo_root.join(".cueloop/config.jsonc"),
         r#"{
   "version": 1,
   "agent": {
@@ -161,12 +161,12 @@ fn sync_cueloop_state_copies_jsonc_config_with_agent_overrides() -> Result<()> {
 
     let resolved = build_test_resolved(
         &repo_root,
-        Some(repo_root.join(".ralph/queue.jsonc")),
-        Some(repo_root.join(".ralph/done.jsonc")),
+        Some(repo_root.join(".cueloop/queue.jsonc")),
+        Some(repo_root.join(".cueloop/done.jsonc")),
     );
     sync_cueloop_state(&resolved, &workspace_root)?;
 
-    let config_json = fs::read_to_string(workspace_root.join(".ralph/config.jsonc"))?;
+    let config_json = fs::read_to_string(workspace_root.join(".cueloop/config.jsonc"))?;
     let config: serde_json::Value = serde_json::from_str(&config_json)?;
     assert_eq!(config["agent"]["runner"], "opencode");
     assert_eq!(config["agent"]["model"], "gpt-5.3");

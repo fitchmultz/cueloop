@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -28,13 +28,13 @@ fn phase1_continue_resumes_and_recovers_from_plan_only_violation() -> Result<()>
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
     std::fs::write(temp.path().join("baseline.txt"), "baseline")?;
 
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
 dirty="{root}/dirty-file.txt"
 if [ -f "$dirty" ]; then
   /bin/rm -f "$dirty"
@@ -142,12 +142,12 @@ fn phase1_proceed_allows_plan_only_violation() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
 
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
 dirty="{root}/dirty-file.txt"
 echo "dirty" > "$dirty"
 echo "plan content" > "$plan"
@@ -240,13 +240,13 @@ fn phase1_rejects_changes_to_baseline_dirty_paths() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
     std::fs::write(temp.path().join("baseline.txt"), "baseline")?;
 
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
 baseline="{root}/baseline.txt"
 echo "changed" > "$baseline"
 echo "plan content" > "$plan"
@@ -330,16 +330,16 @@ fn phase1_allows_jsonc_queue_bookkeeping_changes() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
 
-    let queue_jsonc = temp.path().join(".ralph/queue.jsonc");
-    let done_jsonc = temp.path().join(".ralph/done.jsonc");
+    let queue_jsonc = temp.path().join(".cueloop/queue.jsonc");
+    let done_jsonc = temp.path().join(".cueloop/done.jsonc");
     std::fs::write(&queue_jsonc, "{ \"version\": 1, \"tasks\": [] }")?;
     std::fs::write(&done_jsonc, "{ \"version\": 1, \"tasks\": [] }")?;
 
     git_status_ok(
         temp.path(),
-        &["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"],
+        &["add", "-f", ".cueloop/queue.jsonc", ".cueloop/done.jsonc"],
         "git add queue bookkeeping failed",
     )?;
     git_status_ok(
@@ -354,7 +354,7 @@ fn phase1_allows_jsonc_queue_bookkeeping_changes() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
 echo '{{"type":"session","sessionID":"sess-123"}}'
@@ -425,8 +425,8 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
     anyhow::ensure!(
         paths
             == vec![
-                ".ralph/done.jsonc".to_string(),
-                ".ralph/queue.jsonc".to_string()
+                ".cueloop/done.jsonc".to_string(),
+                ".cueloop/queue.jsonc".to_string()
             ],
         "expected jsonc queue bookkeeping paths only, got: {:?}",
         paths

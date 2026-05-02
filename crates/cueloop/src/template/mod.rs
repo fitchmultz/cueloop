@@ -1,14 +1,14 @@
-//! Task template system for Ralph.
+//! Task template system for CueLoop.
 //!
 //! Purpose:
-//! - Task template system for Ralph.
+//! - Task template system for CueLoop.
 //!
 //! Templates provide pre-filled task fields for common patterns.
-//! Built-in templates are embedded; custom templates can be added to `.ralph/templates/`.
+//! Built-in templates are embedded; custom templates can be added to `.cueloop/templates/`.
 //!
 //! Responsibilities:
 //! - Define built-in templates for common task types (bug, feature, refactor, test, docs).
-//! - Load templates from `.ralph/templates/` directory (custom overrides).
+//! - Load templates from `.cueloop/templates/` directory (custom overrides).
 //! - Merge template fields with user-provided options.
 //! - Validate templates and report warnings for unknown variables.
 //!

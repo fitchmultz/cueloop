@@ -1,8 +1,8 @@
-# Ralph Comprehensive Codebase Audit
+# CueLoop Comprehensive Codebase Audit
 Status: Archived
 Owner: Maintainers
 Source of truth: historical snapshot; current guidance lives in linked active docs
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
 **Date:** 2026-03-31
@@ -239,7 +239,7 @@ Parent: [Ralph Documentation](../index.md)
 
 ### CONFIGURATION
 
-✅ **[Precedence Chain]** CLI flags → `.ralph/config.jsonc` → `~/.config/ralph/config.jsonc` → schema defaults. Well-documented.
+✅ **[Precedence Chain]** CLI flags → `.cueloop/config.jsonc` → `~/.config/cueloop/config.jsonc` → schema defaults. Well-documented.
 
 ✅ **[Validation]** Config validation includes unknown key detection, CI gate argv validation, and schema enforcement.
 

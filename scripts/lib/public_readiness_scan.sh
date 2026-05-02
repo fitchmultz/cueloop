@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# Purpose: Run focused public-readiness scans for the Ralph repository.
+# Purpose: Run focused public-readiness scans for the CueLoop repository.
 # Responsibilities:
 # - Reuse the shared repo-wide markdown-link and secret-pattern scan policy.
 # - Guard documented session-cache paths against stale `.json` references.
 # - Provide lightweight entrypoints for docs-only and targeted safety gates.
-# - Resolve the Ralph repository root and exclusion policy consistently.
+# - Resolve the CueLoop repository root and exclusion policy consistently.
 # Scope:
 # - Focused scan execution only; required-file checks, worktree checks, and CI gating stay in pre-public-check.sh.
 # Usage:
@@ -29,7 +29,7 @@ source "$SCRIPT_DIR/lib/release_policy.sh"
 
 usage() {
     cat <<'EOF'
-Run a focused public-readiness scan for Ralph.
+Run a focused public-readiness scan for CueLoop.
 
 Usage:
   scripts/lib/public_readiness_scan.sh <links|secrets|session-paths|docs|all>
@@ -52,15 +52,15 @@ EOF
 
 run_scan() {
     local mode="$1"
-    local scan_py_path="${RALPH_PUBLIC_READINESS_SCAN_PY:-$SCRIPT_DIR/lib/public_readiness_scan.py}"
+    local scan_py_path="${CUELOOP_PUBLIC_READINESS_SCAN_PY:-$SCRIPT_DIR/lib/public_readiness_scan.py}"
     local repo_root="$REPO_ROOT"
 
-    export RALPH_PUBLIC_SCAN_EXCLUDES
-    export RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES
-    export RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES
-    RALPH_PUBLIC_SCAN_EXCLUDES="$(printf '%s\n' "${PUBLIC_SCAN_EXCLUDES[@]}")"
-    RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES="$(printf '%s\n' "${PUBLIC_LOCAL_ONLY_BASENAMES[@]}")"
-    RALPH_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES="$(printf '%s\n' "${PUBLIC_LOCAL_ONLY_BASENAME_PREFIXES[@]}")"
+    export CUELOOP_PUBLIC_SCAN_EXCLUDES
+    export CUELOOP_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES
+    export CUELOOP_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES
+    CUELOOP_PUBLIC_SCAN_EXCLUDES="$(printf '%s\n' "${PUBLIC_SCAN_EXCLUDES[@]}")"
+    CUELOOP_PUBLIC_SCAN_LOCAL_ONLY_BASENAMES="$(printf '%s\n' "${PUBLIC_LOCAL_ONLY_BASENAMES[@]}")"
+    CUELOOP_PUBLIC_SCAN_LOCAL_ONLY_BASENAME_PREFIXES="$(printf '%s\n' "${PUBLIC_LOCAL_ONLY_BASENAME_PREFIXES[@]}")"
 
     case "$mode" in
         links)
