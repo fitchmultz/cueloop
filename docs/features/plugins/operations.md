@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for plugin configuration and lifecycle commands
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Show how operators scaffold, install, enable, configure, inspect, validate, and remove plugins.
 
@@ -37,18 +37,18 @@ Plugins are discovered automatically but **disabled by default**.
 ## Scaffold
 
 ```bash
-ralph plugin init my.plugin
-ralph plugin init my.plugin --with-runner
-ralph plugin init my.plugin --with-processor
-ralph plugin init my.plugin --scope global
-ralph plugin init my.plugin --dry-run
+cueloop plugin init my.plugin
+cueloop plugin init my.plugin --with-runner
+cueloop plugin init my.plugin --with-processor
+cueloop plugin init my.plugin --scope global
+cueloop plugin init my.plugin --dry-run
 ```
 
 ## Install
 
 ```bash
-ralph plugin install ./my-plugin --scope project
-ralph plugin install ./my-plugin --scope global
+cueloop plugin install ./my-plugin --scope project
+cueloop plugin install ./my-plugin --scope global
 ```
 
 Install does **not** auto-enable plugins.
@@ -56,15 +56,15 @@ Install does **not** auto-enable plugins.
 ## List
 
 ```bash
-ralph plugin list
-ralph plugin list --json
+cueloop plugin list
+cueloop plugin list --json
 ```
 
 ## Validate
 
 ```bash
-ralph plugin validate
-ralph plugin validate --id my.plugin
+cueloop plugin validate
+cueloop plugin validate --id my.plugin
 ```
 
 Validation includes API version, ID format, required manifest fields, and supported hooks.
@@ -72,8 +72,8 @@ Validation includes API version, ID format, required manifest fields, and suppor
 ## Uninstall
 
 ```bash
-ralph plugin uninstall my.plugin --scope project
-ralph plugin uninstall my.plugin --scope global
+cueloop plugin uninstall my.plugin --scope project
+cueloop plugin uninstall my.plugin --scope global
 ```
 
 ## Related Docs

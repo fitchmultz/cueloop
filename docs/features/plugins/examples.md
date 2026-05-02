@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for example plugin implementations
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Provide concrete runner and processor plugin examples that demonstrate the documented protocols.
 

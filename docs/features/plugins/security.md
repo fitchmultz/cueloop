@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for plugin-specific trust, sandboxing, path, and redaction guidance
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Explain the risks and required safety practices for enabling and running plugins.
 
@@ -25,14 +25,14 @@ Plugins can execute arbitrary commands, access files/environment variables, make
    - Absolute paths and `..` escapes are rejected.
    - Existing symlinked files and ancestor directories must canonicalize within the plugin directory.
 4. **Treat plugin config as sensitive**
-   - Ralph redacts sensitive plugin stderr before display.
+   - CueLoop redacts sensitive plugin stderr before display.
    - Do not log full `RALPH_PLUGIN_CONFIG_JSON` from plugin scripts.
 
 ## Operator Checklist
 
 ```bash
-ralph plugin validate --id suspicious.plugin
-ralph plugin list --json
+cueloop plugin validate --id suspicious.plugin
+cueloop plugin list --json
 ```
 
 Review plugin source before enabling it.

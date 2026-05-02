@@ -23,7 +23,7 @@ curl -LO {{REPO_URL}}/releases/download/v{{VERSION}}/cueloop-{{VERSION}}-<platfo
 tar -xzf cueloop-{{VERSION}}-<platform>.tar.gz
 mv cueloop ~/.local/bin/
 # Optional legacy alias during the compatibility window:
-mv ralph ~/.local/bin/
+mv cueloop ~/.local/bin/
 ```
 
 ### Verify Checksum
@@ -44,7 +44,7 @@ Alternatively, build from source:
 
 ```bash
 git clone {{REPO_CLONE_URL}}
-cd ralph
+cd cueloop
 git checkout v{{VERSION}}
 make install
 ```

@@ -1,11 +1,11 @@
-# Ralph Queue System
+# CueLoop Queue System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
 Parent: [Feature Documentation](README.md)
 
 
-The queue is the source of truth for active work in Ralph. It manages tasks through their lifecycle, from creation to completion, while providing validation, dependency tracking, and workflow orchestration.
+The queue is the source of truth for active work in CueLoop. It manages tasks through their lifecycle, from creation to completion, while providing validation, dependency tracking, and workflow orchestration.
 
 ## Table of Contents
 
@@ -23,7 +23,7 @@ The queue is the source of truth for active work in Ralph. It manages tasks thro
 
 ## Overview
 
-Ralph uses two primary queue files:
+CueLoop uses two primary queue files:
 
 | File | Purpose | Location |
 |------|---------|----------|
@@ -69,7 +69,7 @@ Ralph uses two primary queue files:
 
 ### Version Field
 
-The `version` field indicates the queue schema version. Current version is `1`. Ralph validates this on load and will error if an unsupported version is detected.
+The `version` field indicates the queue schema version. Current version is `1`. CueLoop validates this on load and will error if an unsupported version is detected.
 
 ### Tasks Array
 
@@ -104,13 +104,13 @@ Tasks progress through a well-defined status lifecycle:
 
 | From | To | How | Notes |
 |------|-----|-----|-------|
-| `draft` | `todo` | `ralph task ready <id>` | Promotes draft to runnable state |
+| `draft` | `todo` | `cueloop task ready <id>` | Promotes draft to runnable state |
 | `draft` | `todo` | Auto-promotion on `--include-draft` | Draft tasks are skipped by default |
-| `todo` | `doing` | `ralph task start <id>` or `ralph run one` | Marks task as in-progress |
+| `todo` | `doing` | `cueloop task start <id>` or `cueloop run one` | Marks task as in-progress |
 | `todo` | `doing` | Auto-started by runner | Sets `started_at` timestamp |
-| `doing` | `done` | `ralph task done <id>` | Completes task, moves to done archive |
-| `doing` | `rejected` | `ralph task reject <id>` | Marks as rejected, moves to done archive |
-| `done`/`rejected` | - | `ralph queue archive` | Moves terminal tasks to `.ralph/done.jsonc` |
+| `doing` | `done` | `cueloop task done <id>` | Completes task, moves to done archive |
+| `doing` | `rejected` | `cueloop task reject <id>` | Marks as rejected, moves to done archive |
+| `done`/`rejected` | - | `cueloop queue archive` | Moves terminal tasks to `.ralph/done.jsonc` |
 
 ### Status Definitions
 
@@ -137,7 +137,7 @@ These tasks are eligible for archiving to `.ralph/done.jsonc`.
 
 **INTENDED BEHAVIOR**: Tasks execute strictly in file order (top to bottom).
 
-**CURRENTLY IMPLEMENTED BEHAVIOR**: Same - the first runnable task in the array is selected by `ralph run one` and `ralph run loop`.
+**CURRENTLY IMPLEMENTED BEHAVIOR**: Same - the first runnable task in the array is selected by `cueloop run one` and `cueloop run loop`.
 
 ### Sorting Operations
 
@@ -145,20 +145,20 @@ The queue can be reordered using:
 
 ```bash
 # Sort by priority (highest first, default)
-ralph queue sort
+cueloop queue sort
 
 # Sort by priority ascending
-ralph queue sort --order ascending
+cueloop queue sort --order ascending
 
 # Sort by priority descending
-ralph queue sort --order descending
+cueloop queue sort --order descending
 ```
 
-> **Note**: `ralph queue sort` intentionally only supports priority sorting to prevent dangerous arbitrary reordering. For temporary viewing with different sort orders, use `ralph queue list --sort-by <field>`.
+> **Note**: `cueloop queue sort` intentionally only supports priority sorting to prevent dangerous arbitrary reordering. For temporary viewing with different sort orders, use `cueloop queue list --sort-by <field>`.
 
 ### Task Insertion Position
 
-When new tasks are added via `ralph task \"...\"` (or `ralph task build \"...\"`) or `ralph queue import`:
+When new tasks are added via `cueloop task \"...\"` (or `cueloop task build \"...\"`) or `cueloop queue import`:
 
 - **Default**: Insert at position 0 (top of queue)
 - **If first task is `doing`**: Insert at position 1 (after in-progress task)
@@ -228,7 +228,7 @@ Custom fields allow arbitrary key-value pairs for extensibility:
 
 **CURRENTLY IMPLEMENTED BEHAVIOR**: The loader accepts string/number/boolean values and coerces them to strings. On save, all values are normalized to strings.
 
-**Reserved Keys**: Ralph automatically writes these analytics keys to completed tasks:
+**Reserved Keys**: CueLoop automatically writes these analytics keys to completed tasks:
 - `runner_used`: The runner actually used (e.g., "codex", "claude")
 - `model_used`: The model actually used (e.g., "gpt-5.3-codex")
 
@@ -271,10 +271,10 @@ Validate the queue and done archive:
 
 ```bash
 # Validate active queue (and done archive if present)
-ralph queue validate
+cueloop queue validate
 
 # Verbose validation with warnings
-ralph --verbose queue validate
+cueloop --verbose queue validate
 ```
 
 Validation checks:
@@ -292,10 +292,10 @@ Move completed tasks from `queue.json` to `done.json`:
 
 ```bash
 # Archive all terminal tasks (done/rejected)
-ralph queue archive
+cueloop queue archive
 
 # Force archive (with stale lock)
-ralph queue archive --force
+cueloop queue archive --force
 ```
 
 The archive operation:
@@ -310,19 +310,19 @@ Remove old tasks from the done archive:
 
 ```bash
 # Prune tasks older than 30 days
-ralph queue prune --age 30
+cueloop queue prune --age 30
 
 # Prune only rejected tasks
-ralph queue prune --status rejected
+cueloop queue prune --status rejected
 
 # Keep last 100 completed tasks regardless of age
-ralph queue prune --keep-last 100
+cueloop queue prune --keep-last 100
 
 # Combined filters (AND logic)
-ralph queue prune --age 30 --status done --keep-last 50
+cueloop queue prune --age 30 --status done --keep-last 50
 
 # Dry run to preview changes
-ralph queue prune --dry-run --age 90
+cueloop queue prune --dry-run --age 90
 ```
 
 Prune options:
@@ -339,10 +339,10 @@ Fix common queue issues automatically:
 
 ```bash
 # Repair queue and done files
-ralph queue repair
+cueloop queue repair
 
 # Dry run to see what would be fixed
-ralph queue repair --dry-run
+cueloop queue repair --dry-run
 ```
 
 Repair operations:
@@ -358,10 +358,10 @@ Reorder tasks by priority:
 
 ```bash
 # Sort by priority descending (highest first)
-ralph queue sort
+cueloop queue sort
 
 # Sort by priority ascending
-ralph queue sort --order ascending
+cueloop queue sort --order ascending
 ```
 
 ### Import/Export
@@ -370,35 +370,35 @@ ralph queue sort --order ascending
 
 ```bash
 # Export to CSV (default)
-ralph queue export
+cueloop queue export
 
 # Export to different formats
-ralph queue export --format json --output tasks.json
-ralph queue export --format tsv --output tasks.tsv
-ralph queue export --format md  # Markdown table
-ralph queue export --format gh  # GitHub issue format
+cueloop queue export --format json --output tasks.json
+cueloop queue export --format tsv --output tasks.tsv
+cueloop queue export --format md  # Markdown table
+cueloop queue export --format gh  # GitHub issue format
 
 # Filter exports
-ralph queue export --tag rust --tag cli
-ralph queue export --status todo --scope crates/cueloop
-ralph queue export --include-archive  # Include done.json
+cueloop queue export --tag rust --tag cli
+cueloop queue export --status todo --scope crates/cueloop
+cueloop queue export --include-archive  # Include done.json
 ```
 
 #### Import
 
 ```bash
 # Import from JSON
-ralph queue import --format json --input tasks.json
+cueloop queue import --format json --input tasks.json
 
 # Import from CSV with duplicate handling
-ralph queue import --format csv --input tasks.csv --on-duplicate skip
-ralph queue import --format csv --input tasks.csv --on-duplicate rename
+cueloop queue import --format csv --input tasks.csv --on-duplicate skip
+cueloop queue import --format csv --input tasks.csv --on-duplicate rename
 
 # Dry run to preview
-ralph queue import --format json --input tasks.json --dry-run
+cueloop queue import --format json --input tasks.json --dry-run
 
 # Import from stdin
-ralph queue export --format json | ralph queue import --format json
+cueloop queue export --format json | cueloop queue import --format json
 ```
 
 Import normalization:
@@ -419,16 +419,16 @@ Duplicate handling (`--on-duplicate`):
 
 ### Lock Mechanism
 
-Ralph uses a directory-based lock at `.ralph/lock/` to coordinate access:
+CueLoop uses a directory-based lock at `.ralph/lock/` to coordinate access:
 
 ```bash
 # Lock is automatically acquired by most commands
-ralph queue archive
-ralph queue repair
-ralph queue import
+cueloop queue archive
+cueloop queue repair
+cueloop queue import
 
 # Manual unlock (use with caution)
-ralph queue unlock
+cueloop queue unlock
 ```
 
 ### Lock Structure
@@ -439,7 +439,7 @@ The lock directory contains:
 
 ### Stale Lock Detection
 
-Ralph detects stale locks by checking if the holding PID is still running:
+CueLoop detects stale locks by checking if the holding PID is still running:
 
 ```
 Queue lock already held at: /project/.ralph/lock
@@ -448,12 +448,12 @@ Lock Holder:
   PID: 12345
   Label: run loop
   Started At: 2026-01-15T10:30:00Z
-  Command: ralph run loop
+  Command: cueloop run loop
 
 Suggested Action:
   The process that held this lock is no longer running.
   Use --force to automatically clear it, or use the built-in unlock command:
-  ralph queue unlock
+  cueloop queue unlock
 ```
 
 ### Force Flag
@@ -462,11 +462,11 @@ Use `--force` to override locks when safe:
 
 ```bash
 # Bypass stale lock detection
-ralph queue archive --force
-ralph queue repair --force
+cueloop queue archive --force
+cueloop queue repair --force
 ```
 
-> **Warning**: Only use `--force` when you're certain no other Ralph process is running.
+> **Warning**: Only use `--force` when you're certain no other CueLoop process is running.
 
 ### Shared Lock Mode
 
@@ -507,7 +507,7 @@ Auto-archive automatically moves terminal tasks to done.json after a configured 
 
 ### Manual vs Auto Archive
 
-| | Manual (`ralph queue archive`) | Auto-Archive |
+| | Manual (`cueloop queue archive`) | Auto-Archive |
 |--|-------------------------------|--------------|
 | Trigger | User command | Automatic on queue operations |
 | Age filter | None (all terminal tasks) | Respects `auto_archive_after_days` |
@@ -533,13 +533,13 @@ Tasks are categorized by age to identify stale work:
 
 ```bash
 # Show aging report (default: todo, doing tasks)
-ralph queue aging
+cueloop queue aging
 
 # Filter by status
-ralph queue aging --status todo --status doing
+cueloop queue aging --status todo --status doing
 
 # JSON output for scripting
-ralph queue aging --format json
+cueloop queue aging --format json
 ```
 
 Example output:
@@ -698,48 +698,48 @@ Aging is calculated from different timestamps based on status:
 
 ```bash
 # Add a new task
-ralph task "Fix API validation"
+cueloop task "Fix API validation"
 
 # Show next task
-ralph queue next
+cueloop queue next
 
 # Run the next task
-ralph run one
+cueloop run one
 
 # Mark complete and archive
-ralph task done RQ-0001
-ralph queue archive
+cueloop task done RQ-0001
+cueloop queue archive
 ```
 
 ### Bulk Operations
 
 ```bash
 # Export tasks for review
-ralph queue export --format md --status todo > review.md
+cueloop queue export --format md --status todo > review.md
 
 # Import tasks from external source
-ralph queue import --format csv --input backlog.csv --dry-run
-ralph queue import --format csv --input backlog.csv
+cueloop queue import --format csv --input backlog.csv --dry-run
+cueloop queue import --format csv --input backlog.csv
 
 # Prune old done tasks
-ralph queue prune --age 90 --keep-last 100
+cueloop queue prune --age 90 --keep-last 100
 ```
 
 ### Maintenance
 
 ```bash
 # Regular validation
-ralph queue validate
+cueloop queue validate
 
 # Check for stale tasks
-ralph queue aging
+cueloop queue aging
 
 # Repair any issues
-ralph queue repair --dry-run
-ralph queue repair
+cueloop queue repair --dry-run
+cueloop queue repair
 
 # Archive completed work
-ralph queue archive
+cueloop queue archive
 ```
 
 ---

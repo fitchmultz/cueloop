@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for task object fields, per-task agent overrides, examples, and schema-level validation
 Parent: [Task System](tasks.md)
 
-This page defines the shape and validation expectations for Ralph task objects stored in `.ralph/queue.jsonc` and `.ralph/done.jsonc`. It includes the minimum task-bearing queue envelope only; queue operations, ordering, locking, repair, archive, import/export, and migration behavior live in [Queue](queue.md). Relationship field meanings are summarized here as schema fields; relationship behavior and validation semantics live in [Task Relationships](task-relationships.md).
+This page defines the shape and validation expectations for CueLoop task objects stored in `.ralph/queue.jsonc` and `.ralph/done.jsonc`. It includes the minimum task-bearing queue envelope only; queue operations, ordering, locking, repair, archive, import/export, and migration behavior live in [Queue](queue.md). Relationship field meanings are summarized here as schema fields; relationship behavior and validation semantics live in [Task Relationships](task-relationships.md).
 
 ## Related Task Docs
 
@@ -20,7 +20,7 @@ This page defines the shape and validation expectations for Ralph task objects s
 
 ### What is a Task?
 
-A **Task** in Ralph is a JSON object representing a discrete unit of work. Tasks are stored in `.ralph/queue.jsonc` (active work) or `.ralph/done.jsonc` (completed or rejected work). Each task has:
+A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tasks are stored in `.ralph/queue.jsonc` (active work) or `.ralph/done.jsonc` (completed or rejected work). Each task has:
 
 - **Identity**: Unique ID, title, timestamps
 - **State**: Status, priority, tags
@@ -39,7 +39,7 @@ Tasks serve as the fundamental interface between you and AI agents:
 
 ### Minimum Queue Envelope
 
-Task objects live inside Ralph queue files. This page owns the minimum task-bearing envelope shown below; [Queue](queue.md) owns queue file operations, ordering, locking, repair, archive, import/export, and migration behavior.
+Task objects live inside CueLoop queue files. This page owns the minimum task-bearing envelope shown below; [Queue](queue.md) owns queue file operations, ordering, locking, repair, archive, import/export, and migration behavior.
 
 ```
 .ralph/
@@ -99,7 +99,7 @@ Task objects live inside Ralph queue files. This page owns the minimum task-bear
 `kind` is the canonical machine-readable execution contract:
 
 - `work_item` tasks are executable when their `status`, dependencies, and schedule allow it.
-- `group` tasks organize decomposition trees and are skipped by `ralph queue next`, `run one`, `run loop`, parallel worker selection, and machine runnability by default.
+- `group` tasks organize decomposition trees and are skipped by `cueloop queue next`, `run one`, `run loop`, parallel worker selection, and machine runnability by default.
 - Group tasks remain visible in queue read/list/search/tree/graph surfaces and app models.
 - Missing `kind` defaults to `work_item` for existing queues; queue file `version` remains 1.
 - `status` is lifecycle, and `parent_id` is hierarchy. Do not infer actionability from either field.
@@ -273,10 +273,10 @@ The `agent` field allows overriding global configuration for individual tasks.
 
 ```bash
 # Validate queue
-ralph queue validate
+cueloop queue validate
 
 # Validation runs automatically on most queue operations
-ralph task edit status done RQ-0001  # Validates after edit
+cueloop task edit status done RQ-0001  # Validates after edit
 ```
 
 ### Configuration

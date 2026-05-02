@@ -2,12 +2,12 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
 ![Environment Variables](assets/images/2026-02-07-environment.png)
 
-Purpose: List environment variables recognized by Ralph and how they affect behavior.
+Purpose: List environment variables recognized by CueLoop and how they affect behavior.
 
 ## .env Files
 
@@ -25,7 +25,7 @@ Purpose: List environment variables recognized by Ralph and how they affect beha
   Example:
 
   ```bash
-  RALPH_RAW_DUMP=1 ralph run one
+  RALPH_RAW_DUMP=1 cueloop run one
   ```
 
 ## Examples

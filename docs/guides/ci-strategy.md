@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
 Purpose: canonical operator guide for local validation gates, profiling, and macOS UI evidence capture.
@@ -150,7 +150,7 @@ make coverage
 
 `make security-audit` runs `cargo audit --deny warnings` against `Cargo.lock` and requires `cargo-audit` (`cargo install cargo-audit --locked`). Use it during dependency refreshes, Rust baseline audits, and release/public-readiness preparation. It is intentionally not part of the default day-to-day `make agent-ci` tiers so advisory database/network/tool availability does not make every local edit depend on external RustSec freshness.
 
-When a system Rust update is reported, use this local comparison procedure before deciding whether Ralph should adopt it:
+When a system Rust update is reported, use this local comparison procedure before deciding whether CueLoop should adopt it:
 
 ```bash
 rustup update stable
@@ -169,7 +169,7 @@ make macos-ui-artifacts-clean
 
 ## Resource Controls
 
-Ralph’s make targets support resource caps:
+CueLoop’s make targets support resource caps:
 
 ```bash
 RALPH_CI_JOBS=4 make agent-ci

@@ -5,11 +5,11 @@ Source of truth: this document for its stated scope
 Parent: [Feature Documentation](README.md)
 
 
-Ralph's dependency system provides powerful task relationship management, enabling you to control execution order, visualize workflows, and analyze critical paths.
+CueLoop's dependency system provides powerful task relationship management, enabling you to control execution order, visualize workflows, and analyze critical paths.
 
 ## Overview
 
-Task dependencies in Ralph define **execution constraints**—relationships that determine when tasks can run. A task is considered **runnable** only when all its dependencies are satisfied (completed with `done` or `rejected` status).
+Task dependencies in CueLoop define **execution constraints**—relationships that determine when tasks can run. A task is considered **runnable** only when all its dependencies are satisfied (completed with `done` or `rejected` status).
 
 Key capabilities:
 - **Execution ordering**: Define which tasks must complete before others can start
@@ -19,7 +19,7 @@ Key capabilities:
 
 ## Dependency Types
 
-Ralph supports four types of task relationships, each with different semantics:
+CueLoop supports four types of task relationships, each with different semantics:
 
 ### `depends_on` - "I need X"
 
@@ -112,7 +112,7 @@ A task's runnability depends on its status and dependencies:
 
 ## Validation
 
-Ralph validates dependencies on all queue operations to ensure correctness.
+CueLoop validates dependencies on all queue operations to ensure correctness.
 
 ### Hard Errors (Blocking)
 
@@ -142,7 +142,7 @@ These are logged but don't prevent operations:
 
 ```bash
 # Validate the queue
-$ ralph queue validate
+$ cueloop queue validate
 
 # Example output with warnings
 [WARN] [RQ-0005] Task RQ-0005 depends on rejected task RQ-0002. This dependency will never be satisfied.
@@ -151,7 +151,7 @@ $ ralph queue validate
 
 ## Dependency Graph
 
-Internally, Ralph represents tasks as a **Directed Acyclic Graph (DAG)**. The graph structure ensures:
+Internally, CueLoop represents tasks as a **Directed Acyclic Graph (DAG)**. The graph structure ensures:
 
 - **No cycles**: Dependencies must flow in one direction
 - **Deterministic ordering**: Topological sort provides a valid execution order
@@ -177,14 +177,14 @@ Internally, Ralph represents tasks as a **Directed Acyclic Graph (DAG)**. The gr
 
 ## Visualization
 
-Ralph provides multiple ways to visualize dependencies:
+CueLoop provides multiple ways to visualize dependencies:
 
 ### ASCII Tree View
 
-Default output of `ralph queue graph`:
+Default output of `cueloop queue graph`:
 
 ```bash
-$ ralph queue graph --task RQ-0003
+$ cueloop queue graph --task RQ-0003
 
 Dependency tree for RQ-0003: Implement API endpoint
 
@@ -207,7 +207,7 @@ Export to Graphviz for advanced visualization:
 
 ```bash
 # Export to DOT format
-$ ralph queue graph --format dot > deps.dot
+$ cueloop queue graph --format dot > deps.dot
 
 # Render to PNG
 $ dot -Tpng deps.dot -o deps.png
@@ -226,7 +226,7 @@ The DOT output includes:
 For programmatic access:
 
 ```bash
-$ ralph queue graph --format json --task RQ-0003
+$ cueloop queue graph --format json --task RQ-0003
 ```
 
 ```json
@@ -257,16 +257,16 @@ $ ralph queue graph --format json --task RQ-0003
 
 ```bash
 # Show all dependency chains
-$ ralph queue graph
+$ cueloop queue graph
 
 # Include completed tasks
-$ ralph queue graph --include-done
+$ cueloop queue graph --include-done
 
 # Show only critical path
-$ ralph queue graph --critical
+$ cueloop queue graph --critical
 
 # Show reverse dependencies (what this task blocks)
-$ ralph queue graph --task RQ-0001 --reverse
+$ cueloop queue graph --task RQ-0001 --reverse
 ```
 
 ## Critical Path Analysis
@@ -277,7 +277,7 @@ The **critical path** is the longest dependency chain in the graph. Tasks on the
 
 ```bash
 # Highlight critical path in tree view
-$ ralph queue graph --critical
+$ cueloop queue graph --critical
 
 # Critical path length is shown in summary
 Summary:
@@ -304,27 +304,27 @@ Completing critical path tasks unblocks the most downstream work. Prioritize the
 
 ## macOS App Visualization
 
-On macOS, you can explore dependency relationships interactively in the Ralph app:
+On macOS, you can explore dependency relationships interactively in the CueLoop app:
 
 ```bash
-ralph app open
+cueloop app open
 ```
 
-For cross-platform and scripting use, prefer `ralph queue graph` (ASCII/DOT/JSON).
+For cross-platform and scripting use, prefer `cueloop queue graph` (ASCII/DOT/JSON).
 
 ## Queue Explain
 
-The `ralph queue explain` command provides detailed runnability analysis:
+The `cueloop queue explain` command provides detailed runnability analysis:
 
 ```bash
 # Text explanation (default)
-$ ralph queue explain
+$ cueloop queue explain
 
 # JSON output for scripting
-$ ralph queue explain --format json
+$ cueloop queue explain --format json
 
 # Include draft tasks
-$ ralph queue explain --include-draft
+$ cueloop queue explain --include-draft
 ```
 
 ### Example Output
@@ -349,8 +349,8 @@ Blocking reasons (first 10 candidates):
       * RQ-0005: status is 'Todo' (must be done/rejected)
 
 Hints:
-  - Run 'ralph queue graph --task <ID>' to visualize dependencies
-  - Run 'ralph run one --dry-run' to see what would be selected
+  - Run 'cueloop queue graph --task <ID>' to visualize dependencies
+  - Run 'cueloop run one --dry-run' to see what would be selected
 ```
 
 ### JSON Report Structure
@@ -432,7 +432,7 @@ It's important to distinguish between **structural hierarchy** (`parent_id`) and
 |---------|-------------|--------------|
 | **Purpose** | Structural organization | Execution ordering |
 | **Affects task order** | No | Yes |
-| **Visualized with** | `ralph queue tree` | `ralph queue graph` |
+| **Visualized with** | `cueloop queue tree` | `cueloop queue graph` |
 | **Validation** | Warnings for cycles/missing | Hard errors for cycles/missing |
 | **Direction** | Child → Parent | Task → Dependency |
 
@@ -523,7 +523,7 @@ RQ-0001 (Define API)
 
 ### Example 2: Handling Circular Dependencies
 
-**INTENDED BEHAVIOR**: Ralph should detect and reject circular dependencies.
+**INTENDED BEHAVIOR**: CueLoop should detect and reject circular dependencies.
 
 **CURRENTLY IMPLEMENTED BEHAVIOR**: 
 - Circular `depends_on` chains are detected during validation
@@ -532,7 +532,7 @@ RQ-0001 (Define API)
 
 ```bash
 # Attempting to validate with circular dependency
-$ ralph queue validate
+$ cueloop queue validate
 
 Error: Circular dependency detected involving task RQ-0001. 
 Task dependencies must form a DAG (no cycles). 
@@ -567,7 +567,7 @@ Review the depends_on fields to break the cycle.
 
 ```bash
 # View full graph with critical path highlighting
-$ ralph queue graph
+$ cueloop queue graph
 
 Task Dependency Graph
 
@@ -628,7 +628,7 @@ This dependency will never be satisfied.
 1. **Keep chains shallow**: Prefer depth ≤ 5 for clarity
 2. **Use `blocks` for intent**: When task A "enables" task B, use `blocks` to express this
 3. **Check critical path**: Prioritize tasks on the critical path
-4. **Validate frequently**: Run `ralph queue validate` after editing dependencies
+4. **Validate frequently**: Run `cueloop queue validate` after editing dependencies
 5. **Use `relates_to` liberally**: Add context without affecting execution
 6. **Mark duplicates**: Use `duplicates` to track redundant work
 7. **Review warnings**: Address dependency warnings promptly
@@ -639,10 +639,10 @@ This dependency will never be satisfied.
 
 ```bash
 # Check for unmet dependencies
-$ ralph queue explain
+$ cueloop queue explain
 
 # Visualize the dependency chain
-$ ralph queue graph --task <TASK-ID>
+$ cueloop queue graph --task <TASK-ID>
 ```
 
 ### Validation fails with "Circular dependency"
@@ -655,7 +655,7 @@ $ ralph queue graph --task <TASK-ID>
 
 - Check that the task ID exists in `queue.json` or `done.json`
 - Verify the ID spelling and case
-- Use `ralph queue list --include-done` to search for the task
+- Use `cueloop queue list --include-done` to search for the task
 
 ### Deep dependency chain warning
 
@@ -667,4 +667,4 @@ $ ralph queue graph --task <TASK-ID>
 
 - [Queue and Tasks](../queue-and-tasks.md) - Task fields and status lifecycle
 - [Configuration](../configuration.md) - Configuring `max_dependency_depth`
-- [CLI Reference](../cli.md) - `ralph queue graph`, `ralph queue explain`
+- [CLI Reference](../cli.md) - `cueloop queue graph`, `cueloop queue explain`

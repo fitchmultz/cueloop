@@ -29,15 +29,15 @@ CueLoop is a Rust CLI for running AI agent loops against a structured JSON task 
 
 ## Core Command Areas
 
-- `ralph run`: supervised execution (`one`, `loop`, `resume`, `parallel`)
-- `ralph task`: task creation, lifecycle, relations, templates, batch ops
-- `ralph queue`: queue inspection, validation, analytics, import/export
-- `ralph scan`: repository scanning and task discovery
-- `ralph prompt`: prompt rendering/export/sync/diff
-- `ralph doctor`: readiness diagnostics
-- `ralph plugin`: plugin lifecycle
-- `ralph daemon` + `ralph watch`: background automation
-- `ralph webhook`: test/status/replay for event delivery
+- `cueloop run`: supervised execution (`one`, `loop`, `resume`, `parallel`)
+- `cueloop task`: task creation, lifecycle, relations, templates, batch ops
+- `cueloop queue`: queue inspection, validation, analytics, import/export
+- `cueloop scan`: repository scanning and task discovery
+- `cueloop prompt`: prompt rendering/export/sync/diff
+- `cueloop doctor`: readiness diagnostics
+- `cueloop plugin`: plugin lifecycle
+- `cueloop daemon` + `cueloop watch`: background automation
+- `cueloop webhook`: test/status/replay for event delivery
 
 ## Verification and Operations
 
@@ -73,7 +73,7 @@ Use these when you want to validate a clone, understand the operational model, o
 - Done archive: `.cueloop/done.jsonc`
 - Project config: `.cueloop/config.jsonc`
 - Prompt overrides: `.cueloop/prompts/`
-- Legacy fallback: `.ralph/` remains supported; use `ralph migrate runtime-dir --apply` when ready.
+- Legacy fallback: `.ralph/` remains supported; use `cueloop migrate runtime-dir --apply` when ready.
 
 ## Validation and CI
 

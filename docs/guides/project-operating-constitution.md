@@ -3,11 +3,11 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 Related: [Decisions](../decisions.md), [CI and Test Strategy](ci-strategy.md)
 Last updated: 2026-04-23
 
-This constitution defines how Ralph project work is accepted, modified, and
+This constitution defines how CueLoop project work is accepted, modified, and
 closed. It is intentionally compact: use it to prevent drift, not to create a
 second project-management system.
 

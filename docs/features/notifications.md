@@ -1,4 +1,4 @@
-# Ralph Notification System
+# CueLoop Notification System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -7,7 +7,7 @@ Parent: [Feature Documentation](README.md)
 
 ![Notification System](../assets/images/2026-02-07-11-32-24-notifications.png)
 
-Ralph provides a cross-platform desktop notification system that alerts you when tasks complete, fail, or when loop execution finishes. Notifications help you stay informed about long-running tasks without constantly monitoring the terminal.
+CueLoop provides a cross-platform desktop notification system that alerts you when tasks complete, fail, or when loop execution finishes. Notifications help you stay informed about long-running tasks without constantly monitoring the terminal.
 
 ---
 
@@ -116,7 +116,7 @@ Settings are resolved in this order (highest to lowest):
 
 ## Platform Support
 
-Ralph uses the `notify-rust` crate for cross-platform notification delivery, with platform-specific adaptations for sound playback.
+CueLoop uses the `notify-rust` crate for cross-platform notification delivery, with platform-specific adaptations for sound playback.
 
 ### macOS
 
@@ -124,7 +124,7 @@ Ralph uses the `notify-rust` crate for cross-platform notification delivery, wit
 - Uses NotificationCenter framework
 - Native macOS notification appearance
 - Respects system Do Not Disturb settings
-- Clicking notifications brings Ralph to foreground
+- Clicking notifications brings CueLoop to foreground
 
 **Sound Support:**
 - Default sound: `/System/Library/Sounds/Glass.aiff`
@@ -289,27 +289,27 @@ Notification settings can be overridden per-invocation via CLI flags. These take
 
 **Enable notifications for a single run:**
 ```bash
-ralph run one --notify
+cueloop run one --notify
 ```
 
 **Disable completion notifications but keep failure alerts:**
 ```bash
-ralph run one --no-notify
+cueloop run one --no-notify
 ```
 
 **Enable sound for this run only:**
 ```bash
-ralph run one --notify --notify-sound
+cueloop run one --notify --notify-sound
 ```
 
 **Run loop with notifications but no sound:**
 ```bash
-ralph run loop --notify --no-notify-fail
+cueloop run loop --notify --no-notify-fail
 ```
 
 **Completely silent operation (no notifications):**
 ```bash
-ralph run one --no-notify --no-notify-fail
+cueloop run one --no-notify --no-notify-fail
 ```
 
 ### Flag Conflicts
@@ -321,7 +321,7 @@ The following flags conflict with each other and cannot be used together:
 If you need different settings for completion vs failure, use the specific flags:
 ```bash
 # Enable completion notifications, disable failure notifications
-ralph run one --notify --no-notify-fail
+cueloop run one --notify --no-notify-fail
 ```
 
 ---
@@ -368,7 +368,7 @@ Desktop notifications and webhooks fire for the same events but serve different 
 When using `--wait-when-blocked`, you can receive a notification when the queue becomes unblocked:
 
 ```bash
-ralph run loop --wait-when-blocked --notify-when-unblocked
+cueloop run loop --wait-when-blocked --notify-when-unblocked
 ```
 
 This sends both desktop and webhook notifications when a previously blocked task becomes ready to run.
@@ -411,19 +411,19 @@ Understanding the exact timing of notifications helps you configure them appropr
 ### Loop Completion Notifications
 
 **When it fires:**
-- When `ralph run loop` finishes (naturally or via signal)
+- When `cueloop run loop` finishes (naturally or via signal)
 - Includes statistics: total tasks, succeeded count, failed count
 
 **When it does NOT fire:**
 - If `notify_on_loop_complete` is `false`
 - If `enabled` is `false`
-- For single task runs (`ralph run one`)
+- For single task runs (`cueloop run one`)
 
 ### Watch Mode Notifications
 
 **When it fires:**
-- When `ralph watch` detects new tasks from code comments
-- Only if `--notify` flag is passed to `ralph watch`
+- When `cueloop watch` detects new tasks from code comments
+- Only if `--notify` flag is passed to `cueloop watch`
 - Only when `agent.notification.notify_on_watch_new_tasks` is `true` (default)
 
 **When it does NOT fire:**
@@ -480,7 +480,7 @@ For tasks that take hours, enable all notifications with sound:
 
 Then run with:
 ```bash
-ralph run one RQ-0001 --notify-sound
+cueloop run one RQ-0001 --notify-sound
 ```
 
 ### Example 3: CI/Server Environment
@@ -535,10 +535,10 @@ Use different sounds for work vs personal projects:
 Use per-run CLI overrides during focus time:
 ```bash
 # Morning deep work session
-ralph run loop --no-notify --no-notify-fail
+cueloop run loop --no-notify --no-notify-fail
 
 # Afternoon collaborative work
-ralph run loop --notify --notify-fail
+cueloop run loop --notify --notify-fail
 ```
 
 ---
@@ -549,17 +549,17 @@ ralph run loop --notify --notify-fail
 
 1. **Check configuration:**
    ```bash
-   ralph config show --format json | jq '.agent.notification'
+   cueloop config show --format json | jq '.agent.notification'
    ```
 
 2. **Verify notification permissions:**
-   - **macOS**: System Preferences → Notifications → Terminal/ralph
+   - **macOS**: System Preferences → Notifications → Terminal/cueloop
    - **Linux**: Check notification daemon is running (`dunst`, `mako`, etc.)
    - **Windows**: Settings → System → Notifications
 
 3. **Check debug logs:**
    ```bash
-   RUST_LOG=debug ralph run one 2>&1 | grep -i notification
+   RUST_LOG=debug cueloop run one 2>&1 | grep -i notification
    ```
 
 ### Sound Not Playing
@@ -586,7 +586,7 @@ If you see notifications while the macOS app is active:
 
 ### Build Without Notifications
 
-To compile Ralph without notification support (reduces dependencies):
+To compile CueLoop without notification support (reduces dependencies):
 
 ```bash
 cargo build --no-default-features

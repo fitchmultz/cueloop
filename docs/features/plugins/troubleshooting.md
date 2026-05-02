@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for plugin debugging, common failures, API compatibility, and general best practices
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Help operators and plugin authors diagnose plugin discovery, manifest, runtime, and compatibility issues.
 
@@ -11,10 +11,10 @@ Purpose: Help operators and plugin authors diagnose plugin discovery, manifest, 
 ## Debugging Commands
 
 ```bash
-RUST_LOG=debug ralph plugin list
-RUST_LOG=trace ralph run one
-ralph plugin list --json
-ralph plugin validate --id my.plugin
+RUST_LOG=debug cueloop plugin list
+RUST_LOG=trace cueloop run one
+cueloop plugin list --json
+cueloop plugin validate --id my.plugin
 ```
 
 ## Common Issues
@@ -38,9 +38,9 @@ ralph plugin validate --id my.plugin
 
 The current plugin API version is **`1`**.
 
-Ralph rejects incompatible plugin manifests, for example: `got 2, expected 1`.
+CueLoop rejects incompatible plugin manifests, for example: `got 2, expected 1`.
 
-| API Version | Ralph Versions | Status |
+| API Version | CueLoop Versions | Status |
 |-------------|----------------|--------|
 | 1 | Current | ✅ Supported |
 

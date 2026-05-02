@@ -2,10 +2,10 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-Purpose: describe Ralph’s trust boundaries, secret-handling expectations, and publication safety controls.
+Purpose: describe CueLoop’s trust boundaries, secret-handling expectations, and publication safety controls.
 
 ## Threat Model Scope
 

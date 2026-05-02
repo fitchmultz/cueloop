@@ -2,12 +2,12 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
 ![3-Phase Workflow](assets/images/2026-02-07-workflow-3phase.png)
 
-Purpose: Explain Ralph's high-level runtime layout, phases, and prompt override workflow without deep internals.
+Purpose: Explain CueLoop's high-level runtime layout, phases, and prompt override workflow without deep internals.
 
 ## Runtime Files
 - `.ralph/queue.jsonc`: source of truth for active tasks.
@@ -17,7 +17,7 @@ Purpose: Explain Ralph's high-level runtime layout, phases, and prompt override 
 - `.ralph/cache/parallel/state.json`: parallel run state (in-flight workers and terminal outcomes).
 
 ## Prompt Overrides
-Ralph embeds default prompts in the Rust binary. To override prompts per repo, add:
+CueLoop embeds default prompts in the Rust binary. To override prompts per repo, add:
 - `.ralph/prompts/worker.md` (base worker prompt)
 - `.ralph/prompts/worker_phase1.md` (Phase 1 planning wrapper)
 - `.ralph/prompts/worker_phase2.md` (Phase 2 implementation wrapper, 2-phase)
@@ -38,13 +38,13 @@ Default execution uses three phases:
    - Plan-only violations prompt for action when `git_revert_mode=ask`; you can keep+proceed (explicit override), revert changes, or continue planning with a message.
 2. Phase 2 (Implementation + CI): apply changes, run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when `agent.ci_gate.enabled=true`, then stop. When `agent.ci_gate.enabled=false`, only the CI command/requirement is skipped; implementation and Phase 2 handoff still continue.
 3. Phase 3 (Review + Completion): review diff, resolve any flagged risks or suspicious leads before completion, re-run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when `agent.ci_gate.enabled=true`, complete task, and (when auto git commit/push is enabled) commit and push. When `agent.ci_gate.enabled=false`, Phase 3 still runs and reports configured CI validation as skipped by configuration.
-   - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, allowed dirty files include `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/` (Ralph bookkeeping/state).
+   - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, allowed dirty files include `.ralph/queue.{json,jsonc}`, `.ralph/done.{json,jsonc}`, `.ralph/config.{json,jsonc}`, and `.ralph/cache/` (CueLoop bookkeeping/state).
 
 Phases can be set via `--phases` or `agent.phases` in config.
 
 ## Parallel Run Loop (CLI Only)
 
-Parallel execution is available only via the CLI (`ralph run loop --parallel [N]`).
+Parallel execution is available only via the CLI (`cueloop run loop --parallel [N]`).
 
 High-level behavior:
 - Each task runs in its own isolated git workspace clone under
@@ -55,14 +55,14 @@ High-level behavior:
   `fetch/rebase/conflict-fix/commit/push`.
 - Workers push directly to `origin/<target_branch>`; no PR/merge-agent lifecycle is used.
 - State is persisted to `.ralph/cache/parallel/state.json` for crash recovery and coordination.
-- On startup, Ralph prunes stale worker records before evaluating the state file's target branch.
-  If the target branch is missing or mismatched and there are no active workers, Ralph auto-heals
+- On startup, CueLoop prunes stale worker records before evaluating the state file's target branch.
+  If the target branch is missing or mismatched and there are no active workers, CueLoop auto-heals
   the state file to the current branch.
   Otherwise it fails with recovery guidance to avoid mixing active parallel runs across branches.
 
 **Breaking change (2026-02):** The default directory for parallel workspaces changed from
 `.worktrees/` to `.workspaces/`. The config key `parallel.worktree_root` has been renamed to
-`parallel.workspace_root` and is no longer accepted. Run `ralph migrate` to update existing
+`parallel.workspace_root` and is no longer accepted. Run `cueloop migrate` to update existing
 configs if you have custom `worktree_root` settings.
 
 ## Wait When Blocked (Sequential Loop)
@@ -75,22 +75,22 @@ Behavior:
 - Configurable poll interval (`--wait-poll-ms`, default: 1000ms, min: 50ms)
 - Optional timeout (`--wait-timeout-seconds`, 0 = no timeout)
 - Optional notification when unblocked (`--notify-when-unblocked`, desktop + webhook)
-- Respects stop signals (`ralph queue stop`) and Ctrl+C
+- Respects stop signals (`cueloop queue stop`) and Ctrl+C
 
 Use this for "fire and forget" execution through dependent task chains without manual babysitting.
 
 Examples:
 ```bash
 # Wait indefinitely for dependencies/schedules to resolve
-ralph run loop --wait-when-blocked
+cueloop run loop --wait-when-blocked
 
 # Wait with a 10-minute timeout and notify when unblocked
-ralph run loop --wait-when-blocked --wait-timeout-seconds 600 --notify-when-unblocked
+cueloop run loop --wait-when-blocked --wait-timeout-seconds 600 --notify-when-unblocked
 ```
 
 ### Queue Unblocked Webhook Event
 
-When using `--notify-when-unblocked` with webhooks configured, Ralph emits a `queue_unblocked` event:
+When using `--notify-when-unblocked` with webhooks configured, CueLoop emits a `queue_unblocked` event:
 
 - `previous_status`: `"blocked"`
 - `current_status`: `"runnable"`
@@ -109,7 +109,7 @@ Behavior:
 - Falls back to polling if notifications fail
 - Configurable poll interval (`--empty-poll-ms`, default: 30000ms = 30s, min: 50ms)
 - No timeout in continuous mode (runs until stopped)
-- Respects stop signals (`ralph queue stop`) and Ctrl+C
+- Respects stop signals (`cueloop queue stop`) and Ctrl+C
 
 Combined with `--wait-when-blocked`, the loop provides "always-on" operation that handles both blocked tasks and empty queues.
 
@@ -118,47 +118,47 @@ Use this for "set and forget" operation that integrates with system services (sy
 Examples:
 ```bash
 # Continuous mode: wait indefinitely for new tasks
-ralph run loop --continuous
+cueloop run loop --continuous
 
 # Poll more frequently (5s) for faster response
-ralph run loop --continuous --empty-poll-ms 5000
+cueloop run loop --continuous --empty-poll-ms 5000
 
 # Always-on mode: handle both blocked and empty states
-ralph run loop --continuous --wait-when-blocked
+cueloop run loop --continuous --wait-when-blocked
 ```
 
 ### Daemon Mode
 
-For background operation, use `ralph daemon start|stop|status` (Unix-only):
+For background operation, use `cueloop daemon start|stop|status` (Unix-only):
 
 ```bash
 # Start daemon
-ralph daemon start
+cueloop daemon start
 
 # Check status
-ralph daemon status
+cueloop daemon status
 
 # View logs
-ralph daemon logs
+cueloop daemon logs
 # Live follow
-ralph daemon logs --follow
+cueloop daemon logs --follow
 
 # Stop daemon
-ralph daemon stop
+cueloop daemon stop
 ```
 
-The daemon is a thin wrapper around `ralph run loop --continuous --wait-when-blocked` that:
+The daemon is a thin wrapper around `cueloop run loop --continuous --wait-when-blocked` that:
 - Detaches from the terminal
-- View logs with `ralph daemon logs`
+- View logs with `cueloop daemon logs`
 - Manages PID/state files in `.ralph/cache/`
-- Responds to `ralph daemon stop` and `ralph queue stop`
+- Responds to `cueloop daemon stop` and `cueloop queue stop`
 
 See `docs/cli.md` for systemd and launchd service templates.
 
 ## Security and Redaction
 
 ### Safeguard Dumps
-When operations fail (runner errors, scan validation failures), Ralph writes safeguard dumps to temp directories for troubleshooting. These dumps are **redacted by default** to prevent secrets from being written to disk.
+When operations fail (runner errors, scan validation failures), CueLoop writes safeguard dumps to temp directories for troubleshooting. These dumps are **redacted by default** to prevent secrets from being written to disk.
 
 **Important**: Redaction is pattern-based and best-effort. It may miss secrets in unexpected formats, encoded data, or novel patterns. Always review dumps before sharing.
 
@@ -200,7 +200,7 @@ Note: Per-phase settings are informational only. Crash recovery recomputes setti
 
 ## Webhook Events
 
-Ralph can emit webhook events for external integrations (Slack, Discord, CI systems, dashboards). Webhooks are configured via `agent.webhook` in config.
+CueLoop can emit webhook events for external integrations (Slack, Discord, CI systems, dashboards). Webhooks are configured via `agent.webhook` in config.
 
 ### Event Types
 
@@ -241,7 +241,7 @@ Use `["*"]` to subscribe to all events including new ones.
 
 ![Session Management](assets/images/2026-02-07-session-management.png)
 
-Ralph uses explicit session management for runners that support it (notably **Kimi**):
+CueLoop uses explicit session management for runners that support it (notably **Kimi**):
 
 **Session ID Generation**
 - Format: `{task_id}-p{phase}-{timestamp}`
@@ -268,6 +268,6 @@ kimi --print --output-format stream-json --model kimi-for-coding \
 ```
 
 **Implementation Notes**
-- Ralph generates the session ID at phase start and reuses it for all continue operations within that phase
+- CueLoop generates the session ID at phase start and reuses it for all continue operations within that phase
 - The session ID is stored in `ContinueSession` for CI gate retry loops
-- If Kimi crashes and the session becomes corrupted, Ralph will attempt to resume with the same ID (user accepts this risk)
+- If Kimi crashes and the session becomes corrupted, CueLoop will attempt to resume with the same ID (user accepts this risk)

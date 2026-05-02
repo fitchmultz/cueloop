@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for task status transitions, lifecycle timestamps, and priority semantics
 Parent: [Task System](tasks.md)
 
-This page explains how task statuses and priorities describe work state in Ralph. Queue ordering and archive mechanics are covered in [Queue](queue.md); dependency graph runnability is covered in [Dependencies](dependencies.md).
+This page explains how task statuses and priorities describe work state in CueLoop. Queue ordering and archive mechanics are covered in [Queue](queue.md); dependency graph runnability is covered in [Dependencies](dependencies.md).
 
 ## Related Task Docs
 
@@ -56,7 +56,7 @@ This page explains how task statuses and priorities describe work state in Ralph
 - Any → `draft`: Task needs redefinition
 
 **CURRENTLY IMPLEMENTED BEHAVIOR:**
-- Status cycling via CLI (`ralph task edit RQ-0001 status` with no value) cycles: `todo` → `doing` → `done` → `rejected` → `draft` → `todo`
+- Status cycling via CLI (`cueloop task edit RQ-0001 status` with no value) cycles: `todo` → `doing` → `done` → `rejected` → `draft` → `todo`
 - Direct status setting validates the target status is valid
 - `started_at` is automatically set when transitioning to `doing`
 - `completed_at` is automatically set when transitioning to `done` or `rejected`

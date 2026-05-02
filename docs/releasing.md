@@ -1,11 +1,11 @@
-# Releasing Ralph
+# Releasing CueLoop
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-Ralph releases now use an explicit verify-then-publish transaction model. `verify` prepares a publish-ready local snapshot, records verification state under `target/release-verifications/`, and `execute` publishes only if that exact snapshot still matches the workspace.
+CueLoop releases now use an explicit verify-then-publish transaction model. `verify` prepares a publish-ready local snapshot, records verification state under `target/release-verifications/`, and `execute` publishes only if that exact snapshot still matches the workspace.
 
 ## Canonical Commands
 
@@ -47,7 +47,7 @@ The full release flow now runs in this order:
 12. `execute` publishes the crate to crates.io.
 13. `execute` publishes the GitHub release draft.
 
-That ordering is intentional: crates.io publication no longer happens before the rest of the release is locally finalized, and Ralph does not normalize "crate published, everything else later" as an acceptable steady state.
+That ordering is intentional: crates.io publication no longer happens before the rest of the release is locally finalized, and CueLoop does not normalize "crate published, everything else later" as an acceptable steady state.
 
 ## Preflight
 

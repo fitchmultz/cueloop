@@ -14,7 +14,7 @@ Parent: [Advanced Usage Guide](advanced.md)
 jq '.' .ralph/cache/session.jsonc
 
 # Force fresh start
-ralph run loop --force
+cueloop run loop --force
 
 # Or clear session manually
 rm .ralph/cache/session.jsonc
@@ -45,10 +45,10 @@ jq '.target_branch' .ralph/cache/parallel/state.json
 **Problem:** Worker blocked in parallel integration
 ```bash
 # Inspect worker lifecycle + error context
-ralph run parallel status --json | jq '.workers[] | select(.lifecycle == "blocked_push")'
+cueloop run parallel status --json | jq '.workers[] | select(.lifecycle == "blocked_push")'
 
 # Retry a blocked worker explicitly
-ralph run parallel retry --task RQ-0001
+cueloop run parallel retry --task RQ-0001
 ```
 
 ### Queue Lock Issues
@@ -59,10 +59,10 @@ ralph run parallel retry --task RQ-0001
 ls -la .ralph/lock/
 
 # Safe unlock (verifies PID not running)
-ralph queue unlock
+cueloop queue unlock
 
 # Force with caution
-ralph run one --force
+cueloop run one --force
 ```
 
 ### Plugin Debugging
@@ -70,10 +70,10 @@ ralph run one --force
 **Problem:** Plugin not executing
 ```bash
 # Verify plugin discovered
-ralph plugin list
+cueloop plugin list
 
 # Check validation
-ralph plugin validate --id my.plugin
+cueloop plugin validate --id my.plugin
 
 # Test runner directly
 echo "test" | ~/.config/ralph/plugins/my.plugin/runner.sh run --model test
@@ -94,7 +94,7 @@ git diff
 # Choose: revert, keep+continue, or continue with message
 
 # Force proceed (if you know changes are acceptable)
-ralph run one --force --allow-dirty
+cueloop run one --force --allow-dirty
 ```
 
 ### CI Gate Failures
@@ -105,10 +105,10 @@ ralph run one --force --allow-dirty
 make agent-ci
 
 # Check CI command config
-ralph config show | grep ci_gate
+cueloop config show | grep ci_gate
 
 # Temporarily disable (not recommended for production)
-ralph run one --no-ci-gate
+cueloop run one --no-ci-gate
 ```
 
 ### Memory and Resource Issues
@@ -125,10 +125,10 @@ ralph run one --no-ci-gate
 **Problem:** Slow task processing
 ```bash
 # Use a fast-local profile for simple tasks
-ralph run one --profile fast-local
+cueloop run one --profile fast-local
 
 # Skip phases when appropriate
-ralph run one --phases 1
+cueloop run one --phases 1
 ```
 
 ### Webhook Delivery Issues
@@ -136,13 +136,13 @@ ralph run one --phases 1
 **Problem:** Webhooks not sending
 ```bash
 # Test webhook directly
-ralph webhook test --url https://your-endpoint.com/webhook
+cueloop webhook test --url https://your-endpoint.com/webhook
 
 # Check config
-ralph config show | grep -A 10 webhook
+cueloop config show | grep -A 10 webhook
 
 # Debug with logs
-RUST_LOG=debug ralph run one 2>&1 | grep -i webhook
+RUST_LOG=debug cueloop run one 2>&1 | grep -i webhook
 ```
 
 ### Dependency Resolution
@@ -150,10 +150,10 @@ RUST_LOG=debug ralph run one 2>&1 | grep -i webhook
 **Problem:** Task stuck waiting for dependencies
 ```bash
 # Check dependency graph
-ralph queue graph --task RQ-0001
+cueloop queue graph --task RQ-0001
 
 # View blocking tasks
-ralph queue list --status doing
+cueloop queue list --status doing
 
 # Check done.json for completed dependencies
 jq '.tasks[] | select(.id == "RQ-0000")' .ralph/done.jsonc
@@ -164,7 +164,7 @@ jq '.tasks[] | select(.id == "RQ-0000")' .ralph/done.jsonc
 **Complete reset procedure:**
 ```bash
 # 1. Stop any running daemon
-ralph daemon stop
+cueloop daemon stop
 
 # 2. Clear all state
 rm -f .ralph/cache/session.jsonc
@@ -173,19 +173,19 @@ rm -f .ralph/cache/daemon.json
 rm -f .ralph/cache/stop_requested
 
 # 3. Clear locks (if safe)
-ralph queue unlock
+cueloop queue unlock
 
 # 4. Validate queue
-ralph queue validate
+cueloop queue validate
 
 # 5. Restart daemon if needed
-ralph daemon start
+cueloop daemon start
 ```
 
 **Debug mode for troubleshooting:**
 ```bash
 # Enable debug logging
-ralph --debug run one --id RQ-0001
+cueloop --debug run one --id RQ-0001
 
 # View debug logs
 tail -f .ralph/logs/debug.log
@@ -203,25 +203,25 @@ rm -rf .ralph/logs/        # Secure deletion
 
 ```bash
 # Quick single task with your local profile
-ralph run one --profile fast-local
+cueloop run one --profile fast-local
 
 # Full workflow with review
-ralph run one --profile deep-review
+cueloop run one --profile deep-review
 
 # Parallel execution
-ralph run loop --parallel 4 --max-tasks 10
+cueloop run loop --parallel 4 --max-tasks 10
 
 # Dry-run to check what would run
-ralph run loop --dry-run
+cueloop run loop --dry-run
 
 # Non-interactive CI mode
-ralph run loop --non-interactive --max-tasks 5
+cueloop run loop --non-interactive --max-tasks 5
 
 # Resume interrupted session
-ralph run loop --resume
+cueloop run loop --resume
 
 # Wait for dependencies
-ralph run loop --wait-when-blocked --wait-timeout-seconds 3600
+cueloop run loop --wait-when-blocked --wait-timeout-seconds 3600
 ```
 
 ### Config Quick Reference

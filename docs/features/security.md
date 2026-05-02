@@ -7,13 +7,13 @@ Parent: [Feature Documentation](README.md)
 
 ![Security](../assets/images/2026-02-07-11-32-24-security.png)
 
-Purpose: Comprehensive guide to Ralph's security features, including secrets redaction, safeguard dumps, debug logging, git safety, CI gate validation, plugin security, approval modes, and webhook security.
+Purpose: Comprehensive guide to CueLoop's security features, including secrets redaction, safeguard dumps, debug logging, git safety, CI gate validation, plugin security, approval modes, and webhook security.
 
 ---
 
 ## Overview
 
-Security is critical when running AI agents that have access to your codebase, environment variables, and can execute commands. Ralph includes multiple layers of security features designed to protect sensitive information while providing visibility and control over agent operations.
+Security is critical when running AI agents that have access to your codebase, environment variables, and can execute commands. CueLoop includes multiple layers of security features designed to protect sensitive information while providing visibility and control over agent operations.
 
 ### Security Philosophy
 
@@ -27,7 +27,7 @@ Security is critical when running AI agents that have access to your codebase, e
 
 ## Secrets Redaction
 
-Ralph includes comprehensive pattern-based redaction to prevent accidental exposure of sensitive data in logs, error messages, and console output.
+CueLoop includes comprehensive pattern-based redaction to prevent accidental exposure of sensitive data in logs, error messages, and console output.
 
 ### RedactedString Type
 
@@ -50,7 +50,7 @@ Key properties:
 
 ### Pattern-Based Redaction
 
-Ralph applies multiple redaction patterns in sequence:
+CueLoop applies multiple redaction patterns in sequence:
 
 | Pattern | Description | Example |
 |---------|-------------|---------|
@@ -64,7 +64,7 @@ Ralph applies multiple redaction patterns in sequence:
 
 ### Sensitive Environment Variables
 
-Ralph automatically detects and redacts values of environment variables with keys matching these patterns:
+CueLoop automatically detects and redacts values of environment variables with keys matching these patterns:
 
 - `*KEY*` (e.g., `API_KEY`, `SECRET_KEY`)
 - `*SECRET*` (e.g., `AWS_SECRET`, `AUTH_SECRET`)
@@ -150,10 +150,10 @@ Raw dumps write unredacted content and require explicit opt-in:
 ```bash
 # Enable via environment variable
 export RALPH_RAW_DUMP=1
-ralph run one
+cueloop run one
 
 # Or use --debug flag (implies raw dumps)
-ralph run one --debug
+cueloop run one --debug
 ```
 
 Programmatic usage:
@@ -172,7 +172,7 @@ let path = safeguard_text_dump("debug_context", &raw_content, is_debug_mode)?;
 Redacted dumps persist via `TempDir::keep()`. Clean them up periodically:
 
 ```bash
-# List Ralph temp directories
+# List CueLoop temp directories
 ls -la /tmp/ralph/
 
 # Clean up old dumps
@@ -189,7 +189,7 @@ Debug logging captures detailed runtime information for troubleshooting. It has 
 
 ```bash
 # Enable debug logging
-ralph run one --debug
+cueloop run one --debug
 
 # Or set environment variable
 export RALPH_DEBUG=1
@@ -249,7 +249,7 @@ log::info!("API_KEY={}", secret);  // Console: API_KEY=[REDACTED]
 
 ## Runner Output Handling
 
-Ralph handles runner output differently depending on the destination:
+CueLoop handles runner output differently depending on the destination:
 
 ### Console Output Flow
 
@@ -303,16 +303,16 @@ println!("{}", err);  // Secrets are redacted
 
 ## Git Safety
 
-Ralph includes git safety features to prevent unintended changes and provide recovery options.
+CueLoop includes git safety features to prevent unintended changes and provide recovery options.
 
 ### Clean Repository Checks
 
-Before operations, Ralph can verify the repository is in a clean state:
+Before operations, CueLoop can verify the repository is in a clean state:
 
 ```rust
 use cueloop::git::clean::require_clean_repo_ignoring_paths;
 
-// Check repo is clean (ignoring Ralph's own files)
+// Check repo is clean (ignoring CueLoop's own files)
 require_clean_repo_ignoring_paths(
     repo_root,
     force,  // Bypass check if true
@@ -328,7 +328,7 @@ require_clean_repo_ignoring_paths(
 )?;
 ```
 
-Allowed dirty paths (Ralph's own files):
+Allowed dirty paths (CueLoop's own files):
 - `.ralph/queue.jsonc` / `.ralph/queue.jsonc` - Active task queue
 - `.ralph/done.jsonc` / `.ralph/done.jsonc` - Completed task archive
 - `.ralph/config.jsonc` / `.ralph/config.jsonc` - Project configuration
@@ -363,7 +363,7 @@ Bypass clean repository checks with `--force`:
 
 ```bash
 # Bypass clean repo check
-ralph run one --force
+cueloop run one --force
 
 # Useful when:
 # - You have intentional uncommitted changes
@@ -446,16 +446,16 @@ This ensures:
 
 ## Plugin Security
 
-Ralph supports plugins for extending functionality with custom runners and task processors.
+CueLoop supports plugins for extending functionality with custom runners and task processors.
 
 ### Important: Plugins Are NOT Sandboxed
 
-**Critical Security Warning**: Plugin executables run with the same privileges as Ralph. They have:
+**Critical Security Warning**: Plugin executables run with the same privileges as CueLoop. They have:
 
 - Full access to the filesystem
 - Access to environment variables
 - Ability to execute arbitrary commands
-- Same network access as Ralph
+- Same network access as CueLoop
 
 ### Plugin Discovery
 
@@ -548,7 +548,7 @@ Via CLI:
 
 ```bash
 # Set approval mode for a run
-ralph run one --approval-mode=auto_edits
+cueloop run one --approval-mode=auto_edits
 ```
 
 ### Claude-Specific: Permission Modes
@@ -594,11 +594,11 @@ Use `auto_edits` or `yolo` for automated workflows.
 
 ## Webhook Security
 
-Ralph can emit webhook events for external integrations (Slack, Discord, CI systems, dashboards).
+CueLoop can emit webhook events for external integrations (Slack, Discord, CI systems, dashboards).
 
 ### Destination URL policy
 
-When `agent.webhook.enabled` is true, Ralph validates `agent.webhook.url` before delivery:
+When `agent.webhook.enabled` is true, CueLoop validates `agent.webhook.url` before delivery:
 
 - Only `http://` and `https://` schemes are accepted; other schemes are rejected.
 - `http://` is rejected unless `agent.webhook.allow_insecure_http` is `true`.
@@ -606,7 +606,7 @@ When `agent.webhook.enabled` is true, Ralph validates `agent.webhook.url` before
 
 ### HMAC-SHA256 Signatures
 
-When a webhook secret is configured, Ralph signs all webhook payloads with HMAC-SHA256:
+When a webhook secret is configured, CueLoop signs all webhook payloads with HMAC-SHA256:
 
 ```json
 {
@@ -630,11 +630,11 @@ import hashlib
 
 def verify_webhook(payload_body: bytes, signature: str, secret: str) -> bool:
     """
-    Verify webhook signature from X-Ralph-Signature header.
+    Verify webhook signature from X-CueLoop-Signature header.
     
     Args:
         payload_body: Raw request body bytes
-        signature: Value from X-Ralph-Signature header (format: "sha256=<hex>")
+        signature: Value from X-CueLoop-Signature header (format: "sha256=<hex>")
         secret: Shared secret key
     
     Returns:
@@ -656,7 +656,7 @@ def verify_webhook(payload_body: bytes, signature: str, secret: str) -> bool:
 |--------|-------------|
 | `Content-Type` | `application/json` |
 | `User-Agent` | `ralph/X.Y.Z` |
-| `X-Ralph-Signature` | `sha256=<hex>` (when secret configured) |
+| `X-CueLoop-Signature` | `sha256=<hex>` (when secret configured) |
 
 ### Security Best Practices
 
@@ -665,7 +665,7 @@ def verify_webhook(payload_body: bytes, signature: str, secret: str) -> bool:
 3. **Verify signatures**: Always validate the HMAC signature
 4. **Use fixed-time comparison**: Use `hmac.compare_digest()` to prevent timing attacks
 5. **Rotate secrets periodically**: Change webhook secrets regularly
-6. **IP allowlisting**: Restrict webhook endpoints to known Ralph IPs if possible
+6. **IP allowlisting**: Restrict webhook endpoints to known CueLoop IPs if possible
 
 ### Example: Secure Webhook Handler
 
@@ -681,7 +681,7 @@ WEBHOOK_SECRET = "your-secret-here"
 @app.route('/webhook', methods=['POST'])
 def webhook():
     # Get signature from header
-    signature = request.headers.get('X-Ralph-Signature')
+    signature = request.headers.get('X-CueLoop-Signature')
     if not signature:
         abort(401, "Missing signature")
     
@@ -744,7 +744,7 @@ Use `["*"]` to subscribe to all events.
 
 ## Security Checklist
 
-### Before Running Ralph
+### Before Running CueLoop
 
 - [ ] Repository is in a known good state
 - [ ] `.env` file is in `.gitignore` and not tracked
@@ -770,13 +770,13 @@ Use `["*"]` to subscribe to all events.
 - [ ] Remove old safeguard dumps from `/tmp/ralph/`
 - [ ] Rotate webhook secrets
 - [ ] Review and update plugin trust decisions
-- [ ] Keep Ralph updated: `cargo install cueloop-agent-loop --force`
+- [ ] Keep CueLoop updated: `cargo install cueloop-agent-loop --force`
 
 ---
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability in Ralph:
+If you discover a security vulnerability in CueLoop:
 
 1. **Do not open a public issue**
 2. Preferred: use GitHub private vulnerability reporting in the repository Security tab (`Security` → `Report a vulnerability`)

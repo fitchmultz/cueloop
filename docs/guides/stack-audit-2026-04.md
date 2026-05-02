@@ -2,10 +2,10 @@
 Status: Active
 Owner: Maintainers
 Source of truth: current language/toolchain/dependency baseline and Rust 1.95.0 migration notes
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 Related: [CI and Test Strategy](ci-strategy.md), [Decisions](../decisions.md), [Archived March Stack Audit](stack-audit-2026-03.md)
 
-Purpose: record Ralph's current source-build toolchain baseline, explain the Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, capture the release-note compatibility checklist that drives follow-up Rust modernization tasks, and preserve the dependency/security/lint/rustdoc evidence for the current audited baseline.
+Purpose: record CueLoop's current source-build toolchain baseline, explain the Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, capture the release-note compatibility checklist that drives follow-up Rust modernization tasks, and preserve the dependency/security/lint/rustdoc evidence for the current audited baseline.
 
 ## Scope
 
@@ -30,7 +30,7 @@ Audit date: `2026-04-27`
 
 ## Rust 1.95.0 Baseline
 
-Ralph now pins Rust `1.95.0` in `rust-toolchain.toml` and declares `rust-version = "1.95"` in the CLI crate manifest. The crate MSRV intentionally follows the repository's pinned source-build baseline because local development, release builds, schema generation, and macOS app bundling are all validated through the same pinned rustup toolchain.
+CueLoop now pins Rust `1.95.0` in `rust-toolchain.toml` and declares `rust-version = "1.95"` in the CLI crate manifest. The crate MSRV intentionally follows the repository's pinned source-build baseline because local development, release builds, schema generation, and macOS app bundling are all validated through the same pinned rustup toolchain.
 
 This is a source-build baseline decision, not release-semver metadata. Release version synchronization remains owned by `VERSION` and `scripts/versioning.sh sync`; Rust baseline changes are owned by `rust-toolchain.toml`, crate `rust-version`, and the validation gates documented here.
 
@@ -53,7 +53,7 @@ Rust 1.95.0 introduces enough language, library, compiler, rustdoc, and compatib
 High-level checklist:
 
 - Language: review opportunities and compatibility effects from stabilized `if let` guards on match arms, keyword imports with renaming, PowerPC inline assembly support, pattern-matching semantic updates, and const-promotion/const-eval changes.
-- Libraries: evaluate stabilized APIs where they simplify Ralph code, including `MaybeUninit`/`Cell` array helpers, `bool: TryFrom<{integer}>`, atomic `update`/`try_update`, `cfg_select!`, `core::range`, `core::hint::cold_path`, raw-pointer unchecked reference helpers, `Vec::push_mut`/`insert_mut`, collection `*_mut` insertion helpers, `Layout` helpers, const `fmt::from_fn`, and const `ControlFlow` predicates.
+- Libraries: evaluate stabilized APIs where they simplify CueLoop code, including `MaybeUninit`/`Cell` array helpers, `bool: TryFrom<{integer}>`, atomic `update`/`try_update`, `cfg_select!`, `core::range`, `core::hint::cold_path`, raw-pointer unchecked reference helpers, `Vec::push_mut`/`insert_mut`, collection `*_mut` insertion helpers, `Layout` helpers, const `fmt::from_fn`, and const `ControlFlow` predicates.
 - Compiler/security: account for stabilized `--remap-path-scope`, vendored musl security patches for CVE-2026-6042 and CVE-2026-40200, and the LLVM 22 backend update.
 - Platform: note Tier 2 promotions for Apple tvOS/watchOS/visionOS targets and `powerpc64-unknown-linux-musl`.
 - Rustdoc: review whether deprecated item hiding and changed unstable search ranking affect generated docs or contributor expectations.
@@ -90,10 +90,10 @@ Observed toolchain and helper versions:
 
 Outcome:
 
-- Dependency drift: `make update` bumped direct dependency `clap_complete` from `4.6.2` to `4.6.3`, refreshed `zbus`/`zvariant` transitive dependencies in `Cargo.lock`, and deduplicated the old `winnow 0.7.x` lockfile entry. Phase 3 also removed the direct `atty 0.2` dependency after `cargo audit --deny warnings` reported `RUSTSEC-2024-0375` and `RUSTSEC-2021-0145`; Ralph now uses the standard-library `std::io::IsTerminal` APIs already required by the Rust 1.95 baseline. After the refresh, `cargo outdated --root-deps-only --depth 1` reported: `All dependencies are up to date, yay!`.
-- Security posture: `make security-audit` is the local RustSec advisory gate (`cargo audit --deny warnings`) and passed after the `atty` removal. The compiler-side Rust 1.95.0 context also includes vendored musl patches for CVE-2026-6042 and CVE-2026-40200; Ralph inherits those through the pinned toolchain rather than a crate-level dependency update.
+- Dependency drift: `make update` bumped direct dependency `clap_complete` from `4.6.2` to `4.6.3`, refreshed `zbus`/`zvariant` transitive dependencies in `Cargo.lock`, and deduplicated the old `winnow 0.7.x` lockfile entry. Phase 3 also removed the direct `atty 0.2` dependency after `cargo audit --deny warnings` reported `RUSTSEC-2024-0375` and `RUSTSEC-2021-0145`; CueLoop now uses the standard-library `std::io::IsTerminal` APIs already required by the Rust 1.95 baseline. After the refresh, `cargo outdated --root-deps-only --depth 1` reported: `All dependencies are up to date, yay!`.
+- Security posture: `make security-audit` is the local RustSec advisory gate (`cargo audit --deny warnings`) and passed after the `atty` removal. The compiler-side Rust 1.95.0 context also includes vendored musl patches for CVE-2026-6042 and CVE-2026-40200; CueLoop inherits those through the pinned toolchain rather than a crate-level dependency update.
 - Clippy: `make lint` passed with all targets/features and warnings denied.
-- Rustdoc: `make docs` passed for workspace docs with all features and no dependencies. Rust 1.95 rustdoc search now ranks unstable items lower and provides a hide-deprecated-items setting; no Ralph API changes were required, but generated documentation review should account for deprecated-item visibility settings when comparing screenshots/search results across toolchain versions.
+- Rustdoc: `make docs` passed for workspace docs with all features and no dependencies. Rust 1.95 rustdoc search now ranks unstable items lower and provides a hide-deprecated-items setting; no CueLoop API changes were required, but generated documentation review should account for deprecated-item visibility settings when comparing screenshots/search results across toolchain versions.
 - Full local gate: `make agent-ci` passed after the dependency, audit-target, code, and documentation changes.
 
 ## Verification

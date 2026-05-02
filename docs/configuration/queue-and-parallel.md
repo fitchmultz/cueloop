@@ -8,7 +8,7 @@ Purpose: Document CueLoop queue storage and parallel-run configuration.
 
 ## Parallel Configuration
 
-`parallel` controls parallel execution for `ralph run loop` and the current macOS Run Control loop launches.
+`parallel` controls parallel execution for `cueloop run loop` and the current macOS Run Control loop launches.
 
 Key fields:
 - `workers`: number of concurrent workers (must be `>= 2`). Default: `null` (disabled unless CLI
@@ -24,8 +24,8 @@ Key fields:
 Notes:
 - CLI flag `--parallel` overrides `parallel.workers` for a single run.
 - Workers push directly to the target branch; no PRs are created.
-- Use `ralph run parallel status` to check worker states.
-- Use `ralph run parallel retry --task <ID>` to retry blocked workers.
+- Use `cueloop run parallel status` to check worker states.
+- Use `cueloop run parallel retry --task <ID>` to retry blocked workers.
 - Migration-related breaking changes for retired parallel keys and `parallel.workspace_root` live in [Migration notes](migration-notes.md).
 
 Example:
@@ -81,7 +81,7 @@ Rules:
 - denied runtime/build paths such as `target/`, `node_modules/`, `.venv/`, `.git/`, `.cueloop/{cache,workspaces,logs,lock}/`, and legacy `.ralph/{cache,workspaces,logs,lock}/` are rejected
 - entries that match no existing gitignored files are treated as optional and skipped with a warning during parallel preflight
 - invalid entries or entries that match unsafe paths still fail preflight, including directories, denied runtime/build paths, symlinks resolving outside the repo, and paths inside or overlapping the parallel workspace root
-- project config that sets this allowlist requires repo trust (`ralph init` creates trust during bootstrap; `ralph config trust init` is available for trust-only repair)
+- project config that sets this allowlist requires repo trust (`cueloop init` creates trust during bootstrap; `cueloop config trust init` is available for trust-only repair)
 
 ## Queue Configuration
 `queue` controls file locations, task ID formatting, and auto-archive behavior.
@@ -93,9 +93,9 @@ Supported fields:
 - `id_width`: zero padding width (default: `4`, e.g. `RQ-0001`).
 - `auto_archive_terminal_after_days`: automatically archive terminal tasks (done/rejected) from queue to done after this many days (default: `null`/`None`, disabled).
 
-Machine clients resolve these settings through `ralph machine config resolve` or `ralph machine workspace overview`; the `.cueloop/...` locations are defaults, and legacy `.ralph/...` locations remain compatibility fallback, not a separate app contract.
+Machine clients resolve these settings through `cueloop machine config resolve` or `cueloop machine workspace overview`; the `.cueloop/...` locations are defaults, and legacy `.ralph/...` locations remain compatibility fallback, not a separate app contract.
 
-**Parallel mode restriction:** When running `ralph run loop --parallel ...`, `queue.file` and
+**Parallel mode restriction:** When running `cueloop run loop --parallel ...`, `queue.file` and
 `queue.done_file` must resolve to paths **under the repository root**. Parallel mode maps these
 paths into per-worker workspace clones; paths outside the repo root cannot be mapped safely and are
 rejected during parallel preflight. Prefer repo-relative paths like `.cueloop/queue.jsonc` and
@@ -137,13 +137,13 @@ Immediate archive (archive all terminal tasks on sweep):
 
 The queue-level sweep runs:
 - When the macOS app starts or reloads queue files
-- After `ralph task edit` operations (CLI)
+- After `cueloop task edit` operations (CLI)
 
-For immediate manual archiving, use `ralph queue archive`.
+For immediate manual archiving, use `cueloop queue archive`.
 
 ### Aging Thresholds
 
-`queue.aging_thresholds` controls the day thresholds for `ralph queue aging` task categorization.
+`queue.aging_thresholds` controls the day thresholds for `cueloop queue aging` task categorization.
 This helps identify stale work by grouping tasks into buckets based on their age.
 
 Supported fields:

@@ -2,9 +2,9 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for plugin discovery, layout, manifest, and precedence rules
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
-Purpose: Explain how Ralph discovers plugins and validates plugin manifests.
+Purpose: Explain how CueLoop discovers plugins and validates plugin manifests.
 
 ---
 
@@ -45,7 +45,7 @@ Every plugin requires a `plugin.json` manifest file:
   "id": "my.plugin",
   "version": "1.0.0",
   "name": "My Plugin",
-  "description": "A custom plugin for Ralph",
+  "description": "A custom plugin for CueLoop",
   "runner": {
     "bin": "runner.sh",
     "supports_resume": true,

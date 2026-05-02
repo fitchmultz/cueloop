@@ -6,16 +6,16 @@ Parent: [Feature Documentation](README.md)
 
 ![Daemon & Watch Mode](../assets/images/2026-02-07-11-32-24-daemon-watch.png)
 
-Ralph provides two background-workflow capabilities:
+CueLoop provides two background-workflow capabilities:
 
-- **Daemon mode** runs Ralph as a background service that continuously processes runnable tasks.
+- **Daemon mode** runs CueLoop as a background service that continuously processes runnable tasks.
 - **Watch mode** monitors source files for actionable comments and creates or reconciles queue tasks.
 
 ## Start Here
 
 | Need | Guide |
 |------|-------|
-| Run Ralph continuously in the background | [Daemon Mode](./daemon-watch/daemon.md) |
+| Run CueLoop continuously in the background | [Daemon Mode](./daemon-watch/daemon.md) |
 | Create tasks automatically from TODO/FIXME/HACK/XXX comments | [Watch Mode](./daemon-watch/watch.md) |
 | Run daemon and watch together | [Operations](./daemon-watch/operations.md) |
 | Diagnose stuck daemons, stale state, or watch detection issues | [Troubleshooting](./daemon-watch/troubleshooting.md) |
@@ -23,16 +23,16 @@ Ralph provides two background-workflow capabilities:
 ## Quick Commands
 
 ```bash
-ralph daemon start --notify-when-unblocked
-ralph daemon status
-ralph daemon stop
+cueloop daemon start --notify-when-unblocked
+cueloop daemon status
+cueloop daemon stop
 
-ralph watch --auto-queue --close-removed --notify
+cueloop watch --auto-queue --close-removed --notify
 ```
 
 ## Platform Notes
 
-Daemon mode is fully implemented on Unix systems (Linux and macOS). On Windows, run `ralph run loop --continuous` directly or configure a Windows service.
+Daemon mode is fully implemented on Unix systems (Linux and macOS). On Windows, run `cueloop run loop --continuous` directly or configure a Windows service.
 
 ## See Also
 

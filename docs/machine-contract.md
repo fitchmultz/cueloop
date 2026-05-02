@@ -2,10 +2,10 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-Ralph exposes a first-class machine API under `ralph machine ...`.
+CueLoop exposes a first-class machine API under `cueloop machine ...`.
 
 This surface exists for the macOS app and any other automation that needs stable, versioned JSON instead of human-oriented CLI behavior.
 
@@ -21,32 +21,32 @@ This surface exists for the macOS app and any other automation that needs stable
 
 ## Current Machine Areas
 
-- `ralph machine system info`
-- `ralph machine queue read`
-- `ralph machine queue graph`
-- `ralph machine queue dashboard`
-- `ralph machine queue validate`
-- `ralph machine queue repair`
-- `ralph machine queue undo`
-- `ralph machine queue unlock-inspect`
-- `ralph machine config resolve`
-- `ralph machine workspace overview`
-- `ralph machine task create`
-- `ralph machine task mutate`
-- `ralph machine task decompose`
-- `ralph machine run one`
-- `ralph machine run loop`
-- `ralph machine run stop`
-- `ralph machine run parallel-status`
-- `ralph machine doctor report`
-- `ralph machine cli-spec`
-- `ralph machine schema`
+- `cueloop machine system info`
+- `cueloop machine queue read`
+- `cueloop machine queue graph`
+- `cueloop machine queue dashboard`
+- `cueloop machine queue validate`
+- `cueloop machine queue repair`
+- `cueloop machine queue undo`
+- `cueloop machine queue unlock-inspect`
+- `cueloop machine config resolve`
+- `cueloop machine workspace overview`
+- `cueloop machine task create`
+- `cueloop machine task mutate`
+- `cueloop machine task decompose`
+- `cueloop machine run one`
+- `cueloop machine run loop`
+- `cueloop machine run stop`
+- `cueloop machine run parallel-status`
+- `cueloop machine doctor report`
+- `cueloop machine cli-spec`
+- `cueloop machine schema`
 
 ## Important versioned documents
 
 ### machine command failures (`machine_error`, `version: 1`)
 
-When any `ralph machine ...` command fails before it can emit its success document, stderr now carries a structured JSON error document:
+When any `cueloop machine ...` command fails before it can emit its success document, stderr now carries a structured JSON error document:
 
 - `version`
 - `code`
@@ -56,7 +56,7 @@ When any `ralph machine ...` command fails before it can emit its success docume
 
 Machine clients should decode that document instead of scraping English stderr text.
 
-`ralph machine run loop` accepts the same `--parallel <N>` worker override pattern as the human `ralph run loop` surface, including bare `--parallel` defaulting to `2`.
+`cueloop machine run loop` accepts the same `--parallel <N>` worker override pattern as the human `cueloop run loop` surface, including bare `--parallel` defaulting to `2`.
 
 
 ### `machine config resolve` (`version: 5`)
@@ -68,7 +68,7 @@ Includes:
 - `execution_controls` for native runner, reasoning-effort, and parallel-worker affordances
 - optional `resume_preview`
 
-RalphMac and other machine clients should treat these resolved paths as the canonical queue, done, and config file locations for the workspace instead of assuming the default `.ralph/...` paths.
+RalphMac and other machine clients should treat these resolved paths as the canonical queue, done, and config file locations for the workspace instead of assuming hardcoded `.cueloop/...` or legacy `.ralph/...` paths.
 
 `execution_controls` is the canonical native-control catalog for RalphMac. It includes:
 - runner options with stable ids, display names, source (`built_in`, `global_plugin`, `project_plugin`), reasoning-effort support, model-affordance metadata, and optional default model
@@ -144,7 +144,7 @@ Blocking-state transitions are also structured:
   "version": 3,
   "kind": "blocked_state_changed",
   "timestamp": "2026-04-26T06:00:02Z",
-  "message": "Ralph is blocked by unfinished dependencies.",
+  "message": "CueLoop is blocked by unfinished dependencies.",
   "payload": {
     "status": "blocked",
     "reason": {
@@ -152,13 +152,13 @@ Blocking-state transitions are also structured:
       "blocked_tasks": 2
     },
     "task_id": null,
-    "message": "Ralph is blocked by unfinished dependencies.",
+    "message": "CueLoop is blocked by unfinished dependencies.",
     "detail": "2 candidate task(s) are waiting on dependency completion."
   }
 }
 ```
 
-`kind: "blocked_state_cleared"` indicates that Ralph resumed forward progress.
+`kind: "blocked_state_cleared"` indicates that CueLoop resumed forward progress.
 
 ### `machine run` summaries (`version: 2`)
 
@@ -170,10 +170,10 @@ Terminal summaries include:
 - optional `blocking`
 
 Startup failures and in-stream failures are intentionally classified differently:
-- If `ralph machine run one` or `ralph machine run loop` fails before `run_started` is emitted, the command exits non-zero and stderr carries `machine_error`; stdout does not begin a machine run stream.
+- If `cueloop machine run one` or `cueloop machine run loop` fails before `run_started` is emitted, the command exits non-zero and stderr carries `machine_error`; stdout does not begin a machine run stream.
 - Once `run_started` has been emitted, the authoritative terminal run state must arrive as the final stdout summary document, even if the process later exits non-zero and stderr also carries `machine_error`.
 
-`ralph machine run one` and `ralph machine run loop` share the same summary document version, but loop runs may legitimately end in non-completed operator states. Current loop outcomes are:
+`cueloop machine run one` and `cueloop machine run loop` share the same summary document version, but loop runs may legitimately end in non-completed operator states. Current loop outcomes are:
 - `completed`
 - `no_candidates`
 - `blocked`
@@ -198,15 +198,15 @@ Example loop summary for an idle queue:
       "include_draft": false
     },
     "task_id": null,
-    "message": "Ralph is idle: no todo tasks are available.",
-    "detail": "The queue currently has no runnable todo candidates; Ralph is waiting for new work."
+    "message": "CueLoop is idle: no todo tasks are available.",
+    "detail": "The queue currently has no runnable todo candidates; CueLoop is waiting for new work."
   }
 }
 ```
 
 ### `machine run stop` (`version: 1`)
 
-Stop After Current is a machine-contract workflow under `ralph machine run stop`, not a human `ralph queue stop` parsing path.
+Stop After Current is a machine-contract workflow under `cueloop machine run stop`, not a human `cueloop queue stop` parsing path.
 
 The scenario-level app parity registry in `crates/cueloop/src/cli/app_parity.rs`
 should reference this contract through explicit Rust and RalphMac proof anchors
@@ -226,7 +226,7 @@ App and automation clients should decode this document on stdout for successful 
 
 `runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, mixed, draft-activation waiting, or structurally invalid.
 
-Draft-only active queues are valid but not runnable by default. They use a waiting `idle` blocking payload with message `No runnable tasks because all tasks are draft.` and may set `task_id` to the first actionable draft leaf for `ralph task ready <ID>` guidance.
+Draft-only active queues are valid but not runnable by default. They use a waiting `idle` blocking payload with message `No runnable tasks because all tasks are draft.` and may set `task_id` to the first actionable draft leaf for `cueloop task ready <ID>` guidance.
 
 Task payloads include `kind` (`work_item` or `group`) with backward-compatible default `work_item`. Runnability report `version: 2` also includes `kind` on each row. `group` rows remain visible with `runnable: false` and a `non_executable_kind` reason, but they do not count as runnable candidates or blockers. `next_runnable_task_id` and `runnability.selection.selected_task_id` select executable `work_item` tasks only.
 
@@ -240,7 +240,7 @@ Queue validation is now a continuation-oriented document instead of a bare valid
 - `warnings`
 - `continuation` with a headline, detail, optional blocking payload, and explicit next-step commands.
 
-When the queue is structurally valid but not immediately runnable, `blocking` may still be populated from queue runnability so app and automation surfaces can explain whether Ralph is waiting or blocked. All-draft queues remain `valid: true`; their continuation next steps may begin with `ralph task ready <ID>` to activate the first actionable draft leaf.
+When the queue is structurally valid but not immediately runnable, `blocking` may still be populated from queue runnability so app and automation surfaces can explain whether CueLoop is waiting or blocked. All-draft queues remain `valid: true`; their continuation next steps may begin with `cueloop task ready <ID>` to activate the first actionable draft leaf.
 
 ### `machine queue repair` (`version: 1`)
 
@@ -266,7 +266,7 @@ Queue undo returns a continuation document for list, preview, and restore flows:
 
 When present, the document-level `blocking` mirrors `continuation.blocking` so app and automation clients can consume a single canonical field.
 
-This is the machine-safe counterpart to `ralph undo`, which now treats checkpoints as a normal continuation workflow rather than an emergency command.
+This is the machine-safe counterpart to `cueloop undo`, which now treats checkpoints as a normal continuation workflow rather than an emergency command.
 
 ### `machine queue unlock-inspect` (`version: 1`)
 
@@ -276,7 +276,7 @@ Queue-lock inspection returns a structured document for app and automation consu
 - `unlock_allowed`
 - `continuation`
 
-This is the machine-safe counterpart to `ralph queue unlock --dry-run`; app integrations should use this document instead of parsing human CLI prose.
+This is the machine-safe counterpart to `cueloop queue unlock --dry-run`; app integrations should use this document instead of parsing human CLI prose.
 
 ### `machine task mutate` (`version: 2`) and `machine task decompose` (`version: 2`)
 
@@ -290,7 +290,7 @@ For `machine task decompose`, preview-mode `result.version` is `2` and includes 
 - `checkpoint`: `{ "id", "path", "created_at", "expires_at" }` for preview-only output and checkpoint replay writes
 - `replay_exact`: `true` when a continuation can write the saved preview without invoking the planner again
 
-Preview continuation commands are literal copy/pasteable commands such as `ralph machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`; decompose continuations must not contain ellipsis placeholders. Clients should consume `continuation.next_steps[].command` directly instead of reconstructing CLI args from prose. Checkpoints live under `.ralph/cache/decompose-previews/`, are runtime cache artifacts pruned best-effort after seven days, and are separate from undo snapshots; replay writes still create a normal undo snapshot before mutating the queue.
+Preview continuation commands are literal copy/pasteable commands such as `cueloop machine task decompose --write --from-preview dp-20260430T230001000000000Z-a1b2c3d4`; decompose continuations must not contain ellipsis placeholders. Clients should consume `continuation.next_steps[].command` directly instead of reconstructing CLI args from prose. Checkpoints live under `.ralph/cache/decompose-previews/`, are runtime cache artifacts pruned best-effort after seven days, and are separate from undo snapshots; replay writes still create a normal undo snapshot before mutating the queue.
 
 ### `machine run parallel-status` (`version: 3`)
 
@@ -320,7 +320,7 @@ Doctor reports now include a typed top-level `blocking` field so app and automat
       "reason": "runner_binary_missing"
     },
     "task_id": null,
-    "message": "Ralph is stalled because runner binary 'codex' is unavailable.",
+    "message": "CueLoop is stalled because runner binary 'codex' is unavailable.",
     "detail": "Configured/default runner Codex cannot execute because 'codex' is not on PATH or not executable."
   },
   "report": {
@@ -333,7 +333,7 @@ Doctor reports now include a typed top-level `blocking` field so app and automat
         "reason": "runner_binary_missing"
       },
       "task_id": null,
-      "message": "Ralph is stalled because runner binary 'codex' is unavailable.",
+      "message": "CueLoop is stalled because runner binary 'codex' is unavailable.",
       "detail": "Configured/default runner Codex cannot execute because 'codex' is not on PATH or not executable."
     },
     "checks": []

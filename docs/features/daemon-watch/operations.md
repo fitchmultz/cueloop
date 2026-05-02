@@ -14,10 +14,10 @@ Run both daemon and watch for fully automated task management:
 
 ```bash
 # Terminal 1: Start daemon for task execution
-ralph daemon start --notify-when-unblocked
+cueloop daemon start --notify-when-unblocked
 
 # Terminal 2: Start watch for task detection
-ralph watch --auto-queue --close-removed --notify
+cueloop watch --auto-queue --close-removed --notify
 
 # Terminal 3: Regular development
 # - Add TODOs → Tasks auto-created
@@ -29,13 +29,13 @@ ralph watch --auto-queue --close-removed --notify
 
 ```bash
 # Start daemon as user service
-systemctl --user start ralph
+systemctl --user start cueloop
 
 # Run watch in tmux/screen session
-tmux new-session -d -s ralph-watch "ralph watch --auto-queue --close-removed"
+tmux new-session -d -s cueloop-watch "cueloop watch --auto-queue --close-removed"
 
 # Check on it later
-tmux attach -t ralph-watch
+tmux attach -t cueloop-watch
 ```
 
 ---

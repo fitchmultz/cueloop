@@ -1,4 +1,4 @@
-# Ralph Scan System
+# CueLoop Scan System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -13,7 +13,7 @@ The scan system automatically identifies opportunities, issues, and improvements
 
 ## Overview
 
-Scanning is Ralph's **discovery mechanism** for finding work that should be done. It uses an autonomous AI agent to:
+Scanning is CueLoop's **discovery mechanism** for finding work that should be done. It uses an autonomous AI agent to:
 
 - Explore the repository structure and code
 - Identify bugs, gaps, and opportunities
@@ -76,13 +76,13 @@ The maintenance agent evaluates findings against engineering principles:
 **Example**:
 ```bash
 # Full maintenance scan
-ralph scan --mode maintenance
+cueloop scan --mode maintenance
 
 # Maintenance scan with specific focus
-ralph scan --mode maintenance "security vulnerabilities in authentication"
+cueloop scan --mode maintenance "security vulnerabilities in authentication"
 
 # Maintenance check using a fast-local profile
-ralph scan --mode maintenance --profile fast-local "CI workflow gaps"
+cueloop scan --mode maintenance --profile fast-local "CI workflow gaps"
 ```
 
 ### Innovation Mode (`--mode innovation`)
@@ -112,13 +112,13 @@ The innovation agent evaluates opportunities using product lenses:
 **Example**:
 ```bash
 # Full innovation scan
-ralph scan --mode innovation
+cueloop scan --mode innovation
 
 # Innovation scan with specific focus
-ralph scan --mode innovation "CLI ergonomics and UX improvements"
+cueloop scan --mode innovation "CLI ergonomics and UX improvements"
 
 # Deep innovation analysis using a deep-review profile
-ralph scan --mode innovation --profile deep-review "missing webhook integrations"
+cueloop scan --mode innovation --profile deep-review "missing webhook integrations"
 ```
 
 ### General Mode (Default)
@@ -132,9 +132,9 @@ ralph scan --mode innovation --profile deep-review "missing webhook integrations
 **Example**:
 ```bash
 # General scan with focus (no --mode flag)
-ralph scan "production readiness gaps"
-ralph scan "evaluate error handling patterns"
-ralph scan "identify missing test coverage"
+cueloop scan "production readiness gaps"
+cueloop scan "evaluate error handling patterns"
+cueloop scan "identify missing test coverage"
 ```
 
 ---
@@ -144,7 +144,7 @@ ralph scan "identify missing test coverage"
 ### Basic Syntax
 
 ```bash
-ralph scan [OPTIONS] [PROMPT]...
+cueloop scan [OPTIONS] [PROMPT]...
 ```
 
 ### Arguments
@@ -181,38 +181,38 @@ ralph scan [OPTIONS] [PROMPT]...
 
 ```bash
 # Basic scans
-ralph scan                                                          # Error: needs mode or focus
-ralph scan --mode maintenance                                       # Full maintenance scan
-ralph scan --mode innovation                                        # Full innovation scan
-ralph scan "production readiness gaps"                              # General mode with focus
+cueloop scan                                                          # Error: needs mode or focus
+cueloop scan --mode maintenance                                       # Full maintenance scan
+cueloop scan --mode innovation                                        # Full innovation scan
+cueloop scan "production readiness gaps"                              # General mode with focus
 
 # With focus prompt
-ralph scan --focus "security audit"                                 # Using --focus flag
-ralph scan --mode maintenance "security audit"                      # Maintenance + focus
-ralph scan --mode innovation "feature gaps for CLI"                 # Innovation + focus
+cueloop scan --focus "security audit"                                 # Using --focus flag
+cueloop scan --mode maintenance "security audit"                      # Maintenance + focus
+cueloop scan --mode innovation "feature gaps for CLI"                 # Innovation + focus
 
 # With configured profiles
-ralph scan --profile fast-local "quick bug fixes"                   # Fast custom profile
-ralph scan --profile deep-review "deep risk audit"                  # Deep custom profile
+cueloop scan --profile fast-local "quick bug fixes"                   # Fast custom profile
+cueloop scan --profile deep-review "deep risk audit"                  # Deep custom profile
 
 # With runner overrides
-ralph scan --runner opencode --model gpt-5.3 "CI and safety gaps"
-ralph scan --runner gemini --model gemini-3-flash-preview "risk audit"
-ralph scan --runner codex --model gpt-5.3-codex --effort high "queue correctness"
-ralph scan --runner claude --model opus "complex architecture review"
+cueloop scan --runner opencode --model gpt-5.3 "CI and safety gaps"
+cueloop scan --runner gemini --model gemini-3-flash-preview "risk audit"
+cueloop scan --runner codex --model gpt-5.3-codex --effort high "queue correctness"
+cueloop scan --runner claude --model opus "complex architecture review"
 
 # With approval and safety settings
-ralph scan --approval-mode auto-edits --runner claude "auto edits review"
-ralph scan --sandbox disabled --runner codex "sandbox audit"
-ralph scan --force "scan even with uncommitted changes"
+cueloop scan --approval-mode auto-edits --runner claude "auto edits review"
+cueloop scan --sandbox disabled --runner codex "sandbox audit"
+cueloop scan --force "scan even with uncommitted changes"
 
 # With RepoPrompt
-ralph scan --repo-prompt plan "Deep codebase analysis"              # Plan + tools mode
-ralph scan --repo-prompt tools "Tool-guided scan"                   # Tools only mode
-ralph scan --repo-prompt off "Quick surface scan"                   # No RepoPrompt
+cueloop scan --repo-prompt plan "Deep codebase analysis"              # Plan + tools mode
+cueloop scan --repo-prompt tools "Tool-guided scan"                   # Tools only mode
+cueloop scan --repo-prompt off "Quick surface scan"                   # No RepoPrompt
 
 # Combining options
-ralph scan --mode maintenance --profile deep-review --runner claude \
+cueloop scan --mode maintenance --profile deep-review --runner claude \
            --model opus "comprehensive security audit"
 ```
 
@@ -234,25 +234,25 @@ The focus prompt guides the scan agent toward specific areas of interest. While 
 
 ```bash
 # Security-focused
-ralph scan --mode maintenance "authentication and authorization vulnerabilities"
-ralph scan --mode maintenance "secrets handling and injection risks"
-ralph scan --mode maintenance "input validation and sanitization gaps"
+cueloop scan --mode maintenance "authentication and authorization vulnerabilities"
+cueloop scan --mode maintenance "secrets handling and injection risks"
+cueloop scan --mode maintenance "input validation and sanitization gaps"
 
 # Performance-focused
-ralph scan --mode maintenance "database query performance and N+1 issues"
-ralph scan --mode innovation "caching opportunities and lazy loading"
+cueloop scan --mode maintenance "database query performance and N+1 issues"
+cueloop scan --mode innovation "caching opportunities and lazy loading"
 
 # Architecture-focused
-ralph scan --mode maintenance "error handling consistency across the codebase"
-ralph scan --mode innovation "API design gaps and missing endpoints"
+cueloop scan --mode maintenance "error handling consistency across the codebase"
+cueloop scan --mode innovation "API design gaps and missing endpoints"
 
 # Workflow-focused
-ralph scan --mode maintenance "CI/CD pipeline reliability and failure modes"
-ralph scan --mode innovation "developer experience improvements"
+cueloop scan --mode maintenance "CI/CD pipeline reliability and failure modes"
+cueloop scan --mode innovation "developer experience improvements"
 
 # Feature-focused
-ralph scan --mode innovation "missing webhook event types"
-ralph scan --mode innovation "CLI command completeness compared to competitors"
+cueloop scan --mode innovation "missing webhook event types"
+cueloop scan --mode innovation "CLI command completeness compared to competitors"
 ```
 
 ### Focus vs Mode
@@ -267,10 +267,10 @@ ralph scan --mode innovation "CLI command completeness compared to competitors"
 You can use **both** together for targeted analysis:
 ```bash
 # Use maintenance criteria, focused on auth system
-ralph scan --mode maintenance "authentication system bugs"
+cueloop scan --mode maintenance "authentication system bugs"
 
 # Use innovation criteria, focused on API gaps
-ralph scan --mode innovation "REST API completeness"
+cueloop scan --mode innovation "REST API completeness"
 ```
 
 ---
@@ -311,15 +311,15 @@ Different runners have different strengths for scanning. Choose based on your ne
 
 ```bash
 # Deep security audit with high reasoning
-ralph scan --mode maintenance --runner codex --effort high \
+cueloop scan --mode maintenance --runner codex --effort high \
            "security vulnerabilities"
 
 # Fast initial exploration
-ralph scan --mode innovation --runner gemini \
+cueloop scan --mode innovation --runner gemini \
            --model gemini-3-flash-preview "feature opportunities"
 
 # Architecture review with nuanced analysis
-ralph scan --mode maintenance --runner claude --model opus \
+cueloop scan --mode maintenance --runner claude --model opus \
            "design patterns and coupling issues"
 ```
 
@@ -341,13 +341,13 @@ RepoPrompt provides repository context to the scanning agent through an MCP (Mod
 
 ```bash
 # Enable RepoPrompt tools mode (default when configured)
-ralph scan --repo-prompt tools "scan with tool access"
+cueloop scan --repo-prompt tools "scan with tool access"
 
 # Enable planning mode for complex analysis
-ralph scan --repo-prompt plan "deep architectural review"
+cueloop scan --repo-prompt plan "deep architectural review"
 
 # Disable RepoPrompt for faster scan
-ralph scan --repo-prompt off "quick surface scan"
+cueloop scan --repo-prompt off "quick surface scan"
 ```
 
 **INTENDED BEHAVIOR**: The `--repo-prompt` flag should control whether RepoPrompt tool reminders and planning requirements are injected into the scan prompt.
@@ -386,7 +386,7 @@ Configure in `.ralph/config.jsonc`:
 
 ### Customizing Scan Prompts
 
-You can override the default templates by creating files in `.ralph/prompts/`:
+You can override the default templates by creating files in `.cueloop/prompts/` (legacy `.ralph/prompts/` remains supported):
 
 ```
 .ralph/
@@ -450,14 +450,14 @@ After a successful scan, the agent:
    - Adds appropriate tags (`maintenance`, `innovation`, or `scan`)
 
 4. **Validates queue integrity**
-   - Ensures edited queue passes `ralph queue validate`
+   - Ensures edited queue passes `cueloop queue validate`
    - Rejects invalid task relationships or malformed fields
 
 ### Task Fields Set by Scan
 
 | Field | Value |
 |-------|-------|
-| `id` | Auto-generated via `ralph queue next-id` |
+| `id` | Auto-generated via `cueloop queue next-id` |
 | `status` | `"todo"` |
 | `priority` | `critical`, `high`, `medium`, or `low` |
 | `title` | Outcome-sized description |
@@ -516,48 +516,48 @@ If a duplicate is found, the agent skips adding it and reports this in the outpu
 **DO**:
 ```bash
 # Be specific about domain
-ralph scan --mode maintenance "error handling in async code"
+cueloop scan --mode maintenance "error handling in async code"
 
 # Include context about concerns
-ralph scan --mode innovation "missing CLI flags compared to similar tools"
+cueloop scan --mode innovation "missing CLI flags compared to similar tools"
 
 # Reference specific subsystems
-ralph scan --mode maintenance "database transaction handling"
+cueloop scan --mode maintenance "database transaction handling"
 ```
 
 **DON'T**:
 ```bash
 # Too vague
-ralph scan --mode maintenance "fix stuff"
+cueloop scan --mode maintenance "fix stuff"
 
 # Too narrow (agent needs room to explore)
-ralph scan --mode maintenance "line 42 of main.rs"
+cueloop scan --mode maintenance "line 42 of main.rs"
 
 # Implementation detail (scan finds problems, doesn't implement)
-ralph scan --mode maintenance "add null checks"
+cueloop scan --mode maintenance "add null checks"
 ```
 
 ### Scanning Workflow
 
 1. **Initial scan** (when onboarding):
    ```bash
-   ralph scan --mode maintenance --profile deep-review "comprehensive codebase review"
+   cueloop scan --mode maintenance --profile deep-review "comprehensive codebase review"
    ```
 
 2. **Regular maintenance** (weekly/bi-weekly):
    ```bash
-   ralph scan --mode maintenance --profile fast-local "recent changes review"
+   cueloop scan --mode maintenance --profile fast-local "recent changes review"
    ```
 
 3. **Pre-release audit**:
    ```bash
-   ralph scan --mode maintenance --profile deep-review "release readiness"
-   ralph scan --mode innovation --profile deep-review "missing features for launch"
+   cueloop scan --mode maintenance --profile deep-review "release readiness"
+   cueloop scan --mode innovation --profile deep-review "missing features for launch"
    ```
 
 4. **Roadmap planning** (quarterly):
    ```bash
-   ralph scan --mode innovation --profile deep-review "strategic opportunities"
+   cueloop scan --mode innovation --profile deep-review "strategic opportunities"
    ```
 
 ### Profile Selection
@@ -580,9 +580,9 @@ ralph scan --mode maintenance "add null checks"
 
 ## Scan vs Task Build
 
-Both `ralph scan` and `ralph task build` create tasks automatically, but they serve different purposes:
+Both `cueloop scan` and `cueloop task build` create tasks automatically, but they serve different purposes:
 
-| Aspect | `ralph scan` | `ralph task build` |
+| Aspect | `cueloop scan` | `cueloop task build` |
 |--------|--------------|-------------------|
 | **Primary Use** | Discover unknown issues/opportunities | Create known refactoring tasks |
 | **Agent Role** | Exploratory - finds problems | Directed - creates specific tasks |
@@ -592,7 +592,7 @@ Both `ralph scan` and `ralph task build` create tasks automatically, but they se
 
 ### When to Use Scan
 
-Use `ralph scan` when:
+Use `cueloop scan` when:
 - You don't know what problems exist
 - You want a comprehensive audit
 - You're exploring a new codebase
@@ -601,7 +601,7 @@ Use `ralph scan` when:
 
 ### When to Use Task Build
 
-Use `ralph task build` when:
+Use `cueloop task build` when:
 - You know files need refactoring (large files, complex modules)
 - You want systematic refactoring tasks
 - You're doing codebase maintenance with clear scope
@@ -611,19 +611,19 @@ Use `ralph task build` when:
 
 ```bash
 # SCAN: Discover what needs work
-ralph scan --mode maintenance "performance issues"
+cueloop scan --mode maintenance "performance issues"
 # Result: Agent explores and finds 8 performance bottlenecks
 
 # TASK BUILD: Create tasks for known work
-ralph task build-refactor --threshold 1000
+cueloop task build-refactor --threshold 1000
 # Result: Creates 5 tasks for files exceeding 1000 LOC
 
 # SCAN: Find security issues
-ralph scan --mode maintenance "security vulnerabilities"
+cueloop scan --mode maintenance "security vulnerabilities"
 # Result: Agent discovers 3 security issues
 
 # TASK BUILD: Refactor specific module
-ralph task build-refactor --path crates/cueloop/src/auth
+cueloop task build-refactor --path crates/cueloop/src/auth
 # Result: Creates tasks for large files in auth module
 ```
 
@@ -636,27 +636,27 @@ ralph task build-refactor --path crates/cueloop/src/auth
 **Scan → Triage → Execute**:
 ```bash
 # 1. Run scan
-ralph scan --mode maintenance "pre-release audit"
+cueloop scan --mode maintenance "pre-release audit"
 
 # 2. Review and triage tasks
-ralph queue list --status todo
+cueloop queue list --status todo
 
 # 3. Prioritize critical tasks
-ralph queue sort  # Reorders by priority
+cueloop queue sort  # Reorders by priority
 
 # 4. Execute
-ralph run loop --max-tasks 5
+cueloop run loop --max-tasks 5
 ```
 
 **Continuous Monitoring**:
 ```bash
 # Add to CI pipeline (dry-run to preview)
-ralph scan --mode maintenance --profile fast-local "CI health check"
+cueloop scan --mode maintenance --profile fast-local "CI health check"
 ```
 
 ### Parallel Scanning (Future)
 
-While parallel execution is available for `ralph run loop --parallel`, scans are currently sequential. For large codebases, consider:
+While parallel execution is available for `cueloop run loop --parallel`, scans are currently sequential. For large codebases, consider:
 - Using a fast custom profile such as `fast-local` for faster results
 - Focusing on specific subdirectories via focus prompt
 - Running separate scans for different subsystems
@@ -667,10 +667,10 @@ Scan-generated tasks include rich metadata that can be exported:
 
 ```bash
 # Export scan findings for external tracking
-ralph queue export --format json --tag maintenance > audit-findings.json
+cueloop queue export --format json --tag maintenance > audit-findings.json
 
-# Import into another Ralph instance
-ralph queue import --format json --input audit-findings.json
+# Import into another CueLoop instance
+cueloop queue import --format json --input audit-findings.json
 ```
 
 ---
@@ -683,7 +683,7 @@ ralph queue import --format json --input audit-findings.json
 |-------|-------|----------|
 | "Please provide one of: A focus prompt, A scan mode, or Both" | No mode or focus specified | Add `--mode` or a focus prompt |
 | Clean repo check fails | Uncommitted changes | Commit changes or use `--force` |
-| Scan validation failed | Queue state issue | Run `ralph queue validate` |
+| Scan validation failed | Queue state issue | Run `cueloop queue validate` |
 | No tasks generated | Agent found no issues | Try broader focus or different mode |
 | Too many low-value tasks | Focus too broad | Narrow focus prompt |
 
@@ -691,7 +691,7 @@ ralph queue import --format json --input audit-findings.json
 
 Enable debug mode for troubleshooting:
 ```bash
-ralph scan --mode maintenance --debug "debug scan"
+cueloop scan --mode maintenance --debug "debug scan"
 ```
 
 This saves raw (unredacted) output to `.ralph/logs/debug.log` for investigation.
@@ -700,7 +700,7 @@ This saves raw (unredacted) output to `.ralph/logs/debug.log` for investigation.
 
 ## Summary
 
-The Ralph Scan System is your **autonomous discovery engine** for codebase improvement. By choosing the right mode, crafting effective focus prompts, and selecting appropriate runners, you can systematically identify bugs, gaps, and opportunities that might otherwise go unnoticed.
+The CueLoop Scan System is your **autonomous discovery engine** for codebase improvement. By choosing the right mode, crafting effective focus prompts, and selecting appropriate runners, you can systematically identify bugs, gaps, and opportunities that might otherwise go unnoticed.
 
 **Key takeaways**:
 - Use `--mode maintenance` for bugs and technical debt

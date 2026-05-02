@@ -1,15 +1,15 @@
-# Ralph's Phase System
+# CueLoop's Phase System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
 Parent: [Feature Documentation](README.md)
 
 
-Purpose: Document Ralph's multi-phase execution workflow for AI agent task processing.
+Purpose: Document CueLoop's multi-phase execution workflow for AI agent task processing.
 
 ## Overview
 
-Ralph executes tasks using a **phase-based workflow** that separates planning, implementation, and review into distinct stages. This design enables:
+CueLoop executes tasks using a **phase-based workflow** that separates planning, implementation, and review into distinct stages. This design enables:
 
 - **Quality control**: Each phase has specific responsibilities and enforcement
 - **Iterative refinement**: Plans can be reviewed before implementation
@@ -17,13 +17,13 @@ Ralph executes tasks using a **phase-based workflow** that separates planning, i
 - **Flexibility**: Choose 1, 2, or 3 phases based on task complexity
 - **Crash recovery**: Per-phase session IDs enable resumption after interruptions
 
-The phase system is Ralph's core execution model, designed to balance automation with human oversight for complex software engineering tasks.
+The phase system is CueLoop's core execution model, designed to balance automation with human oversight for complex software engineering tasks.
 
 ## Phase Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         Ralph Phase System                              │
+│                         CueLoop Phase System                              │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  Phase 1: Planning                                                      │
@@ -73,10 +73,10 @@ Phase 1 is strictly **read-only** except for:
 - `.ralph/done.jsonc` - Archive operations
 - `.ralph/cache/plans/<TASK_ID>.md` - The plan cache itself
 
-**INTENDED BEHAVIOR**: If Phase 1 makes any changes outside these allowed paths, Ralph should detect this and prompt the user for action.
+**INTENDED BEHAVIOR**: If Phase 1 makes any changes outside these allowed paths, CueLoop should detect this and prompt the user for action.
 
 **CURRENTLY IMPLEMENTED BEHAVIOR**: 
-- After Phase 1 completes, Ralph checks if the repo is clean (ignoring allowed paths)
+- After Phase 1 completes, CueLoop checks if the repo is clean (ignoring allowed paths)
 - If dirty files are detected, the `git_revert_mode` determines the response:
   - `ask`: Prompt user to revert, keep+continue, or continue with message
   - `enabled`: Automatically revert changes
@@ -86,7 +86,7 @@ Phase 1 is strictly **read-only** except for:
 ### Plan Cache Format
 
 The plan is stored as non-empty Markdown in `.ralph/cache/plans/<TASK_ID>.md`.
-Ralph does not parse a fixed heading structure; the layout below is an illustrative example, not a required format:
+CueLoop does not parse a fixed heading structure; the layout below is an illustrative example, not a required format:
 
 ```markdown
 # Implementation Plan for RQ-0001
@@ -160,13 +160,13 @@ make ci
 # Configurable via:
 # - CLI: (no direct flag, use config)
 # - Config: agent.ci_gate.argv
-# - Config: agent.ci_gate.enabled (set to false to disable Ralph-managed CI command execution)
+# - Config: agent.ci_gate.enabled (set to false to disable CueLoop-managed CI command execution)
 ```
 
-`agent.ci_gate.enabled=false` disables Ralph-managed execution of the configured CI command only. It is not a run-disable switch: task execution, phase progression, review/completion work, queue bookkeeping, and configured publish behavior still proceed.
+`agent.ci_gate.enabled=false` disables CueLoop-managed execution of the configured CI command only. It is not a run-disable switch: task execution, phase progression, review/completion work, queue bookkeeping, and configured publish behavior still proceed.
 
 **CI Auto-Retry Behavior**:
-- When the CI gate is enabled, Ralph automatically retries up to **2 times** on CI failure
+- When the CI gate is enabled, CueLoop automatically retries up to **2 times** on CI failure
 - Each retry sends a "strict compliance" message to the runner
 - After 2 failures, behavior depends on `git_revert_mode`:
   - `ask`: Prompt user to revert, continue with message, or proceed
@@ -232,9 +232,9 @@ Phase 3 **requires** the task to be marked with a terminal status:
 
 ```bash
 # In Phase 3, the runner must execute:
-ralph task done <TASK_ID> [--note "completion notes"]
+cueloop task done <TASK_ID> [--note "completion notes"]
 # OR
-ralph task reject <TASK_ID> [--note "rejection reason"]
+cueloop task reject <TASK_ID> [--note "rejection reason"]
 ```
 
 **Enforcement**:
@@ -252,7 +252,7 @@ Phase 3 generates a code review prompt that includes:
 
 ### Completion Signals
 
-When the runner marks a task done/rejected in **sequential mode**, Ralph writes a completion signal:
+When the runner marks a task done/rejected in **sequential mode**, CueLoop writes a completion signal:
 - Location: `.ralph/cache/completions/<TASK_ID>.json`
 - Contains: status, notes, runner_used, model_used
 - Used for: Analytics, webhook events, custom fields patching
@@ -283,10 +283,10 @@ Single-phase mode combines planning and implementation:
 
 ```bash
 # Quick fix for a typo
-ralph run one --phases 1
+cueloop run one --phases 1
 
 # Equivalent to:
-ralph run one --quick
+cueloop run one --quick
 ```
 
 ## Two-Phase Mode
@@ -324,7 +324,7 @@ Two-phase mode includes planning and implementation without separate review:
 
 ### Setting Default Phases
 
-Configure the default number of phases in `.ralph/config.jsonc`:
+Configure the default number of phases in `.cueloop/config.jsonc` (legacy `.ralph/config.jsonc` remains supported):
 
 ```json
 {
@@ -343,10 +343,10 @@ You can model phase-optimized workflows with custom profiles:
 
 ```bash
 # Fast local profile: 1 phase, Codex low-effort runner
-ralph run one --profile fast-local
+cueloop run one --profile fast-local
 
 # Deep review profile: 3 phases, Codex high-effort runner
-ralph run one --profile deep-review
+cueloop run one --profile deep-review
 ```
 
 Example definitions:
@@ -384,13 +384,13 @@ Override runner, model, or reasoning effort for specific phases:
 
 ```bash
 # Phase 1: Use powerful Codex settings for planning
-ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high
+cueloop run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high
 
 # Phase 2: Use balanced Codex settings for implementation
-ralph run one --runner-phase2 codex --model-phase2 gpt-5.4 --effort-phase2 medium
+cueloop run one --runner-phase2 codex --model-phase2 gpt-5.4 --effort-phase2 medium
 
 # Phase 3: Use thorough Codex settings for review
-ralph run one --runner-phase3 codex --model-phase3 gpt-5.4 --effort-phase3 high
+cueloop run one --runner-phase3 codex --model-phase3 gpt-5.4 --effort-phase3 high
 ```
 
 ### Configuration
@@ -436,11 +436,11 @@ Per-phase settings resolve in this order (highest to lowest):
 
 ### Unused Override Warnings
 
-Ralph warns when phase overrides won't be used:
+CueLoop warns when phase overrides won't be used:
 
 ```bash
 # This will warn about unused phase3 overrides
-ralph run one --phases 2 --runner-phase3 claude
+cueloop run one --phases 2 --runner-phase3 claude
 # Warning: Phase 3 overrides specified but phases=2
 ```
 
@@ -448,7 +448,7 @@ ralph run one --phases 2 --runner-phase3 claude
 
 ### Session ID Format
 
-Ralph generates unique session IDs for crash recovery:
+CueLoop generates unique session IDs for crash recovery:
 
 ```
 Format: {task_id}-p{phase}-{timestamp}
@@ -473,7 +473,7 @@ Session management is primarily for **Kimi** (which doesn't emit session IDs in 
 
 | Runner | Session Management |
 |--------|-------------------|
-| Kimi | Ralph-managed IDs |
+| Kimi | CueLoop-managed IDs |
 | Others | Runner-managed or not supported |
 
 ### Crash Recovery Flow
@@ -483,8 +483,8 @@ Session management is primarily for **Kimi** (which doesn't emit session IDs in 
 2. Runner executes with --session RQ-0001-p2-1704153600
 3. CI fails → Continue session stored
 4. Crash or interruption
-5. User runs: ralph run resume
-6. Ralph detects Phase 2 session, resumes with same ID
+5. User runs: cueloop run resume
+6. CueLoop detects Phase 2 session, resumes with same ID
 7. Runner continues from where it left off
 ```
 
@@ -519,9 +519,9 @@ Stale sessions require explicit `--force` to resume.
 
 ## Phase Transitions
 
-### How Ralph Detects Phase Changes
+### How CueLoop Detects Phase Changes
 
-Ralph tracks phase progress internally through the `PhaseInvocation` context:
+CueLoop tracks phase progress internally through the `PhaseInvocation` context:
 
 1. **Phase 1 → Phase 2**: 
    - Phase 1 returns plan text
@@ -585,24 +585,24 @@ Enable in config:
 
 ```bash
 # Fix a typo - no need for full 3-phase process
-ralph run one --phases 1
+cueloop run one --phases 1
 
 # Or use the quick alias
-ralph run one --quick
+cueloop run one --quick
 ```
 
 ### Example 2: New Feature with Planning (2 Phases)
 
 ```bash
 # Plan and implement, skip review phase
-ralph run one --phases 2
+cueloop run one --phases 2
 ```
 
 ### Example 3: Critical Change with Full Review (3 Phases)
 
 ```bash
 # Full workflow with review
-ralph run one --phases 3
+cueloop run one --phases 3
 ```
 
 ### Example 4: Mixed Runner Workflow
@@ -611,7 +611,7 @@ ralph run one --phases 3
 # Use Codex for planning (strong reasoning)
 # Use Kimi for implementation (fast)
 # Use Claude for review (thorough analysis)
-ralph run one \
+cueloop run one \
   --runner-phase1 codex --model-phase1 gpt-5.3-codex --effort-phase1 high \
   --runner-phase2 kimi --model-phase2 kimi-for-coding \
   --runner-phase3 claude --model-phase3 opus
@@ -621,7 +621,7 @@ ralph run one \
 
 ```bash
 # High effort for planning, medium for implementation, high for review
-ralph run one --runner codex \
+cueloop run one --runner codex \
   --effort-phase1 high \
   --effort-phase2 medium \
   --effort-phase3 high
@@ -653,7 +653,7 @@ ralph run one --runner codex \
 Then simply run:
 
 ```bash
-ralph run one  # Uses 3-phase with overrides from config
+cueloop run one  # Uses 3-phase with overrides from config
 ```
 
 ## Prompt Overrides
@@ -695,7 +695,7 @@ Phase 3 incomplete: task RQ-0001 is not archived with a terminal status
 ```
 
 **Solutions**:
-- Ensure the runner executes `ralph task done` or `ralph task reject`
+- Ensure the runner executes `cueloop task done` or `cueloop task reject`
 - Check if the runner has proper queue file permissions
 - Use `--git-revert-mode ask` to manually intervene
 
@@ -704,7 +704,7 @@ Phase 3 incomplete: task RQ-0001 is not archived with a terminal status
 If resuming fails with session errors:
 
 ```
-ralph run resume --force
+cueloop run resume --force
 ```
 
 The `--force` flag bypasses stale session checks.
@@ -714,7 +714,7 @@ The `--force` flag bypasses stale session checks.
 If CI repeatedly fails in Phase 2 or 3:
 
 1. Check CI output: `make agent-ci` in this repo (or your configured command)
-2. Ralph will auto-retry twice with strict compliance messaging
+2. CueLoop will auto-retry twice with strict compliance messaging
 3. After 2 failures, choose to:
    - Revert and try again
    - Continue with a message to the runner

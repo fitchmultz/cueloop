@@ -7,7 +7,7 @@ Parent: [Feature Documentation](README.md)
 
 ![Import & Export](../assets/images/2026-02-07-11-32-24-import-export.png)
 
-Ralph's import/export system enables bulk operations, cross-repository migration, and integration with external tools. Tasks can be exported to various formats for reporting or external processing, and imported from CSV, TSV, or JSON for bulk backlog seeding.
+CueLoop's import/export system enables bulk operations, cross-repository migration, and integration with external tools. Tasks can be exported to various formats for reporting or external processing, and imported from CSV, TSV, or JSON for bulk backlog seeding.
 
 ---
 
@@ -31,7 +31,7 @@ Export tasks from the active queue (`.ralph/queue.jsonc`) and optionally the don
 ### Command
 
 ```bash
-ralph queue export [OPTIONS]
+cueloop queue export [OPTIONS]
 ```
 
 ### Supported Formats
@@ -48,16 +48,16 @@ ralph queue export [OPTIONS]
 
 ```bash
 # Export all tasks to CSV (default)
-ralph queue export
+cueloop queue export
 
 # Export to JSON file
-ralph queue export --format json --output tasks.json
+cueloop queue export --format json --output tasks.json
 
 # Export to TSV for pipeline processing
-ralph queue export --format tsv --output tasks.tsv
+cueloop queue export --format tsv --output tasks.tsv
 
 # Export as Markdown table for documentation
-ralph queue export --format md --output tasks.md
+cueloop queue export --format md --output tasks.md
 ```
 
 ### Filtering Options
@@ -66,23 +66,23 @@ Filter tasks to export only what you need:
 
 ```bash
 # Filter by status (repeatable)
-ralph queue export --status todo --status doing
+cueloop queue export --status todo --status doing
 
 # Filter by tag (repeatable, case-insensitive)
-ralph queue export --tag rust --tag cli
+cueloop queue export --tag rust --tag cli
 
 # Filter by scope token (repeatable, substring match)
-ralph queue export --scope "crates/cueloop"
+cueloop queue export --scope "crates/cueloop"
 
 # Filter by ID pattern (substring match)
-ralph queue export --id_pattern "RQ-000"
+cueloop queue export --id_pattern "RQ-000"
 
 # Filter by creation date (RFC3339 or YYYY-MM-DD)
-ralph queue export --created-after 2026-01-01
-ralph queue export --created-before 2026-02-01
+cueloop queue export --created-after 2026-01-01
+cueloop queue export --created-before 2026-02-01
 
 # Combine filters
-ralph queue export --status todo --tag bug --created-after 2026-01-15
+cueloop queue export --status todo --tag bug --created-after 2026-01-15
 ```
 
 ### Archive Options
@@ -91,13 +91,13 @@ Include completed tasks from the archive:
 
 ```bash
 # Include done.json archive with active queue
-ralph queue export --include-archive
+cueloop queue export --include-archive
 
 # Export only from archive (ignore active queue)
-ralph queue export --only-archive
+cueloop queue export --only-archive
 
 # Export completed tasks from January
-ralph queue export --only-archive --status done --created-after 2026-01-01 --created-before 2026-02-01
+cueloop queue export --only-archive --status done --created-after 2026-01-01 --created-before 2026-02-01
 ```
 
 ### Output Formats
@@ -189,7 +189,7 @@ Import tasks from CSV, TSV, or JSON into the active queue.
 ### Command
 
 ```bash
-ralph queue import --format <FORMAT> [OPTIONS]
+cueloop queue import --format <FORMAT> [OPTIONS]
 ```
 
 ### Supported Formats
@@ -204,17 +204,17 @@ ralph queue import --format <FORMAT> [OPTIONS]
 
 ```bash
 # Import from CSV file
-ralph queue import --format csv --input tasks.csv
+cueloop queue import --format csv --input tasks.csv
 
 # Import from TSV file
-ralph queue import --format tsv --input tasks.tsv
+cueloop queue import --format tsv --input tasks.tsv
 
 # Import from JSON file
-ralph queue import --format json --input tasks.json
+cueloop queue import --format json --input tasks.json
 
 # Import from stdin (useful for piping)
-cat tasks.csv | ralph queue import --format csv --input -
-ralph queue export --format json | ralph queue import --format json --input -
+cat tasks.csv | cueloop queue import --format csv --input -
+cueloop queue export --format json | cueloop queue import --format json --input -
 ```
 
 ### Dry Run
@@ -223,15 +223,15 @@ Preview changes without modifying the queue:
 
 ```bash
 # See what would be imported
-ralph queue import --format csv --input tasks.csv --dry-run
+cueloop queue import --format csv --input tasks.csv --dry-run
 
 # Validate import data
-ralph queue export --format json | ralph queue import --format json --dry-run
+cueloop queue export --format json | cueloop queue import --format json --dry-run
 ```
 
 ### Normalization and Backfill
 
-During import, Ralph automatically normalizes and backfills task data:
+During import, CueLoop automatically normalizes and backfills task data:
 
 | Field | Normalization |
 |-------|---------------|
@@ -321,13 +321,13 @@ Control behavior when imported task IDs already exist:
 
 ```bash
 # Fail on duplicates (default)
-ralph queue import --format json --input tasks.json --on-duplicate fail
+cueloop queue import --format json --input tasks.json --on-duplicate fail
 
 # Skip duplicate tasks
-ralph queue import --format csv --input tasks.csv --on-duplicate skip
+cueloop queue import --format csv --input tasks.csv --on-duplicate skip
 
 # Generate new IDs for duplicates
-ralph queue import --format json --input tasks.json --on-duplicate rename
+cueloop queue import --format json --input tasks.json --on-duplicate rename
 ```
 
 | Policy | Behavior |
@@ -336,7 +336,7 @@ ralph queue import --format json --input tasks.json --on-duplicate rename
 | `skip` | Skip duplicate tasks, continue importing others |
 | `rename` | Generate fresh IDs for duplicate tasks |
 
-When using `rename`, Ralph reports the ID mappings:
+When using `rename`, CueLoop reports the ID mappings:
 ```
 Imported tasks. parsed 5 task(s); imported 5; renamed 2 task(s)
   OLD-001 -> RQ-0042
@@ -353,32 +353,32 @@ Export tasks and re-import them without data loss. This is useful for backups, m
 
 ```bash
 # Export to JSON and re-import
-ralph queue export --format json --output backup.json
-ralph queue import --format json --input backup.json --dry-run
-ralph queue import --format json --input backup.json
+cueloop queue export --format json --output backup.json
+cueloop queue import --format json --input backup.json --dry-run
+cueloop queue import --format json --input backup.json
 ```
 
 ### Cross-repo Migration
 
 ```bash
 # In source repo
-ralph queue export --format json --output ~/tasks.json
+cueloop queue export --format json --output ~/tasks.json
 
 # In target repo
-ralph queue import --format json --input ~/tasks.json --on-duplicate rename
+cueloop queue import --format json --input ~/tasks.json --on-duplicate rename
 ```
 
 ### External Editing Workflow
 
 ```bash
 # Export to CSV for spreadsheet editing
-ralph queue export --format csv --output tasks.csv
+cueloop queue export --format csv --output tasks.csv
 
 # Edit in spreadsheet (LibreOffice, Excel, etc.)
 # ... make changes ...
 
 # Import back with rename policy (safer for edited IDs)
-ralph queue import --format csv --input tasks.csv --on-duplicate rename
+cueloop queue import --format csv --input tasks.csv --on-duplicate rename
 ```
 
 ### Round-trip Considerations
@@ -412,26 +412,26 @@ Publish tasks as GitHub issues directly from the command line.
 ### Command
 
 ```bash
-ralph queue issue publish <TASK_ID> [OPTIONS]
+cueloop queue issue publish <TASK_ID> [OPTIONS]
 ```
 
 ### Examples
 
 ```bash
 # Publish a task as a new GitHub issue
-ralph queue issue publish RQ-0001
+cueloop queue issue publish RQ-0001
 
 # Preview without creating
-ralph queue issue publish RQ-0001 --dry-run
+cueloop queue issue publish RQ-0001 --dry-run
 
 # Add labels and assignees
-ralph queue issue publish RQ-0001 --label bug --label help-wanted --assignee @me
+cueloop queue issue publish RQ-0001 --label bug --label help-wanted --assignee @me
 
 # Publish to a different repository
-ralph queue issue publish RQ-0001 --repo owner/repo
+cueloop queue issue publish RQ-0001 --repo owner/repo
 
 # Combine options
-ralph queue issue publish RQ-0001 --label enhancement --assignee alice --assignee bob
+cueloop queue issue publish RQ-0001 --label enhancement --assignee alice --assignee bob
 ```
 
 ### How It Works
@@ -445,7 +445,7 @@ The issue body is rendered from the task data:
 - Tags as labels
 - Plan, evidence, scope, and notes sections
 - Original request (if present)
-- Ralph task ID marker (for automation/debugging)
+- CueLoop task ID marker (for automation/debugging)
 
 ### Issue Metadata
 
@@ -460,7 +460,7 @@ After publishing, these custom fields are set:
 }
 ```
 
-To re-publish (update) an issue, run the command again. Ralph detects the existing URL and updates rather than creates.
+To re-publish (update) an issue, run the command again. CueLoop detects the existing URL and updates rather than creates.
 
 ---
 
@@ -475,51 +475,51 @@ Import a large number of tasks from an external source:
 # Export to CSV: id,title,status,priority,tags
 
 # Import with rename to ensure clean IDs
-ralph queue import --format csv --input backlog.csv --on-duplicate rename
+cueloop queue import --format csv --input backlog.csv --on-duplicate rename
 ```
 
 ### Cross-repo Migration
 
-Move tasks between Ralph-managed repositories:
+Move tasks between CueLoop-managed repositories:
 
 ```bash
 # Source repo: export all tasks
-ralph queue export --include-archive --format json --output all-tasks.json
+cueloop queue export --include-archive --format json --output all-tasks.json
 
 # Target repo: import with rename to avoid ID collisions
-ralph queue import --format json --input all-tasks.json --on-duplicate rename
+cueloop queue import --format json --input all-tasks.json --on-duplicate rename
 ```
 
 ### Integration with External Tools
 
 ```bash
 # Export for project management tools
-ralph queue export --format csv --status todo --status doing
+cueloop queue export --format csv --status todo --status doing
 
 # Export for documentation
-ralph queue export --format md --status done --created-after 2026-01-01
+cueloop queue export --format md --status done --created-after 2026-01-01
 
 # Export for CI/CD pipelines
-ralph queue export --format json --tag ci | jq '.[].id'
+cueloop queue export --format json --tag ci | jq '.[].id'
 ```
 
 ### Backup and Restore
 
 ```bash
 # Daily backup
-ralph queue export --include-archive --format json --output backup-$(date +%Y%m%d).json
+cueloop queue export --include-archive --format json --output backup-$(date +%Y%m%d).json
 
 # Restore from backup
-ralph queue import --format json --input backup-20260115.json --on-duplicate skip
+cueloop queue import --format json --input backup-20260115.json --on-duplicate skip
 ```
 
 ### GitHub Issue Sync
 
 ```bash
 # Publish high-priority tasks to GitHub
-ralph queue export --format json --priority critical | \
+cueloop queue export --format json --priority critical | \
   jq -r '.[].id' | \
-  xargs -I {} ralph queue issue publish {} --label critical
+  xargs -I {} cueloop queue issue publish {} --label critical
 ```
 
 ---
@@ -547,7 +547,7 @@ Ensure your CSV has a `title` column with non-empty values for all rows.
 Use `--on-duplicate skip` or `--on-duplicate rename`:
 
 ```bash
-ralph queue import --format csv --input tasks.csv --on-duplicate rename
+cueloop queue import --format csv --input tasks.csv --on-duplicate rename
 ```
 
 ### CSV parsing errors

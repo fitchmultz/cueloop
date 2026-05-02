@@ -1,10 +1,10 @@
-# Ralph Watch Mode
+# CueLoop Watch Mode
 Status: Active
 Owner: Maintainers
 Source of truth: this document for watch-mode task detection and reconciliation
 Parent: [Daemon and Watch](../daemon-and-watch.md)
 
-This guide covers Ralph watch mode: detecting actionable comments, queueing tasks, debouncing file changes, deduplicating comments, and reconciling removed comments.
+This guide covers CueLoop watch mode: detecting actionable comments, queueing tasks, debouncing file changes, deduplicating comments, and reconciling removed comments.
 
 ## Watch Mode
 
@@ -29,31 +29,31 @@ Watch mode monitors source files for changes and automatically creates tasks fro
 
 ```bash
 # Basic watch mode (suggests tasks, doesn't create)
-ralph watch
+cueloop watch
 
 # Watch specific directories
-ralph watch src/ tests/
+cueloop watch src/ tests/
 
 # Auto-create tasks without prompting
-ralph watch --auto-queue
+cueloop watch --auto-queue
 
 # Watch with custom patterns
-ralph watch --patterns "*.rs,*.toml"
+cueloop watch --patterns "*.rs,*.toml"
 
 # Only detect TODO and FIXME
-ralph watch --comments todo,fixme
+cueloop watch --comments todo,fixme
 
 # Enable desktop notifications
-ralph watch --auto-queue --notify
+cueloop watch --auto-queue --notify
 
 # Auto-close tasks when comments are removed
-ralph watch --auto-queue --close-removed
+cueloop watch --auto-queue --close-removed
 
 # Custom debounce interval
-ralph watch --debounce-ms 1000
+cueloop watch --debounce-ms 1000
 
 # Ignore additional patterns
-ralph watch --ignore-patterns "vendor/,target/,node_modules/"
+cueloop watch --ignore-patterns "vendor/,target/,node_modules/"
 ```
 
 ---
@@ -115,13 +115,13 @@ Watch mode implements debouncing to batch rapid file changes and avoid redundant
 
 ```bash
 # Default debounce: 500ms
-ralph watch
+cueloop watch
 
 # Faster response (lower latency, more CPU)
-ralph watch --debounce-ms 100
+cueloop watch --debounce-ms 100
 
 # Slower response (higher latency, less CPU)
-ralph watch --debounce-ms 2000
+cueloop watch --debounce-ms 2000
 ```
 
 **Implementation Details:**
@@ -153,13 +153,13 @@ Default patterns: `*.rs,*.ts,*.js,*.py,*.go,*.java,*.md,*.toml,*.json`
 
 ```bash
 # Only Rust and TOML files
-ralph watch --patterns "*.rs,*.toml"
+cueloop watch --patterns "*.rs,*.toml"
 
 # Include YAML and config files
-ralph watch --patterns "*.rs,*.yaml,*.yml,*.conf"
+cueloop watch --patterns "*.rs,*.yaml,*.yml,*.conf"
 
 # Watch all source files
-ralph watch --patterns "*"
+cueloop watch --patterns "*"
 ```
 
 **Pattern Syntax:**
@@ -186,26 +186,26 @@ Built-in ignores (always applied):
 
 ```bash
 # Ignore generated files
-ralph watch --ignore-patterns "generated/,dist/,build/"
+cueloop watch --ignore-patterns "generated/,dist/,build/"
 
 # Ignore specific directories
-ralph watch --ignore-patterns "legacy/,third_party/"
+cueloop watch --ignore-patterns "legacy/,third_party/"
 ```
 
 #### Comment Type Selection
 
 ```bash
 # All comment types (default)
-ralph watch --comments all
+cueloop watch --comments all
 
 # Only TODO
-ralph watch --comments todo
+cueloop watch --comments todo
 
 # TODO and FIXME only
-ralph watch --comments todo,fixme
+cueloop watch --comments todo,fixme
 
 # Everything except XXX
-ralph watch --comments todo,fixme,hack
+cueloop watch --comments todo,fixme,hack
 ```
 
 ---
@@ -281,7 +281,7 @@ for task in queue.tasks:
 
 ```bash
 # Terminal 1: Start watch with auto-close
-ralph watch --auto-queue --close-removed
+cueloop watch --auto-queue --close-removed
 
 # Terminal 2: Work on code
 # 1. Add "// TODO: refactor this" → Task auto-created
@@ -326,7 +326,7 @@ Watch-created tasks include structured metadata in `custom_fields`:
 
 ```bash
 # Terminal 1: Start watch with auto-queue and auto-close
-ralph watch --auto-queue --close-removed
+cueloop watch --auto-queue --close-removed
 
 # Terminal 2: Regular development
 # - Add TODO/FIXME comments as you code
@@ -339,27 +339,27 @@ ralph watch --auto-queue --close-removed
 
 ```bash
 # After code review, scan for new action items
-ralph watch src/ --auto-queue --patterns "*.rs"
+cueloop watch src/ --auto-queue --patterns "*.rs"
 
 # Clean up completed items
-ralph watch src/ --close-removed --auto-queue
+cueloop watch src/ --close-removed --auto-queue
 ```
 
 #### CI Integration
 
 ```bash
 # Scan for existing TODOs in CI pipeline
-ralph watch --auto-queue --patterns "*.rs" --comments todo,fixme
+cueloop watch --auto-queue --patterns "*.rs" --comments todo,fixme
 
 # Or run continuously in container
-ralph watch --auto-queue --close-removed --patterns "*.rs"
+cueloop watch --auto-queue --close-removed --patterns "*.rs"
 ```
 
 #### Project Health Monitoring
 
 ```bash
 # Generate report of all open watch tasks
-ralph queue list --tag watch --format json | jq '.tasks | group_by(.custom_fields."watch.comment_type") | map({type: .[0].custom_fields."watch.comment_type", count: length})'
+cueloop queue list --tag watch --format json | jq '.tasks | group_by(.custom_fields."watch.comment_type") | map({type: .[0].custom_fields."watch.comment_type", count: length})'
 ```
 
 ---

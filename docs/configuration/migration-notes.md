@@ -4,17 +4,17 @@ Owner: Maintainers
 Source of truth: this document for current configuration migration notes and breaking config changes
 Parent: [Configuration](../configuration.md)
 
-Purpose: Collect configuration-breaking changes and the supported migration commands for existing CueLoop/Ralph config files.
+Purpose: Collect configuration-breaking changes and the supported migration commands for existing CueLoop/CueLoop config files.
 
 ## Current migration command
 
-Run the config migrator after upgrading older repositories or global configs. The executable remains `ralph` in this phase:
+Run the config migrator after upgrading older repositories or global configs. Use the primary `cueloop` executable:
 
 ```bash
-ralph migrate --apply
+cueloop migrate --apply
 ```
 
-Use `ralph migrate` without `--apply` first when you want a preview.
+Use `cueloop migrate` without `--apply` first when you want a preview.
 
 ## CueLoop runtime directory migration
 
@@ -23,8 +23,8 @@ New repositories default to `.cueloop/`. Legacy `.ralph/` runtime directories re
 The runtime directory move is explicit and separate from normal config migrations:
 
 ```bash
-ralph migrate runtime-dir --check
-ralph migrate runtime-dir --apply
+cueloop migrate runtime-dir --check
+cueloop migrate runtime-dir --apply
 ```
 
 Use `--check` before `--apply`. The migration moves `.ralph/` to `.cueloop/` when safe and refuses to auto-merge when both directories exist. Do not rename runtime directories manually.
@@ -34,12 +34,12 @@ Use `--check` before `--apply`. The migration moves `.ralph/` to `.cueloop/` whe
 - Config files must use `"version": 2`.
 - `agent.git_publish_mode` replaces the removed `git_commit_push_enabled` setting.
 - Built-in reserved profiles are `safe` and `power-user`; defining either name in config is a validation error.
-- `make install` updates the CLI and macOS app bundle, but it does not mutate repo-local config files. Older repos still need `ralph migrate --apply` after upgrading to `0.3`.
+- `make install` updates the CLI and macOS app bundle, but it does not mutate repo-local config files. Older repos still need `cueloop migrate --apply` after upgrading to `0.3`.
 
 ## Runner and reasoning changes
 
 - `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
-- Cursor runner execution now uses CueLoop's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `ralph migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk@1.0.11`; alternatively set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
+- Cursor runner execution now uses CueLoop's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `cueloop migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk@1.0.11`; alternatively set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
 
 ## Parallel configuration changes
 

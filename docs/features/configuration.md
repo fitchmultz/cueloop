@@ -27,7 +27,7 @@ Use this page to decide where a setting belongs. Use the main reference when you
 
 ## Config Files and Locations
 
-CueLoop loads configuration from global and project scopes. The executable remains `ralph` in this phase.
+CueLoop loads configuration from global and project scopes. The primary executable is `cueloop`; `ralph` remains a compatibility alias during the migration window.
 
 - Global (user): `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
 - Project (repo): `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)
@@ -36,11 +36,11 @@ CueLoop loads configuration from global and project scopes. The executable remai
 Useful commands:
 
 ```bash
-ralph config show
-ralph config show --format json
-ralph config paths
-ralph config schema
-ralph config profiles list
+cueloop config show
+cueloop config show --format json
+cueloop config paths
+cueloop config schema
+cueloop config profiles list
 ```
 
 ---
@@ -60,8 +60,8 @@ For exact behavior and edge cases, see:
 
 Project-local execution settings are applied only after explicit local trust opt-in.
 
-- Use `ralph init` while bootstrapping; it creates or updates `.cueloop/trust.jsonc` by default.
-- Use `ralph config trust init` only for trust-only repair in an already-initialized repo.
+- Use `cueloop init` while bootstrapping; it creates or updates `.cueloop/trust.jsonc` by default.
+- Use `cueloop config trust init` only for trust-only repair in an already-initialized repo.
 - Do not commit `.cueloop/trust.jsonc` or legacy `.ralph/trust.jsonc`.
 
 Execution-sensitive project settings include:
@@ -86,7 +86,7 @@ CueLoop supports JSONC (`.jsonc`) for runtime config and queue files:
 
 - Comments and trailing commas are accepted on load.
 - CueLoop may rewrite files as standard JSON formatting when saving.
-- Use `ralph config show` and `ralph config schema` to verify effective values.
+- Use `cueloop config show` and `cueloop config schema` to verify effective values.
 
 Current configuration version is `2`. Prefer canonical validation/error details from [Configuration](../configuration.md).
 

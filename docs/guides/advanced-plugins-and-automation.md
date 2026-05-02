@@ -5,7 +5,7 @@ Source of truth: this document for advanced plugin development and automation se
 Parent: [Advanced Usage Guide](advanced.md)
 
 
-Purpose: Deep-dive guidance for creating custom Ralph plugins, debugging plugin execution, running Ralph as a daemon, integrating watch mode, and wiring automation surfaces such as CI/CD and webhooks.
+Purpose: Deep-dive guidance for creating custom CueLoop plugins, debugging plugin execution, running CueLoop as a daemon, integrating watch mode, and wiring automation surfaces such as CI/CD and webhooks.
 
 ---
 
@@ -22,7 +22,7 @@ Purpose: Deep-dive guidance for creating custom Ralph plugins, debugging plugin 
 
 **Step 1: Scaffold the plugin**
 ```bash
-ralph plugin init mycompany.custom-llm --with-runner --scope global
+cueloop plugin init mycompany.custom-llm --with-runner --scope global
 ```
 
 **Step 2: Implement the runner**
@@ -199,11 +199,11 @@ echo "Test prompt" | ~/.config/ralph/plugins/my.plugin/runner.sh run --model tes
 ~/.config/ralph/plugins/my.plugin/processor.sh validate_task RQ-0001 /tmp/test-task.json
 
 # Debug environment variables
-RALPH_LOG=debug ralph run one --id RQ-0001
+RALPH_LOG=debug cueloop run one --id RQ-0001
 
 # Check plugin discovery
-ralph plugin list
-ralph plugin validate --id my.plugin
+cueloop plugin list
+cueloop plugin validate --id my.plugin
 ```
 
 ---
@@ -215,16 +215,16 @@ ralph plugin validate --id my.plugin
 **Basic daemon management:**
 ```bash
 # Start daemon
-ralph daemon start
+cueloop daemon start
 
 # Check status
-ralph daemon status
+cueloop daemon status
 
 # View daemon logs
-ralph daemon logs
+cueloop daemon logs
 
 # Stop daemon
-ralph daemon stop
+cueloop daemon stop
 ```
 
 **systemd Service (Linux):**
@@ -232,13 +232,13 @@ ralph daemon stop
 Create `~/.config/systemd/user/ralph.service`:
 ```ini
 [Unit]
-Description=Ralph Daemon
+Description=CueLoop Daemon
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/path/to/repo
-ExecStart=/home/username/.local/bin/ralph daemon serve \
+ExecStart=/home/username/.local/bin/cueloop daemon serve \
   --empty-poll-ms 10000 \
   --wait-poll-ms 1000 \
   --notify-when-unblocked
@@ -252,9 +252,9 @@ WantedBy=default.target
 Enable and start:
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable ralph
-systemctl --user start ralph
-journalctl --user -u ralph -f
+systemctl --user enable cueloop
+systemctl --user start cueloop
+journalctl --user -u cueloop -f
 ```
 
 **launchd Service (macOS):**
@@ -270,7 +270,7 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
     <string>com.ralph.daemon</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/username/.local/bin/ralph</string>
+        <string>/Users/username/.local/bin/cueloop</string>
         <string>daemon</string>
         <string>serve</string>
         <string>--notify-when-unblocked</string>
@@ -296,10 +296,10 @@ launchctl start com.ralph.daemon
 **Auto-capture TODOs:**
 ```bash
 # Terminal 1: Start daemon for execution
-ralph daemon start
+cueloop daemon start
 
 # Terminal 2: Watch for TODO/FIXME comments
-ralph watch --auto-queue --close-removed --notify
+cueloop watch --auto-queue --close-removed --notify
 
 # Terminal 3: Regular development
 # Add "// TODO: refactor this" → Task auto-created
@@ -310,7 +310,7 @@ ralph watch --auto-queue --close-removed --notify
 
 **GitHub Actions Example:**
 ```yaml
-name: Ralph Task Execution
+name: CueLoop Task Execution
 
 on:
   schedule:
@@ -323,16 +323,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Ralph
+      - name: Setup CueLoop
         run: |
           curl -fsSL https://ralph.dev/install.sh | sh
-          ralph doctor --auto-fix
+          cueloop doctor --auto-fix
 
       - name: Run Tasks
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          ralph run loop \
+          cueloop run loop \
             --non-interactive \
             --profile ci-safe \
             --max-tasks 5
@@ -351,13 +351,13 @@ jobs:
 # .git/hooks/pre-commit
 
 # Validate queue before commit
-if ! ralph queue validate --quiet; then
-    echo "Queue validation failed. Run 'ralph queue validate' for details."
+if ! cueloop queue validate --quiet; then
+    echo "Queue validation failed. Run 'cueloop queue validate' for details."
     exit 1
 fi
 
 # Run quick check on critical tasks
-ralph run loop --profile ci-check --max-tasks 1 --non-interactive
+cueloop run loop --profile ci-check --max-tasks 1 --non-interactive
 ```
 
 ### Webhook Automation

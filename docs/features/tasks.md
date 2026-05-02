@@ -1,4 +1,4 @@
-# Ralph Task System
+# CueLoop Task System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for task-system navigation and documentation ownership
@@ -6,7 +6,7 @@ Parent: [Feature Documentation](README.md)
 
 ![Task Lifecycle](../assets/images/2026-02-07-11-32-24-task-lifecycle.png)
 
-The Task System is the core unit of work in Ralph. Tasks represent discrete pieces of work with metadata, relationships, lifecycle state, and execution configuration.
+The Task System is the core unit of work in CueLoop. Tasks represent discrete pieces of work with metadata, relationships, lifecycle state, and execution configuration.
 
 Use this page as the task-system index. Detailed guidance lives in focused child pages so schema, lifecycle, relationship, and operator workflows can evolve without one oversized mixed-scope document.
 
@@ -25,7 +25,7 @@ Use this page as the task-system index. Detailed guidance lives in focused child
 
 ## Overview
 
-A **Task** in Ralph is a JSON object representing a discrete unit of work. Tasks are stored in `.ralph/queue.jsonc` for active work and `.ralph/done.jsonc` for completed or rejected work.
+A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tasks are stored in `.ralph/queue.jsonc` for active work and `.ralph/done.jsonc` for completed or rejected work.
 
 Tasks capture identity, state, context, relationships, and execution configuration. They are the interface between operators and AI agents: they preserve the original request, guide execution, track progress, and support recovery.
 

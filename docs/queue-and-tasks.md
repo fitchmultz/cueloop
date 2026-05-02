@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
 ![Queue Lifecycle](assets/images/2026-02-07-queue-lifecycle.png)
@@ -36,7 +36,7 @@ Common optional fields:
 - `plan` (list of strings, defaults to empty).
 - `notes` (list of strings, defaults to empty).
 - `status`: `draft`, `todo`, `doing`, `done`, `rejected` (default: `todo`). Lifecycle only; it does not say whether the task is executable.
-- `kind`: `work_item` or `group` (default: `work_item`). `work_item` tasks are executable atomic work. `group` tasks are non-runnable decomposition/organization nodes. Ralph omits `kind` when saving default `work_item` tasks; write `kind: "group"` only when the task must be non-executable.
+- `kind`: `work_item` or `group` (default: `work_item`). `work_item` tasks are executable atomic work. `group` tasks are non-runnable decomposition/organization nodes. CueLoop omits `kind` when saving default `work_item` tasks; write `kind: "group"` only when the task must be non-executable.
 - `priority`: `critical`, `high`, `medium`, `low` (default: `medium`).
 - `request`: original human request (string or null).
 - `completed_at`: RFC3339 UTC timestamp (required if status is `done` or `rejected`, otherwise optional).
@@ -50,7 +50,7 @@ Common optional fields:
 - `duplicates` (string or null): Task ID that this task duplicates.
 - `custom_fields` (map of strings, defaults to empty).
   - **Note**: The queue loader accepts string/number/boolean values and coerces them to strings (in memory, and on subsequent saves). When manually editing `.ralph/queue.jsonc`, values should still be quoted strings for consistency.
-  - **Reserved analytics keys**: Ralph automatically writes the following keys to completed tasks:
+  - **Reserved analytics keys**: CueLoop automatically writes the following keys to completed tasks:
     - `runner_used`: The runner actually used for execution (e.g., `codex`, `claude`, `opencode`).
     - `model_used`: The model actually used for execution (e.g., `gpt-5.3-codex`, `sonnet`).
     - These fields are observational (what actually ran) and should not be confused with `agent.runner`/`agent.model` which express intent/override.
@@ -108,18 +108,18 @@ Notes:
 
 ## Lifecycle Notes
 - Executable `work_item` tasks run in the file order from `.ralph/queue.jsonc`.
-- `kind: "group"` tasks remain visible in reads, lists, tree, graph, search, and app surfaces, but are skipped by `ralph queue next`, `run one`, `run loop`, parallel workers, and machine runnability selection by default.
-- Existing tasks without `kind` load as `work_item`; Ralph omits the default `work_item` field on save so normal task rewrites stay compatible with older strict readers. Explicit `kind: "group"` requires a Ralph build that supports task kinds.
+- `kind: "group"` tasks remain visible in reads, lists, tree, graph, search, and app surfaces, but are skipped by `cueloop queue next`, `run one`, `run loop`, parallel workers, and machine runnability selection by default.
+- Existing tasks without `kind` load as `work_item`; CueLoop omits the default `work_item` field on save so normal task rewrites stay compatible with older strict readers. Explicit `kind: "group"` requires a CueLoop build that supports task kinds.
 - Completed tasks are removed from `.ralph/queue.jsonc` and appended to `.ralph/done.jsonc`.
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
-- Decomposed leaves written as `draft` are intentionally skipped until activated. Use `ralph task ready <TASK_ID>` to promote a reviewed leaf to runnable `todo` work; `ralph task decompose --write` prints the exact first-leaf command when all generated work remains draft.
-- `ralph queue validate` and `ralph queue explain` treat a normal all-draft decomposition as waiting for activation, not queue corruption: `No runnable tasks because all tasks are draft. Promote a leaf task to todo.`
-- To avoid an all-draft decomposition by intent, write parent/group nodes as draft while making generated leaf work runnable with `ralph task decompose --write --parent-status draft --leaf-status todo "<request>"`.
+- Decomposed leaves written as `draft` are intentionally skipped until activated. Use `cueloop task ready <TASK_ID>` to promote a reviewed leaf to runnable `todo` work; `cueloop task decompose --write` prints the exact first-leaf command when all generated work remains draft.
+- `cueloop queue validate` and `cueloop queue explain` treat a normal all-draft decomposition as waiting for activation, not queue corruption: `No runnable tasks because all tasks are draft. Promote a leaf task to todo.`
+- To avoid an all-draft decomposition by intent, write parent/group nodes as draft while making generated leaf work runnable with `cueloop task decompose --write --parent-status draft --leaf-status todo "<request>"`.
 
 ## Discovery Follow-Ups
 
-Exploratory, audit, scan, and investigation tasks should grow the queue when they find independent work. Ralph uses `followups@v1` proposal files so agents can describe follow-up tasks without hand-editing queue JSON.
+Exploratory, audit, scan, and investigation tasks should grow the queue when they find independent work. CueLoop uses `followups@v1` proposal files so agents can describe follow-up tasks without hand-editing queue JSON.
 
 Default proposal path:
 
@@ -153,8 +153,8 @@ Proposal shape:
 Apply a proposal:
 
 ```bash
-ralph task followups apply --task RQ-0135
-ralph task followups apply --task RQ-0135 --dry-run --format json
+cueloop task followups apply --task RQ-0135
+cueloop task followups apply --task RQ-0135 --dry-run --format json
 ```
 
 Apply allocates real task IDs, maps `depends_on_keys`, inherits `request` from the source task, adds `relates_to: ["<source_task_id>"]`, timestamps the tasks, validates the queue, creates undo for CLI applies, and removes the proposal after a successful non-dry-run apply.
@@ -163,7 +163,7 @@ Follow-ups are for independent work or queue-shaping tasks. They must not replac
 
 ## Dependency Validation
 
-Ralph validates task dependencies on queue operations to ensure correctness and prevent issues:
+CueLoop validates task dependencies on queue operations to ensure correctness and prevent issues:
 
 ### Hard Errors (blocking)
 These validation failures prevent queue operations and must be fixed:
@@ -175,7 +175,7 @@ These validation failures prevent queue operations and must be fixed:
 
 ### Relationship Validation
 
-Ralph also validates task relationships (`blocks`, `relates_to`, `duplicates`) to ensure correctness:
+CueLoop also validates task relationships (`blocks`, `relates_to`, `duplicates`) to ensure correctness:
 
 **Hard Errors (blocking):**
 - **Self-reference**: A task cannot block, relate to, or duplicate itself.
@@ -232,29 +232,29 @@ Tasks can form a parent/child hierarchy using the `parent_id` field. This is use
 
 ### CLI Navigation Commands
 
-Ralph provides commands to navigate the hierarchy:
+CueLoop provides commands to navigate the hierarchy:
 
 ```bash
 # List child tasks
-ralph task children RQ-0001
+cueloop task children RQ-0001
 
 # List children recursively (tree view)
-ralph task children RQ-0001 --recursive
+cueloop task children RQ-0001 --recursive
 
 # Include done archive in search
-ralph task children RQ-0001 --include-done
+cueloop task children RQ-0001 --include-done
 
 # Show parent task
-ralph task parent RQ-0002
+cueloop task parent RQ-0002
 
 # Render full hierarchy tree
-ralph queue tree
+cueloop queue tree
 
 # Render tree starting from specific root
-ralph queue tree --root RQ-0001
+cueloop queue tree --root RQ-0001
 
 # Include done tasks in tree
-ralph queue tree --include-done
+cueloop queue tree --include-done
 ```
 
 ### Hierarchy vs Dependencies
@@ -265,14 +265,14 @@ It's important to understand the difference:
 |---------|-------------|--------------|
 | Purpose | Structural organization | Execution ordering |
 | Affects task order | No | Yes |
-| Visualized with | `ralph queue tree` | `ralph queue graph` |
+| Visualized with | `cueloop queue tree` | `cueloop queue graph` |
 | Validation | Warnings for cycles/missing parents | Hard errors for cycles/missing deps |
 
 Use `kind` for actionability: `kind: "group"` prevents default execution selection, while `kind: "work_item"` can run when lifecycle/dependencies/schedule allow it.
 
 ### Parent ID Validation
 
-Ralph validates `parent_id` references and reports issues as warnings:
+CueLoop validates `parent_id` references and reports issues as warnings:
 
 **Warnings (non-blocking):**
 - **Missing parent**: Task references a parent that doesn't exist
@@ -301,11 +301,11 @@ Set `queue.max_dependency_depth` in `.ralph/config.jsonc` to adjust the depth wa
 }
 ```
 
-Validation warnings are logged during queue operations. Review them with `ralph queue validate` or by checking the queue after operations.
+Validation warnings are logged during queue operations. Review them with `cueloop queue validate` or by checking the queue after operations.
 
 ## Task ID Validation
 
-Ralph enforces unique task IDs across **both** `.ralph/queue.jsonc` **AND** `.ralph/done.jsonc`. Duplicate IDs will cause validation errors and block most queue operations.
+CueLoop enforces unique task IDs across **both** `.ralph/queue.jsonc` **AND** `.ralph/done.jsonc`. Duplicate IDs will cause validation errors and block most queue operations.
 
 > **Important:** Completed task IDs in `done.json` remain "claimed" and are included in uniqueness checks. Even though tasks are archived, their IDs cannot be reused for new tasks to prevent collisions with historical references.
 
@@ -329,12 +329,12 @@ This error occurs when the same task ID exists in both the active queue and the 
 2. Check if the tasks are different (different titles, descriptions, or content)
 3. Find the next available ID using:
    ```bash
-   ralph queue next-id
+   cueloop queue next-id
    ```
 4. Update the task ID in `queue.json` to the next available ID
 5. Re-run validation to confirm:
    ```bash
-   ralph queue validate
+   cueloop queue validate
    ```
 
 **Example:**
@@ -343,53 +343,53 @@ If `RQ-0452` exists in both `done.json` (completed task about "Fix Kimi runner")
 
 ### Prevention
 
-- Use `ralph task` commands to create tasks (handles ID generation automatically)
-- Use `ralph queue next-id` to get the next ID when manually editing files
-- Always run `ralph queue validate` after manual edits to catch issues early
+- Use `cueloop task` commands to create tasks (handles ID generation automatically)
+- Use `cueloop queue next-id` to get the next ID when manually editing files
+- Always run `cueloop queue validate` after manual edits to catch issues early
 
 ## Dependency Visualization
 
 ![Dependency Graph](assets/images/2026-02-07-dependency-graph.png)
 
-Ralph provides multiple ways to visualize task dependencies:
+CueLoop provides multiple ways to visualize task dependencies:
 
 ### CLI Graph Command
 
-The `ralph queue graph` command displays dependency relationships:
+The `cueloop queue graph` command displays dependency relationships:
 
 ```bash
 # ASCII tree view of dependencies
-ralph queue graph --task RQ-0001
+cueloop queue graph --task RQ-0001
 
 # Graphviz DOT format for external rendering
-ralph queue graph --format dot > deps.dot
+cueloop queue graph --format dot > deps.dot
 dot -Tpng deps.dot -o deps.png
 
 # Show what tasks are blocked by a specific task
-ralph queue graph --task RQ-0001 --reverse
+cueloop queue graph --task RQ-0001 --reverse
 
 # Highlight critical path (longest dependency chain)
-ralph queue graph --critical
+cueloop queue graph --critical
 ```
 
 ### macOS App
 
-On macOS, you can explore dependencies interactively in the Ralph app:
+On macOS, you can explore dependencies interactively in the CueLoop app:
 
 ```bash
-ralph app open
+cueloop app open
 ```
 
 ### Critical Path
 
 The critical path is the longest dependency chain in the graph. Tasks on the critical path are highlighted with `*` in tree/list output. Completing critical path tasks unblocks the most downstream work.
-- `ralph task` inserts new tasks near the top of the queue:
+- `cueloop task` inserts new tasks near the top of the queue:
   - Default: insert at position 0 (top).
   - If the first task is already `doing`, insert at position 1 (immediately below the in-progress task).
 
 ## Import and Export
 
-Ralph supports importing and exporting tasks for bulk operations, cross-repo migration, and integration with external tools.
+CueLoop supports importing and exporting tasks for bulk operations, cross-repo migration, and integration with external tools.
 
 ### Export
 
@@ -397,13 +397,13 @@ Export tasks to CSV, TSV, JSON, Markdown, or GitHub issue format:
 
 ```bash
 # Export all tasks to CSV (default)
-ralph queue export
+cueloop queue export
 
 # Export to JSON for scripting
-ralph queue export --format json --output tasks.json
+cueloop queue export --format json --output tasks.json
 
 # Export tasks with specific tags to TSV
-ralph queue export --format tsv --tag rust --tag cli
+cueloop queue export --format tsv --tag rust --tag cli
 ```
 
 ### Import
@@ -412,16 +412,16 @@ Import tasks from CSV, TSV, or JSON into the active queue. This enables bulk bac
 
 ```bash
 # Import from JSON file
-ralph queue import --format json --input tasks.json
+cueloop queue import --format json --input tasks.json
 
 # Import from CSV with dry-run to preview changes
-ralph queue import --format csv --input tasks.csv --dry-run
+cueloop queue import --format csv --input tasks.csv --dry-run
 
 # Pipe export to import (round-trip test)
-ralph queue export --format json | ralph queue import --format json --dry-run
+cueloop queue export --format json | cueloop queue import --format json --dry-run
 ```
 
-**Normalization**: During import, Ralph automatically:
+**Normalization**: During import, CueLoop automatically:
 - Trims all fields and drops empty list items
 - Backfills missing `created_at`/`updated_at` timestamps
 - Sets `completed_at` for tasks with `done`/`rejected` status

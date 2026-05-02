@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
 Purpose: provide a deterministic install and verification path without requiring external runner setup.
@@ -20,21 +20,21 @@ make install
 # macOS/Homebrew GNU Make users: gmake install
 
 # initialize repo-local runtime state and local trust (safe to rerun)
-ralph init
+cueloop init
 
 # optional: if parallel workers need additional small ignored files, configure
 # trusted parallel.ignored_file_allowlist; do not allowlist ignored directory
 # trees such as node_modules/*.
 
 # verify command surface
-ralph --help
-ralph run one --help
-ralph scan --help
+cueloop --help
+cueloop run one --help
+cueloop scan --help
 
 # verify local repo state + diagnostics
-ralph queue validate
-ralph queue list
-ralph doctor
+cueloop queue validate
+cueloop queue list
+cueloop doctor
 
 # verify repo-pinned Rust baseline before the broader gate
 make rust-toolchain-check
@@ -51,7 +51,7 @@ If you want a shorter reviewer-oriented version of this flow, use [evaluator-pat
 
 - help commands succeed
 - queue validation/list commands succeed
-- `ralph doctor` completes without critical failures in repo root
+- `cueloop doctor` completes without critical failures in repo root
 - `make rust-toolchain-check` confirms `rust-toolchain.toml`, crate `rust-version`, repo-local rustup, `rustc`, `cargo`, `rustfmt`, and `clippy` agree
 - `make agent-ci` passes
 - source snapshots without `.git/` fall back to `make release-gate` (`macos-ci` on macOS with Xcode, otherwise `ci`)

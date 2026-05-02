@@ -44,7 +44,7 @@ It provides:
 CueLoop centers on an operator-started run loop over repo-local tasks:
 
 1. Tasks live in `.cueloop/queue.jsonc` and completed work is archived to `.cueloop/done.jsonc` by default; legacy `.ralph/queue.jsonc` and `.ralph/done.jsonc` are still read.
-2. A human starts `ralph run one`, `ralph run loop`, or `ralph run loop --parallel <N>`.
+2. A human starts `cueloop run one`, `cueloop run loop`, or `cueloop run loop --parallel <N>`.
 3. CueLoop invokes the configured runner through supervised one-, two-, or three-phase execution.
 4. In three-phase mode, Phase 3 reviews the implementation, resolves issues, and records completion.
 5. The configured CI gate runs before task completion and before automatic publish behavior.
@@ -55,7 +55,7 @@ CueLoop centers on an operator-started run loop over repo-local tasks:
 
 ```mermaid
 flowchart LR
-  APP["macOS App<br>SwiftUI"] -->|shells out| CLI["ralph CLI<br>Rust"]
+  APP["macOS App<br>SwiftUI"] -->|shells out| CLI["cueloop CLI<br>Rust"]
   CLI -->|reads/writes| QUEUE[.cueloop/queue.jsonc]
   CLI -->|reads/writes| DONE[.cueloop/done.jsonc]
   CLI -->|reads| CONFIG[.cueloop/config.jsonc]
@@ -70,15 +70,15 @@ From crates.io:
 cargo install cueloop-agent-loop
 ```
 
-This installs the `ralph` executable.
+This installs the primary `cueloop` executable and the legacy `ralph` compatibility alias.
 
 From source:
 
 > GNU Make >= 4 is required for project targets. On macOS, install via `brew install make` and use `gmake` unless GNU Make is already your default `make`.
 
 ```bash
-git clone https://github.com/fitchmultz/ralph
-cd ralph
+git clone https://github.com/fitchmultz/ralph cueloop
+cd cueloop
 make install
 # macOS/Homebrew GNU Make users: gmake install
 ```
@@ -93,27 +93,27 @@ make install
 
 ```bash
 # 1) Initialize in your repo
-ralph init
+cueloop init
 
 # 2) Inspect the default-safe profile
-ralph config profiles
+cueloop config profiles
 
 # 3) Add a task
-ralph task "Stabilize flaky queue integration test"
+cueloop task "Stabilize flaky queue integration test"
 
 # 4) Execute one task with the recommended safe profile
-ralph run one --profile safe
+cueloop run one --profile safe
 
 # 5) Inspect queue state
-ralph queue list
+cueloop queue list
 ```
 
-`ralph init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.cueloop/trust.jsonc` for current repos (`.ralph/trust.jsonc` remains supported for legacy repos; both are gitignored by init).
+`cueloop init` now defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.cueloop/trust.jsonc` for current repos (`.ralph/trust.jsonc` remains supported for legacy repos; both are gitignored by init).
 Interactive init also lets you choose shared-vs-local queue tracking and opt into additional ignored local files for parallel worker sync; non-interactive init keeps the deterministic `.env*` sync default only.
 Use `--profile power-user` only when you explicitly want the higher-blast-radius behavior, including commit_and_push automation.
 On macOS, app-launched runs remain noninteractive: the app can supervise and disclose safety posture, but interactive approvals are still terminal-only.
 
-If you do not want to configure a runner yet, use the smoke-test flow instead of `ralph run one`.
+If you do not want to configure a runner yet, use the smoke-test flow instead of `cueloop run one`.
 That gives you a deterministic way to verify the CLI and repo health without any external model setup.
 
 ## End-to-End Example
@@ -121,24 +121,24 @@ That gives you a deterministic way to verify the CLI and repo health without any
 Here is a concrete repo workflow for a team using Codex or Claude Code in a normal feature branch:
 
 ```bash
-# install CueLoop in your application repo (the command is still `ralph`)
+# install CueLoop in your application repo
 cargo install cueloop-agent-loop
 cd your-service
-ralph init
+cueloop init
 
 # turn a real request into queued work
-ralph task "Add retry coverage for webhook delivery failures"
+cueloop task "Add retry coverage for webhook delivery failures"
 
 # inspect the task CueLoop just created
-ralph queue list
-ralph queue show RQ-0001
+cueloop queue list
+cueloop queue show RQ-0001
 
 # let your configured runner plan, implement, and review the task
-ralph run one --profile safe --phases 3
+cueloop run one --profile safe --phases 3
 
 # verify the repo is still healthy and the task moved forward
-ralph queue list
-ralph doctor
+cueloop queue list
+cueloop doctor
 ```
 
 What this gives the team: one tracked queue, one explicit task lifecycle, one local verification path, and the flexibility to swap runners without changing the repo workflow.
@@ -148,22 +148,22 @@ What this gives the team: one tracked queue, one explicit task lifecycle, one lo
 No external runner setup required:
 
 ```bash
-ralph init
-ralph --help
-ralph help-all
-ralph run one --help
-ralph scan --help
-ralph queue list
-ralph queue graph
-ralph queue validate
-ralph doctor
+cueloop init
+cueloop --help
+cueloop help-all
+cueloop run one --help
+cueloop scan --help
+cueloop queue list
+cueloop queue graph
+cueloop queue validate
+cueloop doctor
 make agent-ci
 ```
 
 Expected signals:
 
 - Help and queue commands succeed
-- `ralph doctor` exits successfully
+- `cueloop doctor` exits successfully
 - `make agent-ci` completes with passing checks for the current dependency surface
 - Source snapshots without `.git/` fall back to `make release-gate` (`macos-ci` on macOS with Xcode, otherwise `ci`)
 
@@ -224,7 +224,7 @@ Policies:
 ## Repository Runtime State
 
 This repository may keep small sanitized runtime state for reproducible examples and documentation.
-In most consumer repositories, `.cueloop/` is project-local runtime state managed by `ralph init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Legacy `.ralph/` state is still supported; use `ralph migrate runtime-dir --apply` when ready to move it.
+In most consumer repositories, `.cueloop/` is project-local runtime state managed by `cueloop init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Legacy `.ralph/` state is still supported; use `cueloop migrate runtime-dir --apply` when ready to move it.
 
 ## Development
 
