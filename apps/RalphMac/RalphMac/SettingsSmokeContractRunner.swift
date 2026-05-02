@@ -267,7 +267,7 @@ final class SettingsSmokeContractRunner {
     }
 
     private func settingsRouteURL() throws -> URL {
-        guard let url = URL(string: "ralph://settings") else {
+        guard let url = URL(string: "cueloop://settings") else {
             throw SettingsSmokeContractFailure(message: "Invalid settings route URL")
         }
         return url
@@ -449,7 +449,7 @@ final class SettingsSmokeContractRunner {
 
     private func workspaceOpenURL(for workspaceURL: URL) -> URL {
         var components = URLComponents()
-        components.scheme = "ralph"
+        components.scheme = "cueloop"
         components.host = "open"
         components.queryItems = [
             URLQueryItem(name: "workspace", value: workspaceURL.path)

@@ -4,7 +4,7 @@
 //! - Build deterministic URL-based handoff commands for routing the app to a workspace.
 //!
 //! Responsibilities:
-//! - Construct `ralph://open?...` URLs with safe percent encoding.
+//! - Construct `cueloop://open?...` URLs with safe percent encoding.
 //! - Select the correct launcher for app-path vs bundle-id targets.
 //! - Resolve an explicit or implicit workspace path for `cueloop app open`.
 //!
@@ -52,7 +52,7 @@ pub(super) fn plan_url_command_with_installed_path(
     installed_app_path: Option<PathBuf>,
 ) -> Result<OpenCommandSpec> {
     let encoded_path = percent_encode_path(workspace);
-    let url = format!("ralph://open?workspace={}", encoded_path);
+    let url = format!("cueloop://open?workspace={}", encoded_path);
     let launch_target = resolve_launch_target(args, installed_app_path)?;
 
     let mut args_out: Vec<OsString> = Vec::new();

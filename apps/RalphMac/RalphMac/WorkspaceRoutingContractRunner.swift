@@ -157,7 +157,7 @@ final class WorkspaceRoutingContractRunner {
         )
         steps.append(WorkspaceRoutingContractStepReport(name: "initial-bootstrap", snapshot: bootstrapSnapshot))
 
-        RalphURLRouter.handle(workspaceOpenURL(for: configuration.workspaceBURL))
+        RalphURLRouter.handle(workspaceOpenURL(for: configuration.workspaceBURL, scheme: "cueloop"))
         let bootstrapRetargetSnapshot = try await waitForSnapshot(
             stepName: "url-open-bootstrap-retarget",
             expectedWorkspacePath: configuration.workspaceBPath,
@@ -184,7 +184,7 @@ final class WorkspaceRoutingContractRunner {
         )
         steps.append(WorkspaceRoutingContractStepReport(name: "route-pending-task-detail-to-new-workspace", snapshot: pendingRouteSnapshot))
 
-        RalphURLRouter.handle(workspaceOpenURL(for: configuration.workspaceBURL))
+        RalphURLRouter.handle(workspaceOpenURL(for: configuration.workspaceBURL, scheme: "ralph"))
         let existingWorkspaceSnapshot = try await waitForSnapshot(
             stepName: "url-open-existing-workspace-focus",
             expectedWorkspacePath: configuration.workspaceBPath,
@@ -305,9 +305,9 @@ final class WorkspaceRoutingContractRunner {
         return failures
     }
 
-    private func workspaceOpenURL(for workspaceURL: URL) -> URL {
+    private func workspaceOpenURL(for workspaceURL: URL, scheme: String = "cueloop") -> URL {
         var components = URLComponents()
-        components.scheme = "ralph"
+        components.scheme = scheme
         components.host = "open"
         components.queryItems = [
             URLQueryItem(name: "workspace", value: workspaceURL.path)
