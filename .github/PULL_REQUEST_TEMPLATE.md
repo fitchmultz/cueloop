@@ -5,7 +5,7 @@ Describe what changed and why.
 ## Verification
 
 - [ ] `make agent-ci`
-- [ ] `make macos-ci` (required when `apps/RalphMac/**` is changed)
+- [ ] `make macos-ci` (required when `apps/CueLoopMac/**` is changed)
 - [ ] Docs updated for user-visible changes
 
 Paste command output or concise verification notes:

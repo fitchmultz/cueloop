@@ -1,0 +1,287 @@
+/**
+ WorkspaceErrorRecoveryTests
+
+ Purpose:
+ - Verify workspace queue recovery commands surface machine-command failures clearly.
+
+ Responsibilities:
+ - Verify workspace queue recovery commands surface machine-command failures clearly.
+ - Exercise the shared recovery wrapper against structured and legacy stderr fixtures.
+ - Guard the machine stderr formatting contract for validate/repair flows.
+
+ Does not handle:
+ - Recovery category classification heuristics.
+ - Successful queue repair or undo application flows.
+ - SwiftUI error presentation.
+
+ Usage:
+ - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
+
+ Invariants/assumptions callers must respect:
+ - Tests run against an isolated mock CLI script rather than the real CueLoop binary.
+ - Failed `cueloop machine queue ...` commands emit stderr only and no success JSON payload.
+ - Structured `machine_error` stderr should be reformatted before it reaches localized descriptions.
+ */
+
+import Foundation
+import XCTest
+
+@testable import CueLoopCore
+
+@MainActor
+final class WorkspaceErrorRecoveryTests: CueLoopCoreTestCase {
+    func test_validateQueueContinuation_prefersStructuredMachineErrorFromStderr() async throws {
+        let document = MachineErrorDocument(
+            version: 1,
+            code: .queueCorrupted,
+            message: "Queue validation could not continue.",
+            detail: "read queue file .cueloop/queue.jsonc: missing terminal completed_at",
+            retryable: false
+        )
+        let fixture = try Self.makeMockCLIFixture(validateFailure: .machine(document))
+        var workspace: Workspace!
+        defer { CueLoopCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try CueLoopCLIClient(executableURL: fixture.scriptURL)
+        )
+
+        do {
+            _ = try await workspace.validateQueueContinuation()
+            XCTFail("Expected structured machine failure")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, document.userFacingDescription)
+        }
+    }
+
+    func test_validateQueueContinuation_surfacesVersionMismatchForUnsupportedMachineErrorVersion() async throws {
+        let document = MachineErrorDocument(
+            version: 999,
+            code: .queueCorrupted,
+            message: "Queue validation could not continue.",
+            detail: "read queue file .cueloop/queue.jsonc: missing terminal completed_at",
+            retryable: true
+        )
+        let fixture = try Self.makeMockCLIFixture(validateFailure: .machine(document))
+        var workspace: Workspace!
+        defer { CueLoopCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try CueLoopCLIClient(executableURL: fixture.scriptURL)
+        )
+
+        do {
+            _ = try await workspace.validateQueueContinuation()
+            XCTFail("Expected version mismatch failure")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("Unsupported machine error version 999"))
+        }
+    }
+
+    func test_repairQueueContinuation_fallsBackToTrimmedRawStderr() async throws {
+        let fixture = try Self.makeMockCLIFixture(repairFailure: .stderr("  queue repair preview failed  \n"))
+        var workspace: Workspace!
+        defer { CueLoopCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try CueLoopCLIClient(executableURL: fixture.scriptURL)
+        )
+
+        do {
+            _ = try await workspace.repairQueueContinuation(dryRun: true)
+            XCTFail("Expected raw stderr failure")
+        } catch {
+            XCTAssertEqual(error.localizedDescription, "queue repair preview failed")
+        }
+    }
+
+    func test_stopLoopMachineRequest_prefersStructuredMachineErrorFromStderr() async throws {
+        let document = MachineErrorDocument(
+            version: 1,
+            code: .resourceBusy,
+            message: "Failed to record stop request.",
+            detail: "cache directory is locked",
+            retryable: true
+        )
+        let fixture = try Self.makeMockCLIFixture(stopFailure: .machine(document))
+        var workspace: Workspace!
+        defer { CueLoopCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+
+        workspace = Workspace(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: try CueLoopCLIClient(executableURL: fixture.scriptURL)
+        )
+        let currentWorkspace = workspace!
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        currentWorkspace.run(arguments: ["--no-color", "machine", "run", "loop", "--resume", "--max-tasks", "0"])
+        let loopStarted = await WorkspacePerformanceTestSupport.waitFor(timeout: 1.0) {
+            currentWorkspace.isRunning
+        }
+        XCTAssertTrue(loopStarted)
+
+        currentWorkspace.stopLoop()
+
+        let surfaced = await WorkspacePerformanceTestSupport.waitFor(timeout: 1.0) {
+            currentWorkspace.runState.errorMessage == document.userFacingDescription
+        }
+        XCTAssertTrue(surfaced)
+        XCTAssertFalse(currentWorkspace.stopAfterCurrent)
+    }
+}
+
+private extension WorkspaceErrorRecoveryTests {
+    enum MockFailure {
+        case machine(MachineErrorDocument)
+        case stderr(String)
+    }
+
+    struct MockCLIFixture {
+        let rootURL: URL
+        let workspaceURL: URL
+        let scriptURL: URL
+    }
+
+    static func makeMockCLIFixture(
+        validateFailure: MockFailure? = nil,
+        repairFailure: MockFailure? = nil,
+        stopFailure: MockFailure? = nil
+    ) throws -> MockCLIFixture {
+        let queueTasks = [
+            CueLoopMockCLITestSupport.task(
+                id: "RQ-0007",
+                status: .todo,
+                title: "Auth epic",
+                priority: .high
+            ),
+        ]
+        let fixture = try CueLoopMockCLITestSupport.makeFixture(
+            prefix: "cueloop-workspace-error-recovery",
+            workspaceName: "workspace",
+            seedQueueTasks: queueTasks
+        )
+
+        let configResolveURL = try CueLoopMockCLITestSupport.writeJSONDocument(
+            CueLoopMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "gpt-5.3-codex", phases: 2, iterations: 3)
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve.json"
+        )
+        let queueReadURL = try CueLoopMockCLITestSupport.writeJSONDocument(
+            CueLoopMockCLITestSupport.queueReadDocument(
+                workspaceURL: fixture.workspaceURL,
+                activeTasks: queueTasks,
+                nextRunnableTaskID: "RQ-0007"
+            ),
+            in: fixture.rootURL,
+            name: "queue-read.json"
+        )
+        let validateFailureURL = try writeFailureFixture(
+            validateFailure,
+            in: fixture.rootURL,
+            name: "validate-error.txt"
+        )
+        let repairFailureURL = try writeFailureFixture(
+            repairFailure,
+            in: fixture.rootURL,
+            name: "repair-error.txt"
+        )
+        let stopFailureURL = try writeFailureFixture(
+            stopFailure,
+            in: fixture.rootURL,
+            name: "stop-error.txt"
+        )
+
+        let script = """
+        #!/bin/sh
+        set -eu
+        if [ "$1" = "--version" ] || [ "$1" = "version" ]; then
+          echo "cueloop \(VersionCompatibility.minimumCLIVersion)"
+          exit 0
+        fi
+        if [ "$1" = "--no-color" ]; then
+          shift
+        fi
+        if [ "$1" = "machine" ] && [ "$2" = "config" ] && [ "$3" = "resolve" ]; then
+          cat "\(configResolveURL.path)"
+          exit 0
+        fi
+        if [ "$1" = "machine" ] && [ "$2" = "queue" ] && [ "$3" = "read" ]; then
+          cat "\(queueReadURL.path)"
+          exit 0
+        fi
+        if [ "$1" = "machine" ] && [ "$2" = "queue" ] && [ "$3" = "validate" ]; then
+          if [ -n "__VALIDATE_FAILURE_PATH__" ]; then
+            cat "__VALIDATE_FAILURE_PATH__" >&2
+            exit 11
+          fi
+          echo '{"version":1}'
+          exit 0
+        fi
+        if [ "$1" = "machine" ] && [ "$2" = "queue" ] && [ "$3" = "repair" ]; then
+          if [ -n "__REPAIR_FAILURE_PATH__" ]; then
+            cat "__REPAIR_FAILURE_PATH__" >&2
+            exit 12
+          fi
+          echo '{"version":1}'
+          exit 0
+        fi
+        if [ "$1" = "machine" ] && [ "$2" = "run" ] && [ "$3" = "loop" ]; then
+          echo '{"version":3,"kind":"run_started","task_id":"RQ-0007","phase":null,"message":null,"payload":null}'
+          while :; do
+            sleep 0.1
+          done
+        fi
+        if [ "$1" = "machine" ] && [ "$2" = "run" ] && [ "$3" = "stop" ]; then
+          if [ -n "__STOP_FAILURE_PATH__" ]; then
+            cat "__STOP_FAILURE_PATH__" >&2
+            exit 13
+          fi
+          echo '{"version":1}'
+          exit 0
+        fi
+        echo "unsupported command: $*" >&2
+        exit 1
+        """
+
+        let resolvedScript = script
+            .replacingOccurrences(of: "__VALIDATE_FAILURE_PATH__", with: validateFailureURL?.path ?? "")
+            .replacingOccurrences(of: "__REPAIR_FAILURE_PATH__", with: repairFailureURL?.path ?? "")
+            .replacingOccurrences(of: "__STOP_FAILURE_PATH__", with: stopFailureURL?.path ?? "")
+
+        let scriptURL = try CueLoopMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: resolvedScript
+        )
+
+        return MockCLIFixture(
+            rootURL: fixture.rootURL,
+            workspaceURL: fixture.workspaceURL,
+            scriptURL: scriptURL
+        )
+    }
+
+    static func writeFailureFixture(
+        _ failure: MockFailure?,
+        in rootURL: URL,
+        name: String
+    ) throws -> URL? {
+        guard let failure else { return nil }
+        let fileURL = rootURL.appendingPathComponent(name, isDirectory: false)
+        let contents: String
+        switch failure {
+        case .machine(let document):
+            contents = String(decoding: try JSONEncoder().encode(document), as: UTF8.self)
+        case .stderr(let value):
+            contents = value
+        }
+        try contents.write(to: fileURL, atomically: true, encoding: .utf8)
+        return fileURL
+    }
+}

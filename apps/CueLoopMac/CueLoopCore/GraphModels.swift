@@ -1,0 +1,194 @@
+/**
+ GraphModels
+
+ Purpose:
+ - Define Codable models for parsing `cueloop machine queue graph` output.
+
+ Responsibilities:
+ - Define Codable models for parsing `cueloop machine queue graph` output.
+ - Represent graph nodes, edges, critical paths, and summary statistics.
+
+ Does not handle:
+ - Graph layout computation (handled by DependencyGraphView).
+ - Direct CLI calls (handled by Workspace).
+
+ Usage:
+ - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
+
+ Invariants/Assumptions:
+ - Callers keep usage within the documented responsibilities and owning feature contracts.
+ */
+
+public import Foundation
+import CoreGraphics
+
+/// Represents the graph payload nested inside `cueloop machine queue graph`.
+public struct CueLoopGraphDocument: Codable, Sendable, Equatable {
+    public let summary: CueLoopGraphSummary
+    public let criticalPaths: [CueLoopCriticalPath]
+    public let tasks: [CueLoopGraphNode]
+    
+    private enum CodingKeys: String, CodingKey {
+        case summary, criticalPaths = "critical_paths", tasks
+    }
+}
+
+public struct MachineGraphReadDocument: Codable, Sendable, Equatable, VersionedMachineDocument {
+    public static let expectedVersion = CueLoopMachineContract.graphReadVersion
+    public static let documentName = "machine graph read"
+
+    public let version: Int
+    public let graph: CueLoopGraphDocument
+}
+
+public struct CueLoopGraphSummary: Codable, Sendable, Equatable {
+    public let totalTasks: Int
+    public let runnableTasks: Int
+    public let blockedTasks: Int
+    
+    private enum CodingKeys: String, CodingKey {
+        case totalTasks = "total_tasks"
+        case runnableTasks = "runnable_tasks"
+        case blockedTasks = "blocked_tasks"
+    }
+}
+
+public struct CueLoopCriticalPath: Codable, Sendable, Equatable {
+    public let path: [String]
+    public let length: Int
+    public let isBlocked: Bool
+    
+    private enum CodingKeys: String, CodingKey {
+        case path, length, isBlocked = "blocked"
+    }
+}
+
+public struct CueLoopGraphNode: Codable, Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+    public let status: String
+    public let kind: CueLoopTaskKind?
+    public let dependencies: [String]
+    public let dependents: [String]
+    public let isCritical: Bool
+    
+    private enum CodingKeys: String, CodingKey {
+        case id, title, status, kind, dependencies, dependents, isCritical = "critical"
+    }
+    
+    public var statusEnum: CueLoopTaskStatus? {
+        CueLoopTaskStatus(rawValue: status)
+    }
+
+    public var effectiveKind: CueLoopTaskKind {
+        kind ?? .workItem
+    }
+}
+
+/// Computed edge representation for drawing
+public struct GraphEdge: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public let from: String
+    public let to: String
+    public let type: EdgeType
+    
+    public enum EdgeType: Sendable {
+        case dependency      // depends_on (solid arrow)
+        case blocks          // blocks (red line)
+        case relatesTo       // relates_to (dashed gray)
+    }
+    
+    public init(id: UUID = UUID(), from: String, to: String, type: EdgeType) {
+        self.id = id
+        self.from = from
+        self.to = to
+        self.type = type
+    }
+}
+
+/// Positioned node for rendering
+public struct PositionedNode: Identifiable, Equatable, Sendable {
+    public let id: String
+    public var position: CGPoint
+    public let task: CueLoopGraphNode
+    public var isSelected: Bool
+    
+    public init(id: String, position: CGPoint, task: CueLoopGraphNode, isSelected: Bool = false) {
+        self.id = id
+        self.position = position
+        self.task = task
+        self.isSelected = isSelected
+    }
+    
+    public static func == (lhs: PositionedNode, rhs: PositionedNode) -> Bool {
+        lhs.id == rhs.id && lhs.position == rhs.position && lhs.isSelected == rhs.isSelected
+    }
+}
+
+/// Viewport transform state for the dependency-graph canvas.
+public struct GraphViewportState: Sendable, Equatable {
+    public static let minimumScale: CGFloat = 0.3
+    public static let maximumScale: CGFloat = 3.0
+    public static let zoomStep: CGFloat = 1.2
+
+    public var scale: CGFloat
+    public var committedScale: CGFloat
+    public var offset: CGSize
+
+    public init(
+        scale: CGFloat = 1.0,
+        committedScale: CGFloat = 1.0,
+        offset: CGSize? = nil
+    ) {
+        let clampedScale = Self.clamp(scale)
+        self.scale = clampedScale
+        self.committedScale = Self.clamp(committedScale)
+        self.offset = offset ?? CGSize()
+    }
+
+    public mutating func beginMagnificationGesture() {
+        committedScale = scale
+    }
+
+    public mutating func updateMagnification(_ gestureValue: CGFloat) {
+        scale = Self.clamp(committedScale * gestureValue)
+    }
+
+    public mutating func endMagnificationGesture() {
+        committedScale = scale
+    }
+
+    public mutating func zoomIn() {
+        scale = Self.clamp(scale * Self.zoomStep)
+        committedScale = scale
+    }
+
+    public mutating func zoomOut() {
+        scale = Self.clamp(scale / Self.zoomStep)
+        committedScale = scale
+    }
+
+    public mutating func reset() {
+        scale = 1.0
+        committedScale = 1.0
+        offset = .zero
+    }
+
+    public static func clamp(_ candidate: CGFloat) -> CGFloat {
+        min(max(candidate, minimumScale), maximumScale)
+    }
+}
+
+/// Extension to make CGPoint Sendable-compatible.
+/// CGPoint is a value type composed of CGFloat (Double) - inherently thread-safe.
+/// Using @unchecked Sendable for retroactive conformance since CoreGraphics may declare
+/// this in a future SDK version. This is safe because CGPoint contains no reference types
+/// and has no mutable shared state.
+extension CGPoint: @retroactive @unchecked Sendable {}
+
+/// Extension to make CGSize Sendable-compatible.
+/// CGSize is a value type composed of CGFloat (Double) - inherently thread-safe.
+/// Using @unchecked Sendable for retroactive conformance since CoreGraphics may declare
+/// this in a future SDK version. This is safe because CGSize contains no reference types
+/// and has no mutable shared state.
+extension CGSize: @retroactive @unchecked Sendable {}

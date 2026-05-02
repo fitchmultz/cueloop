@@ -53,7 +53,7 @@ fn app_parity_registry_classifies_every_human_cli_root_command() {
     let missing = unclassified_human_cli_commands();
     assert!(
         missing.is_empty(),
-        "new human-facing CLI commands need RalphMac parity registry entries: {missing:?}"
+        "new human-facing CLI commands need CueLoopMac parity registry entries: {missing:?}"
     );
 }
 

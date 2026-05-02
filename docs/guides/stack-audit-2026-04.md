@@ -10,7 +10,7 @@ Purpose: record CueLoop's current source-build toolchain baseline, explain the R
 ## Scope
 
 - Rust CLI workspace under `crates/cueloop/`
-- macOS SwiftUI app under `apps/RalphMac/`
+- macOS SwiftUI app under `apps/CueLoopMac/`
 - Local build/test entrypoints in `Makefile`
 - Release/versioning surfaces that consume the pinned Rust toolchain
 

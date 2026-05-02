@@ -92,8 +92,8 @@ The canonical version source is the top-level `VERSION` file. `scripts/versionin
 - `VERSION`
 - `Cargo.lock`
 - `crates/cueloop/Cargo.toml`
-- `apps/RalphMac/RalphMac.xcodeproj/project.pbxproj`
-- `apps/RalphMac/RalphCore/VersionValidator.swift`
+- `apps/CueLoopMac/CueLoopMac.xcodeproj/project.pbxproj`
+- `apps/CueLoopMac/CueLoopCore/VersionValidator.swift`
 
 Treat any drift in those files as a release blocker.
 

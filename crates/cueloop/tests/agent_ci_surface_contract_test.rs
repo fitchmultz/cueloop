@@ -192,7 +192,7 @@ fn classifier_routes_apps_ralphmac_working_tree_to_macos_ci() {
     let repo_path = temp_repo.path();
 
     write_file(
-        &repo_path.join("apps/RalphMac/Stub.swift"),
+        &repo_path.join("apps/CueLoopMac/Stub.swift"),
         "// placeholder\n",
     );
 
@@ -239,7 +239,7 @@ fn classifier_routes_cli_bundle_script_to_macos_ci() {
     let repo_path = temp_repo.path();
 
     write_file(
-        &repo_path.join("scripts/ralph-cli-bundle.sh"),
+        &repo_path.join("scripts/cueloop-cli-bundle.sh"),
         "#!/usr/bin/env bash\n# bundle touched\n",
     );
 
@@ -283,10 +283,10 @@ fn classifier_ignores_previous_branch_commits_when_local_diff_is_docs_only() {
 
     git(repo_path, &["checkout", "-b", "feature/app-then-docs"]);
     write_file(
-        &repo_path.join("apps/RalphMac/Stub.swift"),
+        &repo_path.join("apps/CueLoopMac/Stub.swift"),
         "// prior app change\n",
     );
-    git(repo_path, &["add", "apps/RalphMac/Stub.swift"]);
+    git(repo_path, &["add", "apps/CueLoopMac/Stub.swift"]);
     git(repo_path, &["commit", "-m", "touch app surface"]);
 
     write_file(

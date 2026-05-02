@@ -1,0 +1,472 @@
+/**
+ WorkspaceRunnerController+MachineOutput
+
+ Purpose:
+ - Decode machine-run envelopes and summaries emitted by the CLI.
+
+ Responsibilities:
+ - Apply structured run-event updates to workspace run state and console output.
+ - Keep machine-contract helpers separate from runner lifecycle orchestration.
+ - Reject nested machine payloads whose versions do not match CueLoopMac's contract table.
+
+ Does not handle:
+ - Process start/stop scheduling.
+ - Queue watching or workspace retarget lifecycle.
+
+ Usage:
+ - Called by streaming run-control code for each decoded machine output item.
+ - Appends visible console errors when nested contract validation fails.
+
+ Invariants/Assumptions:
+ - Top-level run envelopes are decoded before reaching this file.
+ - Nested versioned payloads must be checked before mutating workspace state.
+ */
+
+import Foundation
+
+@MainActor
+extension WorkspaceRunnerController {
+    func appendConsoleText(_ text: String, workspace: Workspace) {
+        workspace.runState.ingestConsoleText(text)
+        workspace.consumeStreamTextChunk(text)
+    }
+
+    func applyMachineRunOutputItem(_ item: MachineRunOutputDecoder.Item, workspace: Workspace) {
+        switch item {
+        case .event(let event):
+            switch event.kind {
+            case .runStarted:
+                workspace.runState.currentTaskID = event.taskID ?? workspace.runState.currentTaskID
+                workspace.runState.clearLiveBlockingState()
+                if let document = event.payload?.decode(MachineConfigResolveDocument.self, at: ["config"]) {
+                    applyValidatedConfigResolveDocument(
+                        document,
+                        workspace: workspace,
+                        operation: "run event config"
+                    )
+                }
+            case .taskSelected:
+                workspace.runState.currentTaskID = event.taskID ?? workspace.runState.currentTaskID
+                workspace.runState.clearLiveBlockingState()
+            case .phaseEntered:
+                workspace.runState.currentPhase = Workspace.ExecutionPhase(machineValue: event.phase)
+                workspace.runState.clearLiveBlockingState()
+            case .phaseCompleted:
+                if workspace.runState.currentPhase == Workspace.ExecutionPhase(machineValue: event.phase) {
+                    workspace.runState.currentPhase = nil
+                }
+            case .resumeDecision:
+                if let decision = decodeResumeDecision(from: event.payload) {
+                    applyResumeProjection(decision, workspace: workspace)
+                    appendResumeDecision(decision, workspace: workspace)
+                } else if let message = event.message, !message.isEmpty {
+                    appendConsoleText("\(message)\n", workspace: workspace)
+                }
+            case .runnerOutput:
+                if let text = event.payload?.value(at: ["text"])?.stringValue {
+                    appendConsoleText(text, workspace: workspace)
+                }
+            case .blockedStateChanged:
+                if let state = decodeBlockingState(from: event.payload) {
+                    workspace.runState.setLiveBlockingState(state.asWorkspaceBlockingState())
+                    if !state.isRunnerRecovery {
+                        appendBlockingState(state, workspace: workspace)
+                    }
+                } else if let message = event.message, !message.isEmpty {
+                    appendConsoleText("\(message)\n", workspace: workspace)
+                }
+            case .blockedStateCleared:
+                workspace.runState.clearLiveBlockingState()
+            case .queueSnapshot:
+                if let paths = event.payload?.decode(MachineQueuePaths.self, at: ["paths"]) {
+                    workspace.updateResolvedPaths(paths)
+                }
+            case .configResolved:
+                if let document = event.payload?.decode(MachineConfigResolveDocument.self, at: ["config"]) {
+                    applyValidatedConfigResolveDocument(
+                        document,
+                        workspace: workspace,
+                        operation: "run event config"
+                    )
+                }
+            case .warning:
+                if let message = event.message, !message.isEmpty {
+                    appendConsoleText("[warning] \(message)\n", workspace: workspace)
+                }
+            case .runFinished:
+                break
+            }
+        case .summary(let summary):
+            if let taskID = summary.taskID {
+                workspace.runState.currentTaskID = taskID
+            }
+            if let blocking = summary.blocking {
+                workspace.runState.setLiveBlockingState(blocking.asWorkspaceBlockingState())
+            } else if shouldClearBlocking(for: summary.outcome) {
+                workspace.runState.clearLiveBlockingState()
+            }
+        case .rawText(let text):
+            appendConsoleText(text, workspace: workspace)
+        }
+    }
+
+    private func decodeResumeDecision(from payload: CueLoopJSONValue?) -> MachineResumeDecision? {
+        payload?.decode(MachineResumeDecision.self)
+    }
+
+    private func decodeBlockingState(from payload: CueLoopJSONValue?) -> MachineBlockingState? {
+        payload?.decode(MachineBlockingState.self)
+    }
+
+    private func applyValidatedConfigResolveDocument(
+        _ document: MachineConfigResolveDocument,
+        workspace: Workspace,
+        operation: String
+    ) {
+        do {
+            try CueLoopMachineContract.requireVersion(
+                document.version,
+                expected: CueLoopMachineContract.configResolveVersion,
+                document: "machine config resolve",
+                operation: operation
+            )
+            applyConfigResolveDocument(document, workspace: workspace)
+        } catch {
+            let recoveryError = (error as? RecoveryError) ?? RecoveryError.classify(
+                error: error,
+                operation: operation,
+                workspaceURL: workspace.identityState.workingDirectoryURL
+            )
+            workspace.runState.runnerConfigErrorMessage = recoveryError.message
+            workspace.diagnosticsState.lastRecoveryError = recoveryError
+            appendConsoleText("[error] \(recoveryError.message)\n", workspace: workspace)
+            CueLoopLogger.shared.error(
+                "Rejected machine config document: \(recoveryError.fullErrorDetails)",
+                category: .workspace
+            )
+        }
+    }
+
+    private func appendResumeDecision(_ decision: MachineResumeDecision, workspace: Workspace) {
+        var lines = [decision.message]
+        if !decision.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("  \(decision.detail)")
+        }
+        appendConsoleText(lines.joined(separator: "\n") + "\n", workspace: workspace)
+    }
+
+    private func appendBlockingState(_ state: MachineBlockingState, workspace: Workspace) {
+        var lines = ["[\(state.status.rawValue)] \(state.message)"]
+        if !state.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("  \(state.detail)")
+        }
+        appendConsoleText(lines.joined(separator: "\n") + "\n", workspace: workspace)
+    }
+
+    private func shouldClearBlocking(for outcome: String) -> Bool {
+        switch outcome {
+        case "completed", "ran", "failed", "stopped":
+            return true
+        case "no_candidates", "blocked", "stalled":
+            return false
+        default:
+            return false
+        }
+    }
+}
+
+extension WorkspaceRunnerController {
+    struct MachineRunEventEnvelope: Decodable, Sendable, VersionedMachineDocument {
+        static let expectedVersion = CueLoopMachineContract.runEventVersion
+        static let documentName = "machine run event"
+
+        let version: Int
+        let kind: Kind
+        let taskID: String?
+        let phase: String?
+        let message: String?
+        let payload: CueLoopJSONValue?
+
+        enum Kind: String, Decodable, Sendable {
+            case runStarted = "run_started"
+            case queueSnapshot = "queue_snapshot"
+            case configResolved = "config_resolved"
+            case resumeDecision = "resume_decision"
+            case taskSelected = "task_selected"
+            case phaseEntered = "phase_entered"
+            case phaseCompleted = "phase_completed"
+            case runnerOutput = "runner_output"
+            case blockedStateChanged = "blocked_state_changed"
+            case blockedStateCleared = "blocked_state_cleared"
+            case warning
+            case runFinished = "run_finished"
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case version
+            case kind
+            case taskID = "task_id"
+            case phase
+            case message
+            case payload
+        }
+    }
+
+    struct MachineRunSummaryDocument: Decodable, Sendable, VersionedMachineDocument {
+        static let expectedVersion = CueLoopMachineContract.runSummaryVersion
+        static let documentName = "machine run summary"
+
+        let version: Int
+        let taskID: String?
+        let exitCode: Int
+        let outcome: String
+        let blocking: MachineBlockingState?
+
+        enum CodingKeys: String, CodingKey {
+            case version
+            case taskID = "task_id"
+            case exitCode = "exit_code"
+            case outcome
+            case blocking
+        }
+    }
+
+    struct MachineBlockingState: Decodable, Sendable, Equatable {
+        let status: Workspace.BlockingStatus
+        let reason: MachineBlockingReason
+        let taskID: String?
+        let message: String
+        let detail: String
+        let observedAt: String?
+
+        enum CodingKeys: String, CodingKey {
+            case status
+            case reason
+            case taskID = "task_id"
+            case message
+            case detail
+            case observedAt = "observed_at"
+        }
+
+        var isRunnerRecovery: Bool {
+            reason.kind == .runnerRecovery
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            status = try container.decode(Workspace.BlockingStatus.self, forKey: .status)
+            reason = try container.decode(MachineBlockingReason.self, forKey: .reason)
+            taskID = try container.decodeIfPresent(String.self, forKey: .taskID)
+            message = try container.decode(String.self, forKey: .message)
+            detail = try container.decode(String.self, forKey: .detail)
+            observedAt = try container.decodeIfPresent(String.self, forKey: .observedAt)
+        }
+
+        func asWorkspaceBlockingState() -> Workspace.BlockingState {
+            Workspace.BlockingState(
+                status: status,
+                reason: reason.asWorkspaceBlockingReason(),
+                taskID: taskID,
+                message: message,
+                detail: detail,
+                observedAt: observedAt
+            )
+        }
+    }
+
+    struct MachineBlockingReason: Decodable, Sendable, Equatable {
+        let kind: Kind
+        let includeDraft: Bool?
+        let blockedTasks: Int?
+        let nextRunnableAt: String?
+        let secondsUntilNextRunnable: Int?
+        let lockPath: String?
+        let owner: String?
+        let ownerPID: Int?
+        let pattern: String?
+        let exitCode: Int?
+        let scope: String?
+        let reason: String?
+        let taskID: String?
+        let suggestedCommand: String?
+        let dependencyBlocked: Int?
+        let scheduleBlocked: Int?
+        let statusFiltered: Int?
+
+        enum Kind: String, Decodable, Sendable, Equatable {
+            case idle
+            case dependencyBlocked = "dependency_blocked"
+            case scheduleBlocked = "schedule_blocked"
+            case lockBlocked = "lock_blocked"
+            case ciBlocked = "ci_blocked"
+            case runnerRecovery = "runner_recovery"
+            case operatorRecovery = "operator_recovery"
+            case mixedQueue = "mixed_queue"
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case kind
+            case includeDraft = "include_draft"
+            case blockedTasks = "blocked_tasks"
+            case nextRunnableAt = "next_runnable_at"
+            case secondsUntilNextRunnable = "seconds_until_next_runnable"
+            case lockPath = "lock_path"
+            case owner
+            case ownerPID = "owner_pid"
+            case pattern
+            case exitCode = "exit_code"
+            case scope
+            case reason
+            case taskID = "task_id"
+            case suggestedCommand = "suggested_command"
+            case dependencyBlocked = "dependency_blocked"
+            case scheduleBlocked = "schedule_blocked"
+            case statusFiltered = "status_filtered"
+        }
+
+        func asWorkspaceBlockingReason() -> Workspace.BlockingReason {
+            switch kind {
+            case .idle:
+                return .idle(includeDraft: includeDraft ?? false)
+            case .dependencyBlocked:
+                return .dependencyBlocked(blockedTasks: blockedTasks ?? 0)
+            case .scheduleBlocked:
+                return .scheduleBlocked(
+                    blockedTasks: blockedTasks ?? 0,
+                    nextRunnableAt: nextRunnableAt,
+                    secondsUntilNextRunnable: secondsUntilNextRunnable
+                )
+            case .lockBlocked:
+                return .lockBlocked(lockPath: lockPath, owner: owner, ownerPID: ownerPID)
+            case .ciBlocked:
+                return .ciBlocked(pattern: pattern, exitCode: exitCode)
+            case .runnerRecovery:
+                return .runnerRecovery(scope: scope ?? "unknown", reason: reason ?? "unknown", taskID: taskID)
+            case .operatorRecovery:
+                return .operatorRecovery(
+                    scope: scope ?? "unknown",
+                    reason: reason ?? "unknown",
+                    suggestedCommand: suggestedCommand
+                )
+            default:
+                return .mixedQueue(
+                    dependencyBlocked: dependencyBlocked ?? 0,
+                    scheduleBlocked: scheduleBlocked ?? 0,
+                    statusFiltered: statusFiltered ?? 0
+                )
+            }
+        }
+    }
+
+    struct MachineRunOutputDecoder {
+        private static let maxBufferedLineCharacters = 1_000_000
+
+        enum Item {
+            case event(MachineRunEventEnvelope)
+            case summary(MachineRunSummaryDocument)
+            case rawText(String)
+        }
+
+        private var buffered = ""
+
+        mutating func append(_ chunk: String) -> [Item] {
+            buffered.append(chunk)
+            var items = drainCompleteLines()
+            if buffered.count > Self.maxBufferedLineCharacters {
+                buffered.removeAll(keepingCapacity: false)
+                items.append(.rawText("[warning] machine output line exceeded app buffer limit and was dropped]\n"))
+            }
+            return items
+        }
+
+        mutating func finish() -> [Item] {
+            defer { buffered.removeAll(keepingCapacity: false) }
+            guard !buffered.isEmpty else { return [] }
+            return decodeLine(buffered)
+        }
+
+        private mutating func drainCompleteLines() -> [Item] {
+            var items: [Item] = []
+            while let newlineIndex = buffered.firstIndex(of: "\n") {
+                let line = String(buffered[..<newlineIndex])
+                buffered.removeSubrange(...newlineIndex)
+                items.append(contentsOf: decodeLine(line))
+            }
+            return items
+        }
+
+        private func decodeLine(_ line: String) -> [Item] {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return [] }
+            let data = Data(trimmed.utf8)
+
+            do {
+                let event = try CueLoopMachineContract.decode(
+                    MachineRunEventEnvelope.self,
+                    from: data,
+                    operation: "run event"
+                )
+                if isStructurallyDecodable(event) {
+                    return [.event(event)]
+                }
+            } catch let error as RecoveryError {
+                return [.rawText("[error] \(error.message)\n")]
+            } catch {
+                // Not a run event; try the summary contract below before falling back to raw text.
+            }
+
+            do {
+                let summary = try CueLoopMachineContract.decode(
+                    MachineRunSummaryDocument.self,
+                    from: data,
+                    operation: "run summary"
+                )
+                return [.summary(summary)]
+            } catch let error as RecoveryError {
+                return [.rawText("[error] \(error.message)\n")]
+            } catch {
+                return [.rawText(line + "\n")]
+            }
+        }
+
+        private func isStructurallyDecodable(_ event: MachineRunEventEnvelope) -> Bool {
+            switch event.kind {
+            case .runStarted:
+                guard event.payload?.value(at: ["config"]) != nil else { return true }
+                return event.payload?.decode(MachineConfigResolveDocument.self, at: ["config"]) != nil
+            case .queueSnapshot:
+                guard event.payload?.value(at: ["paths"]) != nil else { return true }
+                return event.payload?.decode(MachineQueuePaths.self, at: ["paths"]) != nil
+            case .configResolved:
+                guard event.payload?.value(at: ["config"]) != nil else { return true }
+                return event.payload?.decode(MachineConfigResolveDocument.self, at: ["config"]) != nil
+            case .resumeDecision:
+                guard event.payload != nil else { return true }
+                return event.payload?.decode(MachineResumeDecision.self) != nil
+            case .runnerOutput:
+                guard event.payload?.value(at: ["text"]) != nil else { return true }
+                return event.payload?.value(at: ["text"])?.stringValue != nil
+            case .blockedStateChanged:
+                guard event.payload != nil else { return true }
+                return event.payload?.decode(MachineBlockingState.self) != nil
+            case .taskSelected, .phaseEntered, .phaseCompleted, .blockedStateCleared, .warning, .runFinished:
+                return true
+            }
+        }
+    }
+}
+
+private extension Workspace.ExecutionPhase {
+    init?(machineValue: String?) {
+        switch machineValue {
+        case "plan":
+            self = .plan
+        case "implement":
+            self = .implement
+        case "review":
+            self = .review
+        default:
+            return nil
+        }
+    }
+}

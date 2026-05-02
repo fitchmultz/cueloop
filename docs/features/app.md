@@ -54,7 +54,7 @@ The app centers around workspace navigation and fast task handling:
 
 ## Keyboard Shortcuts
 
-Documented from `apps/RalphMac/RalphMac/RalphMacApp.swift` command registrations.
+Documented from `apps/CueLoopMac/CueLoopMac/CueLoopMacApp.swift` command registrations.
 
 ### Navigation
 - `⌘1`: Show Queue
@@ -112,7 +112,7 @@ Practical implications:
   not human CLI text or older app-targeted CLI JSON surfaces.
 - Scenario-level parity coverage lives in
   `crates/cueloop/src/cli/app_parity.rs`; every user-visible parity claim should
-  point to explicit Rust and RalphMac proof anchors instead of broad command
+  point to explicit Rust and CueLoopMac proof anchors instead of broad command
   family labels alone.
 - Task override and Run Control execution affordances should come from
   `cueloop machine config resolve.execution_controls`, not hardcoded native menus.
@@ -152,7 +152,7 @@ Re-run UI tests without rebuilding bundles:
 ```bash
 make macos-ui-retest
 # Focus one test:
-RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate make macos-ui-retest
+CUELOOP_UI_ONLY_TESTING=CueLoopMacUITests/CueLoopMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate make macos-ui-retest
 ```
 
 Run all UI tests end-to-end in one command:
@@ -168,7 +168,7 @@ Run the focused window/tab shortcut regression suite:
 make macos-test-window-shortcuts
 ```
 
-Test sources live in `apps/RalphMac/RalphMacUITests/`.
+Test sources live in `apps/CueLoopMac/CueLoopMacUITests/`.
 
 ## Troubleshooting
 

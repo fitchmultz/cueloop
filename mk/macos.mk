@@ -1,4 +1,4 @@
-# Purpose: Define Ralph macOS app build, test, UI evidence, and local ship-gate targets included by the root Makefile.
+# Purpose: Define CueLoop macOS app build, test, UI evidence, and local ship-gate targets included by the root Makefile.
 # Responsibilities: Own Xcode preflight, app build/install, XCTest lanes, UI retest workflows, artifacts, contract checks, and macOS CI orchestration.
 # Scope: macOS/Xcode target bodies only; shared variables and help text stay in ../Makefile.
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.
@@ -27,8 +27,8 @@ macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	echo "→ macOS build (Xcode build)..."; \
 	if [ "$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 	xcodebuild \
-		-project apps/RalphMac/RalphMac.xcodeproj \
-		-scheme RalphMac \
+		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
+		-scheme CueLoopMac \
 		-configuration Release \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
@@ -40,29 +40,29 @@ macos-build: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 
 macos-install-app: macos-build
 	@derived_data_path="$(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)"; \
-	app_bundle="$$derived_data_path/Build/Products/Release/RalphMac.app"; \
+	app_bundle="$$derived_data_path/Build/Products/Release/CueLoopMac.app"; \
 	install_dir="$(MACOS_APP_INSTALL_DIR)"; \
 	if [ ! -w "$$install_dir" ]; then \
 		install_dir="$(HOME)/Applications"; \
 		echo "macos-install-app: $(MACOS_APP_INSTALL_DIR) not writable; using $$install_dir"; \
 	fi; \
 	mkdir -p "$$install_dir"; \
-	dest_bundle="$$install_dir/RalphMac.app"; \
-	echo "→ Installing RalphMac.app to $$dest_bundle"; \
+	dest_bundle="$$install_dir/CueLoopMac.app"; \
+	echo "→ Installing CueLoopMac.app to $$dest_bundle"; \
 	rm -rf "$$dest_bundle"; \
 	ditto "$$app_bundle" "$$dest_bundle"; \
 	/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f "$$dest_bundle" >/dev/null 2>&1 || true; \
-	echo "  ✓ RalphMac.app installed"
+	echo "  ✓ CueLoopMac.app installed"
 
 macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
-	@include_ui_tests="$(RALPH_UI_TESTS)"; \
+	@include_ui_tests="$(CUELOOP_UI_TESTS)"; \
 	result_bundle_path="$(XCODE_RESULT_BUNDLE_PATH)"; \
 	if [ "$$include_ui_tests" = "1" ]; then \
 		echo "→ macOS tests (Xcode, including UI tests - will take over mouse/keyboard)..."; \
 		$(MAKE) --no-print-directory macos-ui-build-for-testing; \
 		$(MAKE) --no-print-directory macos-ui-retest \
-			RALPH_UI_SCREENSHOTS="$(RALPH_UI_SCREENSHOTS)" \
-			RALPH_UI_SCREENSHOT_MODE="$(RALPH_UI_SCREENSHOT_MODE)" \
+			CUELOOP_UI_SCREENSHOTS="$(CUELOOP_UI_SCREENSHOTS)" \
+			CUELOOP_UI_SCREENSHOT_MODE="$(CUELOOP_UI_SCREENSHOT_MODE)" \
 			XCODE_RESULT_BUNDLE_PATH="$$result_bundle_path"; \
 	else \
 		lock_dir="$(XCODE_BUILD_LOCK_DIR)"; \
@@ -73,12 +73,12 @@ macos-test: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		derived_data_path="$(XCODE_MACOS_TEST_DERIVED_DATA_PATH)"; \
 		cueloop_acquire_xcode_build_lock "$$lock_dir" "macos-test"; \
 		acquired=1; \
-		echo "→ macOS tests (Xcode, skipping UI tests - use RALPH_UI_TESTS=1 to include)..."; \
-		skipped_tests="-skip-testing RalphMacUITests"; \
+		echo "→ macOS tests (Xcode, skipping UI tests - use CUELOOP_UI_TESTS=1 to include)..."; \
+		skipped_tests="-skip-testing CueLoopMacUITests"; \
 		if [ "$${RALPH_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 		xcodebuild \
-			-project apps/RalphMac/RalphMac.xcodeproj \
-			-scheme RalphMac \
+			-project apps/CueLoopMac/CueLoopMac.xcodeproj \
+			-scheme CueLoopMac \
 			-configuration Debug \
 			-destination '$(XCODE_DESTINATION)' \
 			-derivedDataPath "$$derived_data_path" \
@@ -105,8 +105,8 @@ macos-ui-build-for-testing: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	echo "→ macOS UI build-for-testing (one-time prompt may appear for a rebuilt bundle)..."; \
 	rm -rf "$$derived_data_path" 2>/dev/null || true; \
 	xcodebuild \
-		-project apps/RalphMac/RalphMac.xcodeproj \
-		-scheme RalphMac \
+		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
+		-scheme CueLoopMac \
 		-configuration Debug \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
@@ -116,21 +116,21 @@ macos-ui-build-for-testing: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build-for-testing; \
 	echo "→ Clearing quarantine metadata on UI test bundles..."; \
-	xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/RalphMac.app" "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app" 2>/dev/null || true; \
+	xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/CueLoopMac.app" "$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app" 2>/dev/null || true; \
 	echo "→ Re-signing UI test bundles (ad-hoc) to avoid Gatekeeper runner failures..."; \
-	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMac.app"; \
-	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app"; \
+	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/CueLoopMac.app"; \
+	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app"; \
 	echo "  ✓ Prepared UI runner under $$derived_data_path"
 
 # Re-run macOS UI tests without rebuilding the app/runner bundles.
-# Optional: set RALPH_UI_ONLY_TESTING=<Target/Class/testMethod> to focus a single test.
+# Optional: set CUELOOP_UI_ONLY_TESTING=<Target/Class/testMethod> to focus a single test.
 macos-ui-retest:
 	@lock_dir="$(XCODE_BUILD_LOCK_DIR)"; \
 	source scripts/lib/xcodebuild-lock.sh; \
 	acquired=0; \
 	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui"; \
-	app_binary="$$derived_data_path/Build/Products/Debug/RalphMac.app/Contents/MacOS/RalphMac"; \
-	runner_binary="$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app/Contents/MacOS/RalphMacUITests-Runner"; \
+	app_binary="$$derived_data_path/Build/Products/Debug/CueLoopMac.app/Contents/MacOS/CueLoopMac"; \
+	runner_binary="$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app/Contents/MacOS/CueLoopMacUITests-Runner"; \
 	cleanup() { \
 		if pgrep -f "$$runner_binary" >/dev/null 2>&1; then pkill -TERM -f "$$runner_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$runner_binary" >/dev/null 2>&1 && pkill -KILL -f "$$runner_binary" >/dev/null 2>&1 || true; fi; \
 		if pgrep -f "$$app_binary" >/dev/null 2>&1; then pkill -TERM -f "$$app_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$app_binary" >/dev/null 2>&1 && pkill -KILL -f "$$app_binary" >/dev/null 2>&1 || true; fi; \
@@ -141,9 +141,9 @@ macos-ui-retest:
 	acquired=1; \
 	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui"; \
 	result_bundle_path="$(XCODE_RESULT_BUNDLE_PATH)"; \
-	only_testing="$(RALPH_UI_ONLY_TESTING)"; \
-	app_bundle="$$derived_data_path/Build/Products/Debug/RalphMac.app"; \
-	runner_bundle="$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app"; \
+	only_testing="$(CUELOOP_UI_ONLY_TESTING)"; \
+	app_bundle="$$derived_data_path/Build/Products/Debug/CueLoopMac.app"; \
+	runner_bundle="$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app"; \
 	if [ ! -d "$$app_bundle" ] || [ ! -d "$$runner_bundle" ]; then \
 		echo "ERROR: UI test bundles are not prepared. Run 'make macos-ui-build-for-testing' first." >&2; \
 		exit 2; \
@@ -160,11 +160,11 @@ macos-ui-retest:
 	else \
 		echo "→ macOS UI retest (reusing prepared bundles; no rebuild)..."; \
 	fi; \
-	RALPH_UI_SCREENSHOTS="$(RALPH_UI_SCREENSHOTS)" \
-	RALPH_UI_SCREENSHOT_MODE="$(RALPH_UI_SCREENSHOT_MODE)" \
+	CUELOOP_UI_SCREENSHOTS="$(CUELOOP_UI_SCREENSHOTS)" \
+	CUELOOP_UI_SCREENSHOT_MODE="$(CUELOOP_UI_SCREENSHOT_MODE)" \
 	xcodebuild \
-		-project apps/RalphMac/RalphMac.xcodeproj \
-		-scheme RalphMac \
+		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
+		-scheme CueLoopMac \
 		-configuration Debug \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
@@ -185,11 +185,11 @@ macos-test-ui:
 	@$(MAKE) --no-print-directory macos-ui-retest
 
 # Run macOS UI tests with preserved xcresult output (interactive).
-# Stores timestamped artifacts under $(RALPH_UI_ARTIFACTS_ROOT)/<timestamp>/.
+# Stores timestamped artifacts under $(CUELOOP_UI_ARTIFACTS_ROOT)/<timestamp>/.
 macos-test-ui-artifacts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	@timestamp="$$(date +%Y%m%d-%H%M%S)"; \
-	artifact_dir="$(RALPH_UI_ARTIFACTS_ROOT)/$$timestamp"; \
-	result_bundle_path="$$artifact_dir/RalphMacUITests.xcresult"; \
+	artifact_dir="$(CUELOOP_UI_ARTIFACTS_ROOT)/$$timestamp"; \
+	result_bundle_path="$$artifact_dir/CueLoopMacUITests.xcresult"; \
 	summary_path="$$artifact_dir/summary.txt"; \
 	mkdir -p "$$artifact_dir"; \
 	echo "→ macOS UI tests with xcresult capture..."; \
@@ -202,10 +202,10 @@ macos-test-ui-artifacts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	final_exit="$$test_exit"; \
 	if [ -d "$$result_bundle_path" ]; then \
 		{ \
-			echo "Ralph macOS UI artifact summary"; \
+			echo "CueLoop macOS UI artifact summary"; \
 			echo "timestamp: $$timestamp"; \
 			echo "result_bundle: $$result_bundle_path"; \
-			echo "targeted_test: $${RALPH_UI_ONLY_TESTING:-all}"; \
+			echo "targeted_test: $${CUELOOP_UI_ONLY_TESTING:-all}"; \
 		} > "$$summary_path"; \
 		echo "  ✓ Result bundle: $$result_bundle_path"; \
 		echo "  ✓ Summary: $$summary_path"; \
@@ -219,7 +219,7 @@ macos-test-ui-artifacts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 # Remove captured UI visual artifacts after review.
 macos-ui-artifacts-clean:
 	@echo "→ Removing captured UI visual artifacts..."
-	@rm -rf "$(RALPH_UI_ARTIFACTS_ROOT)"
+	@rm -rf "$(CUELOOP_UI_ARTIFACTS_ROOT)"
 	@echo "  ✓ UI visual artifacts removed"
 
 # Run deterministic non-XCTest macOS contract checks against the built app.
@@ -241,8 +241,8 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	source scripts/lib/xcodebuild-lock.sh; \
 	acquired=0; \
 	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui-shortcuts"; \
-	app_binary="$$derived_data_path/Build/Products/Debug/RalphMac.app/Contents/MacOS/RalphMac"; \
-	runner_binary="$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app/Contents/MacOS/RalphMacUITests-Runner"; \
+	app_binary="$$derived_data_path/Build/Products/Debug/CueLoopMac.app/Contents/MacOS/CueLoopMac"; \
+	runner_binary="$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app/Contents/MacOS/CueLoopMacUITests-Runner"; \
 	cleanup() { \
 		if pgrep -f "$$runner_binary" >/dev/null 2>&1; then pkill -TERM -f "$$runner_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$runner_binary" >/dev/null 2>&1 && pkill -KILL -f "$$runner_binary" >/dev/null 2>&1 || true; fi; \
 		if pgrep -f "$$app_binary" >/dev/null 2>&1; then pkill -TERM -f "$$app_binary" >/dev/null 2>&1 || true; sleep 1; pgrep -f "$$app_binary" >/dev/null 2>&1 && pkill -KILL -f "$$app_binary" >/dev/null 2>&1 || true; fi; \
@@ -255,8 +255,8 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 	echo "→ macOS UI shortcut regressions (focused window/tab behavior)..."; \
 	rm -rf "$$derived_data_path" 2>/dev/null || true; \
 	xcodebuild \
-		-project apps/RalphMac/RalphMac.xcodeproj \
-		-scheme RalphMac \
+		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
+		-scheme CueLoopMac \
 		-configuration Debug \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
@@ -264,24 +264,24 @@ macos-test-window-shortcuts: macos-preflight $(RALPH_RELEASE_BUILD_STAMP)
 		$(XCODE_ACTIVE_ARCH_FLAGS) \
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
-		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
-		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		-only-testing:CueLoopMacUITests/CueLoopMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:CueLoopMacUITests/CueLoopMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
 		build-for-testing; \
 	echo "→ Clearing quarantine metadata on UI test bundles..."; \
-	xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/RalphMac.app" "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app" 2>/dev/null || true; \
+	xattr -dr com.apple.quarantine "$$derived_data_path/Build/Products/Debug/CueLoopMac.app" "$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app" 2>/dev/null || true; \
 	echo "→ Re-signing UI test bundles (ad-hoc) to avoid Gatekeeper runner failures..."; \
-	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMac.app"; \
-	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/RalphMacUITests-Runner.app"; \
+	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/CueLoopMac.app"; \
+	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app"; \
 	xcodebuild \
-		-project apps/RalphMac/RalphMac.xcodeproj \
-		-scheme RalphMac \
+		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
+		-scheme CueLoopMac \
 		-configuration Debug \
 		-destination '$(XCODE_DESTINATION)' \
 		-derivedDataPath "$$derived_data_path" \
 		$(XCODE_JOBS_FLAG) \
 		$(XCODE_ACTIVE_ARCH_FLAGS) \
-		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
-		-only-testing:RalphMacUITests/RalphMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
+		-only-testing:CueLoopMacUITests/CueLoopMacUIWindowRoutingTests/test_windowShortcuts_affectOnlyFocusedWindow \
+		-only-testing:CueLoopMacUITests/CueLoopMacUIWindowRoutingTests/test_commandPaletteNewTab_affectsOnlyFocusedWindow \
 		test-without-building; \
 	if pgrep -f "$$runner_binary" >/dev/null 2>&1 || pgrep -f "$$app_binary" >/dev/null 2>&1; then \
 		echo "ERROR: macos-test-window-shortcuts left a lingering UI test app or runner process" >&2; \

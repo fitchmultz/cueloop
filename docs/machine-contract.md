@@ -68,9 +68,9 @@ Includes:
 - `execution_controls` for native runner, reasoning-effort, and parallel-worker affordances
 - optional `resume_preview`
 
-RalphMac and other machine clients should treat these resolved paths as the canonical queue, done, and config file locations for the workspace instead of assuming hardcoded `.cueloop/...` or legacy `.ralph/...` paths.
+CueLoopMac and other machine clients should treat these resolved paths as the canonical queue, done, and config file locations for the workspace instead of assuming hardcoded `.cueloop/...` or old runtime paths.
 
-`execution_controls` is the canonical native-control catalog for RalphMac. It includes:
+`execution_controls` is the canonical native-control catalog for CueLoopMac. It includes:
 - runner options with stable ids, display names, source (`built_in`, `global_plugin`, `project_plugin`), reasoning-effort support, model-affordance metadata, and optional default model
 - reasoning-effort options
 - the numeric `parallel_workers` contract (`min`, `max`, `default_missing_value`)
@@ -209,7 +209,7 @@ Example loop summary for an idle queue:
 Stop After Current is a machine-contract workflow under `cueloop machine run stop`, not a human `cueloop queue stop` parsing path.
 
 The scenario-level app parity registry in `crates/cueloop/src/cli/app_parity.rs`
-should reference this contract through explicit Rust and RalphMac proof anchors
+should reference this contract through explicit Rust and CueLoopMac proof anchors
 whenever Stop After Current behavior changes.
 
 The success document includes:

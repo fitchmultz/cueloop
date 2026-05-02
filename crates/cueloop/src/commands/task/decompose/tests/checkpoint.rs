@@ -43,7 +43,7 @@ fn preview_checkpoint_round_trip_preserves_exact_plan_without_plan_file_content(
                 vec![planned_node_with_plan_and_scope(
                     "leaf",
                     "Wire login",
-                    vec!["apps/RalphMac"],
+                    vec!["apps/CueLoopMac"],
                     vec!["Implement UI", "Add tests"],
                     vec![],
                     vec![],

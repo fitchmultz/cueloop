@@ -12,7 +12,7 @@ Purpose: describe CueLoop’s components, runtime data flow, trust boundaries, a
 CueLoop is a local-first orchestration system for AI-assisted engineering workflows.
 
 - Primary runtime: Rust CLI (`crates/cueloop/`)
-- Optional UI: SwiftUI macOS app (`apps/RalphMac/`) that shells out to the same CLI binary
+- Optional UI: SwiftUI macOS app (`apps/CueLoopMac/`) that shells out to the same CLI binary
 - State store: repo-local `.ralph/` files (`queue.jsonc`, `done.jsonc`, optional `config.jsonc`)
 - External dependencies: runner CLIs (Codex/Claude/Gemini/OpenCode/Cursor/Kimi/Pi), git, optional GitHub CLI
 

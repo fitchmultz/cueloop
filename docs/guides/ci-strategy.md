@@ -31,12 +31,12 @@ Behavior:
 - **Tier A — `make ci-docs`**: all changed paths are docs/community-only (see classifier allowlist in `scripts/lib/release_policy.sh`).
 - **Tier B — `make ci-fast`**: any non-docs path that is not a Rust crate path and not a macOS ship-surface path (for example repo-only metadata like `.gitignore`).
 - **Tier C — `make ci`**: any change under `crates/**`, plus release/build script changes and `Makefile` edits that touch Rust release/build/install targets (release-shaped Rust: `ci-fast` + release build + schema generation + install checks).
-- **Tier D — `make macos-ci`**: any path that affects the app bundle, committed schemas, toolchain, macOS/Xcode bundling scripts, or `Makefile` macOS build/test targets (`apps/RalphMac/**`, `apps/AGENTS.md`, `schemas/**`, `scripts/ralph-cli-bundle.sh`, `scripts/macos-*.sh`, `scripts/lib/xcodebuild-lock.sh`, `VERSION`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/**`).
+- **Tier D — `make macos-ci`**: any path that affects the app bundle, committed schemas, toolchain, macOS/Xcode bundling scripts, or `Makefile` macOS build/test targets (`apps/CueLoopMac/**`, `apps/AGENTS.md`, `schemas/**`, `scripts/cueloop-cli-bundle.sh`, `scripts/macos-*.sh`, `scripts/lib/xcodebuild-lock.sh`, `VERSION`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/**`).
 - `make ci-fast` runs `make rust-toolchain-check` through `deps`, which verifies the repo-pinned `rust-toolchain.toml` channel, crate `rust-version`, active local rustup override, `rustc`, `cargo`, `rustfmt`, and `clippy` agree.
 - `scripts/agent-ci-surface.sh`, `scripts/lib/release_policy.sh`, and CI/router-only `Makefile` edits deliberately stay below tier D so local tooling changes do not rebuild the Mac app.
 - Tier C **does not** run Xcode or Swift tests; it can miss Swift-side integration drift until a tier D run. Use `RALPH_AGENT_CI_MIN_TIER=macos-ci` or run `make macos-ci` before merge when that risk matters (see below).
 - On source snapshots without `.git/`, falls back to `make release-gate` so verification stays platform-aware instead of assuming macOS-only tooling.
-- The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.ralph/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/RalphMac/build/`.
+- The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.cueloop/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/CueLoopMac/build/`.
 - Toolchain drift checks compare the repo-local override with the global rustup stable toolchain during release/public readiness; the repo-local `rust-toolchain.toml` wins inside the workspace.
 
 Optional environment (see `make help`):
@@ -47,11 +47,11 @@ Optional environment (see `make help`):
 
 ### `make ci` on macOS and `macos-ci` dependency graph
 
-`make ci` is intentionally Rust-only, even on macOS: it stops at `install-verify` and does not invoke `macos-install-app` or `xcodebuild`. `make install` remains the explicit operator command that installs both the CLI and RalphMac.app on macOS. `make macos-ci` still layers `ci` plus `macos-build`, `macos-test`, and deterministic app contracts.
+`make ci` is intentionally Rust-only, even on macOS: it stops at `install-verify` and does not invoke `macos-install-app` or `xcodebuild`. `make install` remains the explicit operator command that installs both the CLI and CueLoopMac.app on macOS. `make macos-ci` still layers `ci` plus `macos-build`, `macos-test`, and deterministic app contracts.
 
 ### Release build stamp and bundling
 
-- The release stamp `target/tmp/stamps/ralph-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, `scripts/ralph-cli-bundle.sh`, or tracked Rust sources under `crates/**` are newer than the stamp (no unconditional `FORCE` rebuild).
+- The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, `scripts/cueloop-cli-bundle.sh`, or tracked Rust sources under `crates/**` are newer than the stamp (no unconditional `FORCE` rebuild).
 - `install` copies from `target/release/ralph` after the stamp recipe runs, avoiding a second `ralph-cli-bundle.sh` invocation in the same gate.
 - Xcode’s “Build and Bundle ralph” phase copies `target/release/ralph` into the app bundle for **Release** when that binary already exists; otherwise it falls back to `ralph-cli-bundle.sh` (for example Debug builds or cold Xcode-only builds).
 

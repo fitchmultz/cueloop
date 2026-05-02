@@ -21,8 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VERSION_FILE="$REPO_ROOT/VERSION"
 CARGO_TOML="$REPO_ROOT/crates/cueloop/Cargo.toml"
-XCODE_PROJECT="$REPO_ROOT/apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
-VERSION_VALIDATOR_SWIFT="$REPO_ROOT/apps/RalphMac/RalphCore/VersionValidator.swift"
+XCODE_PROJECT="$REPO_ROOT/apps/CueLoopMac/CueLoopMac.xcodeproj/project.pbxproj"
+VERSION_VALIDATOR_SWIFT="$REPO_ROOT/apps/CueLoopMac/CueLoopCore/VersionValidator.swift"
 
 log_error() {
     echo "versioning: $*" >&2

@@ -38,7 +38,7 @@ pub(super) fn execute_launch_command(spec: &OpenCommandSpec) -> Result<()> {
     Ok(())
 }
 
-/// Open the Ralph macOS app.
+/// Open the CueLoop macOS app.
 ///
 /// On macOS, workspace-aware launches use a single URL handoff so the app can
 /// cold-start directly into the requested workspace. Plain app opens still use

@@ -1,7 +1,7 @@
 //! Shared CLI bundle script contract tests.
 //!
 //! Purpose:
-//! - Verify `scripts/ralph-cli-bundle.sh` remains the canonical CLI build entrypoint.
+//! - Verify `scripts/cueloop-cli-bundle.sh` remains the canonical CLI build entrypoint.
 //!
 //! Responsibilities:
 //! - Confirm the bundling script rebuilds stale binaries and reuses fresh ones.
@@ -15,7 +15,7 @@
 //! - Executed as part of the Rust integration-test suite.
 //!
 //! Invariants/assumptions:
-//! - The repo-local bundle script lives at `scripts/ralph-cli-bundle.sh`.
+//! - The repo-local bundle script lives at `scripts/cueloop-cli-bundle.sh`.
 //! - PATH-mutating fake toolchain tests must hold the shared integration-test env lock.
 
 mod test_support;
@@ -36,7 +36,7 @@ fn repo_root() -> PathBuf {
 }
 
 fn bundle_script() -> PathBuf {
-    repo_root().join("scripts").join("ralph-cli-bundle.sh")
+    repo_root().join("scripts").join("cueloop-cli-bundle.sh")
 }
 
 #[cfg(unix)]
@@ -45,7 +45,7 @@ fn run_bundle_script(args: &[&str]) -> (ExitStatus, String, String) {
         .arg(bundle_script())
         .args(args)
         .output()
-        .expect("execute ralph-cli-bundle.sh");
+        .expect("execute cueloop-cli-bundle.sh");
     (
         output.status,
         String::from_utf8_lossy(&output.stdout).to_string(),
@@ -123,21 +123,17 @@ fn bundle_script_rebuilds_even_when_binary_already_exists() {
             .to_string_lossy()
     );
     let binary_path = target_binary_path(&target_triple, "cueloop");
-    let legacy_binary_path = target_binary_path(&target_triple, "ralph");
     if let Some(parent) = binary_path.parent() {
         std::fs::create_dir_all(parent).expect("create test target dir");
         test_support::create_executable_script(parent, "cueloop", "#!/bin/sh\nexit 0\n")
             .expect("create stale primary binary fixture");
-        test_support::create_executable_script(parent, "ralph", "#!/bin/sh\nexit 0\n")
-            .expect("create stale legacy binary fixture");
     }
     let touch_status = Command::new("touch")
         .arg("-t")
         .arg("200001010101")
         .arg(&binary_path)
-        .arg(&legacy_binary_path)
         .status()
-        .expect("mark binaries as older than repo inputs");
+        .expect("mark binary as older than repo inputs");
     assert!(touch_status.success(), "touch should succeed");
 
     let (status, stdout, stderr) = test_support::with_prepend_path(&bin_dir, || {
@@ -165,8 +161,7 @@ fn bundle_script_rebuilds_even_when_binary_already_exists() {
 
     let cargo_invocations = std::fs::read_to_string(&cargo_log).expect("read fake cargo log");
     assert!(
-        cargo_invocations
-            .contains("build -p cueloop-agent-loop --locked --bin cueloop --bin ralph --target"),
+        cargo_invocations.contains("build -p cueloop-agent-loop --locked --bin cueloop --target"),
         "expected fake cargo to receive a build invocation\nstdout:\n{stdout}\nstderr:\n{stderr}\nlog:\n{cargo_invocations}"
     );
     assert!(
@@ -193,21 +188,17 @@ fn bundle_script_reuses_fresh_binary_without_rebuilding() {
             .to_string_lossy()
     );
     let binary_path = target_binary_path(&target_triple, "cueloop");
-    let legacy_binary_path = target_binary_path(&target_triple, "ralph");
     if let Some(parent) = binary_path.parent() {
         std::fs::create_dir_all(parent).expect("create test target dir");
         test_support::create_executable_script(parent, "cueloop", "#!/bin/sh\nexit 0\n")
             .expect("create fresh primary binary fixture");
-        test_support::create_executable_script(parent, "ralph", "#!/bin/sh\nexit 0\n")
-            .expect("create fresh legacy binary fixture");
     }
     let touch_status = Command::new("touch")
         .arg("-t")
         .arg("209901010101")
         .arg(&binary_path)
-        .arg(&legacy_binary_path)
         .status()
-        .expect("mark binaries as newer than repo inputs");
+        .expect("mark binary as newer than repo inputs");
     assert!(touch_status.success(), "touch should succeed");
 
     let (status, stdout, stderr) = test_support::with_prepend_path(&bin_dir, || {

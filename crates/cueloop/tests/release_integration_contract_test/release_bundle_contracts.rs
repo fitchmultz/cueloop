@@ -14,19 +14,19 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::support::{read_repo_file, swift_file_names};
 
 #[test]
 fn xcode_project_references_all_committed_swift_sources() {
-    let project = read_repo_file("apps/RalphMac/RalphMac.xcodeproj/project.pbxproj");
+    let project = read_repo_file("apps/CueLoopMac/CueLoopMac.xcodeproj/project.pbxproj");
 
     for relative_dir in [
-        "apps/RalphMac/RalphCore",
-        "apps/RalphMac/RalphCoreTests",
-        "apps/RalphMac/RalphMac",
-        "apps/RalphMac/RalphMacUITests",
+        "apps/CueLoopMac/CueLoopCore",
+        "apps/CueLoopMac/CueLoopCoreTests",
+        "apps/CueLoopMac/CueLoopMac",
+        "apps/CueLoopMac/CueLoopMacUITests",
     ] {
         for file_name in swift_file_names(relative_dir) {
             let file_ref_marker = format!("/* {file_name} */");
@@ -45,9 +45,9 @@ fn xcode_project_references_all_committed_swift_sources() {
 
 #[test]
 fn xcode_build_phase_uses_shared_cli_bundle_entrypoint() {
-    let project = read_repo_file("apps/RalphMac/RalphMac.xcodeproj/project.pbxproj");
+    let project = read_repo_file("apps/CueLoopMac/CueLoopMac.xcodeproj/project.pbxproj");
     assert!(
-        project.contains("scripts/ralph-cli-bundle.sh"),
+        project.contains("scripts/cueloop-cli-bundle.sh"),
         "Xcode project should call the shared CLI bundling script"
     );
     assert!(
@@ -57,28 +57,27 @@ fn xcode_build_phase_uses_shared_cli_bundle_entrypoint() {
         "Xcode project should not embed its own Cargo invocation policy or debug hardcoded CLI paths"
     );
     assert!(
-        project.contains("ralph-cli-bundle.sh")
+        project.contains("cueloop-cli-bundle.sh")
             && !project.contains("target/release/ralph")
             && !project.contains("target/release/cueloop"),
-        "Release should always route through ralph-cli-bundle.sh instead of copying a possibly stale target/release CLI"
+        "Release should always route through cueloop-cli-bundle.sh instead of copying a possibly stale target/release CLI"
     );
     assert!(
         project.contains("alwaysOutOfDate = 1;"),
-        "The Xcode bundle phase should always rerun so RalphMac never ships a stale embedded CLI after Rust-only rebuilds"
+        "The Xcode bundle phase should always rerun so CueLoopMac never ships a stale embedded CLI after Rust-only rebuilds"
     );
 }
 
 #[test]
 fn shared_cli_bundle_script_supports_configuration_and_bundle_dir() {
-    let script = read_repo_file("scripts/ralph-cli-bundle.sh");
+    let script = read_repo_file("scripts/cueloop-cli-bundle.sh");
     assert!(
         script.contains("--configuration") && script.contains("--bundle-dir"),
         "shared CLI bundle script should accept configuration and bundle destination inputs"
     );
     assert!(
-        script.contains("PRIMARY_BIN_NAME=\"cueloop\"")
-            && script.contains("LEGACY_BIN_NAME=\"ralph\""),
-        "shared CLI bundle script should build the primary cueloop binary and legacy ralph alias"
+        script.contains("PRIMARY_BIN_NAME=\"cueloop\"") && !script.contains("LEGACY_BIN_NAME="),
+        "shared CLI bundle script should build only the primary cueloop binary"
     );
     assert!(
         script.contains("cueloop_activate_pinned_rust_toolchain"),
@@ -123,7 +122,7 @@ fn makefile_release_build_uses_shared_bundle_entrypoint() {
         read_repo_file("mk/rust.mk")
     );
     assert!(
-        make_surface.contains("scripts/ralph-cli-bundle.sh --configuration Release"),
+        make_surface.contains("scripts/cueloop-cli-bundle.sh --configuration Release"),
         "Makefile release builds should route through the shared CLI bundling entrypoint"
     );
     assert!(

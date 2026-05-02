@@ -17,7 +17,7 @@ GEMINI.md
 .cursorignore
 
 # Xcode / Swift local build artifacts
-apps/RalphMac/build/
+apps/CueLoopMac/build/
 **/*.xcodeproj/xcuserdata/
 **/*.xcworkspace/xcuserdata/
 *.xcuserstate

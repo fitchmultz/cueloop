@@ -8,7 +8,7 @@
 //! - Route app subcommands to the command implementation layer (`crate::commands::app`).
 //!
 //! Not handled here:
-//! - Building or installing the SwiftUI app bundle (see `apps/RalphMac/`).
+//! - Building or installing the SwiftUI app bundle (see `apps/CueLoopMac/`).
 //! - Any queue/runner logic (CueLoop remains CLI-first; the GUI shells out to the CLI).
 //!
 //!
@@ -41,14 +41,14 @@ pub enum AppCommand {
     /// Open the macOS CueLoop app.
     #[command(
         about = "Open the macOS CueLoop app",
-        after_long_help = "Examples:\n  cueloop app open\n  cueloop app open --bundle-id com.mitchfultz.ralph\n  cueloop app open --path /Applications/RalphMac.app\n"
+        after_long_help = "Examples:\n  cueloop app open\n  cueloop app open --bundle-id com.mitchfultz.cueloop\n  cueloop app open --path /Applications/CueLoopMac.app\n"
     )]
     Open(AppOpenArgs),
 }
 
 #[derive(Args, Debug, Clone)]
 pub struct AppOpenArgs {
-    /// Bundle identifier to open (default: com.mitchfultz.ralph).
+    /// Bundle identifier to open (default: com.mitchfultz.cueloop).
     ///
     /// Uses: `open -b <bundle_id>`.
     #[arg(long, value_name = "BUNDLE_ID", conflicts_with = "path")]

@@ -1,0 +1,161 @@
+/**
+ WorkspaceManager+Restoration
+
+ Purpose:
+ - Persist and claim window restoration state across launches.
+
+ Responsibilities:
+ - Persist and claim window restoration state across launches.
+ - Rebuild window/tab state from persisted workspace snapshots.
+
+ Does not handle:
+ - Workspace creation policy outside restoration flows.
+ - Scene routing registrations.
+
+ Usage:
+ - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
+
+ Invariants/assumptions callers must respect:
+ - Claimed window states are unique per live scene until the pool is reset.
+ - Empty or invalid restoration payloads fall back to a fresh workspace window.
+ */
+
+public import Foundation
+
+public extension WorkspaceManager {
+    func saveWindowState(_ state: WindowState) {
+        var allStates = loadAllWindowStates()
+        allStates.removeAll { $0.id == state.id }
+        allStates.append(state)
+
+        do {
+            try WindowStateStore().saveAll(allStates)
+            clearPersistenceIssue(domain: .windowRestoration)
+        } catch {
+            recordPersistenceIssue(
+                PersistenceIssue(
+                    domain: .windowRestoration,
+                    operation: .save,
+                    context: restorationKey,
+                    error: error
+                )
+            )
+        }
+
+        if restorationPoolInitialized {
+            unclaimedWindowStates.removeAll { $0.id == state.id }
+        }
+    }
+
+    func loadAllWindowStates() -> [WindowState] {
+        do {
+            let states = try WindowStateStore().loadAll()
+            clearPersistenceIssue(domain: .windowRestoration)
+            return states
+        } catch {
+            recordPersistenceIssue(
+                PersistenceIssue(
+                    domain: .windowRestoration,
+                    operation: .load,
+                    context: restorationKey,
+                    error: error
+                )
+            )
+            return []
+        }
+    }
+
+    func removeWindowState(_ windowID: UUID) {
+        var allStates = loadAllWindowStates()
+        allStates.removeAll { $0.id == windowID }
+        unclaimedWindowStates.removeAll { $0.id == windowID }
+
+        do {
+            try WindowStateStore().saveAll(allStates)
+            clearPersistenceIssue(domain: .windowRestoration)
+        } catch {
+            recordPersistenceIssue(
+                PersistenceIssue(
+                    domain: .windowRestoration,
+                    operation: .save,
+                    context: restorationKey,
+                    error: error
+                )
+            )
+        }
+    }
+
+    func claimWindowState(preferredID: UUID?) -> WindowState {
+        ensureRestorationPool()
+
+        if let preferredID,
+           let preferredIndex = unclaimedWindowStates.firstIndex(where: { $0.id == preferredID }) {
+            return unclaimedWindowStates.remove(at: preferredIndex)
+        }
+
+        if !unclaimedWindowStates.isEmpty {
+            return unclaimedWindowStates.removeFirst()
+        }
+
+        let workspace = createWorkspace(launchDisposition: .startupPlaceholder)
+        return WindowState(workspaceIDs: [workspace.id])
+    }
+
+    func restoreWindows() -> [WindowState] {
+        let states = loadAllWindowStates()
+        var restorabilityCache: [String: Bool] = [:]
+
+        if states.isEmpty {
+            let restorableExisting = workspaces.filter {
+                cachedWorkspaceIsRestorable($0.identityState.workingDirectoryURL, cache: &restorabilityCache)
+            }
+            if !restorableExisting.isEmpty {
+                return [
+                    WindowState(
+                        workspaceIDs: restorableExisting.map { $0.id },
+                        selectedTabIndex: 0
+                    )
+                ]
+            }
+
+            let workspace = createWorkspace(launchDisposition: .startupPlaceholder)
+            return [WindowState(workspaceIDs: [workspace.id])]
+        }
+
+        var restoredStates: [WindowState] = []
+        for state in states {
+            var rebuiltState = state
+            rebuiltState.workspaceIDs = state.workspaceIDs.filter { workspaceID in
+                if let existing = workspaces.first(where: { $0.id == workspaceID }) {
+                    return cachedWorkspaceIsRestorable(
+                        existing.identityState.workingDirectoryURL,
+                        cache: &restorabilityCache
+                    )
+                }
+                return restoreWorkspace(id: workspaceID, restorabilityCache: &restorabilityCache) != nil
+            }
+            rebuiltState.validateSelection()
+            if !rebuiltState.workspaceIDs.isEmpty {
+                restoredStates.append(rebuiltState)
+            }
+        }
+
+        if restoredStates.isEmpty {
+            let workspace = createWorkspace(launchDisposition: .startupPlaceholder)
+            return [WindowState(workspaceIDs: [workspace.id])]
+        }
+
+        return restoredStates
+    }
+
+    func ensureRestorationPool() {
+        guard !restorationPoolInitialized else { return }
+        unclaimedWindowStates = restoreWindows()
+        restorationPoolInitialized = true
+    }
+
+    func resetWindowStateClaimPool() {
+        unclaimedWindowStates.removeAll()
+        restorationPoolInitialized = false
+    }
+}

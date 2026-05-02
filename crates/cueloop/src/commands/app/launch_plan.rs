@@ -1,7 +1,7 @@
 //! App-launch planning helpers.
 //!
 //! Purpose:
-//! - Build deterministic `open ...` command specs for launching the Ralph macOS app.
+//! - Build deterministic `open ...` command specs for launching the CueLoop macOS app.
 //!
 //! Responsibilities:
 //! - Validate launch-target arguments.
@@ -25,8 +25,7 @@ use std::path::{Path, PathBuf};
 use crate::cli::app::AppOpenArgs;
 
 use super::model::{
-    DEFAULT_APP_NAME, DEFAULT_BUNDLE_ID, GUI_CLI_BIN_ENV, LEGACY_GUI_CLI_BIN_ENV, LaunchTarget,
-    OpenCommandSpec,
+    DEFAULT_APP_NAME, DEFAULT_BUNDLE_ID, GUI_CLI_BIN_ENV, LaunchTarget, OpenCommandSpec,
 };
 
 pub(super) fn plan_open_command(
@@ -137,10 +136,8 @@ pub(super) fn append_cli_env_args(args_out: &mut Vec<OsString>, cli_executable: 
     let Some(cli_executable) = cli_executable else {
         return;
     };
-    for key in [GUI_CLI_BIN_ENV, LEGACY_GUI_CLI_BIN_ENV] {
-        args_out.push(OsString::from("--env"));
-        args_out.push(env_assignment_for_path(key, cli_executable));
-    }
+    args_out.push(OsString::from("--env"));
+    args_out.push(env_assignment_for_path(GUI_CLI_BIN_ENV, cli_executable));
 }
 
 #[cfg(unix)]

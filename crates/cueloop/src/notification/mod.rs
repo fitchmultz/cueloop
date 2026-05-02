@@ -36,8 +36,8 @@ use display::{
 };
 
 #[cfg(all(feature = "notifications", target_os = "macos"))]
-const MACOS_NOTIFICATION_BUNDLE_ID: &str = "com.mitchfultz.ralph";
-pub(crate) const UI_ACTIVE_ENV_KEY: &str = "RALPH_UI_ACTIVE";
+const MACOS_NOTIFICATION_BUNDLE_ID: &str = "com.mitchfultz.cueloop";
+pub(crate) const UI_ACTIVE_ENV_KEY: &str = "CUELOOP_UI_ACTIVE";
 
 /// Types of notifications that can be sent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

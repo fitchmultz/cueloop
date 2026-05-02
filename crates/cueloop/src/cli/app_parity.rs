@@ -1,11 +1,11 @@
-//! RalphMac app parity registry.
+//! CueLoopMac app parity registry.
 //!
 //! Purpose:
-//! - Track user-visible CLI versus RalphMac parity scenarios with concrete proof anchors.
+//! - Track user-visible CLI versus CueLoopMac parity scenarios with concrete proof anchors.
 //!
 //! Responsibilities:
 //! - Keep scenario-level parity status, contract anchors, app surfaces, and proof tests together.
-//! - Validate that every parity scenario names machine/app contract anchors plus Rust and RalphMac tests.
+//! - Validate that every parity scenario names machine/app contract anchors plus Rust and CueLoopMac tests.
 //! - Preserve a secondary guard that every human-facing root CLI command is classified for parity review.
 //!
 //! Not handled here:
@@ -17,8 +17,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Scenario-level entries are the authoritative parity signal for RalphMac.
-//! - Every scenario must include machine-contract anchors, app-doc anchors, Rust proofs, and RalphMac proofs.
+//! - Scenario-level entries are the authoritative parity signal for CueLoopMac.
+//! - Every scenario must include machine-contract anchors, app-doc anchors, Rust proofs, and CueLoopMac proofs.
 //! - Advanced Runner access never counts as parity completion by itself.
 
 use clap::CommandFactory;
@@ -124,7 +124,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs::machine_run_loop_parallel_empty_repo_reports_no_candidates_summary",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/WorkspaceRunStateResumeBlockingTests.swift::test_runSummary_explicitBlocking_supersedesEarlierLiveBlockingState",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceRunStateResumeBlockingTests.swift::test_runSummary_explicitBlocking_supersedesEarlierLiveBlockingState",
         ],
         &[],
     ),
@@ -146,7 +146,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs::machine_run_loop_parallel_blocked_repo_reports_blocked_summary",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/WorkspaceRunStateResumeBlockingTests.swift::test_runSummary_appliesBlockingState",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceRunStateResumeBlockingTests.swift::test_runSummary_appliesBlockingState",
         ],
         &[],
     ),
@@ -169,7 +169,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs::machine_run_loop_queue_lock_failure_emits_stalled_terminal_summary",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/WorkspaceRunStateResumeBlockingTests.swift::test_runSummary_failedOutcomeClearsExistingLiveBlockingState",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceRunStateResumeBlockingTests.swift::test_runSummary_failedOutcomeClearsExistingLiveBlockingState",
         ],
         &["Failure after run_started still requires a terminal summary the app can reconcile."],
     ),
@@ -191,9 +191,9 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs::machine_run_stop_uses_runtime_parallel_state_for_guidance",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/WorkspaceLoopStopTests.swift::test_stopLoop_requestsQueueStopSignalForActiveMachineLoop",
-            "apps/RalphMac/RalphCoreTests/WorkspaceLoopStopTests.swift::test_stopLoop_keepsStopRequestedWhenMachineRunStopReportsAlreadyPresent",
-            "apps/RalphMac/RalphCoreTests/WorkspaceLoopStopTests.swift::test_runControlOperatorState_exposesStopAfterCurrentActionDuringLoopBlocking",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceLoopStopTests.swift::test_stopLoop_requestsQueueStopSignalForActiveMachineLoop",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceLoopStopTests.swift::test_stopLoop_keepsStopRequestedWhenMachineRunStopReportsAlreadyPresent",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceLoopStopTests.swift::test_runControlOperatorState_exposesStopAfterCurrentActionDuringLoopBlocking",
         ],
         &["Human queue stop parsing does not count as parity completion."],
     ),
@@ -212,8 +212,8 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_queue.rs::machine_workspace_overview_returns_queue_and_config_in_one_document",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/WorkspaceDiagnosticsServiceTests.swift::testQueueValidationOutput_reportsConfiguredQueuePathWhenCustomQueueIsMissing",
-            "apps/RalphMac/RalphCoreTests/WorkspaceRunnerRetargetingTests.swift::test_workspaceBootstrap_loadsTasksAndRunnerConfigurationWithoutGraphAnalyticsOrCLISpec",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceDiagnosticsServiceTests.swift::testQueueValidationOutput_reportsConfiguredQueuePathWhenCustomQueueIsMissing",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceRunnerRetargetingTests.swift::test_workspaceBootstrap_loadsTasksAndRunnerConfigurationWithoutGraphAnalyticsOrCLISpec",
         ],
         &[],
     ),
@@ -231,7 +231,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_run.rs::machine_run_one_without_id_reports_selected_task_via_events_and_summary",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/ConfigModelsTests.swift::test_decode_machineConfigResolve_includesWebhookUrlPolicyFields",
+            "apps/CueLoopMac/CueLoopCoreTests/ConfigModelsTests.swift::test_decode_machineConfigResolve_includesWebhookUrlPolicyFields",
         ],
         &["Unknown configured runner values must remain visible instead of being coerced away."],
     ),
@@ -253,7 +253,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_queue.rs::machine_workspace_overview_returns_queue_and_config_in_one_document",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/ConfigModelsTests.swift::test_decode_machineConfigResolve_includesWebhookUrlPolicyFields",
+            "apps/CueLoopMac/CueLoopCoreTests/ConfigModelsTests.swift::test_decode_machineConfigResolve_includesWebhookUrlPolicyFields",
         ],
         &[
             "The app must preserve machine-reported maxima such as 255 rather than truncating to old menu caps.",
@@ -280,9 +280,9 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "crates/cueloop/tests/machine_contract_test/machine_contract_test_parallel.rs::machine_parallel_status_surfaces_blocked_worker_operator_state",
         ],
         &[
-            "apps/RalphMac/RalphCoreTests/WorkspaceParallelRunControlTests.swift::test_runState_runControlOperatorState_classifiesQueueRecoveryActions",
-            "apps/RalphMac/RalphCoreTests/WorkspaceParallelRunControlTests.swift::test_classifyParallelStatusActions_mapsNativeAndUnsupportedCommands",
-            "apps/RalphMac/RalphCoreTests/WorkspaceParallelRunControlTests.swift::test_classifyParallelStatusActions_keepsDryRunStopAsCopyOnly",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceParallelRunControlTests.swift::test_runState_runControlOperatorState_classifiesQueueRecoveryActions",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceParallelRunControlTests.swift::test_classifyParallelStatusActions_mapsNativeAndUnsupportedCommands",
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceParallelRunControlTests.swift::test_classifyParallelStatusActions_keepsDryRunStopAsCopyOnly",
         ],
         &[
             "Safe machine continuations should become native actions; unsupported ones must stay explicit copy/unsupported affordances.",
@@ -352,12 +352,12 @@ pub fn app_parity_scenario_coverage_issues() -> Vec<AppParityCoverageIssue> {
         if entry.app_tests.is_empty() {
             issues.push(AppParityCoverageIssue {
                 scenario: entry.scenario,
-                problem: "at least one RalphMac proof anchor is required",
+                problem: "at least one CueLoopMac proof anchor is required",
             });
         } else if has_blank(entry.app_tests) {
             issues.push(AppParityCoverageIssue {
                 scenario: entry.scenario,
-                problem: "RalphMac proof anchors must not be blank",
+                problem: "CueLoopMac proof anchors must not be blank",
             });
         }
     }

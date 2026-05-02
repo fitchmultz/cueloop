@@ -34,7 +34,7 @@ Those decisions appear across:
 - `cueloop run resume`
 - `cueloop machine config resolve`
 - `cueloop machine run ...` event streams
-- RalphMac Run Control
+- CueLoopMac Run Control
 
 ### Key features
 
@@ -226,7 +226,7 @@ This preview is **read-only**: it must not clear or rewrite saved session state.
 }
 ```
 
-RalphMac consumes both `resume_preview` and `resume_decision` so Run Control can show the expected action before the run starts and the actual action once the run begins.
+CueLoopMac consumes both `resume_preview` and `resume_decision` so Run Control can show the expected action before the run starts and the actual action once the run begins.
 
 ---
 

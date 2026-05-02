@@ -1,4 +1,4 @@
-# Purpose: Provide the stable top-level Ralph build, test, release, and developer command entrypoint.
+# Purpose: Provide the stable top-level CueLoop build, test, release, and developer command entrypoint.
 # Responsibilities: Define global Make settings, shared variables, public phony targets, help text, and include focused target fragments.
 # Scope: Compatibility shell only; target bodies live in mk/*.mk fragments.
 # Usage: Run `make <target>` from the repository root.
@@ -8,7 +8,6 @@ RUST_WORKSPACE := .
 PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 BIN_NAME ?= cueloop
-LEGACY_BIN_NAME ?= ralph
 CARGO_PACKAGE_NAME ?= cueloop-agent-loop
 CARGO_HTTP_MULTIPLEXING ?= false
 RUST_JOBS ?= 8
@@ -24,17 +23,17 @@ XCODE_DESTINATION ?= platform=macOS,arch=$(shell uname -m)
 # packaging remains responsible for any multi-architecture distribution builds.
 XCODE_ARCHS ?= $(shell uname -m)
 # UI tests: Set to 1 to include UI tests (headed, mouse-interactive), 0 to skip (default for CI)
-RALPH_UI_TESTS ?= 0
+CUELOOP_UI_TESTS ?= 0
 # UI screenshots: opt-in evidence capture for headed macOS UI tests.
-RALPH_UI_SCREENSHOTS ?= 0
-# UI screenshot mode: off|checkpoints|timeline (empty lets tests decide from RALPH_UI_SCREENSHOTS).
-RALPH_UI_SCREENSHOT_MODE ?=
+CUELOOP_UI_SCREENSHOTS ?= 0
+# UI screenshot mode: off|checkpoints|timeline (empty lets tests decide from CUELOOP_UI_SCREENSHOTS).
+CUELOOP_UI_SCREENSHOT_MODE ?=
 # Optional focused UI test selector for retest loops.
-RALPH_UI_ONLY_TESTING ?=
+CUELOOP_UI_ONLY_TESTING ?=
 # Result bundle path override for UI evidence export workflows.
 XCODE_RESULT_BUNDLE_PATH ?=
 # Root directory for exported UI visual artifacts.
-RALPH_UI_ARTIFACTS_ROOT ?= target/ui-artifacts
+CUELOOP_UI_ARTIFACTS_ROOT ?= target/ui-artifacts
 MACOS_APP_INSTALL_DIR ?= /Applications
 XCODE_BUILD_LOCK_DIR ?= target/tmp/locks/xcodebuild.lock
 # Default to bounded Rust/nextest parallelism for predictable local and agent runs.
@@ -46,8 +45,8 @@ RALPH_XCODE_JOBS ?= 0
 # Build stamp path to avoid duplicate release builds in a single make invocation.
 RALPH_STAMP_DIR ?= target/tmp/stamps
 RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/cueloop-release-build.stamp
-# Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `ralph-cli-bundle.sh`.
-RALPH_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/ralph-cli-bundle.sh
+# Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `cueloop-cli-bundle.sh`.
+RALPH_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh
 RALPH_CRATE_SOURCE_FILES := $(shell find crates -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) 2>/dev/null | LC_ALL=C sort)
 # Set to 1 to keep Xcode derived data between runs (faster local iteration; less pristine than default).
 RALPH_XCODE_KEEP_DERIVED_DATA ?= 0
@@ -79,7 +78,7 @@ XCODE_ACTIVE_ARCH_FLAGS := ARCHS=$(XCODE_ARCHS) ONLY_ACTIVE_ARCH=YES
 RALPH_CLI_BUILD_JOBS_ARG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
 XCODE_MACOS_BUILD_DERIVED_DATA_PATH := $(if $(filter 1,$(RALPH_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/build)
 XCODE_MACOS_TEST_DERIVED_DATA_PATH := $(if $(filter 1,$(RALPH_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/test)
-XCODE_MACOS_RELEASE_APP_BUNDLE := $(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)/Build/Products/Release/RalphMac.app
+XCODE_MACOS_RELEASE_APP_BUNDLE := $(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)/Build/Products/Release/CueLoopMac.app
 
 .DELETE_ON_ERROR:
 .ONESHELL:
@@ -105,7 +104,7 @@ help:
 	@echo "  make agent-ci    # Required pre-commit gate: routes from the current local diff"
 	@echo "  make release-gate # Heaviest final gate: macOS when available, otherwise Rust-only"
 	@echo "  make pre-public-check # Publication audit + full local CI"
-	@echo "  make install      # Install release CLI; on macOS also installs RalphMac.app"
+	@echo "  make install      # Install release CLI; on macOS also installs CueLoopMac.app"
 	@echo ""
 	@echo "Lower-level / power-user gates:"
 	@echo "  make ci-docs     # Docs/community-only gate with markdown and path checks"
@@ -131,7 +130,7 @@ help:
 	@echo "  make security-audit # Audit Cargo.lock against RustSec advisories (requires cargo-audit)"
 	@echo "  make rust-toolchain-check # Verify repo-pinned Rust toolchain baseline"
 	@echo "  make rust-toolchain-drift-check # Compare repo-pinned Rust against global rustup stable"
-	@echo "  make macos-install-app # Copy latest Release RalphMac.app into Applications"
+	@echo "  make macos-install-app # Copy latest Release CueLoopMac.app into Applications"
 	@echo "  make version-check # Verify VERSION, Cargo, and Xcode version metadata are synchronized"
 	@echo "  make version-sync VERSION=x.y.z # Sync repo version metadata from one canonical semver"
 	@echo "  make publish-check # Run cargo package review + crates.io dry-run for $(CARGO_PACKAGE_NAME)"
@@ -145,9 +144,9 @@ help:
 	@echo "  RALPH_XCODE_JOBS=4  # Example cap for shared workstations (0 = xcodebuild default)"
 	@echo "  XCODE_ARCHS=$$(uname -m) # Host-arch Xcode CI/test builds (override only for cross-arch validation)"
 	@echo "  rust-toolchain.toml is respected automatically when rustup is available"
-	@echo "  RALPH_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
-	@echo "  RALPH_UI_ONLY_TESTING=RalphMacUITests/RalphMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
-	@echo "  RALPH_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
+	@echo "  CUELOOP_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
+	@echo "  CUELOOP_UI_ONLY_TESTING=CueLoopMacUITests/CueLoopMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
+	@echo "  CUELOOP_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
 	@echo "  RALPH_XCODE_KEEP_DERIVED_DATA=1 # Keep Xcode incremental caches (default 0 = clean derived data per gate)"
 	@echo "  RALPH_AGENT_CI_MIN_TIER=macos-ci|ci|ci-fast # Floor for agent-ci routing (optional)"
 	@echo "  RALPH_AGENT_CI_FORCE_MACOS=1 # Always run macos-ci from agent-ci"

@@ -2,14 +2,14 @@
 #
 # Purpose: Deterministically verify macOS workspace bootstrap/routing flows without hijacking the desktop.
 # Responsibilities:
-# - Launch the built RalphMac app in noninteractive workspace-routing contract mode with disposable workspaces.
+# - Launch the built CueLoopMac app in noninteractive workspace-routing contract mode with disposable workspaces.
 # - Exercise bootstrap URL-open retargeting, existing-workspace URL focus, and pending scene-route delivery in-process.
 # - Fail if workspace routing reintroduces duplicate workspaces, extra windows, or stale scene-route delivery.
 # Scope:
 # - Local macOS contract verification only; it does not build the app by itself.
 # Usage:
 # - scripts/macos-workspace-routing-contract.sh
-# - scripts/macos-workspace-routing-contract.sh --app-bundle target/tmp/xcode-deriveddata/build/Build/Products/Release/RalphMac.app
+# - scripts/macos-workspace-routing-contract.sh --app-bundle target/tmp/xcode-deriveddata/build/Build/Products/Release/CueLoopMac.app
 # Invariants/assumptions:
 # - Requires macOS with `python3` available.
 # - The app bundle contains the companion `cueloop` CLI at `Contents/MacOS/cueloop`.
@@ -17,8 +17,8 @@
 
 set -euo pipefail
 
-APP_BUNDLE="target/tmp/xcode-deriveddata/build/Build/Products/Release/RalphMac.app"
-APP_NAME="RalphMac"
+APP_BUNDLE="target/tmp/xcode-deriveddata/build/Build/Products/Release/CueLoopMac.app"
+APP_NAME="CueLoopMac"
 TIMEOUT_SECONDS="90"
 
 usage() {
@@ -27,7 +27,7 @@ Usage:
   scripts/macos-workspace-routing-contract.sh [--app-bundle <path>] [--timeout <seconds>]
 
 Options:
-  --app-bundle <path>   RalphMac.app bundle to launch
+  --app-bundle <path>   CueLoopMac.app bundle to launch
   --timeout <seconds>   Timeout for the in-app contract run (default: 90)
   -h, --help            Show this help text
 EOF
@@ -89,7 +89,7 @@ if [ ! -x "$APP_CLI" ]; then
     exit 2
 fi
 
-TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ralph-workspace-routing-contract.XXXXXX")"
+TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/cueloop-workspace-routing-contract.XXXXXX")"
 WORKSPACE_A="$TEMP_ROOT/workspace-a"
 WORKSPACE_B="$TEMP_ROOT/workspace-b"
 WORKSPACE_C="$TEMP_ROOT/workspace-c"
@@ -177,10 +177,10 @@ WORKSPACE_C="$(canonicalize_path "$WORKSPACE_C")"
 
 rm -f "$REPORT_PATH" "$APP_LOG"
 
-RALPH_WORKSPACE_ROUTING_CONTRACT_WORKSPACE_A="$WORKSPACE_A" \
-RALPH_WORKSPACE_ROUTING_CONTRACT_WORKSPACE_B="$WORKSPACE_B" \
-RALPH_WORKSPACE_ROUTING_CONTRACT_WORKSPACE_C="$WORKSPACE_C" \
-RALPH_WORKSPACE_ROUTING_CONTRACT_REPORT_PATH="$REPORT_PATH" \
+CUELOOP_WORKSPACE_ROUTING_CONTRACT_WORKSPACE_A="$WORKSPACE_A" \
+CUELOOP_WORKSPACE_ROUTING_CONTRACT_WORKSPACE_B="$WORKSPACE_B" \
+CUELOOP_WORKSPACE_ROUTING_CONTRACT_WORKSPACE_C="$WORKSPACE_C" \
+CUELOOP_WORKSPACE_ROUTING_CONTRACT_REPORT_PATH="$REPORT_PATH" \
 "$APP_EXECUTABLE" --workspace-routing-contract >"$APP_LOG" 2>&1 &
 APP_PID="$!"
 
