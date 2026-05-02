@@ -15,7 +15,7 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - Tests initialize isolated temp workspaces with `ralph init --non-interactive` before exercising task creation.
+ - Tests initialize isolated temp workspaces with `cueloop init --non-interactive` before exercising task creation.
  */
 
 import XCTest

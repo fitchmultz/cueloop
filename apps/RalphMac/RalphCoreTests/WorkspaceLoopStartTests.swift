@@ -155,7 +155,7 @@ final class WorkspaceLoopStartTests: WorkspacePerformanceTestCase {
               ;;
               *"--no-color machine run loop --resume --max-tasks 0"*)
               echo '{"version":3,"kind":"run_started","task_id":null,"phase":null,"message":null,"payload":null}'
-              echo '{"version":3,"kind":"blocked_state_changed","task_id":null,"phase":null,"message":"Ralph is blocked by unfinished dependencies.","payload":{"status":"blocked","reason":{"kind":"dependency_blocked","blocked_tasks":2},"task_id":null,"message":"Ralph is blocked by unfinished dependencies.","detail":"2 candidate task(s) are waiting on dependency completion."}}'
+              echo '{"version":3,"kind":"blocked_state_changed","task_id":null,"phase":null,"message":"CueLoop is blocked by unfinished dependencies.","payload":{"status":"blocked","reason":{"kind":"dependency_blocked","blocked_tasks":2},"task_id":null,"message":"CueLoop is blocked by unfinished dependencies.","detail":"2 candidate task(s) are waiting on dependency completion."}}'
               echo '{"version":3,"kind":"warning","task_id":null,"phase":null,"message":"Loop task failed after stream start.","payload":null}'
               echo '{"version":2,"task_id":null,"exit_code":1,"outcome":"failed","blocking":null}'
               echo '{"version":1,"code":"runner_failed","message":"machine stderr should not drive loop failure state","details":null}' 1>&2

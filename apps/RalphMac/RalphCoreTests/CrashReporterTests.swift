@@ -125,7 +125,7 @@ final class CrashReporterTests: RalphCoreTestCase {
         )
 
         let formatted = report.formattedReport
-        XCTAssertTrue(formatted.contains("Ralph Crash Report"))
+        XCTAssertTrue(formatted.contains("CueLoop Crash Report"))
         XCTAssertTrue(formatted.contains("TestException"))
         XCTAssertTrue(formatted.contains("frame1"))
         XCTAssertTrue(formatted.contains("1.0.0"))

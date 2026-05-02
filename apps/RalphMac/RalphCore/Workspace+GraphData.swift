@@ -1,10 +1,10 @@
 //! Workspace+GraphData
 //!
 //! Purpose:
-//! - Load dependency graph data from the Ralph CLI.
+//! - Load dependency graph data from the CueLoop CLI.
 //!
 //! Responsibilities:
-//! - Load dependency graph data from the Ralph CLI.
+//! - Load dependency graph data from the CueLoop CLI.
 //!
 //! Does not handle:
 //! - Graph layout or visualization.

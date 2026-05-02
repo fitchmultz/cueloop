@@ -147,7 +147,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
                         "seconds_until_next_runnable": .number(86400)
                     ]),
                     "task_id": .null,
-                    "message": .string("Ralph is waiting for scheduled work to become runnable."),
+                    "message": .string("CueLoop is waiting for scheduled work to become runnable."),
                     "detail": .string("1 candidate task(s) are scheduled for the future. The next one becomes runnable at 2026-12-31T00:00:00Z (86400s remaining).")
                 ])
             ])
@@ -265,7 +265,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
         )
 
         guard case .event(let event) = items.first else {
@@ -280,7 +280,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
             workspace.runState.blockingState?.reason,
             .dependencyBlocked(blockedTasks: 2)
         )
-        XCTAssertTrue(workspace.output.contains("Ralph is blocked by unfinished dependencies."))
+        XCTAssertTrue(workspace.output.contains("CueLoop is blocked by unfinished dependencies."))
     }
 
     func test_runSummary_appliesBlockingState() {
@@ -289,7 +289,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"blocked\",\"blocking\":{\"status\":\"waiting\",\"reason\":{\"kind\":\"schedule_blocked\",\"blocked_tasks\":1,\"next_runnable_at\":\"2026-12-31T00:00:00Z\",\"seconds_until_next_runnable\":86400},\"task_id\":null,\"message\":\"Ralph is waiting for scheduled work to become runnable.\",\"detail\":\"1 candidate task(s) are scheduled for the future. The next one becomes runnable at 2026-12-31T00:00:00Z (86400s remaining).\"}}\n"
+            "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"blocked\",\"blocking\":{\"status\":\"waiting\",\"reason\":{\"kind\":\"schedule_blocked\",\"blocked_tasks\":1,\"next_runnable_at\":\"2026-12-31T00:00:00Z\",\"seconds_until_next_runnable\":86400},\"task_id\":null,\"message\":\"CueLoop is waiting for scheduled work to become runnable.\",\"detail\":\"1 candidate task(s) are scheduled for the future. The next one becomes runnable at 2026-12-31T00:00:00Z (86400s remaining).\"}}\n"
         )
 
         guard case .summary(let summary) = items.first else {
@@ -315,7 +315,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\",\"observed_at\":\"2026-12-30T00:00:00Z\"}}\n"
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\",\"observed_at\":\"2026-12-30T00:00:00Z\"}}\n"
                 + "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"stopped\",\"blocking\":null}\n"
         )
 
@@ -333,8 +333,8 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\",\"observed_at\":\"2026-12-30T00:00:00Z\"}}\n"
-                + "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"no_candidates\",\"blocking\":{\"status\":\"waiting\",\"reason\":{\"kind\":\"idle\",\"include_draft\":false},\"task_id\":null,\"message\":\"Ralph is idle: no todo tasks are available.\",\"detail\":\"The queue currently has no runnable todo candidates; Ralph is waiting for new work.\",\"observed_at\":\"2026-12-31T00:00:00Z\"}}\n"
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\",\"observed_at\":\"2026-12-30T00:00:00Z\"}}\n"
+                + "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"no_candidates\",\"blocking\":{\"status\":\"waiting\",\"reason\":{\"kind\":\"idle\",\"include_draft\":false},\"task_id\":null,\"message\":\"CueLoop is idle: no todo tasks are available.\",\"detail\":\"The queue currently has no runnable todo candidates; CueLoop is waiting for new work.\",\"observed_at\":\"2026-12-31T00:00:00Z\"}}\n"
         )
 
         for item in items {
@@ -353,7 +353,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
                 + "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"completed\",\"blocking\":null}\n"
         )
 
@@ -371,7 +371,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
                 + "{\"version\":2,\"task_id\":null,\"exit_code\":1,\"outcome\":\"failed\",\"blocking\":null}\n"
         )
 
@@ -389,7 +389,7 @@ final class WorkspaceRunStateResumeBlockingTests: WorkspacePerformanceTestCase {
         )
         var decoder = WorkspaceRunnerController.MachineRunOutputDecoder()
         let items = decoder.append(
-            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"Ralph is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
+            "{\"version\":3,\"kind\":\"blocked_state_changed\",\"task_id\":null,\"phase\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"payload\":{\"status\":\"blocked\",\"reason\":{\"kind\":\"dependency_blocked\",\"blocked_tasks\":2},\"task_id\":null,\"message\":\"CueLoop is blocked by unfinished dependencies.\",\"detail\":\"2 candidate task(s) are waiting on dependency completion.\"}}\n"
                 + "{\"version\":2,\"task_id\":null,\"exit_code\":0,\"outcome\":\"future_mode\",\"blocking\":null}\n"
         )
 

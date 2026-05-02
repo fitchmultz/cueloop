@@ -47,7 +47,7 @@ public struct VersionValidator: Sendable, Equatable {
         }
         
         public init?(from string: String) {
-            // Parse version strings like "0.1.0", "cueloop 0.1.0", "ralph 0.1.0", "v0.1.0"
+            // Parse version strings like "0.1.0", "cueloop 0.1.0", "cueloop 0.1.0", "v0.1.0"
             let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
             
             // Extract version number pattern (X.Y.Z)

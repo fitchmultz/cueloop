@@ -2,10 +2,10 @@
  DecompositionModels
 
  Purpose:
- - Mirror the stable JSON payloads emitted by `ralph machine task decompose`.
+ - Mirror the stable JSON payloads emitted by `cueloop machine task decompose`.
 
  Responsibilities:
- - Mirror the stable JSON payloads emitted by `ralph machine task decompose`.
+ - Mirror the stable JSON payloads emitted by `cueloop machine task decompose`.
  - Provide app-side request models for previewing and writing task decompositions.
  - Keep decoding logic centralized so views and workspace operations stay type-safe.
 

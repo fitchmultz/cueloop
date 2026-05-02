@@ -86,7 +86,7 @@ enum RalphCLIRecoveryClassifier {
             case .executableNotFound:
                 return makeRecovery(
                     category: .cliUnavailable,
-                    message: "Ralph CLI executable not found",
+                    message: "CueLoop CLI executable not found",
                     underlyingError: cliError.localizedDescription,
                     operation: operation,
                     workspaceURL: workspaceURL
@@ -94,7 +94,7 @@ enum RalphCLIRecoveryClassifier {
             case .executableNotExecutable:
                 return makeRecovery(
                     category: .cliUnavailable,
-                    message: "Ralph CLI is not executable",
+                    message: "CueLoop CLI is not executable",
                     underlyingError: cliError.localizedDescription,
                     operation: operation,
                     workspaceURL: workspaceURL
@@ -189,7 +189,7 @@ enum RalphCLIRecoveryClassifier {
         if normalized.contains("queue file") && normalized.contains("no such file") {
             return makeRecovery(
                 category: .queueCorrupted,
-                message: "No Ralph queue file found",
+                message: "No CueLoop queue file found",
                 underlyingError: description,
                 operation: operation,
                 workspaceURL: workspaceURL
@@ -199,7 +199,7 @@ enum RalphCLIRecoveryClassifier {
         if isCLIUnavailableDescription(normalized) {
             return makeRecovery(
                 category: .cliUnavailable,
-                message: "Ralph CLI executable is not available",
+                message: "CueLoop CLI executable is not available",
                 underlyingError: description,
                 operation: operation,
                 workspaceURL: workspaceURL
@@ -243,7 +243,7 @@ enum RalphCLIRecoveryClassifier {
         {
             return makeRecovery(
                 category: .configIncompatible,
-                message: "Workspace config is incompatible with this Ralph version",
+                message: "Workspace config is incompatible with this CueLoop version",
                 underlyingError: description,
                 operation: operation,
                 workspaceURL: workspaceURL
@@ -260,7 +260,7 @@ enum RalphCLIRecoveryClassifier {
         {
             return makeRecovery(
                 category: .versionMismatch,
-                message: "Ralph CLI version is incompatible with this app",
+                message: "CueLoop CLI version is incompatible with this app",
                 underlyingError: description,
                 operation: operation,
                 workspaceURL: workspaceURL
@@ -309,8 +309,10 @@ enum RalphCLIRecoveryClassifier {
     private static func isCLIUnavailableDescription(_ normalized: String) -> Bool {
         normalized.contains("command not found")
             || normalized.contains("executable not found")
-            || normalized.contains("ralph cli executable not found")
-            || normalized.contains("ralph cli executable is not available")
+            || normalized.contains("cueloop cli executable not found")
+            || normalized.contains("cueloop cli executable is not available")
+            || normalized.contains("cueloop cli executable not found")
+            || normalized.contains("cueloop cli executable is not available")
             || normalized.contains("bundled cli unavailable")
             || normalized.contains("failed to spawn")
             || normalized.contains("spawn enoent")
@@ -381,25 +383,25 @@ enum RalphCLIRecoveryClassifier {
         switch category {
         case .cliUnavailable:
             return [
-                "Ensure Ralph is installed correctly",
-                "Reinstall Ralph",
+                "Ensure CueLoop is installed correctly",
+                "Reinstall CueLoop",
                 "Verify the app bundle contains the CLI",
                 "Check file permissions",
             ]
         case .permissionDenied:
             return [
                 "Check workspace directory permissions",
-                "Ensure Ralph can access the selected folder",
+                "Ensure CueLoop can access the selected folder",
             ]
         case .configIncompatible:
             return [
-                "Run `ralph migrate --apply` in the repository",
+                "Run `cueloop migrate --apply` in the repository",
                 "Retry after the migration completes",
             ]
         case .parseError:
             return [
-                "Run `ralph queue validate` to inspect continuation readiness",
-                "Preview `ralph queue repair --dry-run` if the queue looks inconsistent",
+                "Run `cueloop queue validate` to inspect continuation readiness",
+                "Preview `cueloop queue repair --dry-run` if the queue looks inconsistent",
                 "Check whether the CLI and app versions match",
             ]
         case .networkError:
@@ -410,25 +412,25 @@ enum RalphCLIRecoveryClassifier {
             ]
         case .queueCorrupted:
             return [
-                "Run `ralph queue validate` to inspect the current continuation state",
-                "Preview `ralph queue repair --dry-run` before applying repair",
-                "Preview `ralph undo --dry-run` if a recent queue write introduced the issue",
+                "Run `cueloop queue validate` to inspect the current continuation state",
+                "Preview `cueloop queue repair --dry-run` before applying repair",
+                "Preview `cueloop undo --dry-run` if a recent queue write introduced the issue",
             ]
         case .queueLock:
             return [
                 "Inspect the queue lock owner before retrying",
-                "Preview `ralph queue unlock --dry-run` to see whether the lock is stale",
-                "Only clear the lock after Ralph confirms the recorded PID is dead",
+                "Preview `cueloop queue unlock --dry-run` to see whether the lock is stale",
+                "Only clear the lock after CueLoop confirms the recorded PID is dead",
             ]
         case .resourceBusy:
             return [
                 "Wait a moment and retry",
-                "Check if another process is using Ralph",
-                "Close other Ralph windows that may be using the same workspace",
+                "Check if another process is using CueLoop",
+                "Close other CueLoop windows that may be using the same workspace",
             ]
         case .versionMismatch:
             return [
-                "Reinstall Ralph",
+                "Reinstall CueLoop",
                 "Verify the bundled CLI version matches the app",
             ]
         case .unknown:

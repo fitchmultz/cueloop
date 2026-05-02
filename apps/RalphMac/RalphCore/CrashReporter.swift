@@ -59,7 +59,7 @@ public struct CrashReport: Codable, Identifiable, Sendable {
 
     public var formattedReport: String {
         var lines: [String] = []
-        lines.append("=== Ralph Crash Report ===")
+        lines.append("=== CueLoop Crash Report ===")
         lines.append("ID: \(id.uuidString)")
         lines.append("Timestamp: \(timestamp.formatted(.iso8601))")
         lines.append("App Version: \(appVersion)")

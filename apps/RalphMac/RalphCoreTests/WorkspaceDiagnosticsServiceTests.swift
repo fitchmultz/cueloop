@@ -42,7 +42,7 @@ final class WorkspaceDiagnosticsServiceTests: RalphCoreTestCase {
               "owner_pid": 42
             },
             "task_id": null,
-            "message": "Ralph is stalled on a stale queue lock.",
+            "message": "CueLoop is stalled on a stale queue lock.",
             "detail": "dead pid"
           },
           "report": { "success": false }
@@ -134,9 +134,9 @@ final class WorkspaceDiagnosticsServiceTests: RalphCoreTestCase {
         let output = await WorkspaceDiagnosticsService.queueValidationOutput(for: workspace)
         XCTAssertTrue(output.contains("Queue validation skipped"))
         XCTAssertTrue(output.contains(customQueueURL.path))
-        XCTAssertTrue(output.contains("ralph machine config resolve"))
+        XCTAssertTrue(output.contains("cueloop machine config resolve"))
         XCTAssertFalse(output.contains(".ralph/config.jsonc"))
-        XCTAssertFalse(output.contains("ralph init --non-interactive"))
+        XCTAssertFalse(output.contains("cueloop init --non-interactive"))
     }
 
     func testQueueValidationOutput_reportsConfigResolutionFailure() async throws {
@@ -169,7 +169,7 @@ final class WorkspaceDiagnosticsServiceTests: RalphCoreTestCase {
 
         let output = await WorkspaceDiagnosticsService.queueValidationOutput(for: workspace)
         XCTAssertTrue(output.contains("could not resolve the workspace queue paths"))
-        XCTAssertTrue(output.contains("Workspace config is incompatible with this Ralph version"))
+        XCTAssertTrue(output.contains("Workspace config is incompatible with this CueLoop version"))
     }
 }
 

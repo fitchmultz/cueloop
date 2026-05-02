@@ -35,11 +35,11 @@ extension Workspace {
         public var errorDescription: String? {
             switch self {
             case .cliClientUnavailable:
-                return "Ralph cannot continue because the CLI client is unavailable."
+                return "CueLoop cannot continue because the CLI client is unavailable."
             case .cliError(let message):
                 return message
             case .taskConflict:
-                return "Ralph is blocked from continuing this edit because the task changed elsewhere. Review the conflict, choose which values to keep, then save again."
+                return "CueLoop is blocked from continuing this edit because the task changed elsewhere. Review the conflict, choose which values to keep, then save again."
             }
         }
     }

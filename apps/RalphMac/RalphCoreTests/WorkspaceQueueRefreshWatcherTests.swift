@@ -72,7 +72,7 @@ extension WorkspaceQueueRefreshTests {
         XCTAssertEqual(
             activeQueueURL.deletingLastPathComponent().lastPathComponent,
             ".cueloop",
-            "New `ralph init` workspaces should watch the CueLoop runtime queue path"
+            "New `cueloop init` workspaces should watch the CueLoop runtime queue path"
         )
 
         _ = try FileManager.default.replaceItemAt(

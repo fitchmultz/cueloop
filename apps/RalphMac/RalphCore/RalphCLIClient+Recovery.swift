@@ -107,23 +107,23 @@ extension ErrorCategory {
     public var guidanceMessage: String? {
         switch self {
         case .cliUnavailable:
-            return "The Ralph CLI could not be found or is not executable. This may indicate an incomplete installation."
+            return "The CueLoop CLI could not be found or is not executable. This may indicate an incomplete installation."
         case .permissionDenied:
-            return "Ralph doesn't have permission to access required files. Check that you have read/write access to the workspace directory."
+            return "CueLoop doesn't have permission to access required files. Check that you have read/write access to the workspace directory."
         case .configIncompatible:
-            return "The workspace config is using an older or unsupported Ralph contract. Run `ralph migrate --apply` in the repository, then retry."
+            return "The workspace config is using an older or unsupported CueLoop contract. Run `cueloop migrate --apply` in the repository, then retry."
         case .parseError:
-            return "Ralph could not decode a continuation payload. Validate the queue state first, then preview repair if the queue itself is inconsistent."
+            return "CueLoop could not decode a continuation payload. Validate the queue state first, then preview repair if the queue itself is inconsistent."
         case .networkError:
             return "A network operation failed. Check your connection and try again."
         case .queueCorrupted:
-            return "Ralph is stalled on queue consistency. Validate first, preview repair next, and restore the last continuation checkpoint if a recent write introduced the problem."
+            return "CueLoop is stalled on queue consistency. Validate first, preview repair next, and restore the last continuation checkpoint if a recent write introduced the problem."
         case .queueLock:
-            return "Another Ralph process may own the queue lock, or a stale/broken queue lock record needs inspection. Preview unlock state before clearing anything."
+            return "Another CueLoop process may own the queue lock, or a stale/broken queue lock record needs inspection. Preview unlock state before clearing anything."
         case .resourceBusy:
             return "A required resource is temporarily unavailable. This usually resolves on retry."
         case .versionMismatch:
-            return "The Ralph CLI version is incompatible with this app. Please reinstall to ensure versions match."
+            return "The CueLoop CLI version is incompatible with this app. Please reinstall to ensure versions match."
         case .unknown:
             return "An unexpected error occurred. Check the logs for more details."
         }
@@ -159,7 +159,7 @@ public struct RecoveryError: Error, Sendable {
 
     public var fullErrorDetails: String {
         var lines: [String] = []
-        lines.append("=== Ralph Error Report ===")
+        lines.append("=== CueLoop Error Report ===")
         lines.append("Timestamp: \(timestamp.formatted(.iso8601))")
         lines.append("Category: \(category.displayName)")
         lines.append("Operation: \(operation)")

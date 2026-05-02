@@ -2,10 +2,10 @@
  AnalyticsModels
 
  Purpose:
- - Define Codable models for parsing analytics JSON from `ralph productivity` and `ralph queue` commands.
+ - Define Codable models for parsing analytics JSON from `cueloop productivity` and `cueloop queue` commands.
 
  Responsibilities:
- - Define Codable models for parsing analytics JSON from `ralph productivity` and `ralph queue` commands.
+ - Define Codable models for parsing analytics JSON from `cueloop productivity` and `cueloop queue` commands.
  - Model per-section analytics loading state so the UI can distinguish loading, empty, and failed sections.
  - Provide render-focused helpers that classify loaded reports as content-bearing or data-empty.
 

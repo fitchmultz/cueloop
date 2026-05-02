@@ -32,16 +32,16 @@ private extension ErrorCategory {
         switch self {
         case .cliUnavailable:
             return """
-            The Ralph CLI is not available. This can happen when:
+            The CueLoop CLI is not available. This can happen when:
             - The app bundle is damaged or incomplete
-            - The ralph binary was moved or deleted
+            - The cueloop binary was moved or deleted
             - Security software quarantined the binary
 
-            Try reinstalling Ralph or checking your security software.
+            Try reinstalling CueLoop or checking your security software.
             """
         case .permissionDenied:
             return """
-            Ralph cannot access the workspace directory. This can happen when:
+            CueLoop cannot access the workspace directory. This can happen when:
             - The directory was moved or deleted
             - File permissions changed
             - The workspace is on a disconnected drive
@@ -50,9 +50,9 @@ private extension ErrorCategory {
             """
         case .configIncompatible:
             return """
-            The selected workspace is using an older or unsupported Ralph config contract.
+            The selected workspace is using an older or unsupported CueLoop config contract.
 
-            Run `ralph migrate --apply` in the repository, then retry the action.
+            Run `cueloop migrate --apply` in the repository, then retry the action.
             """
         case .networkError:
             return """
@@ -65,7 +65,7 @@ private extension ErrorCategory {
             """
         case .queueLock:
             return """
-            Ralph found queue-lock contention or a broken queue-lock record.
+            CueLoop found queue-lock contention or a broken queue-lock record.
 
             Inspect the current lock owner and preview unlock state before clearing anything. The app only enables stale-lock clearing when the lock is confirmed dead-PID stale.
             """
@@ -484,7 +484,7 @@ struct ErrorRecoverySheet: View {
             message: "Queue data appears corrupted",
             underlyingError: "queue validation failed: duplicate id RQ-0001",
             operation: "loadTasks",
-            suggestions: ["Run `ralph queue validate`", "Preview `ralph queue repair --dry-run`"]
+            suggestions: ["Run `cueloop queue validate`", "Preview `cueloop queue repair --dry-run`"]
         ),
         workspace: nil,
         onRetry: {},

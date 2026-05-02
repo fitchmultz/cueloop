@@ -346,7 +346,7 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
         "next_steps": [
           {
             "title": "Write the preview",
-            "command": "ralph machine task decompose --write ...",
+            "command": "cueloop machine task decompose --write ...",
             "detail": "Persist the planned tree into the queue."
           }
         ]
@@ -440,17 +440,17 @@ final class WorkspaceTaskDecomposeTests: RalphCoreTestCase {
       },
       "continuation": {
         "headline": "Decomposition has been written.",
-        "detail": "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue.",
+        "detail": "CueLoop wrote the planned task tree and created an undo checkpoint before mutating the queue.",
         "blocking": null,
         "next_steps": [
           {
             "title": "Inspect the tree",
-            "command": "ralph machine queue graph",
+            "command": "cueloop machine queue graph",
             "detail": "Review the written parent/child structure."
           },
           {
             "title": "Restore if needed",
-            "command": "ralph machine queue undo --dry-run",
+            "command": "cueloop machine queue undo --dry-run",
             "detail": "Preview the rollback path for this decomposition."
           }
         ]

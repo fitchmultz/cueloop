@@ -2,10 +2,10 @@
  Workspace+TaskMutations
 
  Purpose:
- - Apply single-task and bulk task mutations through `ralph machine task mutate`.
+ - Apply single-task and bulk task mutations through `cueloop machine task mutate`.
 
  Responsibilities:
- - Apply single-task and bulk task mutations through `ralph machine task mutate`.
+ - Apply single-task and bulk task mutations through `cueloop machine task mutate`.
  - Build atomic mutation requests from app task state and user edits.
  - Surface optimistic-lock conflicts after refreshing workspace tasks from disk.
 

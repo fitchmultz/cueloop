@@ -67,7 +67,7 @@ final class RalphModelsTests: RalphCoreTestCase {
           "root": {
             "name": "ralph",
             "path": ["ralph"],
-            "about": "Ralph is a Rust CLI for running AI agent loops against a JSON task queue",
+            "about": "CueLoop is a Rust CLI for running AI agent loops against a JSON task queue",
             "hidden": false,
             "args": [
               {

@@ -47,7 +47,7 @@ public final class RalphLogger: @unchecked Sendable {
         }
     }
     
-    /// The subsystem identifier for all Ralph logs
+    /// The subsystem identifier for all CueLoop logs
     public static let subsystem = "com.mitchfultz.ralph"
     
     /// Logger instances for each category - immutable after init, safe for concurrent access

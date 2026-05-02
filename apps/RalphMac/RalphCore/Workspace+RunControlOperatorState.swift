@@ -330,7 +330,7 @@ public extension Workspace {
                     actions.append(
                         unsupportedAction(
                             title: "Follow Recovery Path",
-                            detail: "Ralph requires explicit operator recovery before the run can continue.",
+                            detail: "CueLoop requires explicit operator recovery before the run can continue.",
                             command: nil,
                             reason: "This recovery flow does not expose a native app action yet."
                         )
@@ -378,7 +378,7 @@ public extension Workspace {
                     nativeAction(
                         .refreshRunControlStatus,
                         title: "Refresh Resume Decision",
-                        detail: "Ralph will continue by starting a new invocation for the next run."
+                        detail: "CueLoop will continue by starting a new invocation for the next run."
                     )
                 ]
             case .refusingToResume:
@@ -423,50 +423,50 @@ public extension Workspace {
             command: String,
             detail: String
         ) -> RunControlOperatorAction {
-            let normalizedCommand = normalizedCommand(command)
-            switch normalizedCommand {
-            case "ralph machine queue validate":
+            let normalizedCueLoopCommand = normalizedCueLoopCommand(command)
+            switch normalizedCueLoopCommand {
+            case "machine queue validate":
                 return nativeAction(
                     .validateQueue,
                     title: title ?? "Validate Queue",
                     detail: detail,
                     command: command
                 )
-            case "ralph machine queue repair --dry-run":
+            case "machine queue repair --dry-run":
                 return nativeAction(
                     .previewQueueRepair,
                     title: title ?? "Preview Queue Repair",
                     detail: detail,
                     command: command
                 )
-            case "ralph machine queue undo --dry-run":
+            case "machine queue undo --dry-run":
                 return nativeAction(
                     .previewQueueUndo,
                     title: title ?? "Preview Queue Restore",
                     detail: detail,
                     command: command
                 )
-            case "ralph machine run parallel-status":
+            case "machine run parallel-status":
                 return nativeAction(
                     .refreshParallelStatus,
                     title: title ?? "Refresh Parallel Status",
                     detail: detail,
                     command: command
                 )
-            case "ralph machine run stop":
+            case "machine run stop":
                 return nativeAction(
                     .stopAfterCurrent,
                     title: title ?? "Stop After Current",
                     detail: detail,
                     command: command
                 )
-            case "ralph machine run stop --dry-run":
+            case "machine run stop --dry-run":
                 return copyAction(
                     title: title ?? "Preview Stop Request",
                     detail: detail,
                     command: command
                 )
-            case "ralph machine run one --resume":
+            case "machine run one --resume":
                 return unsupportedAction(
                     title: title ?? "Continue Work",
                     detail: detail,
@@ -474,7 +474,7 @@ public extension Workspace {
                     reason: "Run Control uses the existing Run Next Task and Run Selected Task buttons for this flow."
                 )
             default:
-                if normalizedCommand.hasPrefix("ralph machine run loop --resume --max-tasks 0 --parallel") {
+                if normalizedCueLoopCommand.hasPrefix("machine run loop --resume --max-tasks 0 --parallel") {
                     return unsupportedAction(
                         title: title ?? "Start Parallel Execution",
                         detail: detail,
@@ -482,12 +482,12 @@ public extension Workspace {
                         reason: "Use the native Start Loop controls above to choose the worker count."
                     )
                 }
-                if normalizedCommand.hasPrefix("ralph run parallel retry --task") {
+                if normalizedCueLoopCommand.hasPrefix("run parallel retry --task") {
                     return unsupportedAction(
                         title: title ?? "Retry Worker Integration",
                         detail: detail,
                         command: command,
-                        reason: "Retained worker retry is not exposed as a native RalphMac action yet."
+                        reason: "Retained worker retry is not exposed as a native CueLoop app action yet."
                     )
                 }
                 return copyAction(
@@ -574,6 +574,17 @@ public extension Workspace {
                 .split(whereSeparator: \.isWhitespace)
                 .joined(separator: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        private static func normalizedCueLoopCommand(_ command: String) -> String {
+            let normalized = normalizedCommand(command)
+            if normalized.hasPrefix("cueloop ") {
+                return String(normalized.dropFirst("cueloop ".count))
+            }
+            if normalized.hasPrefix("cueloop ") {
+                return String(normalized.dropFirst("cueloop ".count))
+            }
+            return normalized
         }
 
         private static func deduplicatedActions(

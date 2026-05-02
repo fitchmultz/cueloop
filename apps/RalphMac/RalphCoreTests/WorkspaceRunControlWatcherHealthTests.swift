@@ -59,7 +59,7 @@ final class WorkspaceRunControlWatcherHealthTests: WorkspacePerformanceTestCase 
         XCTAssertEqual(workspace.operationalIssues.first?.severity, .info)
         XCTAssertEqual(
             workspace.operationalIssues.first?.recoverySuggestion,
-            "Ralph is retrying queue-file observation automatically."
+            "CueLoop is retrying queue-file observation automatically."
         )
     }
 

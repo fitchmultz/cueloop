@@ -109,7 +109,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         )
 
         let details = error.fullErrorDetails
-        XCTAssertTrue(details.contains("=== Ralph Error Report ==="))
+        XCTAssertTrue(details.contains("=== CueLoop Error Report ==="))
         XCTAssertTrue(details.contains("Category: Permission Denied"))
         XCTAssertTrue(details.contains("Operation: loadTasks"))
         XCTAssertTrue(details.contains("Message: Permission denied"))
@@ -161,7 +161,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
     }
 
     func testClassifyProcessSpawnENOENTAsCLIUnavailable() {
-        let stderr = "failed to spawn managed subprocess 'ralph machine queue read': No such file or directory (os error 2)"
+        let stderr = "failed to spawn managed subprocess 'cueloop machine queue read': No such file or directory (os error 2)"
         let genericError = NSError(
             domain: "RalphCore.CLIProcess",
             code: 1,
@@ -208,7 +208,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         let recoveryError = RecoveryError.classify(error: error, operation: "loadRunnerConfiguration")
         XCTAssertEqual(recoveryError.category, .configIncompatible)
         XCTAssertTrue(recoveryError.message.localizedCaseInsensitiveContains("config"))
-        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph migrate --apply") })
+        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("cueloop migrate --apply") })
         XCTAssertFalse(recoveryError.category.suggestedActions.contains(.validateQueue))
     }
 
@@ -246,7 +246,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         let document = MachineErrorDocument(
             version: 1,
             code: .queueCorrupted,
-            message: "No Ralph queue file found.",
+            message: "No CueLoop queue file found.",
             detail: "read queue file \(queuePath): No such file or directory (os error 2)",
             retryable: false
         )
@@ -255,7 +255,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
         XCTAssertEqual(recoveryError.category, .queueCorrupted)
-        XCTAssertEqual(recoveryError.message, "No Ralph queue file found.")
+        XCTAssertEqual(recoveryError.message, "No CueLoop queue file found.")
         XCTAssertEqual(recoveryError.underlyingError, document.detail)
     }
 
@@ -314,7 +314,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         let document = MachineErrorDocument(
             version: 1,
             code: .unknown,
-            message: "Ralph CLI command failed.",
+            message: "CueLoop CLI command failed.",
             detail: "unexpected [REDACTED] failure",
             retryable: false
         )
@@ -450,8 +450,8 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
         XCTAssertEqual(recoveryError.category, .queueCorrupted)
-        XCTAssertTrue(recoveryError.message.contains("No Ralph queue file found"))
-        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph queue validate") })
+        XCTAssertTrue(recoveryError.message.contains("No CueLoop queue file found"))
+        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("cueloop queue validate") })
     }
 
     func testClassifyRetryableProcessErrorWithoutStderrIncludesExitCode() {
@@ -516,7 +516,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
 
         let recoveryError = RecoveryError.classify(error: error, operation: "loadTasks")
         XCTAssertEqual(recoveryError.category, .queueCorrupted)
-        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("ralph queue repair --dry-run") })
+        XCTAssertTrue(recoveryError.suggestions.contains { $0.contains("cueloop queue repair --dry-run") })
     }
 
     func testClassifyNetworkError() {
@@ -533,7 +533,7 @@ final class ErrorRecoveryCategoryTests: RalphCoreTestCase {
         let minimumVersion = VersionCompatibility.minimumCLIVersion
         let foundVersion = "0.0.0"
         let error = NSError(domain: "VersionError", code: 1, userInfo: [
-            NSLocalizedDescriptionKey: "Ralph CLI version is too old (\(foundVersion)). Minimum supported version is \(minimumVersion)."
+            NSLocalizedDescriptionKey: "CueLoop CLI version is too old (\(foundVersion)). Minimum supported version is \(minimumVersion)."
         ])
 
         let recoveryError = RecoveryError.classify(error: error, operation: "checkVersion")
