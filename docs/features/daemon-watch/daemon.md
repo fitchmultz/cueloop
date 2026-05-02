@@ -1,45 +1,45 @@
-# Ralph Daemon Mode
+# CueLoop Daemon Mode
 Status: Active
 Owner: Maintainers
 Source of truth: this document for daemon-mode commands, behavior, and service setup
 Parent: [Daemon and Watch](../daemon-and-watch.md)
 
-This guide covers Ralph daemon mode: background task execution, lifecycle commands, process management, service setup, continuous waiting, and graceful shutdown.
+This guide covers CueLoop daemon mode: background task execution, lifecycle commands, process management, service setup, continuous waiting, and graceful shutdown.
 
 ## Daemon Mode
 
 ### Overview
 
-Daemon mode runs Ralph as a background service that continuously monitors the task queue and executes tasks automatically. It's designed for "set and forget" operation, ideal for:
+Daemon mode runs CueLoop as a background service that continuously monitors the task queue and executes tasks automatically. It's designed for "set and forget" operation, ideal for:
 
 - Long-running development sessions
 - CI/CD integration
 - Server environments
 - Automated workflows
 
-**INTENDED BEHAVIOR**: Run `ralph run loop --continuous --wait-when-blocked` as a detached background process with proper logging and lifecycle management.
+**INTENDED BEHAVIOR**: Run `cueloop run loop --continuous --wait-when-blocked` as a detached background process with proper logging and lifecycle management.
 
-**CURRENTLY IMPLEMENTED BEHAVIOR**: Full implementation on Unix systems (Linux, macOS). Windows requires manual service configuration or running `ralph run loop --continuous` in a terminal.
+**CURRENTLY IMPLEMENTED BEHAVIOR**: Full implementation on Unix systems (Linux, macOS). Windows requires manual service configuration or running `cueloop run loop --continuous` in a terminal.
 
-> **Platform Support**: Daemon mode is Unix-only. On Windows, use `ralph run loop --continuous` directly or configure a Windows service.
+> **Platform Support**: Daemon mode is Unix-only. On Windows, use `cueloop run loop --continuous` directly or configure a Windows service.
 
 ---
 
 ### Commands
 
-#### `ralph daemon start`
+#### `cueloop daemon start`
 
-Start Ralph as a background daemon.
+Start CueLoop as a background daemon.
 
 ```bash
 # Start with default settings
-ralph daemon start
+cueloop daemon start
 
 # Start with custom poll intervals
-ralph daemon start --empty-poll-ms 5000 --wait-poll-ms 500
+cueloop daemon start --empty-poll-ms 5000 --wait-poll-ms 500
 
 # Start with notifications when unblocked
-ralph daemon start --notify-when-unblocked
+cueloop daemon start --notify-when-unblocked
 ```
 
 **Flags:**
@@ -55,16 +55,16 @@ ralph daemon start --notify-when-unblocked
 1. Checks if daemon is already running (prevents duplicate instances)
 2. Acquires daemon lock at `.ralph/cache/daemon.lock`
 3. Creates log directory `.ralph/logs/`
-4. Spawns detached process running `ralph daemon serve`
+4. Spawns detached process running `cueloop daemon serve`
 5. Writes daemon state to `.ralph/cache/daemon.json`
 6. Validates successful startup (waits 500ms, checks state file)
 
-#### `ralph daemon stop`
+#### `cueloop daemon stop`
 
 Stop the daemon gracefully.
 
 ```bash
-ralph daemon stop
+cueloop daemon stop
 ```
 
 **Behavior:**
@@ -77,12 +77,12 @@ ralph daemon stop
 
 > **Note**: If the daemon doesn't stop within 10 seconds, you'll need to manually kill it with `kill -9 <PID>`.
 
-#### `ralph daemon status`
+#### `cueloop daemon status`
 
 Check daemon status.
 
 ```bash
-ralph daemon status
+cueloop daemon status
 ```
 
 **Output States:**
@@ -98,7 +98,7 @@ ralph daemon status
 Daemon is running
   PID: 12345
   Started: 2026-02-07T10:30:00Z
-  Command: ralph daemon serve --empty-poll-ms 30000 --wait-poll-ms 1000
+  Command: cueloop daemon serve --empty-poll-ms 30000 --wait-poll-ms 1000
 ```
 
 ---
@@ -153,7 +153,7 @@ The daemon maintains state in `.ralph/cache/daemon.json`:
   "pid": 12345,
   "started_at": "2026-02-07T10:30:00Z",
   "repo_root": "/path/to/repo",
-  "command": "ralph daemon serve --empty-poll-ms 30000"
+  "command": "cueloop daemon serve --empty-poll-ms 30000"
 }
 ```
 
@@ -183,7 +183,7 @@ Daemon behavior can be configured via CLI flags:
 Enable notifications when blocked tasks become runnable:
 
 ```bash
-ralph daemon start --notify-when-unblocked
+cueloop daemon start --notify-when-unblocked
 ```
 
 This triggers:
@@ -211,13 +211,13 @@ Create `~/.config/systemd/user/ralph.service`:
 
 ```ini
 [Unit]
-Description=Ralph Daemon
+Description=CueLoop Daemon
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=/path/to/your/repo
-ExecStart=/home/username/.local/bin/ralph daemon serve
+ExecStart=/home/username/.local/bin/cueloop daemon serve
 Restart=always
 RestartSec=10
 
@@ -232,16 +232,16 @@ WantedBy=default.target
 systemctl --user daemon-reload
 
 # Enable service to start on boot
-systemctl --user enable ralph
+systemctl --user enable cueloop
 
 # Start the service
-systemctl --user start ralph
+systemctl --user start cueloop
 
 # Check status
-systemctl --user status ralph
+systemctl --user status cueloop
 
 # View logs
-journalctl --user -u ralph -f
+journalctl --user -u cueloop -f
 ```
 
 #### launchd (macOS)
@@ -257,7 +257,7 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
     <string>com.ralph.daemon</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/username/.local/bin/ralph</string>
+        <string>/Users/username/.local/bin/cueloop</string>
         <string>daemon</string>
         <string>serve</string>
     </array>
@@ -305,18 +305,18 @@ Continuous mode keeps the daemon running indefinitely, waiting for new tasks whe
 
 ```bash
 # Via daemon (always uses continuous mode)
-ralph daemon start
+cueloop daemon start
 
 # Via run loop directly
-ralph run loop --continuous
+cueloop run loop --continuous
 # or
-ralph run loop --wait-when-empty
+cueloop run loop --wait-when-empty
 ```
 
 **Characteristics:**
 
 - No timeout (runs until stopped)
-- Respects stop signals (`ralph queue stop`, `ralph daemon stop`)
+- Respects stop signals (`cueloop queue stop`, `cueloop daemon stop`)
 - Responds to Ctrl+C when running in foreground
 - Polls at `--empty-poll-ms` interval
 
@@ -330,10 +330,10 @@ When all remaining tasks are blocked by unmet dependencies (`depends_on`) or fut
 
 ```bash
 # Daemon always uses this
-ralph daemon start
+cueloop daemon start
 
 # Manual run loop
-ralph run loop --wait-when-blocked
+cueloop run loop --wait-when-blocked
 ```
 
 **Behavior:**
@@ -349,7 +349,7 @@ ralph run loop --wait-when-blocked
 
 ```bash
 # Wait for blocked tasks with 10-minute timeout
-ralph run loop --wait-when-blocked --wait-timeout-seconds 600 --notify-when-unblocked
+cueloop run loop --wait-when-blocked --wait-timeout-seconds 600 --notify-when-unblocked
 ```
 
 ---
@@ -361,7 +361,7 @@ The daemon implements graceful shutdown through file-based signaling.
 **Mechanism:**
 
 1. **Stop Signal**: File at `.ralph/cache/stop_requested`
-2. **Signal Creation**: `ralph daemon stop` or `ralph queue stop` creates this file
+2. **Signal Creation**: `cueloop daemon stop` or `cueloop queue stop` creates this file
 3. **Signal Polling**: Run loop checks for signal presence between tasks
 4. **Cleanup**: Signal file is cleared at loop start (handles stale signals from crashes)
 

@@ -2,14 +2,14 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-Purpose: describe Ralph’s components, runtime data flow, trust boundaries, and failure handling model.
+Purpose: describe CueLoop’s components, runtime data flow, trust boundaries, and failure handling model.
 
 ## System Boundary
 
-Ralph is a local-first orchestration system for AI-assisted engineering workflows.
+CueLoop is a local-first orchestration system for AI-assisted engineering workflows.
 
 - Primary runtime: Rust CLI (`crates/cueloop/`)
 - Optional UI: SwiftUI macOS app (`apps/RalphMac/`) that shells out to the same CLI binary
@@ -18,7 +18,7 @@ Ralph is a local-first orchestration system for AI-assisted engineering workflow
 
 ## Operating Model
 
-Ralph's primary product loop is an operator-started run over explicit repo-local tasks:
+CueLoop's primary product loop is an operator-started run over explicit repo-local tasks:
 
 1. Tasks are selected from `.ralph/queue.jsonc`.
 2. The run engine executes one, two, or three supervised phases through the configured runner.
@@ -66,12 +66,12 @@ Boundary 1: Local repository and `.ralph/` state
 Boundary 2: Runner subprocesses
 
 - Runner CLIs are external programs and may transmit prompts/context to external APIs
-- Ralph treats runner output as untrusted input and normalizes/parses before state transitions
+- CueLoop treats runner output as untrusted input and normalizes/parses before state transitions
 
 Boundary 3: Git / shell tooling
 
 - External commands can fail or return partial output
-- Ralph wraps command execution with explicit error handling and retry/resume paths
+- CueLoop wraps command execution with explicit error handling and retry/resume paths
 
 ## Data and Control Flow
 
@@ -92,7 +92,7 @@ Parallel mode adds per-worker workspaces, worker-local queue/done bookkeeping, a
 ```mermaid
 sequenceDiagram
   participant User
-  participant Coordinator as ralph run loop --parallel
+  participant Coordinator as cueloop run loop --parallel
   participant Worker as Worker Process
   participant Workspace as Worker Workspace
   participant Repo as Base Repo
@@ -114,7 +114,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   participant User
-  participant CLI as ralph run resume
+  participant CLI as cueloop run resume
   participant Session as Session Store
   participant Runner as Runner CLI
 

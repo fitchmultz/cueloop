@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for task relationship fields and validation semantics
 Parent: [Task System](tasks.md)
 
-This page defines Ralph task relationships: `depends_on`, `blocks`, `relates_to`, `duplicates`, and `parent_id`. For graph visualization, critical path analysis, and advanced dependency workflows, see [Dependencies](dependencies.md).
+This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_to`, `duplicates`, and `parent_id`. For graph visualization, critical path analysis, and advanced dependency workflows, see [Dependencies](dependencies.md).
 
 ## Related Task Docs
 
@@ -60,7 +60,7 @@ This page defines Ralph task relationships: `depends_on`, `blocks`, `relates_to`
 **Relationship to `depends_on`:**
 - `blocks` is semantically inverse of `depends_on`
 - If A `blocks` B, then B should logically `depends_on` A
-- Ralph validates consistency but does not enforce bidirectional links
+- CueLoop validates consistency but does not enforce bidirectional links
 
 ### Related Tasks (`relates_to`)
 
@@ -127,15 +127,15 @@ This page defines Ralph task relationships: `depends_on`, `blocks`, `relates_to`
 **CLI Navigation:**
 ```bash
 # List children
-ralph task children RQ-0001
-ralph task children RQ-0001 --recursive
+cueloop task children RQ-0001
+cueloop task children RQ-0001 --recursive
 
 # Show parent
-ralph task parent RQ-0002
+cueloop task parent RQ-0002
 
 # Visualize hierarchy
-ralph queue tree
-ralph queue tree --root RQ-0001
+cueloop queue tree
+cueloop queue tree --root RQ-0001
 ```
 
 ### Relationship Comparison
@@ -169,7 +169,7 @@ Relationship validation is enforced with the same hard-error and warning model d
 - `duplicates` references to terminal tasks.
 - `parent_id` missing parents, self-parent references, and circular parent chains.
 
-Run `ralph queue validate` after relationship edits. Most queue mutation commands also validate after writing.
+Run `cueloop queue validate` after relationship edits. Most queue mutation commands also validate after writing.
 
 ## See Also
 

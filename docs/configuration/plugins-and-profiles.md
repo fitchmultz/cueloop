@@ -25,7 +25,7 @@ Plugin directories are discovered with current paths preferred over legacy fallb
 3. Legacy project fallback: `.ralph/plugins/<plugin_id>/plugin.json`
 4. Current project: `.cueloop/plugins/<plugin_id>/plugin.json`
 
-New `ralph plugin install` and `ralph plugin init` writes target `.cueloop/plugins` or `~/.config/cueloop/plugins`. Use `ralph migrate runtime-dir --apply` to move legacy project runtime state when ready.
+New `cueloop plugin install` and `cueloop plugin init` writes target `.cueloop/plugins` or `~/.config/cueloop/plugins`. Use `cueloop migrate runtime-dir --apply` to move legacy project runtime state when ready.
 
 Example:
 
@@ -47,10 +47,10 @@ Example:
 ```
 
 Plugin management commands:
-- `ralph plugin list`: List discovered plugins
-- `ralph plugin validate`: Validate plugin manifests
-- `ralph plugin install <path> --scope project|global`: Install a plugin
-- `ralph plugin uninstall <id> --scope project|global`: Uninstall a plugin
+- `cueloop plugin list`: List discovered plugins
+- `cueloop plugin validate`: Validate plugin manifests
+- `cueloop plugin install <path> --scope project|global`: Install a plugin
+- `cueloop plugin uninstall <id> --scope project|global`: Uninstall a plugin
 
 See [Plugin Development Guide](../plugin-development.md) for creating custom plugins.
 
@@ -64,7 +64,7 @@ CueLoop always exposes two built-in profiles:
 You can inspect resolved profiles with:
 
 ```bash
-ralph config profiles
+cueloop config profiles
 ```
 
 User-defined profiles remain additive. `safe` and `power-user` are reserved names in `0.3`; defining either in config is a validation error.
@@ -114,19 +114,19 @@ Select a profile using the `--profile` flag:
 
 ```bash
 # Run with a custom fast-local profile
-ralph run one --profile fast-local
+cueloop run one --profile fast-local
 
 # Scan with a deep-review profile
-ralph scan --profile deep-review "security audit"
+cueloop scan --profile deep-review "security audit"
 
 # Override specific settings while using a profile
-ralph run one --profile fast-local --phases 2 --runner claude
+cueloop run one --profile fast-local --phases 2 --runner claude
 
 # List available profiles
-ralph config profiles list
+cueloop config profiles list
 
 # Inspect a specific profile
-ralph config profiles show fast-local
+cueloop config profiles show fast-local
 ```
 
 ### Profile Inheritance

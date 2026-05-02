@@ -7,7 +7,7 @@ Parent: [Feature Documentation](README.md)
 
 ![Supervision](../assets/images/2026-02-07-11-32-24-supervision.png)
 
-Ralph's supervision system provides human-in-the-loop oversight for CI gate enforcement, git operations, and queue state management during task execution. It ensures code quality through automated checks while providing flexible recovery options when things go wrong.
+CueLoop's supervision system provides human-in-the-loop oversight for CI gate enforcement, git operations, and queue state management during task execution. It ensures code quality through automated checks while providing flexible recovery options when things go wrong.
 
 ---
 
@@ -32,7 +32,7 @@ The supervision system orchestrates the post-execution workflow after an AI runn
 
 ## CI Gate
 
-The CI gate is Ralph's primary quality enforcement mechanism. It runs after task implementation to ensure all changes meet project standards before completion.
+The CI gate is CueLoop's primary quality enforcement mechanism. It runs after task implementation to ensure all changes meet project standards before completion.
 
 ### Configuration
 
@@ -69,11 +69,11 @@ The CI gate command:
 | Rust checks in one step | `["./scripts/ci-rust.sh"]` (script runs `cargo test`, `cargo clippy`, and so on) |
 | Node.js checks in one step | `["./scripts/ci-node.sh"]` |
 
-Ralph runs the CI gate as a **single process with explicit argv** (no shell). Legacy `ci_gate_command` strings that used shell operators such as `&&`, `||`, `;`, `|`, or redirects are **not auto-migrated**; put the sequence in a checked-in script and point `argv` at that script instead.
+CueLoop runs the CI gate as a **single process with explicit argv** (no shell). Legacy `ci_gate_command` strings that used shell operators such as `&&`, `||`, `;`, `|`, or redirects are **not auto-migrated**; put the sequence in a checked-in script and point `argv` at that script instead.
 
 ### Auto-Retry Behavior
 
-When CI fails during Phase 2, Phase 3, or single-phase execution, Ralph automatically retries with a strict compliance message:
+When CI fails during Phase 2, Phase 3, or single-phase execution, CueLoop automatically retries with a strict compliance message:
 
 1. **First 2 failures**: Auto-send continue message to the runner requesting fixes
 2. **Third failure**: Apply `git_revert_mode` policy (prompt user, auto-revert, or skip)
@@ -121,7 +121,7 @@ When `git_publish_mode` is `commit_and_push` and a task completes successfully:
 }
 ```
 
-**Safety Warning**: When enabled, Ralph automatically pushes changes to the remote repository. This action is irreversible. Ralph prompts for confirmation when enabling this setting.
+**Safety Warning**: When enabled, CueLoop automatically pushes changes to the remote repository. This action is irreversible. CueLoop prompts for confirmation when enabling this setting.
 
 ### Push Policies
 
@@ -140,14 +140,14 @@ Git LFS files are validated before commit when `--lfs-check` is enabled:
 
 ```bash
 # Strict LFS validation
-ralph run one --lfs-check
+cueloop run one --lfs-check
 ```
 
 ---
 
 ## Git Revert Modes
 
-The `git_revert_mode` setting controls how Ralph handles uncommitted changes when errors occur.
+The `git_revert_mode` setting controls how CueLoop handles uncommitted changes when errors occur.
 
 ### Mode: `ask` (Default)
 
@@ -206,7 +206,7 @@ Never revert changes automatically:
 
 ## Auto Commit/Push
 
-The `git_publish_mode` setting controls whether Ralph automatically commits and pushes changes after successful task completion.
+The `git_publish_mode` setting controls whether CueLoop automatically commits and pushes changes after successful task completion.
 
 ### `commit_and_push`
 
@@ -337,7 +337,7 @@ The runner is prompted to verify checklist items before signaling completion. Th
 
 ### Customization
 
-Override the default checklist by creating `.ralph/prompts/phase2_handoff_checklist.md`:
+Override the default checklist by creating `.cueloop/prompts/phase2_handoff_checklist.md` (legacy `.ralph/prompts/phase2_handoff_checklist.md` remains supported):
 
 ```markdown
 # Phase 2 Handoff Checklist
@@ -563,19 +563,19 @@ Supervision behavior can be overridden per-run:
 
 ```bash
 # Disable git operations for this run
-ralph run one --git-publish-mode off
+cueloop run one --git-publish-mode off
 
 # Force git operations
-ralph run one --git-publish-mode commit_and_push
+cueloop run one --git-publish-mode commit_and_push
 
 # Skip CI gate
-ralph run one --no-ci-gate
+cueloop run one --no-ci-gate
 
 # Enable strict LFS checking
-ralph run one --lfs-check
+cueloop run one --lfs-check
 
 # Disable notifications
-ralph run one --no-notify
+cueloop run one --no-notify
 ```
 
 ---
@@ -592,7 +592,7 @@ ralph run one --no-notify
 3. On third failure, choose based on revert mode:
    - `ask`: Review changes, choose to fix, revert, or keep
    - `enabled`: Changes auto-reverted, re-run task
-   - `disabled`: Fix issues manually, then `ralph task done {ID}`
+   - `disabled`: Fix issues manually, then `cueloop task done {ID}`
 
 ### Task Marked Done but Not Committed
 
@@ -615,10 +615,10 @@ git push
 **Resolution**:
 ```bash
 # Inspect worker status/details
-ralph run parallel status
+cueloop run parallel status
 
 # Retry blocked worker integration
-ralph run parallel retry --task RQ-0001
+cueloop run parallel retry --task RQ-0001
 ```
 
 ### Push Fails with No Upstream

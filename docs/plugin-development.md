@@ -2,12 +2,12 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
 ![Plugin Architecture](assets/images/2026-03-10-12-05-00-plugin-architecture.png)
 
-Purpose: Guide for developing custom Ralph plugins (runners and task processors).
+Purpose: Guide for developing custom CueLoop plugins (runners and task processors).
 
 ## Quick Start
 
@@ -15,19 +15,19 @@ The fastest way to start building a plugin is with the scaffold command:
 
 ```bash
 # Scaffold a new plugin in the project scope (default)
-ralph plugin init my.plugin
+cueloop plugin init my.plugin
 
 # Scaffold with only runner support
-ralph plugin init my.plugin --with-runner
+cueloop plugin init my.plugin --with-runner
 
 # Scaffold with only processor support
-ralph plugin init my.plugin --with-processor
+cueloop plugin init my.plugin --with-processor
 
 # Scaffold in the global scope
-ralph plugin init my.plugin --scope global
+cueloop plugin init my.plugin --scope global
 
 # Preview what would be created without writing files
-ralph plugin init my.plugin --dry-run
+cueloop plugin init my.plugin --dry-run
 ```
 
 This creates:
@@ -56,12 +56,12 @@ By default, both runner and processor scripts are created. Plugins are created i
 Then validate your plugin:
 
 ```bash
-ralph plugin validate --id my.plugin
+cueloop plugin validate --id my.plugin
 ```
 
 ## Overview
 
-Ralph's plugin system allows extending the tool with custom runners and task processors without modifying the core codebase. Plugins are discovered from:
+CueLoop's plugin system allows extending the tool with custom runners and task processors without modifying the core codebase. Plugins are discovered from:
 
 - **Global**: `~/.config/ralph/plugins/<plugin_id>/`
 - **Project**: `.ralph/plugins/<plugin_id>/`
@@ -79,7 +79,7 @@ my-plugin/
 └── processor.sh      # Optional: Processor executable
 ```
 
-When you run `ralph plugin init`, the scaffold generates this layout with:
+When you run `cueloop plugin init`, the scaffold generates this layout with:
 - A valid `plugin.json` with all required fields
 - Executable shell scripts with `--help` output and protocol documentation
 - Proper file permissions (executable bit set on Unix systems)
@@ -132,7 +132,7 @@ When you run `ralph plugin init`, the scaffold generates this layout with:
 
 ### Processor Hook Runtime Semantics
 
-The following semantics define how processor hooks are invoked during `ralph run`:
+The following semantics define how processor hooks are invoked during `cueloop run`:
 
 **Deterministic Chaining Order**
 - Enabled processor plugins are executed in ascending lexicographic order by `plugin_id`
@@ -169,7 +169,7 @@ For each invoked plugin/hook:
   - `post_run`: Runner stdout (NDJSON text)
 
 **Runtime Limits**
-- Processor hooks run through Ralph's managed subprocess service, not raw shell execution
+- Processor hooks run through CueLoop's managed subprocess service, not raw shell execution
 - Hook stdout/stderr capture is bounded in memory; large output tails may be truncated in diagnostics
 - Hooks have a bounded execution window; a hung hook is interrupted with `SIGINT` first and escalated to hard kill if it ignores shutdown
 - Hook authors should handle `SIGINT` cleanly and exit promptly during cleanup
@@ -301,33 +301,33 @@ Install from a local directory:
 
 ```bash
 # Install to project scope
-ralph plugin install ./my-plugin --scope project
+cueloop plugin install ./my-plugin --scope project
 
 # Install to global scope
-ralph plugin install ./my-plugin --scope global
+cueloop plugin install ./my-plugin --scope global
 ```
 
 Install does NOT auto-enable the plugin for security. Enable manually in config.
 
-To create a new plugin from scratch, use `ralph plugin init` (see Quick Start section).
+To create a new plugin from scratch, use `cueloop plugin init` (see Quick Start section).
 
 ## Managing Plugins
 
 ```bash
 # List discovered plugins
-ralph plugin list
+cueloop plugin list
 
 # List as JSON
-ralph plugin list --json
+cueloop plugin list --json
 
 # Validate plugin manifests
-ralph plugin validate
+cueloop plugin validate
 
 # Validate specific plugin
-ralph plugin validate --id my.plugin
+cueloop plugin validate --id my.plugin
 
 # Uninstall plugin
-ralph plugin uninstall my.plugin --scope project
+cueloop plugin uninstall my.plugin --scope project
 ```
 
 ## Security Considerations
@@ -338,7 +338,7 @@ ralph plugin uninstall my.plugin --scope project
 
 3. **Validate before installing**: Review plugin code before installation:
    ```bash
-   ralph plugin validate --id my.plugin
+   cueloop plugin validate --id my.plugin
    ```
 
 4. **Project vs Global**: Project plugins override global plugins, but only in trusted repos. Untrusted repos ignore `.ralph/plugins/*` at runtime.
@@ -348,14 +348,14 @@ ralph plugin uninstall my.plugin --scope project
 Enable verbose logging to see plugin-related activity:
 
 ```bash
-RUST_LOG=debug ralph plugin list
+RUST_LOG=debug cueloop plugin list
 ```
 
 Check plugin discovery:
 
 ```bash
 # Shows which directories are checked
-ralph plugin list
+cueloop plugin list
 # If no plugins found, it prints the checked directories
 ```
 
@@ -363,7 +363,7 @@ Verify environment variables in your plugin:
 
 ```bash
 #!/bin/bash
-# Debug script to see what Ralph passes
+# Debug script to see what CueLoop passes
 env | grep RALPH_ > /tmp/ralph_plugin_env.txt
 echo "Environment written to /tmp/ralph_plugin_env.txt"
 ```
@@ -378,14 +378,14 @@ echo "Environment written to /tmp/ralph_plugin_env.txt"
 
 ## API Version Compatibility
 
-The current plugin API version is `1`. Ralph will reject plugins with incompatible API versions. When Ralph updates to API version 2, plugins will need to update their manifests.
+The current plugin API version is `1`. CueLoop will reject plugins with incompatible API versions. When CueLoop updates to API version 2, plugins will need to update their manifests.
 
 ## Troubleshooting
 
 **Plugin not discovered:**
 - Verify the directory structure: `<plugin_root>/<plugin_id>/plugin.json`
 - Check file permissions
-- Run `ralph plugin list` to see searched directories
+- Run `cueloop plugin list` to see searched directories
 
 **Plugin validation fails:**
 - Check `api_version` is `1`

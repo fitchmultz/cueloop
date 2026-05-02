@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for desktop notification and webhook configuration
 Parent: [Configuration](../configuration.md)
 
-Purpose: Document Ralph's local notification and outbound webhook settings, delivery semantics, and safety constraints.
+Purpose: Document CueLoop's local notification and outbound webhook settings, delivery semantics, and safety constraints.
 
 ## Notification Configuration
 
@@ -225,31 +225,31 @@ Use the CLI to test your webhook configuration:
 
 ```bash
 # Test with configured URL
-ralph webhook test
+cueloop webhook test
 
 # Test with specific event type
-ralph webhook test --event task_completed
+cueloop webhook test --event task_completed
 
 # Test with new event types (opt-in)
-ralph webhook test --event phase_started
-ralph webhook test --event loop_started
+cueloop webhook test --event phase_started
+cueloop webhook test --event loop_started
 
 # Print the JSON payload without sending (useful for debugging)
-ralph webhook test --event phase_completed --print-json
-ralph webhook test --event task_created --print-json --pretty
+cueloop webhook test --event phase_completed --print-json
+cueloop webhook test --event task_created --print-json --pretty
 
 # Test with custom URL
-ralph webhook test --url https://example.com/webhook
+cueloop webhook test --url https://example.com/webhook
 
 # Inspect queue/failure diagnostics
-ralph webhook status
-ralph webhook status --format json
+cueloop webhook status
+cueloop webhook status --format json
 
 # Replay failed deliveries safely
-ralph webhook replay --dry-run --id wf-1700000000-1
-ralph webhook replay --event task_completed --limit 5
+cueloop webhook replay --dry-run --id wf-1700000000-1
+cueloop webhook replay --event task_completed --limit 5
 ```
 
-Non-dry-run replay (`ralph webhook replay` without `--dry-run`) requires:
+Non-dry-run replay (`cueloop webhook replay` without `--dry-run`) requires:
 - `agent.webhook.enabled: true`
 - `agent.webhook.url` set to a non-empty endpoint URL

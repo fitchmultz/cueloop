@@ -1,6 +1,6 @@
 # macOS App
 
-Purpose: document Ralph's macOS SwiftUI app, user-facing workflows, and CLI parity expectations.
+Purpose: document CueLoop's macOS SwiftUI app, user-facing workflows, and CLI parity expectations.
 Status: Active
 Owner: Maintainers
 Source of truth: this document for macOS app user-facing workflows and parity expectations
@@ -9,11 +9,11 @@ Related: [Machine Contract](../machine-contract.md), [CI and Test Strategy](../g
 
 ## Overview
 
-Ralph includes a macOS app for interactive queue and run supervision workflows.
+CueLoop includes a macOS app for interactive queue and run supervision workflows.
 
 The app is intended for:
 - Browsing and editing the workspace's configured queue and done files
-  (`.ralph/queue.jsonc` and `.ralph/done.jsonc` by default)
+  (`.cueloop/queue.jsonc` and `.cueloop/done.jsonc` by default; legacy `.ralph/` repos remain supported)
 - Triage and prioritization with a richer visual layout than terminal output
 - Triggering common run operations while keeping CLI-compatible behavior
 - Multi-window workflows across repositories and workstreams
@@ -22,22 +22,22 @@ The app does **not** replace the CLI for automation, CI, or scripted workflows.
 
 ## Open the App
 
-From a repository initialized with `ralph init`:
+From a repository initialized with `cueloop init`:
 
 ```bash
-ralph app open
+cueloop app open
 ```
 
 If you are not on macOS (or prefer terminal workflows), use the CLI directly:
 
 ```bash
-ralph queue list
-ralph run one
-ralph run loop
+cueloop queue list
+cueloop run one
+cueloop run loop
 ```
 
 Security note:
-- `ralph app open` deep links now carry only workspace context.
+- `cueloop app open` deep links now carry only workspace context.
 - The app ignores legacy `cli=` URL parameters and will not swap the CLI executable from URL input.
 
 ## Feature Tour
@@ -101,29 +101,29 @@ Behavioral notes:
 - The sheet defaults to preview mode and only writes after an explicit second action.
 - Launching from a selected task defaults to decomposing that task in place.
 - Freeform mode can optionally attach a new subtree under an existing parent.
-- The app calls `ralph machine task decompose` for both preview and write flows and renders the versioned machine-contract response; it does not reimplement planner logic locally.
+- The app calls `cueloop machine task decompose` for both preview and write flows and renders the versioned machine-contract response; it does not reimplement planner logic locally.
 
 ## How the App Integrates with the CLI
 
-The app is a thin client that shells out to the `ralph` binary via `RalphCLIClient`.
+The app is a thin client that shells out to the primary `cueloop` binary via `RalphCLIClient` (`ralph` remains a fallback alias during migration).
 
 Practical implications:
-- Native workflows should use versioned `ralph machine ...` JSON contracts,
+- Native workflows should use versioned `cueloop machine ...` JSON contracts,
   not human CLI text or older app-targeted CLI JSON surfaces.
 - Scenario-level parity coverage lives in
   `crates/cueloop/src/cli/app_parity.rs`; every user-visible parity claim should
   point to explicit Rust and RalphMac proof anchors instead of broad command
   family labels alone.
 - Task override and Run Control execution affordances should come from
-  `ralph machine config resolve.execution_controls`, not hardcoded native menus.
+  `cueloop machine config resolve.execution_controls`, not hardcoded native menus.
 - Decomposition preview/write flows should stay wired to
-  `ralph machine task decompose` so the app consumes the same stable contract
+  `cueloop machine task decompose` so the app consumes the same stable contract
   used by other machine clients.
 - Trusted plugin runners appear in native controls through the same machine-fed
   contract; unknown configured runner or effort values must remain visible
   instead of being coerced away.
-- Stop After Current specifically uses `ralph machine run stop`; the app should
-  never infer stop state by streaming or scraping human `ralph queue stop`
+- Stop After Current specifically uses `cueloop machine run stop`; the app should
+  never infer stop state by streaming or scraping human `cueloop queue stop`
   output.
 - Run Control continuation cards should prefer structured native actions over
   terminal-only instructions when the machine contract exposes a safe preview or
@@ -135,7 +135,7 @@ Practical implications:
 - CLI and app should remain behaviorally aligned for core task/run operations.
 - Advanced Runner access does not count as native app parity.
 - Most data and execution issues can be reproduced via CLI commands.
-- `ralph doctor` remains the primary diagnostics entry point.
+- `cueloop doctor` remains the primary diagnostics entry point.
 
 ## Automated UI Testing
 
@@ -174,19 +174,19 @@ Test sources live in `apps/RalphMac/RalphMacUITests/`.
 
 ### App does not open
 - Verify you are on macOS.
-- Run `ralph app open` from the repository root.
+- Run `cueloop app open` from the repository root.
 
 ### Queue data not loading
-- Run `ralph machine config resolve` to inspect the machine-resolved queue, done, and config paths.
+- Run `cueloop machine config resolve` to inspect the machine-resolved queue, done, and config paths.
 - Confirm the configured queue file exists at the resolved `queue_path`.
-- Run `ralph queue validate` and resolve schema errors.
+- Run `cueloop queue validate` and resolve schema errors.
 
 ### Runner commands fail
-- Run `ralph doctor` for environment diagnostics.
+- Run `cueloop doctor` for environment diagnostics.
 - Confirm configured runner CLIs are installed and authenticated.
 
 ### Need deterministic verification
-- Validate behavior in terminal first (`ralph queue ...`, `ralph run ...`).
+- Validate behavior in terminal first (`cueloop queue ...`, `cueloop run ...`).
 - Then verify equivalent flows in the app UI.
 
 ## Notes

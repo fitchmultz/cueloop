@@ -2,12 +2,12 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
 > Copy-paste ready configurations for Slack, Discord, and GitHub Actions.
 
-This guide provides working examples for integrating Ralph webhooks with popular services.
+This guide provides working examples for integrating CueLoop webhooks with popular services.
 For the complete webhook configuration reference, see [Webhooks](../features/webhooks.md).
 
 **Last verified:** 2026-02-15
@@ -18,16 +18,16 @@ For the complete webhook configuration reference, see [Webhooks](../features/web
 
 There are two primary approaches to webhook integration:
 
-1. **Direct webhook** (Ralph → Service URL) - Simple, works when the service accepts arbitrary JSON
-2. **Transformation proxy** (Ralph → Proxy → Service) - Required when the service expects specific payload formats
+1. **Direct webhook** (CueLoop → Service URL) - Simple, works when the service accepts arbitrary JSON
+2. **Transformation proxy** (CueLoop → Proxy → Service) - Required when the service expects specific payload formats
 
-Most third-party services (Slack, Discord, GitHub Actions) require a transformation proxy because they expect specific payload structures that differ from Ralph's standard format.
+Most third-party services (Slack, Discord, GitHub Actions) require a transformation proxy because they expect specific payload structures that differ from CueLoop's standard format.
 
 ---
 
 ## Slack Integration
 
-Slack's Incoming Webhooks API expects a specific [Block Kit](https://api.slack.com/block-kit) or attachment format. Ralph's standard payload won't render correctly without transformation.
+Slack's Incoming Webhooks API expects a specific [Block Kit](https://api.slack.com/block-kit) or attachment format. CueLoop's standard payload won't render correctly without transformation.
 
 ### Prerequisites
 
@@ -42,8 +42,8 @@ Save this as `slack_proxy.py`:
 ```python
 #!/usr/bin/env python3
 """
-Slack webhook proxy for Ralph.
-Receives Ralph webhooks, transforms to Slack format, forwards to Slack.
+Slack webhook proxy for CueLoop.
+Receives CueLoop webhooks, transforms to Slack format, forwards to Slack.
 """
 
 import hmac
@@ -66,7 +66,7 @@ def verify_ralph_signature(body: bytes, signature: str) -> bool:
 
 
 def format_slack_message(payload: dict) -> dict:
-    """Transform Ralph payload to Slack Block Kit format."""
+    """Transform CueLoop payload to Slack Block Kit format."""
     event = payload.get('event', 'unknown')
     task_id = payload.get('task_id', 'N/A')
     task_title = payload.get('task_title', 'Untitled')
@@ -95,7 +95,7 @@ def format_slack_message(payload: dict) -> dict:
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"{emoji} Ralph Task {status_text.title()}"
+                    "text": f"{emoji} CueLoop Task {status_text.title()}"
                 }
             },
             {
@@ -120,7 +120,7 @@ def format_slack_message(payload: dict) -> dict:
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
-    signature = request.headers.get('X-Ralph-Signature', '')
+    signature = request.headers.get('X-CueLoop-Signature', '')
     body = request.get_data()
 
     if not verify_ralph_signature(body, signature):
@@ -156,7 +156,7 @@ export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T00/B00/XXX"
 python slack_proxy.py
 ```
 
-### Ralph Configuration for Slack
+### CueLoop Configuration for Slack
 
 ```json
 {
@@ -179,7 +179,7 @@ python slack_proxy.py
 # Test the proxy locally
 curl -X POST http://localhost:5000/webhook \
   -H "Content-Type: application/json" \
-  -H "X-Ralph-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Test task"}' | openssl dgst -sha256 | sed 's/.* //')" \
+  -H "X-CueLoop-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Test task"}' | openssl dgst -sha256 | sed 's/.* //')" \
   -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Test task","previous_status":"doing","current_status":"done"}'
 ```
 
@@ -202,8 +202,8 @@ Save this as `discord_proxy.py`:
 ```python
 #!/usr/bin/env python3
 """
-Discord webhook proxy for Ralph.
-Transforms Ralph payloads to Discord embed format.
+Discord webhook proxy for CueLoop.
+Transforms CueLoop payloads to Discord embed format.
 """
 
 import hmac
@@ -226,7 +226,7 @@ def verify_ralph_signature(body: bytes, signature: str) -> bool:
 
 
 def format_discord_embed(payload: dict) -> dict:
-    """Transform Ralph payload to Discord embed format."""
+    """Transform CueLoop payload to Discord embed format."""
     event = payload.get('event', 'unknown')
     task_id = payload.get('task_id', 'N/A')
     task_title = payload.get('task_title', 'Untitled')
@@ -244,7 +244,7 @@ def format_discord_embed(payload: dict) -> dict:
     }
 
     embed = {
-        "title": f"Ralph: {event.replace('_', ' ').title()}",
+        "title": f"CueLoop: {event.replace('_', ' ').title()}",
         "description": f"**{task_title}**",
         "color": colors.get(event, 0x808080),
         "timestamp": timestamp,
@@ -252,7 +252,7 @@ def format_discord_embed(payload: dict) -> dict:
             {"name": "Task ID", "value": f"`{task_id}`", "inline": True},
             {"name": "Event", "value": event, "inline": True},
         ],
-        "footer": {"text": "Ralph Task Queue"},
+        "footer": {"text": "CueLoop Task Queue"},
     }
 
     # Add status change if present
@@ -293,7 +293,7 @@ def format_discord_embed(payload: dict) -> dict:
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
-    signature = request.headers.get('X-Ralph-Signature', '')
+    signature = request.headers.get('X-CueLoop-Signature', '')
     body = request.get_data()
 
     if not verify_ralph_signature(body, signature):
@@ -328,7 +328,7 @@ export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/000/xxx"
 python discord_proxy.py
 ```
 
-### Ralph Configuration for Discord
+### CueLoop Configuration for Discord
 
 ```json
 {
@@ -350,7 +350,7 @@ python discord_proxy.py
 ```bash
 curl -X POST http://localhost:5001/webhook \
   -H "Content-Type: application/json" \
-  -H "X-Ralph-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Add webhook integration docs"}' | openssl dgst -sha256 | sed 's/.* //')" \
+  -H "X-CueLoop-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Add webhook integration docs"}' | openssl dgst -sha256 | sed 's/.* //')" \
   -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Add webhook integration docs","previous_status":"doing","current_status":"done"}'
 ```
 
@@ -372,8 +372,8 @@ Create `.github/workflows/ralph-webhook.yml` in your repository:
 
 ```yaml
 # .github/workflows/ralph-webhook.yml
-# Receives Ralph webhooks and triggers conditional actions
-name: Ralph Webhook Receiver
+# Receives CueLoop webhooks and triggers conditional actions
+name: CueLoop Webhook Receiver
 
 on:
   repository_dispatch:
@@ -401,7 +401,7 @@ jobs:
           curl -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
             -d '{
-              "text": "Ralph task failed: ${{ github.event.client_payload.task_id }}",
+              "text": "CueLoop task failed: ${{ github.event.client_payload.task_id }}",
               "blocks": [{
                 "type": "section",
                 "text": {"type": "mrkdwn", "text": ":x: *Task Failed*\n*${{ github.event.client_payload.task_title }}*"}
@@ -430,8 +430,8 @@ Save this as `github_proxy.py`:
 ```python
 #!/usr/bin/env python3
 """
-GitHub Actions webhook proxy for Ralph.
-Forwards Ralph webhooks to GitHub repository_dispatch API.
+GitHub Actions webhook proxy for CueLoop.
+Forwards CueLoop webhooks to GitHub repository_dispatch API.
 """
 
 import hmac
@@ -455,7 +455,7 @@ def verify_ralph_signature(body: bytes, signature: str) -> bool:
 
 
 def get_event_type(event: str) -> str:
-    """Map Ralph events to GitHub repository_dispatch event types."""
+    """Map CueLoop events to GitHub repository_dispatch event types."""
     mapping = {
         'task_completed': 'ralph-task-completed',
         'task_failed': 'ralph-task-failed',
@@ -465,7 +465,7 @@ def get_event_type(event: str) -> str:
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
-    signature = request.headers.get('X-Ralph-Signature', '')
+    signature = request.headers.get('X-CueLoop-Signature', '')
     body = request.get_data()
 
     if not verify_ralph_signature(body, signature):
@@ -512,7 +512,7 @@ export GITHUB_REPO="yourusername/yourrepo"  # e.g., "acme-corp/my-project"
 python github_proxy.py
 ```
 
-### Ralph Configuration for GitHub Actions
+### CueLoop Configuration for GitHub Actions
 
 ```json
 {
@@ -549,9 +549,9 @@ python github_proxy.py
 |-------|-------|----------|
 | Webhook not firing | `enabled: false` or no URL | Check config and ensure both are set |
 | Events not received | Not in `events` list | Add event to config or use `["*"]` |
-| Signature verification fails | Secret mismatch | Ensure secrets match between Ralph and proxy |
+| Signature verification fails | Secret mismatch | Ensure secrets match between CueLoop and proxy |
 | Proxy connection refused | Port already in use | Use a different port or kill existing process |
-| Slack shows raw JSON | Direct Ralph → Slack without proxy | Use the transformation proxy |
+| Slack shows raw JSON | Direct CueLoop → Slack without proxy | Use the transformation proxy |
 | GitHub dispatch fails | Invalid token or repo format | Verify `GITHUB_TOKEN` has `repo` scope and `GITHUB_REPO` is `owner/repo` |
 
 ### Debug Logging
@@ -563,9 +563,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 ```
 
-### Testing Without Ralph
+### Testing Without CueLoop
 
-Test your proxies independently before integrating with Ralph:
+Test your proxies independently before integrating with CueLoop:
 
 ```bash
 # Generic test payload
@@ -606,7 +606,7 @@ gunicorn -w 2 -b 0.0.0.0:5000 slack_proxy:app
 ## Further Reading
 
 - [Webhooks Feature Documentation](../features/webhooks.md) - Complete webhook configuration reference
-- [Ralph Configuration](../configuration.md) - Global and project-level configuration
+- [CueLoop Configuration](../configuration.md) - Global and project-level configuration
 - [Slack Block Kit Reference](https://api.slack.com/block-kit) - Building rich Slack messages
 - [Discord Webhook Reference](https://discord.com/developers/docs/resources/webhook) - Discord webhook documentation
 - [GitHub repository_dispatch](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#repository_dispatch) - Triggering GitHub Actions via API

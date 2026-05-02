@@ -7,7 +7,7 @@ Parent: [Configuration](../configuration.md)
 Purpose: Document how CueLoop discovers, parses, layers, and safety-gates configuration.
 
 ## Overview
-CueLoop reads JSON configuration from two locations, with project config taking precedence over global. The CLI executable remains `ralph` in this phase:
+CueLoop reads JSON configuration from two locations, with project config taking precedence over global. Use the primary `cueloop` executable:
 - Global: `~/.config/cueloop/config.jsonc` (legacy fallback: `~/.config/ralph/config.jsonc`)
 - Project: `.cueloop/config.jsonc` (legacy fallback: `.ralph/config.jsonc`)
 
@@ -19,8 +19,8 @@ Project `.cueloop/config.jsonc` may define execution-sensitive settings (for exa
 
 **Supported ways to create the trust file (explicit opt-in):**
 
-- **`ralph init`** — Preferred repository bootstrap. Creates or updates `.cueloop/trust.jsonc` by default for new repos, uses `.ralph/trust.jsonc` for legacy repos, resolves initialization without enforcing trust before the file exists, and adds the trust file to `.gitignore`.
-- **`ralph config trust init`** — Trust-only repair for already-initialized repos. Creates the active runtime directory if needed, then creates or merges `trust.jsonc` with `allow_project_commands: true` and a `trusted_at` RFC3339 UTC timestamp when the file is missing. If the file already marks the repo trusted (both flags set), the command leaves the file byte-for-byte unchanged. If `allow_project_commands` is true but `trusted_at` is absent, the file is updated to add a timestamp.
+- **`cueloop init`** — Preferred repository bootstrap. Creates or updates `.cueloop/trust.jsonc` by default for new repos, uses `.ralph/trust.jsonc` for legacy repos, resolves initialization without enforcing trust before the file exists, and adds the trust file to `.gitignore`.
+- **`cueloop config trust init`** — Trust-only repair for already-initialized repos. Creates the active runtime directory if needed, then creates or merges `trust.jsonc` with `allow_project_commands: true` and a `trusted_at` RFC3339 UTC timestamp when the file is missing. If the file already marks the repo trusted (both flags set), the command leaves the file byte-for-byte unchanged. If `allow_project_commands` is true but `trusted_at` is absent, the file is updated to add a timestamp.
 
 CueLoop prints a short warning before writing or changing the trust file. **Do not commit** `.cueloop/trust.jsonc` or legacy `.ralph/trust.jsonc`; keep it untracked (see repository `AGENTS.md`).
 

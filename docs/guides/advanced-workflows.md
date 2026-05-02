@@ -5,7 +5,7 @@ Source of truth: this document for advanced workflow execution, parallel executi
 Parent: [Advanced Usage Guide](advanced.md)
 
 
-Purpose: Deep-dive guidance for power users and teams tuning Ralph's multi-phase execution, parallel task processing, retry/session behavior, notifications, queue cleanup, and dependency ordering.
+Purpose: Deep-dive guidance for power users and teams tuning CueLoop's multi-phase execution, parallel task processing, retry/session behavior, notifications, queue cleanup, and dependency ordering.
 
 ---
 
@@ -21,7 +21,7 @@ Purpose: Deep-dive guidance for power users and teams tuning Ralph's multi-phase
 
 ### Understanding Phase Selection
 
-Ralph's phase system allows you to tailor execution depth to task complexity:
+CueLoop's phase system allows you to tailor execution depth to task complexity:
 
 | Task Type | Recommended Phases | Rationale |
 |-----------|-------------------|-----------|
@@ -71,12 +71,12 @@ Override phases on a per-run basis without editing config:
 
 ```bash
 # Use cheap model for planning, expensive for implementation
-ralph run one \
+cueloop run one \
   --runner-phase1 kimi --model-phase1 kimi-for-coding \
   --runner-phase2 claude --model-phase2 opus
 
 # Different reasoning effort per phase (Codex or Pi)
-ralph run one --runner codex \
+cueloop run one --runner codex \
   --effort-phase1 high \
   --effort-phase2 medium \
   --effort-phase3 high
@@ -88,7 +88,7 @@ In 3-phase mode, Phase 2 intentionally stops before completion. Use this checkpo
 
 ```bash
 # After Phase 2 completes, review changes
-ralph run one --phases 3
+cueloop run one --phases 3
 
 # Check what changed
 git diff --stat
@@ -102,7 +102,7 @@ make integration-tests
 
 ### CI Gate Retry Loop
 
-Ralph automatically retries CI failures up to 2 times. To customize this behavior:
+CueLoop automatically retries CI failures up to 2 times. To customize this behavior:
 
 ```json
 {
@@ -177,13 +177,13 @@ Parallel execution runs tasks in isolated git workspace clones:
 
 ```bash
 # Check state during run
-watch -n 2 'ralph run parallel status'
+watch -n 2 'cueloop run parallel status'
 
 # JSON status output for scripting
-watch -n 2 'ralph run parallel status --json'
+watch -n 2 'cueloop run parallel status --json'
 
 # Retry a blocked worker
-ralph run parallel retry --task RQ-0001
+cueloop run parallel retry --task RQ-0001
 ```
 
 ### Workspace Root Configuration
@@ -210,10 +210,10 @@ Parallel workers resolve rebase conflicts inside the integration loop. If a work
 
 ```bash
 # Inspect worker lifecycle and failure reason
-ralph run parallel status
+cueloop run parallel status
 
 # Retry that worker (reuses retained workspace/state)
-ralph run parallel retry --task RQ-0001
+cueloop run parallel retry --task RQ-0001
 ```
 
 ### Parallel State Recovery
@@ -224,8 +224,8 @@ If parallel run crashes:
 # Check current state
 jq '.' .ralph/cache/parallel/state.json
 
-# Inspect with Ralph's status command
-ralph run parallel status
+# Inspect with CueLoop's status command
+cueloop run parallel status
 
 # Or start fresh (removes all state)
 # Only do this when no active workers are running.
@@ -323,24 +323,24 @@ Configure stale task detection:
 
 ```bash
 # Track task completion time
-ralph productivity velocity
+cueloop productivity velocity
 
 # View streaks
-ralph productivity streak
+cueloop productivity streak
 
 # Check overall progress summary
-ralph productivity summary
+cueloop productivity summary
 ```
 
 ### Dependency Chain Optimization
 
 ```bash
 # View critical path
-ralph queue graph --critical
+cueloop queue graph --critical
 
 # Check what blocks a task
-ralph queue graph --task RQ-0001 --reverse
+cueloop queue graph --task RQ-0001 --reverse
 
 # Optimize order: start with critical path tasks
-ralph queue list --sort priority | head -10
+cueloop queue list --sort priority | head -10
 ```

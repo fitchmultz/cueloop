@@ -1,19 +1,19 @@
-# Ralph Runners System
+# CueLoop Runners System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
 Parent: [Feature Documentation](README.md)
 
 
-Purpose: Comprehensive documentation for Ralph's AI runner orchestration system, including supported runners, configuration, and extension mechanisms.
+Purpose: Comprehensive documentation for CueLoop's AI runner orchestration system, including supported runners, configuration, and extension mechanisms.
 
 ## Overview
 
-Ralph's runners system provides a unified interface for executing AI agents across multiple CLI-based code generation tools. Runners are external binaries that Ralph orchestrates to perform task planning, implementation, and review.
+CueLoop's runners system provides a unified interface for executing AI agents across multiple CLI-based code generation tools. Runners are external binaries that CueLoop orchestrates to perform task planning, implementation, and review.
 
 ### Supported Runners
 
-Ralph supports 7 built-in runners and a plugin system for custom runners:
+CueLoop supports 7 built-in runners and a plugin system for custom runners:
 
 | Runner | Provider | Best For | Default Model |
 |--------|----------|----------|---------------|
@@ -37,7 +37,7 @@ Ralph supports 7 built-in runners and a plugin system for custom runners:
 | Verbose Output | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Plan Mode | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
-*Kimi requires Ralph-managed session IDs (see [Session Management](#session-management))
+*Kimi requires CueLoop-managed session IDs (see [Session Management](#session-management))
 **Codex only supports specific OpenAI models
 
 ## Supported Runners
@@ -72,7 +72,7 @@ Ralph supports 7 built-in runners and a plugin system for custom runners:
 
 ### Codex (OpenAI)
 
-**Best for:** Expert coding work with built-in reasoning effort control and Ralph's strongest default workflow.
+**Best for:** Expert coding work with built-in reasoning effort control and CueLoop's strongest default workflow.
 
 **Allowed Models (Restricted):**
 Codex only supports this restricted model list:
@@ -81,7 +81,7 @@ Codex only supports this restricted model list:
 - `gpt-5.3-codex-spark`
 - `gpt-5.3`
 
-> **Important:** Codex will reject arbitrary model IDs. Ralph automatically normalizes incompatible models to the Codex default.
+> **Important:** Codex will reject arbitrary model IDs. CueLoop automatically normalizes incompatible models to the Codex default.
 
 **Reasoning Effort:**
 - `low` - Fastest, minimal reasoning
@@ -90,9 +90,9 @@ Codex only supports this restricted model list:
 - `xhigh` - Maximum reasoning (consumes quota rapidly)
 
 **Special Behavior:**
-> **INTENDED BEHAVIOR:** Ralph should pass approval flags to Codex based on `runner_cli.approval_mode`.
+> **INTENDED BEHAVIOR:** CueLoop should pass approval flags to Codex based on `runner_cli.approval_mode`.
 >
-> **CURRENTLY IMPLEMENTED BEHAVIOR:** Ralph intentionally does NOT pass any approval flags (`-a`, `--ask-for-approval`) to Codex. This allows Codex to use the user's global config file (`~/.codex/config.json`) settings. If you want YOLO behavior with Codex, configure it in `~/.codex/config.json`, not in Ralph.
+> **CURRENTLY IMPLEMENTED BEHAVIOR:** CueLoop intentionally does NOT pass any approval flags (`-a`, `--ask-for-approval`) to Codex. This allows Codex to use the user's global config file (`~/.codex/config.json`) settings. If you want YOLO behavior with Codex, configure it in `~/.codex/config.json`, not in CueLoop.
 
 **Sandbox Control:**
 - `enabled` - Uses `--sandbox workspace-write`
@@ -166,11 +166,11 @@ Codex only supports this restricted model list:
 
 ### Cursor
 
-**Best for:** Users who want IDE-integrated AI capabilities through Ralph's orchestration.
+**Best for:** Users who want IDE-integrated AI capabilities through CueLoop's orchestration.
 
 **Model Options:**
 - Arbitrary model IDs supported
-- Cursor uses Ralph's local SDK bridge through Node and `@cursor/sdk`
+- Cursor uses CueLoop's local SDK bridge through Node and `@cursor/sdk`
 
 **Special Features:**
 - Durable SDK agent IDs are used for resume (`agent-...` locally, `bc-...` for cloud IDs)
@@ -179,12 +179,12 @@ Codex only supports this restricted model list:
 
 **SDK Options Mapped:**
 - `local.sandboxOptions.enabled` - `enabled`, `disabled`, or phase-dependent default
-- `local.settingSources` - Ralph defaults to project, user, and plugin settings so `.cursor/` context is available
+- `local.settingSources` - CueLoop defaults to project, user, and plugin settings so `.cursor/` context is available
 
 **Unsupported SDK Options:**
-- Cursor SDK plan mode is not used. Ralph's own planning phase still writes Ralph plan/cache artifacts.
+- Cursor SDK plan mode is not used. CueLoop's own planning phase still writes CueLoop plan/cache artifacts.
 
-`approval_mode=yolo` remains the default runner posture for Cursor, but Ralph does not map it to SDK `local.force`; that SDK option is active-run recovery, not approval control.
+`approval_mode=yolo` remains the default runner posture for Cursor, but CueLoop does not map it to SDK `local.force`; that SDK option is active-run recovery, not approval control.
 
 **Example Configuration:**
 ```json
@@ -208,11 +208,11 @@ Codex only supports this restricted model list:
 **Special Session Handling:**
 > **INTENDED BEHAVIOR:** Kimi should emit session IDs in JSON output for automatic tracking.
 >
-> **CURRENTLY IMPLEMENTED BEHAVIOR:** Kimi does not emit session IDs in its JSON output. Ralph must supply and manage session IDs explicitly using the `--session` flag. This is why `requires_managed_session_id()` returns `true` for Kimi.
+> **CURRENTLY IMPLEMENTED BEHAVIOR:** Kimi does not emit session IDs in its JSON output. CueLoop must supply and manage session IDs explicitly using the `--session` flag. This is why `requires_managed_session_id()` returns `true` for Kimi.
 
 **CLI Flags Mapped:**
 - `--yolo` / `-y` - When `approval_mode=yolo` (Kimi doesn't use `--approval-mode`)
-- `--session` - Ralph-managed session ID
+- `--session` - CueLoop-managed session ID
 - `--print` - Non-interactive mode
 
 **Example Configuration:**
@@ -234,7 +234,7 @@ Codex only supports this restricted model list:
 - Any arbitrary model ID
 
 **Session Handling:**
-Pi sessions are file-based. Ralph resolves session files from:
+Pi sessions are file-based. CueLoop resolves session files from:
 1. Direct path if the session_id is a file
 2. `$PI_CODING_AGENT_DIR/sessions/<workspace-dir>/*_<session_id>.jsonl`
 3. `~/.pi/agent/sessions/<workspace-dir>/*_<session_id>.jsonl`
@@ -273,7 +273,7 @@ Override runner binary paths in your config:
 }
 ```
 
-**Note:** Cursor uses Ralph's Node-based Cursor SDK bridge, not the legacy `agent` binary. The trusted target workspace must be able to resolve the pinned `@cursor/sdk` package (for example, via `npm install --save-exact @cursor/sdk@1.0.11`) or `RALPH_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
+**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. The trusted target workspace must be able to resolve the pinned `@cursor/sdk` package (for example, via `npm install --save-exact @cursor/sdk@1.0.11`) or `RALPH_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
 
 ### Configuration Precedence
 
@@ -330,7 +330,7 @@ Configure different runners/models for different phases:
 
 ### Model Normalization
 
-When a model is incompatible with a runner, Ralph automatically normalizes:
+When a model is incompatible with a runner, CueLoop automatically normalizes:
 
 - Codex-only models (`gpt-5.*-codex`) → runner's default when used with other runners
 - Non-Codex models → `gpt-5.4` when used with Codex
@@ -340,14 +340,14 @@ When a model is incompatible with a runner, Ralph automatically normalizes:
 For runners supporting arbitrary IDs, specify any model string:
 
 ```bash
-ralph run one --runner claude --model claude-opus-4
-ralph run one --runner gemini --model gemini-custom-v1
-ralph run one --runner opencode --model my-provider/my-model
+cueloop run one --runner claude --model claude-opus-4
+cueloop run one --runner gemini --model gemini-custom-v1
+cueloop run one --runner opencode --model my-provider/my-model
 ```
 
 ## Runner CLI Normalization
 
-Ralph provides a normalized configuration surface for runner CLI behavior via `agent.runner_cli`.
+CueLoop provides a normalized configuration surface for runner CLI behavior via `agent.runner_cli`.
 
 ### Structure
 
@@ -379,7 +379,7 @@ Ralph provides a normalized configuration surface for runner CLI behavior via `a
 - `json` - JSON output (not supported for execution)
 - `text` - Plain text (not supported for execution)
 
-> **Important:** Ralph execution requires `stream_json`. Other formats will be rejected.
+> **Important:** CueLoop execution requires `stream_json`. Other formats will be rejected.
 
 #### `approval_mode`
 - `default` - Use runner defaults
@@ -403,7 +403,7 @@ Ralph provides a normalized configuration surface for runner CLI behavior via `a
 - `default` - Do not request runner-native plan mode
 - `enabled` / `disabled` - Unsupported for Cursor SDK runs and ignored or rejected for other runners according to `unsupported_option_policy`
 
-Cursor SDK plan mode is intentionally unsupported because it prevents Cursor from writing Ralph's expected plan/cache artifacts. This does not disable Ralph's own planning phase.
+Cursor SDK plan mode is intentionally unsupported because it prevents Cursor from writing CueLoop's expected plan/cache artifacts. This does not disable CueLoop's own planning phase.
 
 #### `unsupported_option_policy`
 - `ignore` - Silently ignore unsupported options
@@ -425,7 +425,7 @@ Cursor SDK plan mode is intentionally unsupported because it prevents Cursor fro
 
 ### Explicit Sessions
 
-Ralph manages runner sessions explicitly for reliable crash recovery. Each phase generates a unique session ID at phase start.
+CueLoop manages runner sessions explicitly for reliable crash recovery. Each phase generates a unique session ID at phase start.
 
 **Session ID Format:**
 ```
@@ -444,9 +444,9 @@ Ralph manages runner sessions explicitly for reliable crash recovery. Each phase
 
 Kimi requires special session management because it doesn't emit session IDs in JSON output:
 
-1. Ralph generates and passes the session ID via `--session` flag
+1. CueLoop generates and passes the session ID via `--session` flag
 2. Kimi stores session state internally
-3. On resume, Ralph uses the same session ID format
+3. On resume, CueLoop uses the same session ID format
 
 ### Session Timeout
 
@@ -464,7 +464,7 @@ Sessions older than this threshold are considered stale and require explicit use
 
 ## Runner Retry
 
-Ralph provides configurable retry behavior for transient runner failures.
+CueLoop provides configurable retry behavior for transient runner failures.
 
 ### Configuration
 
@@ -503,7 +503,7 @@ Ralph provides configurable retry behavior for transient runner failures.
 
 Retries only occur when:
 - The repository is clean, OR
-- Only Ralph-allowed paths (`.ralph/`) are dirty, OR
+- Only CueLoop-allowed paths (`.ralph/`) are dirty, OR
 - `git_revert_mode` is `enabled` for auto-revert
 
 ### Disabling Retry
@@ -524,7 +524,7 @@ To disable retry entirely:
 
 ### NDJSON Format
 
-Ralph requires runners to emit **newline-delimited JSON (NDJSON)** objects. Each line is a separate JSON event.
+CueLoop requires runners to emit **newline-delimited JSON (NDJSON)** objects. Each line is a separate JSON event.
 
 **Example NDJSON stream:**
 ```json
@@ -549,7 +549,7 @@ Each runner has a specialized parser that extracts the final assistant response:
 
 ### Tool Call Tracking
 
-Ralph tracks tool calls for display:
+CueLoop tracks tool calls for display:
 - Tool invocations with parameters
 - Tool results with status
 - Permission denials
@@ -562,7 +562,7 @@ Example formatted output:
 
 ## Adding Custom Runners via Plugins
 
-Ralph supports custom runners through a plugin system.
+CueLoop supports custom runners through a plugin system.
 
 ### Plugin Protocol
 
@@ -621,16 +621,16 @@ Plugin manifests are located at:
 
 ```bash
 # List discovered plugins
-ralph plugin list
+cueloop plugin list
 
 # Validate plugin manifests
-ralph plugin validate
+cueloop plugin validate
 
 # Install a plugin
-ralph plugin install <path> --scope project|global
+cueloop plugin install <path> --scope project|global
 
 # Uninstall a plugin
-ralph plugin uninstall <id> --scope project|global
+cueloop plugin uninstall <id> --scope project|global
 ```
 
 See [Plugin Development Guide](../plugin-development.md) for creating custom plugins.
@@ -683,30 +683,30 @@ See [Plugin Development Guide](../plugin-development.md) for creating custom plu
 
 ```bash
 # Use specific runner and model
-ralph run one --runner claude --model opus
+cueloop run one --runner claude --model opus
 
 # Run with YOLO mode disabled
-ralph run one --approval-mode safe
+cueloop run one --approval-mode safe
 
 # Single-phase quick execution
-ralph run one --phases 1 --runner codex --model gpt-5.4 --effort low
+cueloop run one --phases 1 --runner codex --model gpt-5.4 --effort low
 
 # Use custom model with OpenCode
-ralph task "Add tests" --runner opencode --model custom/model-v2
+cueloop task "Add tests" --runner opencode --model custom/model-v2
 ```
 
 ### Example 4: Session Recovery
 
 ```bash
 # Run a task (session automatically created)
-ralph run one
+cueloop run one
 
 # If interrupted, resume from the same session
-# Ralph automatically detects and offers to resume stale sessions
-ralph run one
+# CueLoop automatically detects and offers to resume stale sessions
+cueloop run one
 
 # Or specify a specific session to resume
-# (Handled internally by Ralph's session management)
+# (Handled internally by CueLoop's session management)
 ```
 
 ### Example 5: Retry Configuration for API Rate Limits

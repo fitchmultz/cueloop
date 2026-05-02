@@ -5,7 +5,7 @@ Source of truth: this document for its stated scope
 Parent: [Feature Documentation](README.md)
 
 
-Ralph's session management system provides crash recovery, explicit resume decisions, and runner-level continue support for long-running agent work.
+CueLoop's session management system provides crash recovery, explicit resume decisions, and runner-level continue support for long-running agent work.
 
 ---
 
@@ -20,27 +20,27 @@ Session management serves two related purposes:
 
 ### Operator-visible decision model
 
-Ralph now narrates resume behavior with one of three states:
+CueLoop now narrates resume behavior with one of three states:
 
 | State | Meaning |
 |-------|---------|
-| `resuming_same_session` | Ralph is continuing the interrupted run or runner session. |
-| `falling_back_to_fresh_invocation` | Ralph decided the saved state should not be reused and is starting fresh. |
-| `refusing_to_resume` | Ralph cannot safely choose resume vs fresh without operator confirmation. |
+| `resuming_same_session` | CueLoop is continuing the interrupted run or runner session. |
+| `falling_back_to_fresh_invocation` | CueLoop decided the saved state should not be reused and is starting fresh. |
+| `refusing_to_resume` | CueLoop cannot safely choose resume vs fresh without operator confirmation. |
 
 Those decisions appear across:
-- `ralph run one`
-- `ralph run loop`
-- `ralph run resume`
-- `ralph machine config resolve`
-- `ralph machine run ...` event streams
+- `cueloop run one`
+- `cueloop run loop`
+- `cueloop run resume`
+- `cueloop machine config resolve`
+- `cueloop machine run ...` event streams
 - RalphMac Run Control
 
 ### Key features
 
 | Feature | Description |
 |---------|-------------|
-| **Explicit recovery narration** | Ralph says whether it is resuming, starting fresh, or refusing. |
+| **Explicit recovery narration** | CueLoop says whether it is resuming, starting fresh, or refusing. |
 | **Configurable timeout** | Sessions older than `session_timeout_hours` require explicit confirmation. |
 | **Read-only previews** | Machine/app config preview can show resume state without mutating cache. |
 | **Per-phase runner isolation** | Continue sessions stay phase-scoped, including deterministic Kimi session IDs. |
@@ -56,7 +56,7 @@ Session state is persisted to:
 .ralph/cache/session.jsonc
 ```
 
-This file is created when a task starts and is normally cleared when the run completes successfully or when Ralph explicitly abandons an invalid saved session during execution.
+This file is created when a task starts and is normally cleared when the run completes successfully or when CueLoop explicitly abandons an invalid saved session during execution.
 
 ### Structure
 
@@ -96,7 +96,7 @@ This file is created when a task starts and is normally cleared when the run com
 ### Field notes
 
 - `task_id`, `current_phase`, and `tasks_completed_in_loop` drive crash-recovery routing.
-- `phase*_settings` are display-only; Ralph recomputes effective settings from config + task + CLI overrides.
+- `phase*_settings` are display-only; CueLoop recomputes effective settings from config + task + CLI overrides.
 - `git_head_commit` is advisory context, not a hard resume gate.
 
 ---
@@ -105,7 +105,7 @@ This file is created when a task starts and is normally cleared when the run com
 
 ### Validation outcomes
 
-When Ralph starts a run, it classifies saved session state into one of these buckets:
+When CueLoop starts a run, it classifies saved session state into one of these buckets:
 
 | Validation result | Meaning |
 |------------------|---------|
@@ -116,30 +116,30 @@ When Ralph starts a run, it classifies saved session state into one of these buc
 
 ### Decision rules
 
-#### `ralph run resume`
+#### `cueloop run resume`
 - Behaves like `run loop --resume`.
 - Valid sessions resume immediately.
 - Timed-out sessions still require confirmation.
-- If no saved session exists, Ralph explicitly says it is starting fresh.
+- If no saved session exists, CueLoop explicitly says it is starting fresh.
 
-#### `ralph run one`
+#### `cueloop run one`
 - Always inspects interrupted-session state first.
 - `--resume` auto-resumes when safe.
-- Without `--resume`, Ralph prompts when confirmation is required and available.
-- If you explicitly pass `--id <TASK_ID>`, that selection overrides an unrelated interrupted session and Ralph says so.
+- Without `--resume`, CueLoop prompts when confirmation is required and available.
+- If you explicitly pass `--id <TASK_ID>`, that selection overrides an unrelated interrupted session and CueLoop says so.
 
-#### `ralph run loop`
+#### `cueloop run loop`
 - Supports the same session decision model as `run one`.
 - A resumed task is used only for the first loop iteration, then normal queue selection resumes.
 
 ### Timeout behavior
 
 Sessions older than `session_timeout_hours` are not auto-resumed just because `--resume` is present.
-Timed-out sessions require an explicit operator confirmation unless Ralph is in a non-interactive context, in which case it refuses instead of guessing.
+Timed-out sessions require an explicit operator confirmation unless CueLoop is in a non-interactive context, in which case it refuses instead of guessing.
 
 ### Non-interactive behavior
 
-If a saved session requires a decision and Ralph cannot ask safely:
+If a saved session requires a decision and CueLoop cannot ask safely:
 
 | Situation | Result |
 |----------|--------|
@@ -156,7 +156,7 @@ This prevents headless automation from silently discarding or duplicating interr
 
 ### Config preview
 
-`ralph machine config resolve` now includes an optional `resume_preview` payload:
+`cueloop machine config resolve` now includes an optional `resume_preview` payload:
 
 ```json
 {
@@ -206,7 +206,7 @@ This preview is **read-only**: it must not clear or rewrite saved session state.
 
 ### Machine run events
 
-`ralph machine run ...` streams can emit:
+`cueloop machine run ...` streams can emit:
 
 ```json
 {
@@ -232,12 +232,12 @@ RalphMac consumes both `resume_preview` and `resume_decision` so Run Control can
 
 ## Continue-session recovery
 
-Run-session recovery decides whether Ralph resumes a task. Continue-session recovery decides whether Ralph can reuse the **runner's** own session during CI-fix / supervision loops.
+Run-session recovery decides whether CueLoop resumes a task. Continue-session recovery decides whether CueLoop can reuse the **runner's** own session during CI-fix / supervision loops.
 
 ### Continue behavior
 
-- Ralph prefers same-session reuse when a runner session identifier exists.
-- If the session identifier is missing or known-invalid, Ralph says it is falling back to a fresh invocation.
+- CueLoop prefers same-session reuse when a runner session identifier exists.
+- If the session identifier is missing or known-invalid, CueLoop says it is falling back to a fresh invocation.
 - Unknown resume failures still hard-fail.
 
 ### Known safe fallback cases
@@ -253,7 +253,7 @@ Run-session recovery decides whether Ralph resumes a task. Continue-session reco
 
 ## Kimi per-phase session IDs
 
-For runners that support explicit session IDs (notably **Kimi**), Ralph uses deterministic per-phase identifiers:
+For runners that support explicit session IDs (notably **Kimi**), CueLoop uses deterministic per-phase identifiers:
 
 ```text
 {task_id}-p{phase}-{timestamp}
@@ -293,7 +293,7 @@ Guidance:
 
 ### Interactive use
 - Review the resume message before continuing old work.
-- Use `ralph run one --resume` or `ralph run resume` when you want an explicit auto-continue path.
+- Use `cueloop run one --resume` or `cueloop run resume` when you want an explicit auto-continue path.
 - Treat `refusing_to_resume` as a prompt to choose deliberately, not as an error to suppress blindly.
 
 ### Automation / app integrations
@@ -306,24 +306,24 @@ Guidance:
 
 ```bash
 # Explicitly continue when safe
-ralph run loop --resume --non-interactive
+cueloop run loop --resume --non-interactive
 
 # Or require fresh orchestration with no recovery
-ralph run loop --non-interactive
+cueloop run loop --non-interactive
 ```
 
 ---
 
 ## Troubleshooting
 
-### Ralph started fresh instead of resuming
+### CueLoop started fresh instead of resuming
 Common causes:
 - the task no longer exists
 - the task is already terminal (`done`, `rejected`)
 - you explicitly selected a different task
 - the saved session was stale
 
-### Ralph refused to resume
+### CueLoop refused to resume
 Common causes:
 - non-interactive mode prevented a required confirmation
 - the saved session timed out and needed operator approval

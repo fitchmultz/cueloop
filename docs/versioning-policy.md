@@ -2,14 +2,14 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-Purpose: define how Ralph versions releases and communicates compatibility changes.
+Purpose: define how CueLoop versions releases and communicates compatibility changes.
 
 ## Scheme
 
-Ralph follows semantic versioning:
+CueLoop follows semantic versioning:
 
 - `MAJOR`: breaking CLI/config/behavior changes
 - `MINOR`: backward-compatible features

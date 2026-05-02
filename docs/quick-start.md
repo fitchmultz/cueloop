@@ -2,10 +2,10 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
-Get Ralph running in a repository in a few minutes.
+Get CueLoop running in a repository in a few minutes.
 
 ## 1) Install
 
@@ -13,13 +13,13 @@ Get Ralph running in a repository in a few minutes.
 cargo install cueloop-agent-loop
 ```
 
-This installs the `ralph` executable.
+This installs the primary `cueloop` executable and the legacy `ralph` compatibility alias.
 
 Or from source:
 
 ```bash
-git clone https://github.com/fitchmultz/ralph
-cd ralph
+git clone https://github.com/fitchmultz/ralph cueloop
+cd cueloop
 make install
 ```
 
@@ -29,48 +29,48 @@ make install
 
 ```bash
 cd your-project
-ralph init
+cueloop init
 ```
 
 Non-interactive setup (CI/scripts):
 
 ```bash
-ralph init --non-interactive
+cueloop init --non-interactive
 ```
 
-`ralph init` creates/updates `.ralph/trust.jsonc` by default, refreshes the generated `.ralph/README.md` when Ralph ships a newer template, and gitignores the trust file so project-local execution settings can work immediately without committing machine-local trust. Interactive init also asks whether queue/done should be shared through git or kept local, and lets you select extra ignored local files for parallel-worker sync. Manual additions use trusted `parallel.ignored_file_allowlist` and the small-file contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync). Non-interactive init keeps queue/done tracked and only relies on the default `.env` / `.env.*` parallel sync.
+`cueloop init` creates/updates `.cueloop/trust.jsonc` by default for current repos, refreshes the generated `.cueloop/README.md` when CueLoop ships a newer template, and gitignores the trust file so project-local execution settings can work immediately without committing machine-local trust. Interactive init also asks whether queue/done should be shared through git or kept local, and lets you select extra ignored local files for parallel-worker sync. Manual additions use trusted `parallel.ignored_file_allowlist` and the small-file contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync). Non-interactive init keeps queue/done tracked and only relies on the default `.env` / `.env.*` parallel sync.
 
 ## 3) Create Tasks
 
 ```bash
 # Freeform task creation
-ralph task "Add regression tests for queue repair"
+cueloop task "Add regression tests for queue repair"
 
 # Or use task builder explicitly
-ralph task build "Audit webhook retry behavior"
+cueloop task build "Audit webhook retry behavior"
 ```
 
 ## 4) Run Tasks
 
 ```bash
 # Run one runnable task
-ralph run one
+cueloop run one
 
 # Run continuously until queue is drained
-ralph run loop
+cueloop run loop
 ```
 
 Useful run variants:
 
 ```bash
 # Single-pass mode
-ralph run one --quick
+cueloop run one --quick
 
 # Explicit 3-phase supervision mode
-ralph run one --phases 3
+cueloop run one --phases 3
 
 # Dry-run selection only (no execution)
-ralph run one --dry-run
+cueloop run one --dry-run
 ```
 
 If you have not configured a runner yet, stop at `--dry-run` and use the local smoke test instead of a real execution pass.
@@ -78,52 +78,52 @@ If you have not configured a runner yet, stop at `--dry-run` and use the local s
 Useful readiness checks before a real run:
 
 ```bash
-ralph runner list
-ralph runner capabilities claude
-ralph doctor
+cueloop runner list
+cueloop runner capabilities claude
+cueloop doctor
 ```
 
 ## 5) Inspect Queue State
 
 ```bash
-ralph queue list
-ralph queue next --with-title
-ralph queue validate
+cueloop queue list
+cueloop queue next --with-title
+cueloop queue validate
 ```
 
 ## 6) Verify Environment
 
 ```bash
-ralph doctor
-ralph runner list
-ralph runner capabilities claude
+cueloop doctor
+cueloop runner list
+cueloop runner capabilities claude
 ```
 
 ## 7) Optional Automation
 
 ```bash
 # Background worker process
-ralph daemon start
+cueloop daemon start
 
 # Watch source files for TODO/FIXME/HACK/XXX and create tasks
-ralph watch --auto-queue
+cueloop watch --auto-queue
 ```
 
 ## 8) macOS App
 
 ```bash
-ralph app open
+cueloop app open
 ```
 
 ## Where Files Live
 
 Default runtime files:
 
-- `.ralph/queue.jsonc`
-- `.ralph/done.jsonc`
-- `.ralph/config.jsonc`
+- `.cueloop/queue.jsonc`
+- `.cueloop/done.jsonc`
+- `.cueloop/config.jsonc`
 
-This repository intentionally keeps a sanitized `.ralph/` state for dogfooding and reproducible demos. In your own projects, treat `.ralph/` as project-local runtime state.
+This repository intentionally keeps sanitized `.cueloop/` state for dogfooding and reproducible demos. Legacy `.ralph/` runtime directories remain supported during the migration window.
 
 ## Next Docs
 

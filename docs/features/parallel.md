@@ -1,4 +1,4 @@
-# Ralph Parallel Execution (Experimental Direct-Push Mode)
+# CueLoop Parallel Execution (Experimental Direct-Push Mode)
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -11,7 +11,7 @@ Parallel execution runs multiple tasks concurrently in isolated git workspace cl
 
 > **Experimental**: Direct-push parallel execution is a power-user feature with higher branch-safety risk than sequential runs. It stays opt-in and should not be the default onboarding path.
 
-> **CLI Only**: Parallel execution is available only via CLI (`ralph run loop --parallel [N]`).
+> **CLI Only**: Parallel execution is available only via CLI (`cueloop run loop --parallel [N]`).
 
 ---
 
@@ -34,7 +34,7 @@ Parallel execution runs multiple tasks concurrently in isolated git workspace cl
 
 ### What is Parallel Execution?
 
-Parallel execution enables Ralph to process multiple queue tasks simultaneously by:
+Parallel execution enables CueLoop to process multiple queue tasks simultaneously by:
 
 - Running each task in its own isolated git workspace clone
 - Executing configured phases for each task independently
@@ -57,19 +57,19 @@ Parallel execution enables Ralph to process multiple queue tasks simultaneously 
 
 ```bash
 # Run with default settings (2 workers)
-ralph run loop --parallel
+cueloop run loop --parallel
 
 # Run with specific number of workers
-ralph run loop --parallel 4
+cueloop run loop --parallel 4
 
 # Run with max tasks limit
-ralph run loop --parallel 3 --max-tasks 10
+cueloop run loop --parallel 3 --max-tasks 10
 
 # Check parallel worker status
-ralph run parallel status
+cueloop run parallel status
 
 # Retry a blocked worker
-ralph run parallel retry --task RQ-0001
+cueloop run parallel retry --task RQ-0001
 ```
 
 Before enabling it, confirm that:
@@ -87,7 +87,7 @@ Before enabling it, confirm that:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Parallel Coordinator                         │
-│                    (Main ralph process)                          │
+│                    (Main cueloop process)                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │   Worker 1  │  │   Worker 2  │  │        Worker N         │  │
@@ -122,7 +122,7 @@ Before enabling it, confirm that:
 
 ### Key Components
 
-1. **Coordinator**: Main ralph process that:
+1. **Coordinator**: Main cueloop process that:
    - Selects tasks from the queue
    - Spawns worker processes
    - Tracks worker lifecycle state
@@ -170,7 +170,7 @@ Workspace cleanup behavior:
 
 - **Completed workers**: Cleanup is best-effort and may occur during run teardown/startup normalization.
 - **Failed workers**: Cleaned immediately after worker failure.
-- **Blocked workers**: Retained for explicit operator retry (`ralph run parallel retry --task ...`).
+- **Blocked workers**: Retained for explicit operator retry (`cueloop run parallel retry --task ...`).
 
 ---
 
@@ -321,10 +321,10 @@ State files are automatically migrated from v2 (PR-based) to v3:
 
 ```bash
 # Show human-readable status
-ralph run parallel status
+cueloop run parallel status
 
 # Output JSON for scripting
-ralph run parallel status --json
+cueloop run parallel status --json
 ```
 
 Displays:
@@ -336,14 +336,14 @@ Displays:
 
 ```bash
 # Retry a blocked or failed worker
-ralph run parallel retry --task RQ-0001
+cueloop run parallel retry --task RQ-0001
 ```
 
 This:
 1. Resets the worker lifecycle from `blocked_push` or `failed` to `running`
 2. Clears the last error
 3. Preserves push attempt count (for debugging)
-4. The worker will be picked up on the next `ralph run loop --parallel`
+4. The worker will be picked up on the next `cueloop run loop --parallel`
 
 ---
 
@@ -367,7 +367,7 @@ If your target branch has protected branch policies:
 
 - Workers may be blocked from pushing
 - This results in `BlockedPush` status
-- Use `ralph run parallel retry` after resolving branch protection issues
+- Use `cueloop run parallel retry` after resolving branch protection issues
 
 ---
 
@@ -377,19 +377,19 @@ If your target branch has protected branch policies:
 
 ```bash
 # 1. Ensure queue has tasks
-ralph queue list
+cueloop queue list
 
 # 2. Start parallel execution
-ralph run loop --parallel 4 --max-tasks 10
+cueloop run loop --parallel 4 --max-tasks 10
 
 # 3. Monitor status (in another terminal)
-ralph run parallel status
+cueloop run parallel status
 
 # 4. If workers are blocked, investigate and retry
-ralph run parallel retry --task RQ-0005
+cueloop run parallel retry --task RQ-0005
 
 # 5. Resume parallel execution
-ralph run loop --parallel 4
+cueloop run loop --parallel 4
 ```
 
 ### Conflict Resolution Workflow
@@ -444,7 +444,7 @@ watch -n 1 'cat .ralph/cache/parallel/state.json | jq .workers'
 
 ```bash
 # 1. Check worker status
-ralph run parallel status
+cueloop run parallel status
 
 # 2. Inspect handoff packet
 ls .ralph/cache/parallel/handoffs/<task-id>/
@@ -458,7 +458,7 @@ git status
 git log --oneline -10
 
 # 5. Retry after fixes
-ralph run parallel retry --task <task-id>
+cueloop run parallel retry --task <task-id>
 ```
 
 ---
@@ -468,21 +468,21 @@ ralph run parallel retry --task <task-id>
 ### Common Issues
 
 **"No parallel state found"**
-- Run `ralph run loop --parallel N` first to initialize state
+- Run `cueloop run loop --parallel N` first to initialize state
 
 **"Task is currently running"**
 - Cannot retry an active worker. Wait for it to complete or fail.
 
 **"Push rejected: protected branch"**
 - Your target branch has protection rules. Either:
-  - Disable protection for ralph pushes
+  - Disable protection for cueloop pushes
   - Use a feature branch workflow (not supported in direct-push mode)
 
 **"CI gate failed after max attempts"**
 - Worker exhausted CI retry budget. Investigate `.ralph/logs/parallel/<task-id>.log` and retry.
 
 **Workspace disk space**
-- Workspaces accumulate over time. Run `ralph cleanup` or adjust `workspace_retention_hours`.
+- Workspaces accumulate over time. Run `cueloop cleanup` or adjust `workspace_retention_hours`.
 
 ---
 

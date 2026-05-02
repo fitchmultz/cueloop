@@ -1,4 +1,4 @@
-# Ralph Plugin System
+# CueLoop Plugin System
 Status: Active
 Owner: Maintainers
 Source of truth: this document is the canonical entry point for plugin-system documentation; linked child pages are canonical for their named topic.
@@ -6,7 +6,7 @@ Parent: [Feature Documentation](README.md)
 
 ![Plugin Architecture](../assets/images/2026-03-10-12-05-00-plugin-architecture.png)
 
-Purpose: Entry point for Ralph's plugin system, including custom runners and task processors.
+Purpose: Entry point for CueLoop's plugin system, including custom runners and task processors.
 
 > ⚠️ **Critical security warning:** Plugins are not sandboxed. Enabling a plugin grants full system access equivalent to running arbitrary code. Only enable plugins from trusted sources. See [Plugin Security](plugins/security.md).
 
@@ -14,7 +14,7 @@ Purpose: Entry point for Ralph's plugin system, including custom runners and tas
 
 ## Overview
 
-Ralph plugins extend the CLI without modifying core code.
+CueLoop plugins extend the CLI without modifying core code.
 
 | Type | Purpose | Primary reference |
 |------|---------|-------------------|
@@ -36,9 +36,9 @@ Ralph plugins extend the CLI without modifying core code.
 ## Quick Start
 
 ```bash
-ralph plugin init my.plugin
-ralph plugin validate --id my.plugin
-ralph plugin list
+cueloop plugin init my.plugin
+cueloop plugin validate --id my.plugin
+cueloop plugin list
 ```
 
 Plugins are discovered but disabled by default. Enable a plugin explicitly in config:

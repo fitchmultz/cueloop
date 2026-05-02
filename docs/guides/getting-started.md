@@ -1,17 +1,17 @@
-# Getting Started with Ralph
+# Getting Started with CueLoop
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
-Welcome to Ralph! This guide will walk you through everything you need to know to get up and running with AI-powered task automation.
+Welcome to CueLoop! This guide will walk you through everything you need to know to get up and running with AI-powered task automation.
 
-## What is Ralph?
+## What is CueLoop?
 
-Ralph is a Rust-based CLI tool that manages AI agent loops with a structured JSON task queue. It orchestrates AI runners (Claude, Codex, OpenCode, Gemini, Cursor, Kimi, and Pi) to execute development tasks through a structured workflow.
+CueLoop is a Rust-based CLI tool that manages AI agent loops with a structured JSON task queue. It orchestrates AI runners (Claude, Codex, OpenCode, Gemini, Cursor, Kimi, and Pi) to execute development tasks through a structured workflow.
 
-Think of Ralph as your AI conductor—managing tasks, tracking progress, and ensuring quality through systematic phases of execution.
+Think of CueLoop as your AI conductor—managing tasks, tracking progress, and ensuring quality through systematic phases of execution.
 
 ---
 
@@ -32,13 +32,13 @@ Think of Ralph as your AI conductor—managing tasks, tracking progress, and ens
 
 ### From crates.io (Recommended)
 
-The easiest way to install Ralph is via Cargo:
+The easiest way to install CueLoop is via Cargo:
 
 ```bash
 cargo install cueloop-agent-loop
 ```
 
-This installs the latest published version from crates.io and provides the `ralph` executable at `~/.cargo/bin/ralph`.
+This installs the latest published version from crates.io and provides the primary `cueloop` executable at `~/.cargo/bin/cueloop` plus the legacy `ralph` compatibility alias.
 
 ### From Source
 
@@ -46,26 +46,26 @@ If you want the latest development version or to contribute:
 
 ```bash
 # Clone the repository
-git clone https://github.com/fitchmultz/ralph
-cd ralph
+git clone https://github.com/fitchmultz/ralph cueloop
+cd cueloop
 
 # Build and install
 make install
 ```
 
-This installs the `ralph` binary to `~/.local/bin/ralph` (or a writable fallback path).
+This installs the primary `cueloop` binary to `~/.local/bin/cueloop` and the legacy `ralph` compatibility alias to `~/.local/bin/cueloop` (or a writable fallback path).
 
 ### Verify Installation
 
-Check that Ralph is properly installed:
+Check that CueLoop is properly installed:
 
 ```bash
-ralph version
+cueloop version
 ```
 
 You should see output like:
 ```
-ralph 0.x.x
+cueloop 0.x.x
 ```
 
 ### Add to PATH
@@ -81,18 +81,18 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ## 2. Quick Initialization
 
-Ralph needs to be initialized in each project where you want to use it. Navigate to your project directory and run:
+CueLoop needs to be initialized in each project where you want to use it. Navigate to your project directory and run:
 
 ```bash
 cd your-project
-ralph init
+cueloop init
 ```
 
-`ralph init` writes the `0.3` config contract with `"version": 2`, safe defaults, no automatic publish side effects, local repo trust in `.ralph/trust.jsonc` (gitignored by init), and the current generated `.ralph/README.md` guidance. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
+`cueloop init` writes the `0.3` config contract with `"version": 2`, safe defaults, no automatic publish side effects, local repo trust in `.cueloop/trust.jsonc` for current repos (gitignored by init), and the current generated `.cueloop/README.md` guidance. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
 
 ### Interactive Wizard
 
-When you run `ralph init` in a terminal (TTY), it launches an interactive wizard that will:
+When you run `cueloop init` in a terminal (TTY), it launches an interactive wizard that will:
 
 1. **Choose Your AI Runner**: Select from Claude, Codex, OpenCode, Gemini, Cursor, Kimi, or Pi
 2. **Select a Model**: Pick the best model for your chosen runner
@@ -105,12 +105,12 @@ When you run `ralph init` in a terminal (TTY), it launches an interactive wizard
 
 ```bash
 $ cd my-awesome-project
-$ ralph init
+$ cueloop init
 
-✓ Initializing Ralph in /home/user/my-awesome-project
+✓ Initializing CueLoop in /home/user/my-awesome-project
 
 ┌─────────────────────────────────────────┐
-│  Welcome to Ralph! Let's get started.   │
+│  Welcome to CueLoop! Let's get started.   │
 └─────────────────────────────────────────┘
 
 Choose your AI runner:
@@ -144,7 +144,7 @@ Enter task title: Add user authentication feature
 ✓ Created .ralph/config.jsonc
 ✓ Created .ralph/queue.jsonc
 ✓ Created first task: RQ-0001
-✓ Ralph is ready to use!
+✓ CueLoop is ready to use!
 ```
 
 ### Non-Interactive Mode
@@ -152,17 +152,17 @@ Enter task title: Add user authentication feature
 For CI/CD or scripts, skip the wizard:
 
 ```bash
-ralph init --non-interactive
+cueloop init --non-interactive
 ```
 
 This uses sensible defaults without prompting.
 
 ### Force Reinitialization
 
-To overwrite existing Ralph files:
+To overwrite existing CueLoop files:
 
 ```bash
-ralph init --force
+cueloop init --force
 ```
 
 ---
@@ -173,10 +173,10 @@ After initialization, you have several ways to work with tasks.
 
 ### macOS: Open the App (SwiftUI)
 
-On macOS, you can use the Ralph app for interactive queue work:
+On macOS, you can use the CueLoop app for interactive queue work:
 
 ```bash
-ralph app open
+cueloop app open
 ```
 
 ### Run Your First Task
@@ -185,23 +185,23 @@ From the CLI, run the next task in the queue:
 
 ```bash
 # Run the next available task
-ralph run one
+cueloop run one
 
 # Or run in loop mode until all tasks complete
-ralph run loop
+cueloop run loop
 ```
 
 ### View the Queue
 
 ```bash
 # List all tasks
-ralph queue list
+cueloop queue list
 
 # Show the next task
-ralph queue next --with-title
+cueloop queue next --with-title
 
 # Search tasks
-ralph queue search "authentication"
+cueloop queue search "authentication"
 ```
 
 ### Creating Tasks
@@ -210,27 +210,27 @@ ralph queue search "authentication"
 
 ```bash
 # Quick task creation
-ralph task "Add password reset functionality"
+cueloop task "Add password reset functionality"
 
 # With details
-ralph task "Refactor database layer" \
+cueloop task "Refactor database layer" \
   --request "Move all database access code into a dedicated module" \
   --priority high
 ```
 
 **From the App (macOS):**
 
-Open the app with `ralph app open` and create tasks from the UI.
-Use `Decompose Task...` when you want Ralph to preview a task tree before writing multiple subtasks into the queue.
+Open the app with `cueloop app open` and create tasks from the UI.
+Use `Decompose Task...` when you want CueLoop to preview a task tree before writing multiple subtasks into the queue.
 
 ### Example Decomposition Session
 
 ```bash
 # Preview a task tree from one broad goal
-ralph task decompose "Build OAuth login with GitHub and Google"
+cueloop task decompose "Build OAuth login with GitHub and Google"
 
 # Write the proposed subtree after review
-ralph task decompose "Build OAuth login with GitHub and Google" --write
+cueloop task decompose "Build OAuth login with GitHub and Google" --write
 ```
 
 The macOS app exposes the same preview-first workflow from the Task menu, queue toolbar, command palette, and task context menus.
@@ -239,12 +239,12 @@ The macOS app exposes the same preview-first workflow from the Task menu, queue 
 
 ```bash
 # 1. Check what tasks exist
-$ ralph queue list
+$ cueloop queue list
 ID       Status  Priority  Title
 RQ-0001  todo    medium    Add user authentication feature
 
 # 2. Run the next task
-$ ralph run one
+$ cueloop run one
 Starting RQ-0001: Add user authentication feature
 
 === Phase 1: Planning ===
@@ -261,7 +261,7 @@ Reviewing changes...
 ✓ Task completed
 
 # 3. Check the result
-$ ralph queue list
+$ cueloop queue list
 ID       Status  Priority  Title
 RQ-0001  done    medium    Add user authentication feature
 ```
@@ -270,7 +270,7 @@ RQ-0001  done    medium    Add user authentication feature
 
 ## 4. Understanding the Workflow
 
-Ralph uses a structured **3-phase workflow** to ensure quality. Understanding these phases helps you choose the right mode for each task.
+CueLoop uses a structured **3-phase workflow** to ensure quality. Understanding these phases helps you choose the right mode for each task.
 
 ### The 3 Phases
 
@@ -323,13 +323,13 @@ Override phases for a single run:
 
 ```bash
 # Use 1-phase for a quick fix
-ralph run one --phases 1
+cueloop run one --phases 1
 
 # Or use the --quick shorthand
-ralph run one --quick
+cueloop run one --quick
 
 # Use 3-phase for careful review
-ralph run one --phases 3
+cueloop run one --phases 3
 ```
 
 Set default in config:
@@ -346,7 +346,7 @@ Set default in config:
 
 ## 5. Runner Selection
 
-Ralph supports multiple AI runners. Choose based on your needs:
+CueLoop supports multiple AI runners. Choose based on your needs:
 
 ### Runner Comparison
 
@@ -367,7 +367,7 @@ Ralph supports multiple AI runners. Choose based on your needs:
 - `opus` - Maximum capability for complex tasks
 
 **Codex:**
-- `gpt-5.4` - Default and recommended for Codex in Ralph
+- `gpt-5.4` - Default and recommended for Codex in CueLoop
 - `gpt-5.3-codex` - Prior Codex-tuned option
 - `gpt-5.3-codex-spark` - Spark variant for coding workflows
 - `gpt-5.3` - General GPT-5.3 option when you do not want a Codex-tuned model
@@ -385,10 +385,10 @@ Override for a single task:
 
 ```bash
 # Use Claude for this run
-ralph run one --runner claude --model sonnet
+cueloop run one --runner claude --model sonnet
 
 # Use Codex with high reasoning effort
-ralph run one --runner codex --model gpt-5.4 --effort high
+cueloop run one --runner codex --model gpt-5.4 --effort high
 ```
 
 Set default in config:
@@ -407,7 +407,7 @@ Set default in config:
 Verify your runners are installed:
 
 ```bash
-ralph doctor
+cueloop doctor
 ```
 
 This checks:
@@ -418,7 +418,7 @@ This checks:
 
 ### Installing Runners
 
-Ralph requires the runner CLIs to be installed separately:
+CueLoop requires the runner CLIs to be installed separately:
 
 - **Claude**: `npm install -g @anthropic-ai/claude-cli` or see Anthropic docs
 - **Codex**: `npm install -g @openai/codex`
@@ -432,7 +432,7 @@ Ralph requires the runner CLIs to be installed separately:
 
 ## 6. Configuration Basics
 
-Ralph uses a two-layer JSON configuration system:
+CueLoop uses a two-layer JSON configuration system:
 
 ### Configuration Locations
 
@@ -506,25 +506,25 @@ A minimal effective configuration:
 
 ```bash
 # Show resolved configuration
-ralph config show
+cueloop config show
 
 # Show as JSON for scripting
-ralph config show --format json
+cueloop config show --format json
 
 # Show file paths
-ralph config paths
+cueloop config paths
 ```
 
 ### Configuration Profiles
 
-Ralph always includes two built-in profiles for quick workflow switching:
+CueLoop always includes two built-in profiles for quick workflow switching:
 
 | Profile | Runner posture | Publish mode | Use Case |
 |---------|----------------|--------------|----------|
 | `safe` | Safer approvals | `off` | Recommended default |
 | `power-user` | High-autonomy approvals | `commit_and_push` | Explicit opt-in |
 
-Ralph also supports custom profiles:
+CueLoop also supports custom profiles:
 
 | Profile | Runner | Model | Phases | Use Case |
 |---------|--------|-------|--------|----------|
@@ -534,10 +534,10 @@ Ralph also supports custom profiles:
 Use a profile:
 
 ```bash
-ralph run one --profile safe
-ralph run one --profile power-user
-ralph run one --profile fast-local
-ralph scan --profile deep-review "security audit"
+cueloop run one --profile safe
+cueloop run one --profile power-user
+cueloop run one --profile fast-local
+cueloop scan --profile deep-review "security audit"
 ```
 
 Define custom profiles:
@@ -569,37 +569,37 @@ Define custom profiles:
 
 ```bash
 # 1. Start your day - check the queue
-ralph queue list
+cueloop queue list
 
 # 2. macOS (optional): open the app UI
-ralph app open
+cueloop app open
 
 # 3. Add tasks from code review or planning
-ralph task "Fix race condition in worker pool"
-ralph task "Update API documentation"
+cueloop task "Fix race condition in worker pool"
+cueloop task "Update API documentation"
 
 # 4. Run specific high-priority tasks
-ralph run one --id RQ-0005
+cueloop run one --id RQ-0005
 
 # 5. End of day - archive completed work
-ralph queue archive
+cueloop queue archive
 ```
 
 ### CLI Quick Reference
 
 | Command | Description |
 |---------|-------------|
-| `ralph app open` | Open the macOS app UI |
-| `ralph run one` | Run next task |
-| `ralph run one --id RQ-0001` | Run specific task |
-| `ralph run loop` | Run tasks continuously |
-| `ralph help-all` | Show core, advanced, and experimental commands |
-| `ralph task "title"` | Create new task |
-| `ralph queue list` | List all tasks |
-| `ralph queue next` | Show next runnable task |
-| `ralph queue archive` | Move done tasks to archive |
-| `ralph doctor` | Check environment health |
-| `ralph scan "focus"` | Auto-generate tasks |
+| `cueloop app open` | Open the macOS app UI |
+| `cueloop run one` | Run next task |
+| `cueloop run one --id RQ-0001` | Run specific task |
+| `cueloop run loop` | Run tasks continuously |
+| `cueloop help-all` | Show core, advanced, and experimental commands |
+| `cueloop task "title"` | Create new task |
+| `cueloop queue list` | List all tasks |
+| `cueloop queue next` | Show next runnable task |
+| `cueloop queue archive` | Move done tasks to archive |
+| `cueloop doctor` | Check environment health |
+| `cueloop scan "focus"` | Auto-generate tasks |
 
 ### Managing Tasks
 
@@ -607,16 +607,16 @@ ralph queue archive
 
 ```bash
 # Good: Clear, actionable title
-ralph task "Add JWT authentication middleware"
+cueloop task "Add JWT authentication middleware"
 
 # Better: With context
-ralph task "Add JWT authentication middleware" \
+cueloop task "Add JWT authentication middleware" \
   --request "Implement JWT token validation in the auth middleware. Use the existing user model." \
   --scope "src/middleware/auth.rs" \
   --priority high
 
 # Best: With evidence/plan
-ralph task "Add JWT authentication middleware" \
+cueloop task "Add JWT authentication middleware" \
   --request "Implement JWT token validation..." \
   --evidence "Current auth uses session cookies, need JWT for API" \
   --scope "src/middleware/auth.rs,src/models/user.rs" \
@@ -629,10 +629,10 @@ ralph task "Add JWT authentication middleware" \
 
 ```bash
 # Create tasks that depend on others
-ralph task "Implement login endpoint" --tags auth
+cueloop task "Implement login endpoint" --tags auth
 # Returns: RQ-0001
 
-ralph task "Add password reset" \
+cueloop task "Add password reset" \
   --depends-on RQ-0001 \
   --tag auth
 ```
@@ -641,24 +641,24 @@ ralph task "Add password reset" \
 
 ```bash
 # Schedule for future execution
-ralph task "Deploy to production" \
+cueloop task "Deploy to production" \
   --scheduled-start "2026-02-15T09:00:00Z"
 
 # Or use relative time
-ralph task "Weekly dependency update" \
+cueloop task "Weekly dependency update" \
   --scheduled-start "+7d"
 ```
 
 ### Git Workflow Integration
 
-Ralph works best with a clean git workflow:
+CueLoop works best with a clean git workflow:
 
 ```bash
 # 1. Ensure working directory is clean
 git status
 
-# 2. Run tasks (Ralph will create commits if enabled)
-ralph run loop
+# 2. Run tasks (CueLoop will create commits if enabled)
+cueloop run loop
 
 # 3. Review changes
 git log --oneline -5
@@ -704,10 +704,10 @@ Automatically discover tasks in your codebase:
 
 ```bash
 # Find maintenance issues
-ralph scan --mode maintenance "code quality gaps"
+cueloop scan --mode maintenance "code quality gaps"
 
 # Find feature opportunities
-ralph scan --mode innovation "missing features"
+cueloop scan --mode innovation "missing features"
 ```
 
 **Parallel Execution:**
@@ -715,22 +715,22 @@ ralph scan --mode innovation "missing features"
 Run multiple tasks concurrently (CLI only):
 
 ```bash
-ralph run loop --parallel 4 --max-tasks 10
+cueloop run loop --parallel 4 --max-tasks 10
 ```
 
 **Daemon Mode:**
 
-Run Ralph continuously in the background:
+Run CueLoop continuously in the background:
 
 ```bash
 # Start daemon
-ralph daemon start
+cueloop daemon start
 
 # Check status
-ralph daemon status
+cueloop daemon status
 
 # Stop daemon
-ralph daemon stop
+cueloop daemon stop
 ```
 
 **PRD to Tasks:**
@@ -738,7 +738,7 @@ ralph daemon stop
 Convert Product Requirements Documents into tasks:
 
 ```bash
-ralph prd create requirements.md
+cueloop prd create requirements.md
 ```
 
 ### Best Practices
@@ -746,16 +746,16 @@ ralph prd create requirements.md
 1. **Start small**: Begin with 1-phase tasks to get familiar
 2. **Review plans**: Always check Phase 1 plans before implementation
 3. **Use the app (macOS)**: Keep the queue visible while you work
-4. **Archive regularly**: Keep your queue clean with `ralph queue archive`
-5. **Run doctor**: Check `ralph doctor` if something seems off
+4. **Archive regularly**: Keep your queue clean with `cueloop queue archive`
+5. **Run doctor**: Check `cueloop doctor` if something seems off
 6. **Version control**: Keep your `.ralph/` directory in git
 7. **CI gate**: Always ensure the configured CI gate passes before considering work done (`make agent-ci` in this repo)
 
 ### Getting Help
 
 - **Check the docs**: Start with `docs/index.md`
-- **Run doctor**: `ralph doctor` diagnoses common issues
-- **Validate queue**: `ralph queue validate` checks for problems
+- **Run doctor**: `cueloop doctor` diagnoses common issues
+- **Validate queue**: `cueloop queue validate` checks for problems
 - **Verbose output**: Use `--verbose` flag for more details
 
 ### Community
@@ -773,14 +773,14 @@ ralph prd create requirements.md
 │ RALPH QUICK REFERENCE                                          │
 ├────────────────────────────────────────────────────────────────┤
 │ INSTALL    cargo install cueloop-agent-loop                      │
-│ INIT       ralph init                                          │
-│ APP (macOS) ralph app open                                     │
-│ RUN        ralph run one        # next task                    │
-│            ralph run loop       # continuous                   │
-│ TASK       ralph task "title"                                  │
-│ LIST       ralph queue list                                    │
-│ ARCHIVE    ralph queue archive                                 │
-│ DOCTOR     ralph doctor                                        │
+│ INIT       cueloop init                                          │
+│ APP (macOS) cueloop app open                                     │
+│ RUN        cueloop run one        # next task                    │
+│            cueloop run loop       # continuous                   │
+│ TASK       cueloop task "title"                                  │
+│ LIST       cueloop queue list                                    │
+│ ARCHIVE    cueloop queue archive                                 │
+│ DOCTOR     cueloop doctor                                        │
 ├────────────────────────────────────────────────────────────────┤
 │ PHASES     --phases 1 (quick)  --phases 2 (plan+impl)          │
 │            --phases 3 (full)   --quick (1-phase shorthand)     │

@@ -19,7 +19,7 @@ Notes:
 
 - Relative paths resolve from repo root; canonical config also documents absolute path and `~` expansion behavior.
 - Machine and app integrations should consume CLI machine surfaces rather than hardcoded file assumptions.
-- During `ralph run loop --parallel ...`, queue/done paths must remain under repo root.
+- During `cueloop run loop --parallel ...`, queue/done paths must remain under repo root.
 
 Canonical details:
 

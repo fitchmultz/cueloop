@@ -1,4 +1,4 @@
-# Ralph Migration System
+# CueLoop Migration System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -27,7 +27,7 @@ The migration system manages breaking changes to configuration keys, file format
 
 ### What Are Migrations?
 
-Migrations are automated transformations that update your project's configuration and files when Ralph introduces breaking changes. They ensure smooth upgrades without manual editing of config files.
+Migrations are automated transformations that update your project's configuration and files when CueLoop introduces breaking changes. They ensure smooth upgrades without manual editing of config files.
 
 ### When Are Migrations Needed?
 
@@ -38,7 +38,7 @@ Migrations are automated transformations that update your project's configuratio
 | File moved or renamed | `FileRename` |
 | Queue format changes | `FileRename` (JSON → JSONC) |
 
-README template updates are handled by `ralph init` and agent-facing write-enabled commands, not by the active migration registry.
+README template updates are handled by `cueloop init` and agent-facing write-enabled commands, not by the active migration registry.
 
 ### Key Features
 
@@ -66,7 +66,7 @@ MigrationType::ConfigKeyRename {
 
 ### ConfigLegacyContractUpgrade
 
-Upgrades pre-`0.3` config files so current Ralph builds can load them again.
+Upgrades pre-`0.3` config files so current CueLoop builds can load them again.
 
 **Behavior:**
 - Detects legacy project/global config files that still use `"version": 1`
@@ -143,7 +143,7 @@ MigrationType::FileRename {
 
 ### ReadmeUpdate
 
-Legacy migration type for updating the generated `.ralph/README.md` to the latest template version. Current releases refresh this file through `ralph init` and agent-facing write-enabled commands instead of relying on a registered README migration.
+Legacy migration type for updating the generated `.ralph/README.md` to the latest template version. Current releases refresh this file through `cueloop init` and agent-facing write-enabled commands instead of relying on a registered README migration.
 
 **Structure:**
 ```rust
@@ -155,7 +155,7 @@ MigrationType::ReadmeUpdate {
 
 **Behavior:**
 - Regenerates `.ralph/README.md` with the latest template
-- Replaces local README drift because the file is Ralph-owned/generated
+- Replaces local README drift because the file is CueLoop-owned/generated
 - Only applicable if current README version < target version
 
 ---
@@ -255,10 +255,10 @@ Migration history is stored in `.ralph/cache/migrations.jsonc`.
 
 ```bash
 # Default: Show pending migrations
-ralph migrate
+cueloop migrate
 
 # Explicit check (exits with code 1 if pending, for CI)
-ralph migrate --check
+cueloop migrate --check
 ```
 
 **Output Examples:**
@@ -277,7 +277,7 @@ Found 1 pending migration(s):
   • config_key_rename_parallel_worktree_root_2026_02
     Rename parallel.worktree_root to parallel.workspace_root
 
-Run ralph migrate --apply to apply them.
+Run cueloop migrate --apply to apply them.
 ```
 
 CI check with pending migrations (exits 1):
@@ -285,13 +285,13 @@ CI check with pending migrations (exits 1):
 ✗ 1 pending migration(s) found
   - config_key_rename_parallel_worktree_root_2026_02: Rename parallel.worktree_root to parallel.workspace_root
 
-Run ralph migrate --apply to apply them.
+Run cueloop migrate --apply to apply them.
 ```
 
 ### List All Migrations
 
 ```bash
-ralph migrate --list
+cueloop migrate --list
 ```
 
 **Output Example:**
@@ -313,13 +313,13 @@ Status icons:
 
 ```bash
 # Apply all pending migrations (interactive confirmation)
-ralph migrate --apply
+cueloop migrate --apply
 
-# Typical upgrade path after installing Ralph 0.3 on an older repo
-ralph migrate --apply
+# Typical upgrade path after installing CueLoop 0.3 on an older repo
+cueloop migrate --apply
 
 # Force re-apply already applied migrations (dangerous)
-ralph migrate --apply --force
+cueloop migrate --apply --force
 ```
 
 **Interactive Flow:**
@@ -337,7 +337,7 @@ Apply these migrations? [y/N]: y
 ### Show Detailed Status
 
 ```bash
-ralph migrate status
+cueloop migrate status
 ```
 
 **Output Example:**
@@ -354,14 +354,14 @@ Pending migrations: None
 ### Help
 
 ```bash
-ralph migrate --help
+cueloop migrate --help
 ```
 
 **Output:**
 ```
 Check and apply migrations for config and project files
 
-Usage: ralph migrate [OPTIONS] [COMMAND]
+Usage: cueloop migrate [OPTIONS] [COMMAND]
 
 Commands:
   status  Show detailed migration status
@@ -375,11 +375,11 @@ Options:
   -h, --help     Print help
 
 Examples:
-  ralph migrate              # Check for pending migrations
-  ralph migrate --check      # Exit with error code if migrations pending (CI)
-  ralph migrate --apply      # Apply all pending migrations, including legacy config upgrades
-  ralph migrate --list       # List all migrations and their status
-  ralph migrate status       # Show detailed migration status
+  cueloop migrate              # Check for pending migrations
+  cueloop migrate --check      # Exit with error code if migrations pending (CI)
+  cueloop migrate --apply      # Apply all pending migrations, including legacy config upgrades
+  cueloop migrate --list       # List all migrations and their status
+  cueloop migrate status       # Show detailed migration status
 ```
 
 ---
@@ -388,24 +388,24 @@ Examples:
 
 ### When Do Automatic Migrations Run?
 
-Currently, Ralph **does not** automatically apply migrations. This is by design to prevent unexpected changes during routine operations.
+Currently, CueLoop **does not** automatically apply migrations. This is by design to prevent unexpected changes during routine operations.
 
 Migrations are only applied:
-1. When explicitly requested via `ralph migrate --apply`
+1. When explicitly requested via `cueloop migrate --apply`
 2. During project initialization (if applicable)
 
 ### Future Considerations
 
 Potential future enhancements may include:
-- Prompting for migration during `ralph init`
+- Prompting for migration during `cueloop init`
 - `--auto-migrate` flag for CI environments
 - Migration warnings on config load failure
 
 ### Best Practices
 
-1. **Check after updates**: Run `ralph migrate` after updating Ralph to check for pending migrations
-2. **Upgrade older repos after install**: `make install` updates binaries, but repo-local `.ralph/config.jsonc` still needs `ralph migrate --apply` if it predates `0.3`
-3. **CI integration**: Use `ralph migrate --check` in CI to fail builds if migrations are needed
+1. **Check after updates**: Run `cueloop migrate` after updating CueLoop to check for pending migrations
+2. **Upgrade older repos after install**: `make install` updates binaries, but repo-local `.ralph/config.jsonc` still needs `cueloop migrate --apply` if it predates `0.3`
+3. **CI integration**: Use `cueloop migrate --check` in CI to fail builds if migrations are needed
 4. **Version control**: Review migration changes before committing
 
 ---
@@ -416,17 +416,17 @@ Potential future enhancements may include:
 
 1. **Check current status:**
    ```bash
-   ralph migrate
+   cueloop migrate
    ```
 
 2. **Review what will change:**
    ```bash
-   ralph migrate --list
+   cueloop migrate --list
    ```
 
 3. **Apply migrations:**
    ```bash
-   ralph migrate --apply
+   cueloop migrate --apply
    ```
 
 4. **Verify changes:**
@@ -437,7 +437,7 @@ Potential future enhancements may include:
 5. **Commit changes:**
    ```bash
    git add -A
-   git commit -m "Apply Ralph migrations"
+   git commit -m "Apply CueLoop migrations"
    ```
 
 ### Rollback Procedure
@@ -473,15 +473,15 @@ Add to your CI pipeline to ensure migrations are applied:
 
 ```yaml
 # GitHub Actions example
-- name: Check Ralph migrations
-  run: ralph migrate --check
+- name: Check CueLoop migrations
+  run: cueloop migrate --check
 ```
 
 ```bash
 # Generic CI script
-if ! ralph migrate --check; then
-    echo "Error: Pending Ralph migrations detected"
-    echo "Run 'ralph migrate --apply' locally and commit the changes"
+if ! cueloop migrate --check; then
+    echo "Error: Pending CueLoop migrations detected"
+    echo "Run 'cueloop migrate --apply' locally and commit the changes"
     exit 1
 fi
 ```
@@ -529,7 +529,7 @@ MigrationType::ConfigKeyRename {
 ```
 
 **Documentation Reference:** See `docs/configuration.md` line 298-301:
-> Breaking change (2026-02): The `parallel.worktree_root` config key has been renamed to `parallel.workspace_root`. Config files using the old key will fail to load. Run `ralph migrate` to update existing configs.
+> Breaking change (2026-02): The `parallel.worktree_root` config key has been renamed to `parallel.workspace_root`. Config files using the old key will fail to load. Run `cueloop migrate` to update existing configs.
 
 ### State Files Note
 

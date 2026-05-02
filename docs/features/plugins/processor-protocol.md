@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for task processor hook invocation and lifecycle semantics
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Define processor hook timing, inputs, ordering, environment, mutation rules, and failure behavior.
 
@@ -56,7 +56,7 @@ a.plugin -> b.plugin -> my.plugin -> z.plugin
 
 ## Pre-Prompt In-Place Mutation
 
-`pre_prompt` hooks may mutate the prompt file in place. Ralph reads the final file contents after all hooks complete.
+`pre_prompt` hooks may mutate the prompt file in place. CueLoop reads the final file contents after all hooks complete.
 
 ## Related Docs
 

@@ -89,10 +89,10 @@ Use base profile + CLI overrides for flexibility:
 
 ```bash
 # Start with deep-review profile, override for speed
-ralph run one --profile deep-review --phases 2 --runner kimi
+cueloop run one --profile deep-review --phases 2 --runner kimi
 
 # Use CI-safe profile but enable auto-push for this run
-ralph run loop --profile ci-safe --git-publish-mode commit_and_push
+cueloop run loop --profile ci-safe --git-publish-mode commit_and_push
 ```
 
 ### Profile Inheritance Visualization

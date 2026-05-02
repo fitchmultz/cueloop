@@ -1,15 +1,15 @@
-# Ralph Webhooks System
+# CueLoop Webhooks System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
 Parent: [Feature Documentation](README.md)
 
 
-Ralph's webhook system enables real-time HTTP notifications for task lifecycle events, allowing external systems (Slack, Discord, CI/CD pipelines, dashboards) to react to and monitor task execution.
+CueLoop's webhook system enables real-time HTTP notifications for task lifecycle events, allowing external systems (Slack, Discord, CI/CD pipelines, dashboards) to react to and monitor task execution.
 
 ## Overview
 
-Webhooks complement desktop notifications by providing a machine-readable, integration-friendly event stream. When enabled, Ralph sends HTTP POST requests to your configured endpoint whenever subscribed events occur.
+Webhooks complement desktop notifications by providing a machine-readable, integration-friendly event stream. When enabled, CueLoop sends HTTP POST requests to your configured endpoint whenever subscribed events occur.
 
 ### Common Use Cases
 
@@ -48,7 +48,7 @@ Webhooks are configured via the `agent.webhook` section in your config file (`.r
 | `parallel_queue_multiplier` | number | `2.0` | Parallel-mode queue capacity multiplier (1.0-10.0) |
 | `queue_policy` | string | `"drop_oldest"` | Backpressure policy when queue is full |
 
-When `enabled` is `true`, Ralph validates `url` before delivery: HTTPS is the default; `http://` needs `allow_insecure_http: true`. Loopback, link-local, and common metadata hostnames are blocked unless `allow_private_targets: true`.
+When `enabled` is `true`, CueLoop validates `url` before delivery: HTTPS is the default; `http://` needs `allow_insecure_http: true`. Loopback, link-local, and common metadata hostnames are blocked unless `allow_private_targets: true`.
 
 ### Queue Policy Options
 
@@ -97,7 +97,7 @@ When `enabled` is `true`, Ralph validates `url` before delivery: HTTPS is the de
 
 ## Event Types
 
-Ralph emits webhook events across three categories: **Task Events**, **Loop Events**, and **Phase Events**.
+CueLoop emits webhook events across three categories: **Task Events**, **Loop Events**, and **Phase Events**.
 
 ### Task Events (Enabled by Default)
 
@@ -105,7 +105,7 @@ These core task lifecycle events are always enabled when webhooks are on (unless
 
 | Event | Description | When Emitted |
 |-------|-------------|--------------|
-| `task_created` | Task added to queue | After `ralph task \"...\"` / `ralph task build \"...\"` or scan creates a task |
+| `task_created` | Task added to queue | After `cueloop task \"...\"` / `cueloop task build \"...\"` or scan creates a task |
 | `task_started` | Task execution begins | When task status changes to `doing` |
 | `task_completed` | Task finished successfully | When task status changes to `done` |
 | `task_failed` | Task failed or rejected | When task status changes to `rejected` |
@@ -117,7 +117,7 @@ Loop-level events track the execution loop lifecycle. These are **opt-in** and m
 
 | Event | Description | When Emitted |
 |-------|-------------|--------------|
-| `loop_started` | Run loop initiated | When `ralph run loop` begins execution |
+| `loop_started` | Run loop initiated | When `cueloop run loop` begins execution |
 | `loop_stopped` | Run loop terminated | When loop exits (success, failure, or signal) |
 
 **Note**: Loop events do not include `task_id` or `task_title` fields since they are not task-specific.
@@ -150,7 +150,7 @@ The `queue_unblocked` event includes:
 
 ## Event Filtering
 
-Ralph uses an **opt-in model for new events** to maintain backward compatibility.
+CueLoop uses an **opt-in model for new events** to maintain backward compatibility.
 
 ### Filtering Behavior
 
@@ -162,7 +162,7 @@ Ralph uses an **opt-in model for new events** to maintain backward compatibility
 
 ### Opt-in Safety
 
-New event types (`loop_*`, `phase_*`, `queue_unblocked`) are **not enabled by default**. This prevents unexpected payload formats from reaching existing integrations when Ralph adds new event types.
+New event types (`loop_*`, `phase_*`, `queue_unblocked`) are **not enabled by default**. This prevents unexpected payload formats from reaching existing integrations when CueLoop adds new event types.
 
 ### Recommended Patterns
 
@@ -340,14 +340,14 @@ Loop events omit `task_id` and `task_title` since they are not task-specific:
 
 ## Security
 
-Ralph provides HMAC-SHA256 signature verification to ensure webhook authenticity.
+CueLoop provides HMAC-SHA256 signature verification to ensure webhook authenticity.
 
 ### Signature Header
 
-When a `secret` is configured, Ralph includes an `X-Ralph-Signature` header:
+When a `secret` is configured, CueLoop includes an `X-CueLoop-Signature` header:
 
 ```
-X-Ralph-Signature: sha256=abc123def456...
+X-CueLoop-Signature: sha256=abc123def456...
 ```
 
 The signature format is `sha256=` followed by the lowercase hex-encoded HMAC-SHA256 of the request body.
@@ -367,7 +367,7 @@ WEBHOOK_SECRET = b'my-webhook-secret'
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     # Get signature from header
-    signature = request.headers.get('X-Ralph-Signature', '')
+    signature = request.headers.get('X-CueLoop-Signature', '')
     
     # Compute expected signature
     body = request.get_data()
@@ -464,7 +464,7 @@ end
 
 ### Best-Effort Delivery
 
-Ralph's webhook system follows **best-effort delivery semantics**:
+CueLoop's webhook system follows **best-effort delivery semantics**:
 
 - **Non-blocking**: Webhook calls return immediately after enqueueing
 - **Async processing**: A background worker handles HTTP delivery
@@ -488,7 +488,7 @@ Retry timing includes bounded jitter to avoid synchronized retry storms and is c
 
 ### Queue Policies and Backpressure
 
-When the webhook queue reaches capacity, Ralph applies the configured `queue_policy`:
+When the webhook queue reaches capacity, CueLoop applies the configured `queue_policy`:
 
 | Policy | Behavior | Use Case |
 |--------|----------|----------|
@@ -501,7 +501,7 @@ When the webhook queue reaches capacity, Ralph applies the configured `queue_pol
 ### Worker Lifecycle
 
 - **Starts**: On first webhook send after process startup
-- **Runs**: Until the Ralph process exits
+- **Runs**: Until the CueLoop process exits
 - **Cleanup**: Automatic thread cleanup on drop
 
 ### Idempotency Considerations
@@ -516,44 +516,44 @@ Webhook consumers should implement idempotency since:
 
 ## Testing
 
-Use the `ralph webhook test` command to verify your webhook configuration.
+Use the `cueloop webhook test` command to verify your webhook configuration.
 
 ### Basic Testing
 
 ```bash
 # Test with configured URL
-ralph webhook test
+cueloop webhook test
 
 # Test specific event type
-ralph webhook test --event task_completed
+cueloop webhook test --event task_completed
 
 # Test with custom URL (overrides config)
-ralph webhook test --url https://example.com/webhook
+cueloop webhook test --url https://example.com/webhook
 ```
 
 ### Testing Opt-in Events
 
 ```bash
 # Test phase events
-ralph webhook test --event phase_started
-ralph webhook test --event phase_completed
+cueloop webhook test --event phase_started
+cueloop webhook test --event phase_completed
 
 # Test loop events
-ralph webhook test --event loop_started
-ralph webhook test --event loop_stopped
+cueloop webhook test --event loop_started
+cueloop webhook test --event loop_stopped
 ```
 
 ### Inspecting Payloads
 
 ```bash
 # Print JSON payload without sending (useful for debugging)
-ralph webhook test --event phase_completed --print-json
+cueloop webhook test --event phase_completed --print-json
 
 # Pretty-print the payload
-ralph webhook test --event task_created --print-json --pretty
+cueloop webhook test --event task_created --print-json --pretty
 
 # Custom task ID and title for testing
-ralph webhook test --event task_completed \
+cueloop webhook test --event task_completed \
   --task-id "TEST-1234" \
   --task-title "Test webhook payload"
 ```
@@ -575,13 +575,13 @@ Use built-in diagnostics/replay commands to inspect delivery health and recover 
 
 ```bash
 # Inspect counters + recent failure records
-ralph webhook status
-ralph webhook status --format json
+cueloop webhook status
+cueloop webhook status --format json
 
 # Replay specific failures safely
-ralph webhook replay --dry-run --id wf-1700000000-1
-ralph webhook replay --event task_completed --limit 5
-ralph webhook replay --task-id RQ-0814 --max-replay-attempts 3
+cueloop webhook replay --dry-run --id wf-1700000000-1
+cueloop webhook replay --event task_completed --limit 5
+cueloop webhook replay --task-id RQ-0814 --max-replay-attempts 3
 ```
 
 Replay safety defaults:
@@ -616,7 +616,7 @@ diagnostics, and troubleshooting.
 Enable debug logging to see webhook delivery details:
 
 ```bash
-RALPH_LOG=debug ralph run loop
+RALPH_LOG=debug cueloop run loop
 ```
 
 Look for log lines containing `Webhook`:
@@ -633,8 +633,8 @@ curl -X POST https://your-endpoint.com/webhook \
   -H "Content-Type: application/json" \
   -d '{"event":"test","timestamp":"2024-01-01T00:00:00Z"}'
 
-# Test with ralph
-ralph webhook test --url https://your-endpoint.com/webhook
+# Test with cueloop
+cueloop webhook test --url https://your-endpoint.com/webhook
 ```
 
 ---
@@ -659,11 +659,11 @@ Subscribe to all: ["*"]
 |--------|-------|-----------|
 | `Content-Type` | `application/json` | Always |
 | `User-Agent` | `ralph/{version}` | Always |
-| `X-Ralph-Signature` | `sha256={hex}` | When `secret` is configured |
+| `X-CueLoop-Signature` | `sha256={hex}` | When `secret` is configured |
 
 ### Response Handling
 
-Ralph considers these HTTP status codes:
+CueLoop considers these HTTP status codes:
 
 - **Success**: 2xx (delivery considered successful)
 - **Retryable**: 5xx, timeouts, connection errors

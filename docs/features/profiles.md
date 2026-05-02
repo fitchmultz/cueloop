@@ -1,4 +1,4 @@
-# Ralph Configuration Profiles
+# CueLoop Configuration Profiles
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -7,7 +7,7 @@ Parent: [Feature Documentation](README.md)
 
 ![Custom Profiles](../assets/images/2026-03-10-12-11-39-profiles.png)
 
-Purpose: Document Ralph's configuration profiles feature for quick workflow switching between named `agent` presets.
+Purpose: Document CueLoop's configuration profiles feature for quick workflow switching between named `agent` presets.
 
 ---
 
@@ -20,7 +20,7 @@ Profiles are:
 - Applied before CLI overrides are resolved
 - Useful for standardizing repeatable workflows without typing many flags each time
 
-Ralph ships two **built-in** reserved profiles, `safe` and `power-user`, that always apply their own safety and git-publish defaults. You cannot redefine those names in config; add separate custom profile names instead (for example `quick` or `thorough`).
+CueLoop ships two **built-in** reserved profiles, `safe` and `power-user`, that always apply their own safety and git-publish defaults. You cannot redefine those names in config; add separate custom profile names instead (for example `quick` or `thorough`).
 
 ## Built-in profiles
 
@@ -29,7 +29,7 @@ Ralph ships two **built-in** reserved profiles, `safe` and `power-user`, that al
 | `safe` | Stricter runner approvals, conservative Claude permissions, git publish off |
 | `power-user` | Permissive runner approvals, Claude bypass permissions, commit and push after success |
 
-Use `ralph config profiles list` to see the effective one-line summary for each name, including built-ins.
+Use `cueloop config profiles list` to see the effective one-line summary for each name, including built-ins.
 
 ## Example Profiles
 
@@ -68,22 +68,22 @@ Common patterns:
 
 ```bash
 # Run one task with a configured profile
-ralph run one --profile fast-local
+cueloop run one --profile fast-local
 
 # Scan with a deeper profile
-ralph scan --profile deep-review "security audit"
+cueloop scan --profile deep-review "security audit"
 
 # Override profile settings for one invocation
-ralph run one --profile fast-local --phases 2 --runner claude
+cueloop run one --profile fast-local --phases 2 --runner claude
 
 # Inspect configured profiles
-ralph config profiles list
-ralph config profiles show fast-local
+cueloop config profiles list
+cueloop config profiles show fast-local
 ```
 
 ## Precedence and Inheritance
 
-When a profile is selected, Ralph resolves settings in this order:
+When a profile is selected, CueLoop resolves settings in this order:
 
 1. CLI flags
 2. Task overrides (`task.agent.*`)
@@ -133,6 +133,6 @@ This is a normal custom-profile pattern layered on top of base `agent` settings.
 
 ## Troubleshooting
 
-- `Unknown profile`: the selected name is not defined in your config and is not a built-in name. Run `ralph config profiles list` to confirm what exists.
-- `No profiles configured`: you have no `profiles` object in config; built-in `safe` and `power-user` are still listed by `ralph config profiles list`.
+- `Unknown profile`: the selected name is not defined in your config and is not a built-in name. Run `cueloop config profiles list` to confirm what exists.
+- `No profiles configured`: you have no `profiles` object in config; built-in `safe` and `power-user` are still listed by `cueloop config profiles list`.
 - Need one-off changes: keep the profile small and override the rest with CLI flags.

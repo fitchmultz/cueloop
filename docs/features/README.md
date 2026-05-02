@@ -1,23 +1,23 @@
-# Ralph Features Documentation
+# CueLoop Features Documentation
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
-Welcome to the Ralph features documentation. This index provides organized navigation to all feature guides, from core concepts to advanced integration options.
+Welcome to the CueLoop features documentation. This index provides organized navigation to all feature guides, from core concepts to advanced integration options.
 
 ---
 
 ## Overview
 
-Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue. The features documentation covers all major capabilities, configuration options, and workflows.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. The features documentation covers all major capabilities, configuration options, and workflows.
 
 ---
 
 ## Quick Start
 
-New to Ralph? Start here:
+New to CueLoop? Start here:
 
 - **[Quick Start Guide](../quick-start.md)** — Get up and running in minutes
 - **[CLI Reference](../cli.md)** — Complete command-line documentation
@@ -27,7 +27,7 @@ New to Ralph? Start here:
 
 ## Core Concepts
 
-Understand the fundamental building blocks of Ralph:
+Understand the fundamental building blocks of CueLoop:
 
 | Document | Description |
 |----------|-------------|
@@ -41,7 +41,7 @@ Understand the fundamental building blocks of Ralph:
 
 ## Execution
 
-Learn how Ralph executes tasks and manages the execution lifecycle:
+Learn how CueLoop executes tasks and manages the execution lifecycle:
 
 | Document | Description |
 |----------|-------------|
@@ -54,7 +54,7 @@ Learn how Ralph executes tasks and manages the execution lifecycle:
 
 ## Integration
 
-Connect Ralph to external systems and notifications:
+Connect CueLoop to external systems and notifications:
 
 | Document | Description |
 |----------|-------------|
@@ -123,7 +123,7 @@ Additional reference documentation:
 
 ## Schema Reference
 
-Ralph uses JSON schemas for validation:
+CueLoop uses JSON schemas for validation:
 
 - **[Config Schema](../../schemas/config.schema.json)** — Configuration schema
 - **[Queue Schema](../../schemas/queue.schema.json)** — Queue and task schema
@@ -172,7 +172,7 @@ Ralph uses JSON schemas for validation:
 
 **Migrate configurations**
 - [Migrations](./migrations.md) — Migration guide
-- `ralph migrate` command in [CLI](../cli.md)
+- `cueloop migrate` command in [CLI](../cli.md)
 
 ---
 

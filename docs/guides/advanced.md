@@ -2,10 +2,10 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for advanced usage navigation; linked child guides are source of truth for their stated domains
-Parent: [Ralph Documentation](../index.md)
+Parent: [CueLoop Documentation](../index.md)
 
 
-Purpose: Navigation hub for advanced Ralph workflows, configuration patterns, integrations, automation, optimization, and troubleshooting.
+Purpose: Navigation hub for advanced CueLoop workflows, configuration patterns, integrations, automation, optimization, and troubleshooting.
 
 ---
 

@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for `agent.*`, runner controls, retry policy, phase overrides, and CI gate behavior
 Parent: [Configuration](../configuration.md)
 
-Purpose: Document Ralph's runner-facing agent configuration and execution controls.
+Purpose: Document CueLoop's runner-facing agent configuration and execution controls.
 
 ## Agent Configuration
 `agent` controls default execution settings. Defaults are schema-defined.
@@ -25,9 +25,9 @@ Supported fields:
 - `session_timeout_hours`: session timeout in hours for crash recovery (default: `24`). Sessions older than this threshold are considered stale and require explicit user confirmation to resume. Set to a higher value if you want to allow resuming sessions after longer periods.
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
-  **Safety warning:** Disabling the CI gate skips Ralph-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
+  **Safety warning:** Disabling the CI gate skips CueLoop-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name.
-- `cursor_sdk_node_bin`: override the Node.js executable used by Ralph's Cursor SDK bridge (default: `node`). Cursor no longer uses the legacy `agent` binary; install the pinned SDK in a trusted workspace with `npm install --save-exact @cursor/sdk@1.0.11`, or set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
+- `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). Cursor no longer uses the legacy `agent` binary; install the pinned SDK in a trusted workspace with `npm install --save-exact @cursor/sdk@1.0.11`, or set `RALPH_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
@@ -47,14 +47,14 @@ Notes:
 - Multi-phase runs (`phases >= 2`) always refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) at the start of Phase 1, then generate the plan in that same Phase 1 runner session. This behavior is built in and not configurable.
 - `followup_reasoning_effort` is used by Codex and Pi runners and ignored by runners without reasoning-effort support.
 - Migration-related breaking changes for `reasoning_effort`, `agent.git_publish_mode`, and older config files live in [Migration notes](migration-notes.md).
-- CI gate auto-retry: When enabled, Ralph automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.
+- CI gate auto-retry: When enabled, CueLoop automatically sends a strict compliance message and retries up to 2 times on CI failure during Phase 2, Phase 3, or single-phase execution. This behavior is not configurable; after 2 automatic retries, the user is prompted via the configured `git_revert_mode`. Post-run supervision prompts immediately on CI failure.
 - Phase 1 plan-only violations: when `git_revert_mode=ask`, the prompt includes a keep+continue override to proceed to the next phase without reverting changes.
-- **Runner session handling**: For runners that support session resumption (e.g., Kimi), Ralph generates unique session IDs per phase (format: `{task_id}-p{phase}-{timestamp}`) and uses explicit `--session` flags rather than runner-specific continue mechanisms. This provides deterministic session management and reliable crash recovery.
+- **Runner session handling**: For runners that support session resumption (e.g., Kimi), CueLoop generates unique session IDs per phase (format: `{task_id}-p{phase}-{timestamp}`) and uses explicit `--session` flags rather than runner-specific continue mechanisms. This provides deterministic session management and reliable crash recovery.
 - **macOS app boundary**: app-launched runs are noninteractive. The app can display the resolved approval posture, but interactive approvals remain terminal-only until the transport changes.
 
 ### `agent.runner_cli`
 
-`agent.runner_cli` provides a normalized configuration surface for runner CLI behavior so Ralph can keep parity across runners while still emitting runner-specific flags.
+`agent.runner_cli` provides a normalized configuration surface for runner CLI behavior so CueLoop can keep parity across runners while still emitting runner-specific flags.
 
 Structure:
 - `agent.runner_cli.defaults`: applied to all runners (unless overridden)
@@ -66,9 +66,9 @@ Supported normalized fields:
 - `approval_mode`: `default`, `auto_edits`, `yolo`, `safe`
   **Safety warning:** `yolo` mode bypasses all approval prompts, allowing the runner to make changes without confirmation. The recommended default profile is `safe`.
 
-  **Codex exception**: Ralph does NOT pass approval flags to Codex, regardless of this setting. Codex will use whatever approval mode is configured in your global Codex config file (`~/.codex/config.json`). If you want YOLO behavior with Codex, configure it there, not in Ralph.
+  **Codex exception**: CueLoop does NOT pass approval flags to Codex, regardless of this setting. Codex will use whatever approval mode is configured in your global Codex config file (`~/.codex/config.json`). If you want YOLO behavior with Codex, configure it there, not in CueLoop.
 - `sandbox`: `default`, `enabled`, `disabled`
-- `plan_mode`: `default`, `enabled`, `disabled` (Cursor SDK rejects non-default values so Ralph plan artifacts are still produced by Ralph's planning phase)
+- `plan_mode`: `default`, `enabled`, `disabled` (Cursor SDK rejects non-default values so CueLoop plan artifacts are still produced by CueLoop's planning phase)
 - `unsupported_option_policy`: `ignore`, `warn`, `error`
 
 Notes:
@@ -110,7 +110,7 @@ Example:
 }
 ```
 
-To disable CI gating entirely (skip Ralph-managed execution of the configured CI command), set:
+To disable CI gating entirely (skip CueLoop-managed execution of the configured CI command), set:
 
 ```json
 {
@@ -122,7 +122,7 @@ To disable CI gating entirely (skip Ralph-managed execution of the configured CI
 }
 ```
 
-When `agent.ci_gate.enabled=false`, Ralph still runs all task phases; prompts should report that configured CI validation was skipped by configuration and summarize any other verification performed.
+When `agent.ci_gate.enabled=false`, CueLoop still runs all task phases; prompts should report that configured CI validation was skipped by configuration and summarize any other verification performed.
 
 To configure a longer session timeout for crash recovery (e.g., 72 hours for weekend-long tasks):
 
@@ -167,7 +167,7 @@ Runner invocation retry/backoff configuration for transient failure handling. Co
 ```
 
 Notes:
-- Retries only occur when the repository is clean (or dirty only in Ralph-allowed paths like `.ralph/`), or when `git_revert_mode` is `enabled` for auto-revert.
+- Retries only occur when the repository is clean (or dirty only in CueLoop-allowed paths like `.ralph/`), or when `git_revert_mode` is `enabled` for auto-revert.
 - Retry attempt counts and backoff delays are emitted via `RALPH_OPERATION:` markers in runner output.
 - To disable retry entirely, set `max_attempts: 1`.
 

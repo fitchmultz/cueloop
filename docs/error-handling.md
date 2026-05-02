@@ -2,16 +2,16 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 
 
 ![Error Handling](assets/images/2026-02-07-error-handling.png)
 
-This document describes the error handling patterns used in Ralph and provides guidance for contributors.
+This document describes the error handling patterns used in CueLoop and provides guidance for contributors.
 
 ## Philosophy
 
-Ralph uses a two-tier error handling strategy:
+CueLoop uses a two-tier error handling strategy:
 
 1. **General errors**: Use `anyhow::Result` for error propagation
 2. **Domain-specific errors**: Use `thiserror` for matchable, structured errors
@@ -60,7 +60,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum GitError {
-    #[error("repo is dirty; commit/stash your changes before running Ralph.{details}")]
+    #[error("repo is dirty; commit/stash your changes before running CueLoop.{details}")]
     DirtyRepo { details: String },
 
     #[error("git push failed: no upstream configured for current branch")]

@@ -1,4 +1,4 @@
-# Ralph Prompt System
+# CueLoop Prompt System
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -7,15 +7,15 @@ Parent: [Feature Documentation](README.md)
 
 ![Prompt System](../assets/images/2026-02-07-11-32-24-prompts.png)
 
-Purpose: Comprehensive guide to Ralph's prompt template system, including embedded defaults, override mechanisms, template variables, and prompt flow.
+Purpose: Comprehensive guide to CueLoop's prompt template system, including embedded defaults, override mechanisms, template variables, and prompt flow.
 
 ---
 
 ## Overview
 
-Ralph uses a sophisticated prompt system to guide AI agents through task execution. The system is designed around these core principles:
+CueLoop uses a sophisticated prompt system to guide AI agents through task execution. The system is designed around these core principles:
 
-1. **Embedded Defaults**: All default prompts are embedded in the Rust binary at compile time, ensuring Ralph works out-of-the-box without external dependencies.
+1. **Embedded Defaults**: All default prompts are embedded in the Rust binary at compile time, ensuring CueLoop works out-of-the-box without external dependencies.
 2. **Repository Overrides**: Teams can customize prompts per repository by placing override files in `.ralph/prompts/`.
 3. **Template Variables**: Dynamic placeholders (`{{TASK_ID}}`, `{{USER_REQUEST}}`, etc.) are replaced at runtime with context-specific values.
 4. **Multi-Phase Composition**: Worker prompts are composed by combining base prompts with phase-specific wrappers.
@@ -70,7 +70,7 @@ Ralph uses a sophisticated prompt system to guide AI agents through task executi
 
 ## Embedded Defaults
 
-Default prompts are embedded in the Ralph binary using Rust's `include_str!` macro. They live in:
+Default prompts are embedded in the CueLoop binary using Rust's `include_str!` macro. They live in:
 
 ```
 crates/cueloop/assets/prompts/
@@ -96,7 +96,7 @@ crates/cueloop/assets/prompts/
 
 ### Fallback Behavior
 
-When loading a prompt, Ralph follows this resolution order:
+When loading a prompt, CueLoop follows this resolution order:
 
 1. Check for override at `.ralph/prompts/<name>.md`
 2. If override exists → use it
@@ -125,7 +125,7 @@ You are an autonomous engineer specializing in this codebase...
 # CONTEXT (READ IN ORDER)
 1. `AGENTS.md`
 2. `.ralph/README.md`
-3. Task details via `ralph task show {{TASK_ID}}`
+3. Task details via `cueloop task show {{TASK_ID}}`
 
 {{PROJECT_TYPE_GUIDANCE}}
 EOF
@@ -175,12 +175,12 @@ const TASK_BUILDER_REQUIRED: &[RequiredPlaceholder] = &[
 ];
 ```
 
-If an override is missing required placeholders, Ralph fails fast with a clear error message.
+If an override is missing required placeholders, CueLoop fails fast with a clear error message.
 
 ### Instruction Files
 
 Configured `agent.instruction_files` are prepended as authoritative content at the top of every prompt.
-Ralph does not auto-inject `~/.codex/AGENTS.md` or repo `AGENTS.md`; prompt text should not imply otherwise.
+CueLoop does not auto-inject `~/.codex/AGENTS.md` or repo `AGENTS.md`; prompt text should not imply otherwise.
 
 ---
 
@@ -266,7 +266,7 @@ Converts user requests into queue tasks:
 
 Example user request flow:
 ```bash
-ralph task build "Fix the login button styling"
+cueloop task build "Fix the login button styling"
 # → Loads task_builder.md
 # → Renders with {{USER_REQUEST}} = "Fix the login button styling"
 # → Agent creates task in queue.json
@@ -301,7 +301,7 @@ Review body injected in Phase 3:
 
 ### Checklists
 
-**completion_checklist.md**: Steps for finishing implementation, including the explicit contract that `agent.ci_gate.enabled=false` skips only Ralph-managed CI validation and never disables run/task execution.
+**completion_checklist.md**: Steps for finishing implementation, including the explicit contract that `agent.ci_gate.enabled=false` skips only CueLoop-managed CI validation and never disables run/task execution.
 **phase2_handoff_checklist.md**: Steps for 3-phase handoff; when `agent.ci_gate.enabled=false`, Phase 2 implementation and handoff still continue.
 **iteration_checklist.md**: Steps for refinement iterations; disabled CI gate configuration skips only the configured CI command/requirement, and iteration work continues.
 
@@ -403,7 +403,7 @@ Set project type in `.ralph/config.jsonc`:
 }
 ```
 
-There is no dedicated `ralph config set` subcommand; edit the config file directly.
+There is no dedicated `cueloop config set` subcommand; edit the config file directly.
 
 ### Template Control
 
@@ -425,7 +425,7 @@ PromptTemplateId::WorkerPhase1 => PromptTemplate {
 
 ## RepoPrompt Integration
 
-When RepoPrompt tooling is enabled, Ralph injects additional instructions:
+When RepoPrompt tooling is enabled, CueLoop injects additional instructions:
 
 ### Tool Injection (`repoprompt_tool_injection`)
 
@@ -613,7 +613,7 @@ User Request ──► Load task_builder.md ──► Validate Required Placehol
 
 1. **Start with the default**: Copy the embedded default as a starting point
 2. **Preserve required placeholders**: Check the registry for required tokens
-3. **Test validation**: Run `ralph queue validate` after changes
+3. **Test validation**: Run `cueloop queue validate` after changes
 4. **Document changes**: Add comments explaining customizations
 
 Example override with comments:
@@ -661,7 +661,7 @@ Use `--debug` flag to see rendered prompts:
 
 ```bash
 # Debug mode writes raw prompts to log
-ralph run --debug
+cueloop run --debug
 
 # Check the debug log
 cat .ralph/logs/debug.log | grep -A 50 "Rendered prompt"

@@ -2,7 +2,7 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document for custom runner plugin invocation and output protocol
-Parent: [Ralph Plugin System](../plugins.md)
+Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Define the command-line, environment, streaming-output, and session contracts for runner plugins.
 
@@ -55,7 +55,7 @@ Required only when `supports_resume` is `true` in the manifest:
 
 ## Output Contract (NDJSON)
 
-Runners must emit newline-delimited JSON objects. Ralph parses and displays these output shapes:
+Runners must emit newline-delimited JSON objects. CueLoop parses and displays these output shapes:
 
 **1. Claude format (`type=assistant`)**
 
@@ -102,7 +102,7 @@ Runners must emit newline-delimited JSON objects. Ralph parses and displays thes
 
 ## Session IDs
 
-Ralph extracts session IDs from:
+CueLoop extracts session IDs from:
 
 - `id` (when `type` is `session`)
 - `thread_id`
