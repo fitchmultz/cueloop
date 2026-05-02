@@ -1,0 +1,21 @@
+[package]
+name = "ralph-agent-loop"
+version = "0.5.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+description = "Deprecated package; CueLoop moved to the cueloop crate"
+repository = "https://github.com/fitchmultz/cueloop"
+homepage = "https://github.com/fitchmultz/cueloop"
+documentation = "https://docs.rs/cueloop"
+readme = "README.md"
+keywords = ["ai", "agent", "cli", "task-queue", "workflow"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "ralph"
+path = "src/bin/ralph.rs"
+
+[[bin]]
+name = "cueloop"
+path = "src/bin/cueloop.rs"
