@@ -360,6 +360,6 @@ fn task_limit_label(max_tasks: u32) -> String {
 fn add_queue_validation_recovery_guidance(err: anyhow::Error) -> anyhow::Error {
     let detail = err.to_string();
     err.context(format!(
-        "{detail}\n\nNext:\n  1. ralph queue repair --dry-run\n  2. ralph queue repair\n  3. ralph queue validate"
+        "{detail}\n\nNext:\n  1. cueloop queue repair --dry-run\n  2. cueloop queue repair\n  3. cueloop queue validate"
     ))
 }

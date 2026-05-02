@@ -1,4 +1,4 @@
-//! Purpose: multi-flag combination parsing coverage for `ralph prompt`.
+//! Purpose: multi-flag combination parsing coverage for `cueloop prompt`.
 //!
 //! Responsibilities:
 //! - Verify representative full command combinations parse into the expected clap structures.

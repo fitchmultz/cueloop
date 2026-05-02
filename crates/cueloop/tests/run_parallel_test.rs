@@ -18,7 +18,7 @@
 //!
 //! Invariants/Assumptions:
 //! - Tests use explicit fake runner binary paths to avoid external dependencies.
-//! - Nested `ralph run loop --parallel ...` invocations hold `parallel_run_lock()` only for the overlapping run window.
+//! - Nested `cueloop run loop --parallel ...` invocations hold `parallel_run_lock()` only for the overlapping run window.
 //! - Temp directories are created outside the repo and use disposable cached scaffolding.
 
 use anyhow::Result;

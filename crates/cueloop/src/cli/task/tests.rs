@@ -31,9 +31,11 @@ fn task_update_help_mentions_rp_examples() {
         .expect("task update subcommand");
     let help = update.render_long_help().to_string();
 
-    assert!(help.contains("ralph task update --repo-prompt plan RQ-0001"));
-    assert!(help.contains("ralph task update --repo-prompt off --fields scope,evidence RQ-0001"));
-    assert!(help.contains("ralph task update --approval-mode auto-edits --runner claude RQ-0001"));
+    assert!(help.contains("cueloop task update --repo-prompt plan RQ-0001"));
+    assert!(help.contains("cueloop task update --repo-prompt off --fields scope,evidence RQ-0001"));
+    assert!(
+        help.contains("cueloop task update --approval-mode auto-edits --runner claude RQ-0001")
+    );
 }
 
 #[test]
@@ -45,7 +47,7 @@ fn task_show_help_mentions_examples() {
         .expect("task show subcommand");
     let help = show.render_long_help().to_string();
 
-    assert!(help.contains("ralph task show RQ-0001"));
+    assert!(help.contains("cueloop task show RQ-0001"));
     assert!(help.contains("--format compact"));
 }
 
@@ -256,7 +258,7 @@ fn task_decompose_help_mentions_write_and_attach_examples() {
     assert!(help.contains("--format json"));
     assert!(help.contains("--parent-status draft --leaf-status todo"));
     assert!(help.contains("--from-file"));
-    assert!(help.contains("ralph task decompose --from-file docs/plans/oauth.md"));
+    assert!(help.contains("cueloop task decompose --from-file docs/plans/oauth.md"));
 }
 
 #[test]
@@ -410,10 +412,10 @@ fn task_clone_parses_flags_and_help_examples() {
         .find_subcommand_mut("clone")
         .expect("task clone subcommand");
     let help = clone.render_long_help().to_string();
-    assert!(help.contains("ralph task clone RQ-0001"));
+    assert!(help.contains("cueloop task clone RQ-0001"));
     assert!(help.contains("--status"));
     assert!(help.contains("--title-prefix"));
-    assert!(help.contains("ralph task duplicate"));
+    assert!(help.contains("cueloop task duplicate"));
 }
 
 #[test]

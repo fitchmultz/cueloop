@@ -1,10 +1,10 @@
-//! `ralph run ...` facade.
+//! `cueloop run ...` facade.
 //!
 //! Purpose:
-//! - `ralph run ...` facade.
+//! - `cueloop run ...` facade.
 //!
 //! Responsibilities:
-//! - Re-export clap argument types and command handlers for `ralph run`.
+//! - Re-export clap argument types and command handlers for `cueloop run`.
 //! - Keep clap definitions, long-help content, and dispatch logic in separate modules.
 //!
 //! Not handled here:

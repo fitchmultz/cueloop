@@ -1,7 +1,7 @@
-//! Integration tests for `ralph task edit` auto-archive behavior.
+//! Integration tests for `cueloop task edit` auto-archive behavior.
 //!
 //! Purpose:
-//! - Integration tests for `ralph task edit` auto-archive behavior.
+//! - Integration tests for `cueloop task edit` auto-archive behavior.
 //!
 //! Responsibilities:
 //! - Verify that task edit auto-archives terminal tasks when configured.
@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - `ralph init --force --non-interactive` creates a usable `.ralph/` structure.
+//! - `cueloop init --force --non-interactive` creates a usable `.ralph/` structure.
 //! - Auto-archive respects auto_archive_terminal_after_days config setting.
 
 use anyhow::Result;

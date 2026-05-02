@@ -36,7 +36,7 @@ use crate::queue::operations::{
 };
 use crate::{outpututil, queue};
 
-/// Arguments for `ralph queue next`.
+/// Arguments for `cueloop queue next`.
 #[derive(Args)]
 pub struct QueueNextArgs {
     /// Include the task title after the ID.
@@ -182,19 +182,19 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
                 }
 
                 writeln!(handle)?;
-                writeln!(handle, "Run 'ralph queue explain' for a full report.")?;
+                writeln!(handle, "Run 'cueloop queue explain' for a full report.")?;
 
                 // Add hints based on blockers
                 if report.summary.blocked_by_dependencies > 0 {
                     writeln!(
                         handle,
-                        "Run 'ralph queue graph --task <ID>' to see dependencies."
+                        "Run 'cueloop queue graph --task <ID>' to see dependencies."
                     )?;
                 }
                 if report.summary.blocked_by_schedule > 0 {
                     writeln!(
                         handle,
-                        "Run 'ralph queue list --scheduled' to see scheduled tasks."
+                        "Run 'cueloop queue list --scheduled' to see scheduled tasks."
                     )?;
                 }
             }

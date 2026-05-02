@@ -28,10 +28,10 @@ use crate::config::Resolved;
 use crate::productivity;
 use crate::reports;
 
-/// Arguments for `ralph queue dashboard`.
+/// Arguments for `cueloop queue dashboard`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue dashboard\n  ralph queue dashboard --days 30\n  ralph queue dashboard --days 7\n\n\
+    after_long_help = "Examples:\n  cueloop queue dashboard\n  cueloop queue dashboard --days 30\n  cueloop queue dashboard --days 7\n\n\
 The dashboard command returns all analytics data in a single JSON payload for GUI clients.\n\
 Each section includes a 'status' field ('ok' or 'unavailable') for graceful partial failure handling."
 )]

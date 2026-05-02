@@ -31,7 +31,7 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // 2. Add a task
@@ -49,7 +49,7 @@ fn run_one_succeeds_without_upstream_and_warns() -> Result<()> {
     test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
     test_support::trust_project_commands(dir.path())?;
 
-    // 4. Run `ralph run one` with the fake runner
+    // 4. Run `cueloop run one` with the fake runner
     test_support::git_add_all_commit(dir.path(), "setup test env")?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["run", "one"]);

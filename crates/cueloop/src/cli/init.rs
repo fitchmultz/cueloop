@@ -1,7 +1,7 @@
-//! `ralph init` command: Clap types and handler.
+//! `cueloop init` command: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph init` command: Clap types and handler.
+//! - `cueloop init` command: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Parse CLI arguments for the init command.
@@ -95,7 +95,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
                     current_version,
                     embedded_version
                 );
-                log::info!("Run 'ralph init' to update");
+                log::info!("Run 'cueloop init' to update");
                 std::process::exit(1);
             }
             init_cmd::ReadmeCheckResult::Missing => {
@@ -198,7 +198,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
     }
     if args.trust_project_commands {
         log::info!(
-            "trust: --trust-project-commands is a compatibility alias; `ralph init` creates active runtime repo trust by default"
+            "trust: --trust-project-commands is a compatibility alias; `cueloop init` creates active runtime repo trust by default"
         );
     }
     Ok(())
@@ -207,7 +207,7 @@ pub fn handle_init(args: InitArgs, force_lock: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Bootstrap CueLoop runtime files in the current repository",
-    after_long_help = "Examples:\n  ralph init\n  ralph init --force\n  ralph init --interactive\n  ralph init --non-interactive\n  ralph init --check"
+    after_long_help = "Examples:\n  cueloop init\n  cueloop init --force\n  cueloop init --interactive\n  cueloop init --non-interactive\n  cueloop init --check"
 )]
 pub struct InitArgs {
     /// Overwrite existing files if they already exist.
@@ -226,7 +226,7 @@ pub struct InitArgs {
     #[arg(long)]
     pub check: bool,
 
-    /// Compatibility alias; `ralph init` creates active runtime `trust.jsonc` by default.
+    /// Compatibility alias; `cueloop init` creates active runtime `trust.jsonc` by default.
     #[arg(long = "trust-project-commands", visible_alias = "trust", hide = true)]
     pub trust_project_commands: bool,
 }

@@ -120,7 +120,7 @@ pub fn run_context_update(
 ) -> Result<UpdateReport> {
     if !opts.output_path.exists() {
         anyhow::bail!(
-            "AGENTS.md does not exist at {}. Run `ralph context init` first.",
+            "AGENTS.md does not exist at {}. Run `cueloop context init` first.",
             opts.output_path.display()
         );
     }

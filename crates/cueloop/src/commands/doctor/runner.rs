@@ -152,7 +152,7 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
         log::error!("         \"{}\": \"/path/to/{}\"", config_key, bin_name);
         log::error!("       }}");
         log::error!("     }}");
-        log::error!("  3. Run 'ralph doctor' to verify the fix");
+        log::error!("  3. Run 'cueloop doctor' to verify the fix");
     } else if runner == Runner::Cursor
         && let Err(e) = check_cursor_sdk_node_version(bin_name)
     {

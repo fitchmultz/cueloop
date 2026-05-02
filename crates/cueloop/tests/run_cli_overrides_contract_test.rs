@@ -1,7 +1,7 @@
-//! Contract tests for `ralph run` CLI override behavior.
+//! Contract tests for `cueloop run` CLI override behavior.
 //!
 //! Purpose:
-//! - Contract tests for `ralph run` CLI override behavior.
+//! - Contract tests for `cueloop run` CLI override behavior.
 //!
 //! Responsibilities:
 //! - Validate CLI override parsing for runner/model/effort and repo-prompt flags.
@@ -31,7 +31,7 @@ fn run_one_accepts_runner_and_model_overrides_without_todo_tasks() -> Result<()>
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // With an empty queue, `run one` should return success (NoTodo), but still parse flags.
@@ -142,7 +142,7 @@ fn run_one_accepts_repo_prompt_mode_and_alias() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let (status, stdout, stderr) =
@@ -171,7 +171,7 @@ fn run_one_rejects_invalid_repo_prompt_value() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let (status, stdout, stderr) =
@@ -222,7 +222,7 @@ fn run_one_rejects_invalid_model_flag() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let (status, stdout, stderr) = test_support::run_in_dir(
@@ -258,7 +258,7 @@ fn run_one_accepts_custom_model_for_opencode() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let (status, stdout, stderr) = test_support::run_in_dir(

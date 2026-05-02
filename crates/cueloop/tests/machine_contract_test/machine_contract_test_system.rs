@@ -1,4 +1,4 @@
-//! System and doctor contract coverage for `ralph machine`.
+//! System and doctor contract coverage for `cueloop machine`.
 //!
 //! Purpose:
 //! - Verify machine-visible system info and doctor report documents.

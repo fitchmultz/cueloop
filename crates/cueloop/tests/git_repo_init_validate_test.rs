@@ -29,14 +29,14 @@ fn init_and_validate_work_in_fresh_git_repo() -> Result<()> {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", None)?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "validate"]);
     anyhow::ensure!(
         status.success(),
-        "ralph queue validate failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop queue validate failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     Ok(())

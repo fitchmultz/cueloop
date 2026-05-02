@@ -116,7 +116,7 @@ pub(crate) fn check_readme_without_update(resolved: &Resolved) -> Result<Option<
             embedded_version,
         } => {
             let msg = format!(
-                "{} is outdated (version {} < {}). Run `ralph init --non-interactive` or another write-enabled command to refresh it.",
+                "{} is outdated (version {} < {}). Run `cueloop init --non-interactive` or another write-enabled command to refresh it.",
                 runtime_readme_label(resolved),
                 current_version,
                 embedded_version
@@ -126,7 +126,7 @@ pub(crate) fn check_readme_without_update(resolved: &Resolved) -> Result<Option<
         }
         readme::ReadmeCheckResult::Missing => {
             let msg = format!(
-                "{} is missing. Run `ralph init --non-interactive` or another write-enabled command to create it.",
+                "{} is missing. Run `cueloop init --non-interactive` or another write-enabled command to create it.",
                 runtime_readme_label(resolved)
             );
             log::warn!("{}", msg);

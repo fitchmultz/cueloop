@@ -1,4 +1,4 @@
-//! Purpose: thin integration-test hub for `ralph prompt` CLI parsing coverage.
+//! Purpose: thin integration-test hub for `cueloop prompt` CLI parsing coverage.
 //!
 //! Responsibilities:
 //! - Re-export shared parsing types and clap imports for prompt CLI integration tests.

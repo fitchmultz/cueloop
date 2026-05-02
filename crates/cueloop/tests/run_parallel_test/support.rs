@@ -11,7 +11,7 @@
 //! Usage:
 //! - Call `RunParallelRepo::new()` to create a seeded repo with a live remote.
 //! - Use `write_queue()` plus `configure_default_runner()` for the common noop-runner fixture.
-//! - Call `run_parallel()` to execute `ralph run loop --parallel ...` under the suite lock.
+//! - Call `run_parallel()` to execute `cueloop run loop --parallel ...` under the suite lock.
 //!
 //! Invariants/Assumptions:
 //! - Helpers preserve end-to-end CLI coverage; they do not bypass the `ralph` binary.

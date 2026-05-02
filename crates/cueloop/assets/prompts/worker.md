@@ -9,7 +9,7 @@ Complete the active task end to end. Success means the implementation matches th
 Use these sources as needed:
 1. `AGENTS.md` and any configured instruction files
 2. `.ralph/README.md`
-3. `ralph task show {{TASK_ID}}` or `ralph task details {{TASK_ID}}`
+3. `cueloop task show {{TASK_ID}}` or `cueloop task details {{TASK_ID}}`
 4. The repo, tests, docs, and local commands relevant to the task
 
 Only open `{{config.queue.file}}` or `{{config.queue.done_file}}` when task or checklist work requires it.

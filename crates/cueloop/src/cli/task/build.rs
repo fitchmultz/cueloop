@@ -1,7 +1,7 @@
-//! Task building command handler for `ralph task` and `ralph task build`.
+//! Task building command handler for `cueloop task` and `cueloop task build`.
 //!
 //! Purpose:
-//! - Task building command handler for `ralph task` and `ralph task build`.
+//! - Task building command handler for `cueloop task` and `cueloop task build`.
 //!
 //! Responsibilities:
 //! - Handle the default task command (when no subcommand is given).

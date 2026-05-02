@@ -163,7 +163,7 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
     // 1. Setup Ralph
     let (status, _stdout, _stderr) =
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    anyhow::ensure!(status.success(), "ralph init failed");
+    anyhow::ensure!(status.success(), "cueloop init failed");
 
     // 2. Add a task
     write_valid_single_todo_queue(dir.path())?;
@@ -229,7 +229,7 @@ fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
     // 1. Setup Ralph
     let (status, _stdout, _stderr) =
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    anyhow::ensure!(status.success(), "ralph init failed");
+    anyhow::ensure!(status.success(), "cueloop init failed");
 
     // 2. Create a runner that produces INVALID queue.json (corrupts it)
     // It should print valid LLM output but also mess up the file system.
@@ -248,7 +248,7 @@ fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
         .args(["commit", "-m", "setup"])
         .status()?;
 
-    // 4. Run ralph scan
+    // 4. Run cueloop scan
     let (status, _stdout, stderr) = run_in_dir(dir.path(), &["scan", "--focus", "test"]);
     anyhow::ensure!(!status.success(), "expected scan to fail due to validation");
 

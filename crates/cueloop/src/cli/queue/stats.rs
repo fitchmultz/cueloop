@@ -33,7 +33,7 @@ use crate::reports;
 
 use super::QueueReportFormat;
 
-/// Arguments for `ralph queue stats`.
+/// Arguments for `cueloop queue stats`.
 #[derive(Args)]
 pub struct QueueStatsArgs {
     /// Filter by tag (repeatable, case-insensitive).

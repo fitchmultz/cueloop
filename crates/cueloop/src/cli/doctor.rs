@@ -1,7 +1,7 @@
-//! `ralph doctor` command: handler.
+//! `cueloop doctor` command: handler.
 //!
 //! Purpose:
-//! - `ralph doctor` command: handler.
+//! - `cueloop doctor` command: handler.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -32,7 +32,7 @@ pub enum DoctorFormat {
     Json,
 }
 
-/// Arguments for the `ralph doctor` command.
+/// Arguments for the `cueloop doctor` command.
 #[derive(Args)]
 pub struct DoctorArgs {
     /// Automatically fix all issues without prompting.

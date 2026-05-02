@@ -1,4 +1,4 @@
-//! Purpose: integration coverage for `ralph queue search` CLI behavior.
+//! Purpose: integration coverage for `cueloop queue search` CLI behavior.
 //!
 //! Responsibilities:
 //! - Verify substring, regex, and fuzzy search modes through the real CLI.
@@ -9,7 +9,7 @@
 //! - CLI-driven queue-search scenarios over disposable seeded repos.
 //!
 //! Usage:
-//! - Each test creates a fresh `SearchRepo`, writes queue/done fixtures, and invokes `ralph queue search`.
+//! - Each test creates a fresh `SearchRepo`, writes queue/done fixtures, and invokes `cueloop queue search`.
 //! - JSON assertions use the suite-local `search_json()` helper.
 //!
 //! Invariants/Assumptions:

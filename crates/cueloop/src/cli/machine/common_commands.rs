@@ -19,44 +19,44 @@
 //! - Strings are part of the machine-facing recovery contract; update tests and app expectations together.
 
 pub(crate) fn machine_queue_validate_command() -> &'static str {
-    "ralph machine queue validate"
+    "cueloop machine queue validate"
 }
 
 pub(crate) fn machine_queue_graph_command() -> &'static str {
-    "ralph machine queue graph"
+    "cueloop machine queue graph"
 }
 
 pub(crate) fn machine_queue_repair_command(dry_run: bool) -> &'static str {
     if dry_run {
-        "ralph machine queue repair --dry-run"
+        "cueloop machine queue repair --dry-run"
     } else {
-        "ralph machine queue repair"
+        "cueloop machine queue repair"
     }
 }
 
 pub(crate) fn machine_queue_undo_dry_run_command() -> &'static str {
-    "ralph machine queue undo --dry-run"
+    "cueloop machine queue undo --dry-run"
 }
 
 pub(crate) fn machine_queue_undo_restore_command() -> &'static str {
-    "ralph machine queue undo --id <SNAPSHOT_ID>"
+    "cueloop machine queue undo --id <SNAPSHOT_ID>"
 }
 
 pub(crate) fn machine_task_mutate_command(dry_run: bool) -> &'static str {
     if dry_run {
-        "ralph machine task mutate --dry-run --input <PATH>"
+        "cueloop machine task mutate --dry-run --input <PATH>"
     } else {
-        "ralph machine task mutate --input <PATH>"
+        "cueloop machine task mutate --input <PATH>"
     }
 }
 
 pub(crate) fn machine_task_build_command() -> &'static str {
-    "ralph machine task build --input <PATH>"
+    "cueloop machine task build --input <PATH>"
 }
 
 pub(crate) fn machine_task_decompose_write_preview_command(checkpoint_id: &str) -> String {
     format!(
-        "ralph machine task decompose --write --from-preview {}",
+        "cueloop machine task decompose --write --from-preview {}",
         shell_quote(checkpoint_id)
     )
 }
@@ -71,30 +71,30 @@ fn shell_quote(value: &str) -> String {
 }
 
 pub(crate) fn machine_run_one_resume_command() -> &'static str {
-    "ralph machine run one --resume"
+    "cueloop machine run one --resume"
 }
 
 pub(crate) fn machine_run_stop_command(dry_run: bool) -> &'static str {
     if dry_run {
-        "ralph machine run stop --dry-run"
+        "cueloop machine run stop --dry-run"
     } else {
-        "ralph machine run stop"
+        "cueloop machine run stop"
     }
 }
 
 pub(crate) fn machine_run_parallel_status_command() -> &'static str {
-    "ralph machine run parallel-status"
+    "cueloop machine run parallel-status"
 }
 
 pub(crate) fn machine_run_loop_command(parallel: bool, force: bool) -> &'static str {
     match (parallel, force) {
-        (true, false) => "ralph machine run loop --resume --max-tasks 0 --parallel <N>",
-        (true, true) => "ralph machine run loop --resume --max-tasks 0 --force --parallel <N>",
-        (false, false) => "ralph machine run loop --resume --max-tasks 0",
-        (false, true) => "ralph machine run loop --resume --max-tasks 0 --force",
+        (true, false) => "cueloop machine run loop --resume --max-tasks 0 --parallel <N>",
+        (true, true) => "cueloop machine run loop --resume --max-tasks 0 --force --parallel <N>",
+        (false, false) => "cueloop machine run loop --resume --max-tasks 0",
+        (false, true) => "cueloop machine run loop --resume --max-tasks 0 --force",
     }
 }
 
 pub(crate) fn machine_doctor_report_command() -> &'static str {
-    "ralph machine doctor report"
+    "cueloop machine doctor report"
 }

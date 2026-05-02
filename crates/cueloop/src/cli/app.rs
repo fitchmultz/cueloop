@@ -1,7 +1,7 @@
-//! `ralph app ...` command group for macOS GUI integration.
+//! `cueloop app ...` command group for macOS GUI integration.
 //!
 //! Purpose:
-//! - `ralph app ...` command group for macOS GUI integration.
+//! - `cueloop app ...` command group for macOS GUI integration.
 //!
 //! Responsibilities:
 //! - Define clap structures for app-related commands (currently `open`).
@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - `ralph app open` is macOS-only; non-macOS platforms return a clear error.
+//! - `cueloop app open` is macOS-only; non-macOS platforms return a clear error.
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -41,7 +41,7 @@ pub enum AppCommand {
     /// Open the macOS Ralph app.
     #[command(
         about = "Open the macOS Ralph app",
-        after_long_help = "Examples:\n  ralph app open\n  ralph app open --bundle-id com.mitchfultz.ralph\n  ralph app open --path /Applications/Ralph.app\n"
+        after_long_help = "Examples:\n  cueloop app open\n  cueloop app open --bundle-id com.mitchfultz.ralph\n  cueloop app open --path /Applications/Ralph.app\n"
     )]
     Open(AppOpenArgs),
 }

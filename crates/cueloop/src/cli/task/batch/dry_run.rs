@@ -1,7 +1,7 @@
-//! Dry-run presenters for `ralph task batch`.
+//! Dry-run presenters for `cueloop task batch`.
 //!
 //! Purpose:
-//! - Dry-run presenters for `ralph task batch`.
+//! - Dry-run presenters for `cueloop task batch`.
 //!
 //! Responsibilities:
 //! - Provide stable preview output for each batch operation.

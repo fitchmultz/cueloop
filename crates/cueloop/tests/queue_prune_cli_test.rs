@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue prune`.
+//! Integration tests for `cueloop queue prune`.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue prune`.
+//! - Integration tests for `cueloop queue prune`.
 //!
 //! Responsibilities:
 //! - Verify age/status filters remove the intended done tasks.

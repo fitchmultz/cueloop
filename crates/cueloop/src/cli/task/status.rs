@@ -1,7 +1,7 @@
-//! Task status command handlers for `ralph task` subcommands.
+//! Task status command handlers for `cueloop task` subcommands.
 //!
 //! Purpose:
-//! - Task status command handlers for `ralph task` subcommands.
+//! - Task status command handlers for `cueloop task` subcommands.
 //!
 //! Responsibilities:
 //! - Handle `ready` command (promote draft to todo).
@@ -164,8 +164,8 @@ fn complete_task_directly(
     force: bool,
 ) -> Result<()> {
     // Use "task" label to enable shared lock mode, allowing this command to work
-    // concurrently with a supervising process (like `ralph run loop`).
-    // This matches the behavior of `ralph task build`.
+    // concurrently with a supervising process (like `cueloop run loop`).
+    // This matches the behavior of `cueloop task build`.
     let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
     let custom_fields_patch = build_custom_fields_patch_from_env();
 

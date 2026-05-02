@@ -1,7 +1,7 @@
-//! Integration tests for `ralph config show --format` flag.
+//! Integration tests for `cueloop config show --format` flag.
 //!
 //! Purpose:
-//! - Integration tests for `ralph config show --format` flag.
+//! - Integration tests for `cueloop config show --format` flag.
 //!
 //! Responsibilities:
 //! - Test that `--format json` and `--format yaml` produce valid parseable output.
@@ -48,7 +48,7 @@ fn setup_isolated_repo() -> tempfile::TempDir {
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     assert!(
         status.success(),
-        "ralph init should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     dir
@@ -66,14 +66,14 @@ fn config_show_default_outputs_yaml() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show"])
         .output()
-        .expect("failed to execute ralph config show");
+        .expect("failed to execute cueloop config show");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
         output.status.success(),
-        "ralph config show should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop config show should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Parse as YAML
@@ -101,14 +101,14 @@ fn config_show_format_json_outputs_valid_json() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show", "--format", "json"])
         .output()
-        .expect("failed to execute ralph config show --format json");
+        .expect("failed to execute cueloop config show --format json");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
         output.status.success(),
-        "ralph config show --format json should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop config show --format json should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Parse as JSON
@@ -134,14 +134,14 @@ fn config_show_format_yaml_outputs_valid_yaml() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show", "--format", "yaml"])
         .output()
-        .expect("failed to execute ralph config show --format yaml");
+        .expect("failed to execute cueloop config show --format yaml");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
         output.status.success(),
-        "ralph config show --format yaml should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop config show --format yaml should succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Parse as YAML
@@ -168,11 +168,11 @@ fn config_show_yaml_and_json_have_same_top_level_keys() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show", "--format", "yaml"])
         .output()
-        .expect("failed to execute ralph config show --format yaml");
+        .expect("failed to execute cueloop config show --format yaml");
 
     assert!(
         yaml_output.status.success(),
-        "ralph config show --format yaml should succeed"
+        "cueloop config show --format yaml should succeed"
     );
 
     let yaml_stdout = String::from_utf8_lossy(&yaml_output.stdout);
@@ -185,11 +185,11 @@ fn config_show_yaml_and_json_have_same_top_level_keys() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show", "--format", "json"])
         .output()
-        .expect("failed to execute ralph config show --format json");
+        .expect("failed to execute cueloop config show --format json");
 
     assert!(
         json_output.status.success(),
-        "ralph config show --format json should succeed"
+        "cueloop config show --format json should succeed"
     );
 
     let json_stdout = String::from_utf8_lossy(&json_output.stdout);
@@ -227,12 +227,12 @@ fn config_show_invalid_format_fails_with_error() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show", "--format", "not-a-format"])
         .output()
-        .expect("failed to execute ralph config show --format not-a-format");
+        .expect("failed to execute cueloop config show --format not-a-format");
 
     // Should fail (non-zero exit code)
     assert!(
         !output.status.success(),
-        "ralph config show --format not-a-format should fail"
+        "cueloop config show --format not-a-format should fail"
     );
 
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -264,14 +264,14 @@ fn config_show_text_alias_works_for_yaml() {
         .env("XDG_CONFIG_HOME", &xdg_config_home)
         .args(["config", "show", "--format", "text"])
         .output()
-        .expect("failed to execute ralph config show --format text");
+        .expect("failed to execute cueloop config show --format text");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
         output.status.success(),
-        "ralph config show --format text should succeed (alias for yaml)\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop config show --format text should succeed (alias for yaml)\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Should parse as YAML

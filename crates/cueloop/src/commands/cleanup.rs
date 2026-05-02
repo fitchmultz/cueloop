@@ -4,7 +4,7 @@
 //! - Manual temp file cleanup command.
 //!
 //! Responsibilities:
-//! - Provide on-demand cleanup of ralph temporary files.
+//! - Provide on-demand cleanup of cueloop temporary files.
 //! - Support dry-run mode for safe preview of cleanup actions.
 //! - Support force mode for immediate cleanup regardless of age.
 //!

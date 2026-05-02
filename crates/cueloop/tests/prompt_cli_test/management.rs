@@ -1,11 +1,11 @@
-//! Purpose: management-subcommand parsing coverage for `ralph prompt`.
+//! Purpose: management-subcommand parsing coverage for `cueloop prompt`.
 //!
 //! Responsibilities:
 //! - Verify list, show, export, sync, and diff subcommands parse into the expected clap structures.
 //! - Preserve flag-combination assertions for management commands.
 //!
 //! Scope:
-//! - `ralph prompt` management subcommands other than worker/scan/task-builder.
+//! - `cueloop prompt` management subcommands other than worker/scan/task-builder.
 //!
 //! Usage:
 //! - Run via the root `prompt_cli_test` integration suite.

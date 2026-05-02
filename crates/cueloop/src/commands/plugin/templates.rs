@@ -4,7 +4,7 @@
 //! - Plugin scaffold script templates.
 //!
 //! Responsibilities:
-//! - Hold the shell-script templates emitted by `ralph plugin init`.
+//! - Hold the shell-script templates emitted by `cueloop plugin init`.
 //! - Keep large static template bodies out of command orchestration modules.
 //!
 //! Not handled here:

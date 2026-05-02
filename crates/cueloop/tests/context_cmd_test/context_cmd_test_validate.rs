@@ -1,7 +1,7 @@
-//! `ralph context validate` integration tests.
+//! `cueloop context validate` integration tests.
 //!
 //! Purpose:
-//! - `ralph context validate` integration tests.
+//! - `cueloop context validate` integration tests.
 //!
 //! Responsibilities:
 //! - Cover success and failure flows for context validation.

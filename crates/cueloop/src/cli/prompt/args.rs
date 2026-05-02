@@ -4,7 +4,7 @@
 //! - Prompt CLI argument definitions.
 //!
 //! Responsibilities:
-//! - Define clap structures and enum routing for `ralph prompt ...`.
+//! - Define clap structures and enum routing for `cueloop prompt ...`.
 //! - Validate phase parsing for worker prompt previews.
 //!
 //! Not handled here:
@@ -34,7 +34,7 @@ pub fn parse_phase(input: &str) -> anyhow::Result<promptflow::RunPhase> {
 #[derive(Args)]
 #[command(
     about = "Manage and inspect prompt templates",
-    after_long_help = "Commands to view, export, and sync prompt templates.\n\nPreview compiled prompts (what the agent sees):\n  ralph prompt worker --phase 1 --repo-prompt plan\n  ralph prompt worker --single\n  ralph prompt scan --focus \"risk audit\" --repo-prompt off\n  ralph prompt task-builder --request \"Add tests\"\n\nList and view raw templates:\n  ralph prompt list\n  ralph prompt show worker --raw\n  ralph prompt diff worker\n\nExport and sync templates:\n  ralph prompt export --all\n  ralph prompt export worker\n  ralph prompt sync --dry-run\n  ralph prompt sync --force\n"
+    after_long_help = "Commands to view, export, and sync prompt templates.\n\nPreview compiled prompts (what the agent sees):\n  cueloop prompt worker --phase 1 --repo-prompt plan\n  cueloop prompt worker --single\n  cueloop prompt scan --focus \"risk audit\" --repo-prompt off\n  cueloop prompt task-builder --request \"Add tests\"\n\nList and view raw templates:\n  cueloop prompt list\n  cueloop prompt show worker --raw\n  cueloop prompt diff worker\n\nExport and sync templates:\n  cueloop prompt export --all\n  cueloop prompt export worker\n  cueloop prompt sync --dry-run\n  cueloop prompt sync --force\n"
 )]
 pub struct PromptArgs {
     #[command(subcommand)]

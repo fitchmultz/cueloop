@@ -1,10 +1,10 @@
-//! Integration tests for repo execution trust CLI (`ralph init`, `ralph config trust init`).
+//! Integration tests for repo execution trust CLI (`cueloop init`, `cueloop config trust init`).
 //!
 //! Purpose:
-//! - Integration tests for repo execution trust CLI (`ralph init`, `ralph config trust init`).
+//! - Integration tests for repo execution trust CLI (`cueloop init`, `cueloop config trust init`).
 //!
 //! Responsibilities:
-//! - Prove `ralph init` is the canonical trust bootstrap.
+//! - Prove `cueloop init` is the canonical trust bootstrap.
 //! - Keep trust-only repair behavior covered for already-initialized repos.
 //!
 //! Scope:
@@ -80,15 +80,15 @@ fn config_trust_init_repairs_missing_trust_for_sensitive_project_config() -> Res
         "expected config show to fail without trust\nstderr:\n{stderr}"
     );
     assert!(
-        stderr.contains("not trusted") && stderr.contains("ralph init"),
-        "expected modern trust error in stderr, got:\n{stderr}"
+        stderr.contains("not trusted") && stderr.contains("cueloop init"),
+        "expected current trust error in stderr, got:\n{stderr}"
     );
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["config", "trust", "init"]);
     assert!(
         status.success(),
-        "ralph config trust init failed\nstderr:\n{stderr}"
+        "cueloop config trust init failed\nstderr:\n{stderr}"
     );
 
     let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["config", "show"]);
@@ -125,7 +125,7 @@ fn init_succeeds_with_existing_sensitive_config_before_trust_exists() -> Result<
         test_support::run_in_dir(dir.path(), &["init", "--non-interactive"]);
     assert!(
         status.success(),
-        "ralph init should bootstrap trust before enforcing sensitive config\nstderr:\n{stderr}"
+        "cueloop init should bootstrap trust before enforcing sensitive config\nstderr:\n{stderr}"
     );
     assert!(dir.path().join(".ralph/trust.jsonc").exists());
 
@@ -153,11 +153,11 @@ fn init_ignores_global_queue_file_when_creating_project_runtime() -> Result<()> 
         .env("XDG_CONFIG_HOME", &xdg_config)
         .args(["init", "--force", "--non-interactive"])
         .output()
-        .expect("run ralph init");
+        .expect("run cueloop init");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         output.status.success(),
-        "ralph init failed\nstderr:\n{stderr}"
+        "cueloop init failed\nstderr:\n{stderr}"
     );
 
     assert!(dir.path().join(".cueloop/queue.jsonc").exists());
@@ -173,10 +173,10 @@ fn init_creates_trust_and_allows_later_sensitive_config() -> Result<()> {
     test_support::git_init(dir.path())?;
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    assert!(status.success(), "ralph init failed\nstderr:\n{stderr}");
+    assert!(status.success(), "cueloop init failed\nstderr:\n{stderr}");
 
     let trust_path = dir.path().join(".cueloop/trust.jsonc");
-    assert!(trust_path.exists(), "ralph init should create repo trust");
+    assert!(trust_path.exists(), "cueloop init should create repo trust");
     let gitignore = std::fs::read_to_string(dir.path().join(".gitignore"))?;
     assert!(
         gitignore.contains(".cueloop/trust.jsonc"),

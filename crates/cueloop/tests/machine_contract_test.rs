@@ -1,7 +1,7 @@
-//! Integration test hub for the `ralph machine` contract surface.
+//! Integration test hub for the `cueloop machine` contract surface.
 //!
 //! Purpose:
-//! - Group `ralph machine` integration coverage into focused contract suites.
+//! - Group `cueloop machine` integration coverage into focused contract suites.
 //!
 //! Responsibilities:
 //! - Keep the root machine contract entrypoint thin for clearer failure locality.

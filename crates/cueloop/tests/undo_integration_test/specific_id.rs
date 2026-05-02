@@ -1,7 +1,7 @@
-//! Purpose: snapshot-selection integration tests for `ralph undo`.
+//! Purpose: snapshot-selection integration tests for `cueloop undo`.
 //!
 //! Responsibilities:
-//! - Verify `ralph undo --id <id>` restores the requested snapshot rather than the latest by default.
+//! - Verify `cueloop undo --id <id>` restores the requested snapshot rather than the latest by default.
 //!
 //! Scope:
 //! - Specific snapshot ID restore behavior only.
@@ -15,7 +15,7 @@
 
 use super::*;
 
-/// Test that `ralph undo --id <id>` restores the specified snapshot.
+/// Test that `cueloop undo --id <id>` restores the specified snapshot.
 ///
 /// This test verifies that:
 /// 1. First snapshot is created before RQ-0001 is marked done (capturing initial state)

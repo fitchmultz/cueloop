@@ -34,7 +34,7 @@ pub enum PluginScopeArg {
 
 #[derive(Args, Debug, Clone)]
 #[command(
-    after_long_help = "Examples:\n  ralph plugin init acme.super_runner\n  ralph plugin init acme.super_runner --with-runner\n  ralph plugin init acme.super_runner --with-processor\n  ralph plugin init acme.super_runner --scope global\n  ralph plugin init acme.super_runner --dry-run\n"
+    after_long_help = "Examples:\n  cueloop plugin init acme.super_runner\n  cueloop plugin init acme.super_runner --with-runner\n  cueloop plugin init acme.super_runner --with-processor\n  cueloop plugin init acme.super_runner --scope global\n  cueloop plugin init acme.super_runner --dry-run\n"
 )]
 pub struct PluginInitArgs {
     /// Plugin ID (used as directory name in default layout).
@@ -81,7 +81,7 @@ pub struct PluginInitArgs {
 #[derive(Subcommand)]
 pub enum PluginCommand {
     /// List discovered plugins (global + project) and whether they are enabled.
-    #[command(after_long_help = "Examples:\n  ralph plugin list\n  ralph plugin list --json\n")]
+    #[command(after_long_help = "Examples:\n  cueloop plugin list\n  cueloop plugin list --json\n")]
     List {
         /// Output JSON instead of human-readable text.
         #[arg(long)]
@@ -90,7 +90,7 @@ pub enum PluginCommand {
 
     /// Validate discovered plugin manifests and referenced executables.
     #[command(
-        after_long_help = "Examples:\n  ralph plugin validate\n  ralph plugin validate --id acme.super_runner\n"
+        after_long_help = "Examples:\n  cueloop plugin validate\n  cueloop plugin validate --id acme.super_runner\n"
     )]
     Validate {
         /// Validate only a single plugin id.
@@ -100,7 +100,7 @@ pub enum PluginCommand {
 
     /// Install a plugin from a local directory (must contain plugin.json).
     #[command(
-        after_long_help = "Examples:\n  ralph plugin install ./my-plugin --scope project\n  ralph plugin install ./my-plugin --scope global\n\nNotes:\n  - Install does not enable the plugin. Enable via config.plugins.plugins.<id>.enabled=true\n"
+        after_long_help = "Examples:\n  cueloop plugin install ./my-plugin --scope project\n  cueloop plugin install ./my-plugin --scope global\n\nNotes:\n  - Install does not enable the plugin. Enable via config.plugins.plugins.<id>.enabled=true\n"
     )]
     Install {
         /// Source directory containing plugin.json
@@ -113,7 +113,7 @@ pub enum PluginCommand {
 
     /// Uninstall a plugin by id from the chosen scope.
     #[command(
-        after_long_help = "Examples:\n  ralph plugin uninstall acme.super_runner --scope project\n"
+        after_long_help = "Examples:\n  cueloop plugin uninstall acme.super_runner --scope project\n"
     )]
     Uninstall {
         id: String,
@@ -124,7 +124,7 @@ pub enum PluginCommand {
 
     /// Scaffold a new plugin directory with plugin.json and optional scripts.
     #[command(
-        after_long_help = "Examples:\n  ralph plugin init acme.super_runner\n  ralph plugin init acme.super_runner --with-runner\n  ralph plugin init acme.super_runner --with-processor\n  ralph plugin init acme.super_runner --scope global\n  ralph plugin init acme.super_runner --dry-run\n"
+        after_long_help = "Examples:\n  cueloop plugin init acme.super_runner\n  cueloop plugin init acme.super_runner --with-runner\n  cueloop plugin init acme.super_runner --with-processor\n  cueloop plugin init acme.super_runner --scope global\n  cueloop plugin init acme.super_runner --dry-run\n"
     )]
     Init(PluginInitArgs),
 }

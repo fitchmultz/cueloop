@@ -12,7 +12,7 @@
 //! - Worker process lifecycle and branch refresh behavior.
 //!
 //! Usage:
-//! - Run through `cargo test -p ralph commands::run::parallel::sync::bookkeeping`.
+//! - Run through `cargo test -p cueloop commands::run::parallel::sync::bookkeeping`.
 //!
 //! Invariants/Assumptions:
 //! - Successful worker snapshots may contain stale sibling queue state.

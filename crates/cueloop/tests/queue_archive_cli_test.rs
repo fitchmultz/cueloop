@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue archive`.
+//! Integration tests for `cueloop queue archive`.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue archive`.
+//! - Integration tests for `cueloop queue archive`.
 //!
 //! Responsibilities:
 //! - Verify terminal tasks (done/rejected) move from queue → done archive.

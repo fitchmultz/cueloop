@@ -4,9 +4,9 @@
 //! - Webhook CLI commands.
 //!
 //! Responsibilities:
-//! - Provide `ralph webhook test` command for testing webhook configuration.
-//! - Provide `ralph webhook status` for diagnostics snapshots.
-//! - Provide `ralph webhook replay` for explicit bounded failure replay.
+//! - Provide `cueloop webhook test` command for testing webhook configuration.
+//! - Provide `cueloop webhook status` for diagnostics snapshots.
+//! - Provide `cueloop webhook replay` for explicit bounded failure replay.
 //!
 //! Non-scope:
 //! - Webhook configuration management (use config files).
@@ -31,17 +31,17 @@ pub struct WebhookArgs {
 pub enum WebhookCommand {
     /// Test webhook configuration by sending a test event.
     #[command(
-        after_long_help = "Examples:\n  ralph webhook test\n  ralph webhook test --event task_created\n  ralph webhook test --event phase_started --print-json\n  ralph webhook test --url https://example.com/webhook"
+        after_long_help = "Examples:\n  cueloop webhook test\n  cueloop webhook test --event task_created\n  cueloop webhook test --event phase_started --print-json\n  cueloop webhook test --url https://example.com/webhook"
     )]
     Test(TestArgs),
     /// Show webhook delivery diagnostics and recent failures.
     #[command(
-        after_long_help = "Examples:\n  ralph webhook status\n  ralph webhook status --recent 10\n  ralph webhook status --format json"
+        after_long_help = "Examples:\n  cueloop webhook status\n  cueloop webhook status --recent 10\n  cueloop webhook status --format json"
     )]
     Status(StatusArgs),
     /// Replay failed webhook deliveries with explicit targeting.
     #[command(
-        after_long_help = "Examples:\n  ralph webhook replay --id wf-1700000000-1 --dry-run\n  ralph webhook replay --event task_completed --limit 5\n  ralph webhook replay --task-id RQ-0814 --max-replay-attempts 3"
+        after_long_help = "Examples:\n  cueloop webhook replay --id wf-1700000000-1 --dry-run\n  cueloop webhook replay --event task_completed --limit 5\n  cueloop webhook replay --task-id RQ-0814 --max-replay-attempts 3"
     )]
     Replay(ReplayArgs),
 }
@@ -162,7 +162,7 @@ fn handle_test(args: &TestArgs, resolved: &crate::config::Resolved) -> Result<()
     // Build the payload
     let now = timeutil::now_utc_rfc3339()?;
 
-    let note = Some("Test webhook from ralph webhook test command".to_string());
+    let note = Some("Test webhook from cueloop webhook test command".to_string());
 
     let (task_id, task_title, previous_status, current_status, context) = match event_type {
         WebhookEventType::LoopStarted | WebhookEventType::LoopStopped => {

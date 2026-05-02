@@ -1,7 +1,7 @@
-//! CLI spec command implementation (wired into the hidden/internal `ralph __cli-spec` command).
+//! CLI spec command implementation (wired into the hidden/internal `cueloop __cli-spec` command).
 //!
 //! Purpose:
-//! - CLI spec command implementation (wired into the hidden/internal `ralph __cli-spec` command).
+//! - CLI spec command implementation (wired into the hidden/internal `cueloop __cli-spec` command).
 //!
 //! Responsibilities:
 //! - Provide a small "command layer" entrypoint that produces the deterministic CLI spec JSON for
@@ -9,7 +9,7 @@
 //! - Keep the execution/IO boundary separate from clap introspection and contract modeling.
 //!
 //! Not handled here:
-//! - Registering a user-facing `ralph cli-spec` (or similar) top-level command in clap.
+//! - Registering a user-facing `cueloop cli-spec` (or similar) top-level command in clap.
 //! - Reading/writing files or printing to stdout/stderr.
 //!
 //!

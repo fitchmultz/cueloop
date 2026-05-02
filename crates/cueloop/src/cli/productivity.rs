@@ -50,25 +50,25 @@ pub struct ProductivityArgs {
 pub enum ProductivityCommand {
     /// Summary: total completions, streak, milestones, recent completions.
     #[command(
-        after_long_help = "Examples:\n  ralph productivity summary\n  ralph productivity summary --format json\n  ralph productivity summary --recent 10"
+        after_long_help = "Examples:\n  cueloop productivity summary\n  cueloop productivity summary --format json\n  cueloop productivity summary --recent 10"
     )]
     Summary(ProductivitySummaryArgs),
 
     /// Velocity: completions per day over windows (7/30 by default).
     #[command(
-        after_long_help = "Examples:\n  ralph productivity velocity\n  ralph productivity velocity --format json\n  ralph productivity velocity --days 14"
+        after_long_help = "Examples:\n  cueloop productivity velocity\n  cueloop productivity velocity --format json\n  cueloop productivity velocity --days 14"
     )]
     Velocity(ProductivityVelocityArgs),
 
     /// Streak details: current/longest streak + last completion date.
     #[command(
-        after_long_help = "Examples:\n  ralph productivity streak\n  ralph productivity streak --format json"
+        after_long_help = "Examples:\n  cueloop productivity streak\n  cueloop productivity streak --format json"
     )]
     Streak(ProductivityStreakArgs),
 
     /// Estimation accuracy: compare estimated vs actual time for completed tasks.
     #[command(
-        after_long_help = "Examples:\n  ralph productivity estimation\n  ralph productivity estimation --format json"
+        after_long_help = "Examples:\n  cueloop productivity estimation\n  cueloop productivity estimation --format json"
     )]
     Estimation(ProductivityEstimationArgs),
 }

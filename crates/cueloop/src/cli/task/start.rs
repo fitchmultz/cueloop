@@ -1,7 +1,7 @@
-//! Task start handler for `ralph task start`.
+//! Task start handler for `cueloop task start`.
 //!
 //! Purpose:
-//! - Task start handler for `ralph task start`.
+//! - Task start handler for `cueloop task start`.
 //!
 //! Responsibilities:
 //! - Set `started_at` for a task (RFC3339 UTC).

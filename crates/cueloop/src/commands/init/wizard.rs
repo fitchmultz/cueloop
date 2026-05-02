@@ -467,8 +467,8 @@ pub fn print_completion_message(answers: Option<&WizardAnswers>, queue_path: &Pa
     );
     println!();
     println!("{}", colored::Colorize::bold("Next steps:"));
-    println!("  1. Run 'ralph app open' to open the macOS app (optional)");
-    println!("  2. Run 'ralph run one' to execute your first task");
+    println!("  1. Run 'cueloop app open' to open the macOS app (optional)");
+    println!("  2. Run 'cueloop run one' to execute your first task");
     println!("  3. Edit {runtime_name}/config.jsonc to customize settings");
     println!(
         "     - Parallel sync extras use trusted parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\"); see docs/configuration/queue-and-parallel.md#ignored-local-file-sync"

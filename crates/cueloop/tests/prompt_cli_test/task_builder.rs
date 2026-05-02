@@ -1,11 +1,11 @@
-//! Purpose: task-builder-subcommand parsing coverage for `ralph prompt`.
+//! Purpose: task-builder-subcommand parsing coverage for `cueloop prompt`.
 //!
 //! Responsibilities:
 //! - Verify task-builder flags parse into the expected clap structures.
 //! - Preserve request, tags, scope, repo-prompt, and explain assertions.
 //!
 //! Scope:
-//! - `ralph prompt task-builder` parsing only.
+//! - `cueloop prompt task-builder` parsing only.
 //!
 //! Usage:
 //! - Run via the root `prompt_cli_test` integration suite.

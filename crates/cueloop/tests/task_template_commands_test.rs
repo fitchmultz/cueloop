@@ -1,7 +1,7 @@
-//! Integration tests for `ralph task template` subcommands (list, show, build).
+//! Integration tests for `cueloop task template` subcommands (list, show, build).
 //!
 //! Purpose:
-//! - Integration tests for `ralph task template` subcommands (list, show, build).
+//! - Integration tests for `cueloop task template` subcommands (list, show, build).
 //!
 //! Responsibilities:
 //! - Test template list command shows built-in and custom templates.
@@ -68,11 +68,11 @@ fn task_template_list_shows_builtins() -> Result<()> {
 
     // Verify footer help text
     anyhow::ensure!(
-        stdout.contains("ralph task template show"),
+        stdout.contains("cueloop task template show"),
         "show help text missing"
     );
     anyhow::ensure!(
-        stdout.contains("ralph task template build"),
+        stdout.contains("cueloop task template build"),
         "build help text missing"
     );
 

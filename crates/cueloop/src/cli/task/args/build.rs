@@ -79,12 +79,12 @@ pub struct TaskBuildArgs {
 
 #[derive(Args)]
 #[command(after_long_help = "Examples:
- ralph task build refactor
- ralph task build refactor --threshold 700
- ralph task build refactor --path crates/cueloop/src/cli
- ralph task build refactor --dry-run --threshold 500
- ralph task build refactor --batch never
- ralph task build refactor --tags urgent,technical-debt")]
+ cueloop task build refactor
+ cueloop task build refactor --threshold 700
+ cueloop task build refactor --path crates/cueloop/src/cli
+ cueloop task build refactor --dry-run --threshold 500
+ cueloop task build refactor --batch never
+ cueloop task build refactor --tags urgent,technical-debt")]
 pub struct TaskBuildRefactorArgs {
     /// LOC threshold for flagging files as "large" (default: 1000).
     /// Files exceeding ~1000 LOC are presumed mis-scoped per AGENTS.md.

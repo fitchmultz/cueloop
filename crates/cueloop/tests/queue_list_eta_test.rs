@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue list --with-eta`.
+//! Integration tests for `cueloop queue list --with-eta`.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue list --with-eta`.
+//! - Integration tests for `cueloop queue list --with-eta`.
 //!
 //! Responsibilities:
 //! - Validate the `--with-eta` column behavior in `--format compact` and `--format long`.

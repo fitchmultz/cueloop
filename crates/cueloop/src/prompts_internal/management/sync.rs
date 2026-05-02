@@ -68,7 +68,7 @@ pub(crate) fn export_template(
          <!-- Version: {} -->\n\
          <!-- Digest: {} -->\n\
          <!-- Exported at: {} -->\n\
-         <!-- WARNING: This file may be overwritten by 'ralph prompt sync' unless you rename it -->\n\n",
+         <!-- WARNING: This file may be overwritten by 'cueloop prompt sync' unless you rename it -->\n\n",
         file_name, ralph_version, digest, timestamp
     );
     fs::write(&file_path, format!("{}{}", header, embedded_content))

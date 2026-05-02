@@ -4,7 +4,7 @@
 //! - Run-oriented machine command handlers.
 //!
 //! Responsibilities:
-//! - Implement `ralph machine run ...` operations.
+//! - Implement `cueloop machine run ...` operations.
 //! - Emit NDJSON run events and final machine run summaries.
 //! - Bridge machine run requests into the shared run command layer.
 //!

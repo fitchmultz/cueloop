@@ -12,7 +12,7 @@
 //! - Support non-interactive mode to skip all prompts (for CI/piped runs).
 //!
 //! Not handled here:
-//! - Deep validation (git, runners, queue structure) - that's `ralph doctor`.
+//! - Deep validation (git, runners, queue structure) - that's `cueloop doctor`.
 //! - GUI app flows.
 //! - Network connectivity checks.
 //!

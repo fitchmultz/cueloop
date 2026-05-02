@@ -100,7 +100,7 @@ fn acquire_dir_lock_clears_stale_lock_for_resume_without_force() -> Result<()> {
     fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run one\n"
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run one\n"
         ),
     )?;
 

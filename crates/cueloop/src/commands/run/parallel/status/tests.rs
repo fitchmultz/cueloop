@@ -106,15 +106,15 @@ fn parallel_status_describes_retained_blocked_workspace() -> Result<()> {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine run parallel-status"
+        "cueloop machine run parallel-status"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph run parallel retry --task <TASK_ID>"
+        "cueloop run parallel retry --task <TASK_ID>"
     );
     assert_eq!(
         document.continuation.next_steps[2].command,
-        "ralph machine run loop --resume --max-tasks 0 --parallel <N>"
+        "cueloop machine run loop --resume --max-tasks 0 --parallel <N>"
     );
     Ok(())
 }
@@ -185,7 +185,7 @@ fn parallel_status_distinguishes_success_failure_and_action_required() -> Result
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine run parallel-status"
+        "cueloop machine run parallel-status"
     );
     Ok(())
 }
@@ -225,11 +225,11 @@ fn parallel_status_surfaces_cleanup_drift_without_active_workers() -> Result<()>
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine run parallel-status"
+        "cueloop machine run parallel-status"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph machine run loop --resume --max-tasks 0 --parallel <N>"
+        "cueloop machine run loop --resume --max-tasks 0 --parallel <N>"
     );
     Ok(())
 }
@@ -247,11 +247,11 @@ fn parallel_status_lifecycle_counts_zero_without_parallel_state() -> Result<()> 
     assert_eq!(document.lifecycle_counts.blocked, 0);
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph machine run loop --resume --max-tasks 0 --parallel <N>"
+        "cueloop machine run loop --resume --max-tasks 0 --parallel <N>"
     );
     assert_eq!(
         document.continuation.next_steps[1].command,
-        "ralph machine run parallel-status"
+        "cueloop machine run parallel-status"
     );
     Ok(())
 }

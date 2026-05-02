@@ -50,10 +50,10 @@ fn queue_issue_publish_help_examples_expanded() {
     let help = issue_cmd.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue issue publish"),
+        help.contains("cueloop queue issue publish"),
         "missing issue publish example: {help}"
     );
-    assert!(help.contains("ralph queue issue publish-many"));
+    assert!(help.contains("cueloop queue issue publish-many"));
 }
 
 #[test]

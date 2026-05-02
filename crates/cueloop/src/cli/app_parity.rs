@@ -179,7 +179,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
         "Run Control",
         &["machine run stop", "continuation.next_steps"],
         &[
-            "docs/features/app.md: Stop After Current specifically uses ralph machine run stop",
+            "docs/features/app.md: Stop After Current specifically uses cueloop machine run stop",
             "docs/features/app.md: Run Control continuation cards should prefer structured native actions",
             "docs/machine-contract.md: machine run stop (version: 1)",
         ],
@@ -203,7 +203,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
         "Workspace Admin",
         &["machine config resolve", "machine workspace overview"],
         &[
-            "docs/features/app.md: native workflows should use versioned ralph machine contracts",
+            "docs/features/app.md: native workflows should use versioned cueloop machine contracts",
             "docs/features/app.md: most data and execution issues can be reproduced via CLI commands",
         ],
         "Workspace bootstrap and diagnostics path resolution",
@@ -223,7 +223,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
         "Run Control",
         &["machine config resolve.execution_controls.runners"],
         &[
-            "docs/features/app.md: execution affordances should come from ralph machine config resolve.execution_controls",
+            "docs/features/app.md: execution affordances should come from cueloop machine config resolve.execution_controls",
             "docs/features/app.md: trusted plugin runners appear in native controls through the same machine-fed contract",
         ],
         "Runner settings and native execution controls",
@@ -244,7 +244,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "machine workspace overview config payload",
         ],
         &[
-            "docs/features/app.md: execution affordances should come from ralph machine config resolve.execution_controls",
+            "docs/features/app.md: execution affordances should come from cueloop machine config resolve.execution_controls",
             "docs/features/app.md: unknown configured runner or effort values must remain visible instead of being coerced away",
         ],
         "Parallel worker controls above legacy menu defaults",

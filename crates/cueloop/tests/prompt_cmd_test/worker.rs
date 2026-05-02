@@ -74,7 +74,7 @@ fn worker_single_phase_includes_completion_workflow() -> Result<()> {
     );
 
     assert!(prompt.contains("Task bookkeeping"));
-    assert!(prompt.contains("ralph task done"));
+    assert!(prompt.contains("cueloop task done"));
     assert!(prompt.contains(".ralph/queue.jsonc"));
     Ok(())
 }

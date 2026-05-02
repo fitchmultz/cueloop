@@ -4,7 +4,7 @@
 //! - Versioned machine-contract documents for app/CLI integration.
 //!
 //! Responsibilities:
-//! - Define the stable JSON documents consumed by the macOS app via `ralph machine ...`.
+//! - Define the stable JSON documents consumed by the macOS app via `cueloop machine ...`.
 //! - Centralize machine-only request/response and event envelope types.
 //! - Provide schema-friendly wrappers around queue/config/task/run data.
 //!

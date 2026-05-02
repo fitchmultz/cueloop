@@ -1,7 +1,7 @@
-//! Task template command handlers for `ralph task template` subcommand.
+//! Task template command handlers for `cueloop task template` subcommand.
 //!
 //! Purpose:
-//! - Task template command handlers for `ralph task template` subcommand.
+//! - Task template command handlers for `cueloop task template` subcommand.
 //!
 //! Responsibilities:
 //! - Handle `template list` command.
@@ -47,8 +47,10 @@ pub fn handle(resolved: &config::Resolved, args: &TaskTemplateArgs) -> Result<()
                 );
             }
             println!();
-            println!("Use 'ralph task template show <name>' to view template details.");
-            println!("Use 'ralph task template build <name> \"request\"' to create from template.");
+            println!("Use 'cueloop task template show <name>' to view template details.");
+            println!(
+                "Use 'cueloop task template build <name> \"request\"' to create from template."
+            );
             Ok(())
         }
         TaskTemplateCommand::Show(show_args) => {

@@ -1,7 +1,7 @@
-//! Integration tests for `ralph machine queue unlock-inspect`.
+//! Integration tests for `cueloop machine queue unlock-inspect`.
 //!
 //! Purpose:
-//! - Integration tests for `ralph machine queue unlock-inspect`.
+//! - Integration tests for `cueloop machine queue unlock-inspect`.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.

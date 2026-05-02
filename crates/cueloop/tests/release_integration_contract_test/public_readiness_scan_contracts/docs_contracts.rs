@@ -27,7 +27,7 @@ fn public_readiness_scan_docs_mode_rejects_stale_app_decompose_command() {
     copy_public_readiness_scan_fixture(repo_root);
     write_file(
         &repo_root.join("docs/features/app.md"),
-        "The app calls `ralph task decompose --format json`.\n",
+        "The app calls `cueloop task decompose --format json`.\n",
     );
 
     let output = Command::new("bash")
@@ -45,7 +45,7 @@ fn public_readiness_scan_docs_mode_rejects_stale_app_decompose_command() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         stdout.contains(
-            "docs/features/app.md: use `ralph machine task decompose` for RalphMac decomposition docs"
+            "docs/features/app.md: use `cueloop machine task decompose` for RalphMac decomposition docs"
         ),
         "docs scan should explain the stale app command failure\nstdout:\n{}",
         stdout

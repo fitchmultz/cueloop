@@ -1,7 +1,7 @@
-//! `ralph queue issue` subcommand facade.
+//! `cueloop queue issue` subcommand facade.
 //!
 //! Purpose:
-//! - `ralph queue issue` subcommand facade.
+//! - `cueloop queue issue` subcommand facade.
 //!
 //! Responsibilities:
 //! - Define the stable module boundary for GitHub issue publishing commands.

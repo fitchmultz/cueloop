@@ -31,7 +31,7 @@ fn supervising_process_detects_run_loop_label() -> Result<()> {
     let lock_dir = temp_dir.path().join("lock");
     std::fs::create_dir_all(&lock_dir)?;
     let owner_path = lock_dir.join("owner");
-    let owner = "pid: 123\nstarted_at: now\ncommand: ralph run loop\nlabel: run loop\n";
+    let owner = "pid: 123\nstarted_at: now\ncommand: cueloop run loop\nlabel: run loop\n";
     std::fs::write(&owner_path, owner)?;
 
     assert!(lock::is_supervising_process(&lock_dir)?);

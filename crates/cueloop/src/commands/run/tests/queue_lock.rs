@@ -124,7 +124,7 @@ fn clear_stale_queue_lock_for_resume_removes_stale_lock() -> anyhow::Result<()> 
     std::fs::write(
         &owner_path,
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run one\n"
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run one\n"
         ),
     )?;
 
@@ -171,7 +171,7 @@ fn inspect_queue_lock_reports_stale_lock_as_stale_operator_state() -> anyhow::Re
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --parallel 4\nlabel: run loop\n"
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --parallel 4\nlabel: run loop\n"
         ),
     )?;
 
@@ -214,7 +214,7 @@ fn inspect_queue_lock_reports_pid_reuse_review_for_aged_live_owner() -> anyhow::
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {}\nstarted_at: 2020-01-01T00:00:00Z\ncommand: ralph run loop --parallel 4\nlabel: run loop\n",
+            "pid: {}\nstarted_at: 2020-01-01T00:00:00Z\ncommand: cueloop run loop --parallel 4\nlabel: run loop\n",
             std::process::id()
         ),
     )?;
@@ -296,7 +296,7 @@ fn run_loop_auto_resume_clears_stale_queue_lock_before_task_execution() -> anyho
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run one\n"
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run one\n"
         ),
     )?;
 

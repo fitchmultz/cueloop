@@ -18,7 +18,7 @@
 //!
 //! Invariants/assumptions:
 //! - Test repos are isolated temp git repos.
-//! - `ralph config paths` prints stable `key: value` lines for path keys.
+//! - `cueloop config paths` prints stable `key: value` lines for path keys.
 
 use anyhow::Result;
 use std::path::Path;

@@ -4,7 +4,7 @@
 //! - Queue aging subcommand.
 //!
 //! Responsibilities:
-//! - Handle `ralph queue aging` command to show task aging buckets.
+//! - Handle `cueloop queue aging` command to show task aging buckets.
 //!
 //! Not handled here:
 //! - Actual aging computation (see crate::reports::aging).
@@ -27,11 +27,11 @@ use crate::reports;
 
 use super::{QueueReportFormat, StatusArg};
 
-/// Arguments for `ralph queue aging`.
+/// Arguments for `cueloop queue aging`.
 #[derive(Args)]
 #[command(
     about = "Show task aging buckets to identify stale work",
-    after_long_help = "Examples:\n  ralph queue aging\n  ralph queue aging --format json\n  ralph queue aging --status todo --status doing\n  ralph queue aging --status doing"
+    after_long_help = "Examples:\n  cueloop queue aging\n  cueloop queue aging --format json\n  cueloop queue aging --status todo --status doing\n  cueloop queue aging --status doing"
 )]
 pub struct QueueAgingArgs {
     /// Filter by status (repeatable). Default: todo, doing.

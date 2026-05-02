@@ -1,7 +1,7 @@
-//! Handler for `ralph queue tree` subcommand.
+//! Handler for `cueloop queue tree` subcommand.
 //!
 //! Purpose:
-//! - Handler for `ralph queue tree` subcommand.
+//! - Handler for `cueloop queue tree` subcommand.
 //!
 //! Responsibilities:
 //! - Render an ASCII tree of task hierarchy based on parent_id.
@@ -27,11 +27,11 @@ use crate::cli::load_and_validate_queues_read_only;
 use crate::config::Resolved;
 use crate::queue::hierarchy::{HierarchyIndex, TaskSource, detect_parent_cycles, render_tree};
 
-/// Arguments for `ralph queue tree`.
+/// Arguments for `cueloop queue tree`.
 #[derive(Args)]
 #[command(
     about = "Render a parent/child hierarchy tree (based on parent_id)",
-    after_long_help = "Examples:\n  ralph queue tree\n  ralph queue tree --include-done\n  ralph queue tree --root RQ-0001\n  ralph queue tree --max-depth 25"
+    after_long_help = "Examples:\n  cueloop queue tree\n  cueloop queue tree --include-done\n  cueloop queue tree --root RQ-0001\n  cueloop queue tree --max-depth 25"
 )]
 pub struct QueueTreeArgs {
     #[arg(long, value_name = "TASK_ID")]

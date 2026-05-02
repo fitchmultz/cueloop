@@ -1,7 +1,7 @@
-//! Integration test hub for `ralph context` commands.
+//! Integration test hub for `cueloop context` commands.
 //!
 //! Purpose:
-//! - Integration test hub for `ralph context` commands.
+//! - Integration test hub for `cueloop context` commands.
 //!
 //! Responsibilities:
 //! - Group CLI integration coverage by `init`, `validate`, and `update` workflows.

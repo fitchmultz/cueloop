@@ -1,7 +1,7 @@
-//! Long-help text for `ralph run`.
+//! Long-help text for `cueloop run`.
 //!
 //! Purpose:
-//! - Long-help text for `ralph run`.
+//! - Long-help text for `cueloop run`.
 //!
 //! Responsibilities:
 //! - Centralize verbose clap help text separately from clap type definitions.
@@ -17,26 +17,26 @@
 //! - Help strings stay as `'static` constants for clap attributes.
 
 pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
-  - `ralph run` selects runner/model/effort with this precedence:\n\
+  - `cueloop run` selects runner/model/effort with this precedence:\n\
   1) CLI overrides (flags on `run one` / `run loop`)\n\
   2) task's `agent` override (runner/model plus `model_effort` if set)\n\
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
 Loop limits:\n\
-  - `ralph run loop --max-tasks 0` means unlimited execution until CueLoop runs out of runnable work, blocks, or is stopped.\n\
+  - `cueloop run loop --max-tasks 0` means unlimited execution until CueLoop runs out of runnable work, blocks, or is stopped.\n\
   - Use a positive `--max-tasks` value to cap successful task iterations.\n\
  \n\
  Resume behavior:\n\
   - CueLoop now narrates whether it is resuming the same session, starting fresh, or refusing to guess.\n\
-  - `ralph run one` inspects interrupted-session state too; add `--resume` to auto-continue when safe.\n\
+  - `cueloop run one` inspects interrupted-session state too; add `--resume` to auto-continue when safe.\n\
   - Timed-out sessions still require explicit confirmation and are refused in non-interactive mode.\n\
  \n\
  Blocking-state diagnosis:\n\
   - CueLoop uses one canonical BlockingState vocabulary everywhere: waiting, blocked, stalled.\n\
   - Recovery-entry commands (`task mutate`, `task decompose`, `queue validate`, `queue repair`, `undo`) use the same waiting/blocked/stalled narration when CueLoop needs operator guidance.\n\
   - Canonical reasons are: idle, dependency_blocked, schedule_blocked, lock_blocked, ci_blocked, runner_recovery, operator_recovery, mixed_queue.\n\
-  - Use `ralph doctor` for human-readable diagnosis when CueLoop is not making progress.\n\
-  - Use `ralph doctor --format json` or `ralph machine doctor report` for machine-readable blocking diagnosis.\n\
+  - Use `cueloop doctor` for human-readable diagnosis when CueLoop is not making progress.\n\
+  - Use `cueloop doctor --format json` or `cueloop machine doctor report` for machine-readable blocking diagnosis.\n\
  \n\
  Notes:\n\
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi\n\
@@ -69,31 +69,31 @@ Phase-specific overrides:\n\
   gemini_bin: gemini\n\
  \n\
 Examples:\n\
- ralph run one\n\
- ralph run one --resume\n\
- ralph run one --phases 2\n\
- ralph run one --phases 1\n\
- ralph run one --runner opencode --model gpt-5.3\n\
- ralph run one --runner codex --model gpt-5.4 --effort high\n\
- ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high\n\
- ralph run one --runner-phase2 claude --model-phase2 opus\n\
- ralph run one --runner gemini --model gemini-3-flash-preview\n\
- ralph run one --runner pi --model gpt-5.3\n\
- ralph run one --include-draft\n\
- ralph run one --git-revert-mode disabled\n\
- ralph run one --git-publish-mode off\n\
- ralph run one --lfs-check\n\
- ralph run loop --max-tasks 0 (unlimited)\n\
- ralph run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
- ralph run loop --include-draft --max-tasks 1\n\
- ralph run loop --git-revert-mode ask --max-tasks 1\n\
- ralph run loop --git-publish-mode commit_and_push --max-tasks 1\n\
- ralph run loop --lfs-check --max-tasks 1\n\
- ralph run loop --parallel --max-tasks 4\n\
- ralph run loop --parallel 4 --max-tasks 8\n\
- ralph run resume\n\
- ralph run resume --force\n\
- ralph run loop --resume --max-tasks 5";
+ cueloop run one\n\
+ cueloop run one --resume\n\
+ cueloop run one --phases 2\n\
+ cueloop run one --phases 1\n\
+ cueloop run one --runner opencode --model gpt-5.3\n\
+ cueloop run one --runner codex --model gpt-5.4 --effort high\n\
+ cueloop run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high\n\
+ cueloop run one --runner-phase2 claude --model-phase2 opus\n\
+ cueloop run one --runner gemini --model gemini-3-flash-preview\n\
+ cueloop run one --runner pi --model gpt-5.3\n\
+ cueloop run one --include-draft\n\
+ cueloop run one --git-revert-mode disabled\n\
+ cueloop run one --git-publish-mode off\n\
+ cueloop run one --lfs-check\n\
+ cueloop run loop --max-tasks 0 (unlimited)\n\
+ cueloop run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
+ cueloop run loop --include-draft --max-tasks 1\n\
+ cueloop run loop --git-revert-mode ask --max-tasks 1\n\
+ cueloop run loop --git-publish-mode commit_and_push --max-tasks 1\n\
+ cueloop run loop --lfs-check --max-tasks 1\n\
+ cueloop run loop --parallel --max-tasks 4\n\
+ cueloop run loop --parallel 4 --max-tasks 8\n\
+ cueloop run resume\n\
+ cueloop run resume --force\n\
+ cueloop run loop --resume --max-tasks 5";
 
 pub(super) const RESUME_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - If the saved session is still valid, CueLoop resumes the same interrupted task.\n\
@@ -101,9 +101,9 @@ pub(super) const RESUME_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of guessing.\n\
 \n\
 Examples:\n\
- ralph run resume\n\
- ralph run resume --force\n\
- ralph run resume --non-interactive";
+ cueloop run resume\n\
+ cueloop run resume --force\n\
+ cueloop run resume --non-interactive";
 
 pub(super) const RUN_ONE_AFTER_LONG_HELP: &str = "Runner selection (precedence):\n\
  1) CLI overrides (--runner/--model/--effort)\n\
@@ -112,46 +112,46 @@ pub(super) const RUN_ONE_AFTER_LONG_HELP: &str = "Runner selection (precedence):
  4) config defaults (.cueloop/config.jsonc then ~/.config/cueloop/config.jsonc, with legacy fallbacks)\n\
 \n\
 Resume behavior:\n\
- - `ralph run one` inspects interrupted-session state before selecting work.\n\
- - `ralph run one --resume` auto-resumes the interrupted session when CueLoop can do so safely.\n\
+ - `cueloop run one` inspects interrupted-session state before selecting work.\n\
+ - `cueloop run one --resume` auto-resumes the interrupted session when CueLoop can do so safely.\n\
  - Explicit `--id <TASK_ID>` beats an unrelated interrupted session, and CueLoop says so.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\
 Blocking-state diagnosis:\n\
- - If CueLoop refuses to continue, stalls, or appears blocked, run `ralph doctor`.\n\
- - `ralph doctor` uses the same BlockingState explanation shown by run, machine, and app surfaces.\n\
+ - If CueLoop refuses to continue, stalls, or appears blocked, run `cueloop doctor`.\n\
+ - `cueloop doctor` uses the same BlockingState explanation shown by run, machine, and app surfaces.\n\
 \n\
 Examples:\n\
- ralph run one\n\
- ralph run one --resume\n\
- ralph run one --id RQ-0001\n\
- ralph run one --id RQ-0001 --resume\n\
- ralph run one --debug\n\
- ralph run one --profile fast-local\n\
- ralph run one --profile deep-review\n\
- ralph run one --phases 3 (plan/implement+CI/review+complete)\n\
- ralph run one --phases 2 (plan/implement)\n\
- ralph run one --phases 1 (single-pass)\n\
- ralph run one --quick (single-pass, same as --phases 1)\n\
- ralph run one --runner opencode --model gpt-5.3\n\
- ralph run one --runner gemini --model gemini-3-flash-preview\n\
- ralph run one --runner pi --model gpt-5.3\n\
- ralph run one --runner codex --model gpt-5.4 --effort high\n\
- ralph run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high\n\
- ralph run one --runner-phase2 claude --model-phase2 opus\n\
- ralph run one --include-draft\n\
- ralph run one --git-revert-mode enabled\n\
- ralph run one --git-publish-mode off\n\
- ralph run one --lfs-check\n\
- ralph run one --repo-prompt plan\n\
- ralph run one --repo-prompt off\n\
- ralph run one --non-interactive\n\
- ralph run one --dry-run\n\
- ralph run one --dry-run --include-draft\n\
- ralph run one --dry-run --id RQ-0001";
+ cueloop run one\n\
+ cueloop run one --resume\n\
+ cueloop run one --id RQ-0001\n\
+ cueloop run one --id RQ-0001 --resume\n\
+ cueloop run one --debug\n\
+ cueloop run one --profile fast-local\n\
+ cueloop run one --profile deep-review\n\
+ cueloop run one --phases 3 (plan/implement+CI/review+complete)\n\
+ cueloop run one --phases 2 (plan/implement)\n\
+ cueloop run one --phases 1 (single-pass)\n\
+ cueloop run one --quick (single-pass, same as --phases 1)\n\
+ cueloop run one --runner opencode --model gpt-5.3\n\
+ cueloop run one --runner gemini --model gemini-3-flash-preview\n\
+ cueloop run one --runner pi --model gpt-5.3\n\
+ cueloop run one --runner codex --model gpt-5.4 --effort high\n\
+ cueloop run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high\n\
+ cueloop run one --runner-phase2 claude --model-phase2 opus\n\
+ cueloop run one --include-draft\n\
+ cueloop run one --git-revert-mode enabled\n\
+ cueloop run one --git-publish-mode off\n\
+ cueloop run one --lfs-check\n\
+ cueloop run one --repo-prompt plan\n\
+ cueloop run one --repo-prompt off\n\
+ cueloop run one --non-interactive\n\
+ cueloop run one --dry-run\n\
+ cueloop run one --dry-run --include-draft\n\
+ cueloop run one --dry-run --id RQ-0001";
 
 pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
- - `ralph run loop --resume` auto-resumes the interrupted session when safe.\n\
+ - `cueloop run loop --resume` auto-resumes the interrupted session when safe.\n\
  - Without `--resume`, CueLoop still narrates stale/fresh/refusal cases instead of hiding them.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\
@@ -160,51 +160,51 @@ Loop limits:\n\
  - Use a positive `--max-tasks` value when you want a fixed cap.\n\
 \n\
 Blocking-state diagnosis:\n\
- - `ralph run loop` emits canonical blocking states during waiting and stall transitions.\n\
- - Use `ralph doctor` to diagnose the same state outside the live run loop.\n\
+ - `cueloop run loop` emits canonical blocking states during waiting and stall transitions.\n\
+ - Use `cueloop doctor` to diagnose the same state outside the live run loop.\n\
 \n\
 Queue validation recovery:\n\
- - If the loop stops on queue validation, preview repair with `ralph queue repair --dry-run`.\n\
- - Apply recoverable fixes with `ralph queue repair`, then re-run `ralph queue validate` if desired.\n\
+ - If the loop stops on queue validation, preview repair with `cueloop queue repair --dry-run`.\n\
+ - Apply recoverable fixes with `cueloop queue repair`, then re-run `cueloop queue validate` if desired.\n\
 \n\
 Examples:\n\
- ralph run loop --max-tasks 0 (unlimited)\n\
- ralph run loop --profile fast-local --max-tasks 5\n\
- ralph run loop --profile deep-review --max-tasks 5\n\
- ralph run loop --resume --max-tasks 5\n\
- ralph run loop --phases 3 --max-tasks 0 (unlimited, plan/implement+CI/review+complete)\n\
- ralph run loop --phases 2 --max-tasks 0 (unlimited, plan/implement)\n\
- ralph run loop --phases 1 --max-tasks 1 (single-pass)\n\
- ralph run loop --quick --max-tasks 1 (single-pass, same as --phases 1)\n\
- ralph run loop --max-tasks 3\n\
- ralph run loop --max-tasks 1 --debug\n\
- ralph run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
- ralph run loop --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high --max-tasks 1\n\
- ralph run loop --runner-phase2 claude --model-phase2 opus --max-tasks 1\n\
- ralph run loop --include-draft --max-tasks 1\n\
- ralph run loop --git-revert-mode disabled --max-tasks 1\n\
- ralph run loop --git-publish-mode off --max-tasks 1\n\
- ralph run loop --repo-prompt tools --max-tasks 1\n\
- ralph run loop --repo-prompt off --max-tasks 1\n\
- ralph run loop --lfs-check --max-tasks 1\n\
- ralph run loop --dry-run\n\
- ralph run loop --wait-when-blocked\n\
- ralph run loop --wait-when-blocked --wait-timeout-seconds 600\n\
- ralph run loop --wait-when-blocked --wait-poll-ms 250\n\
- ralph run loop --wait-when-blocked --notify-when-unblocked";
+ cueloop run loop --max-tasks 0 (unlimited)\n\
+ cueloop run loop --profile fast-local --max-tasks 5\n\
+ cueloop run loop --profile deep-review --max-tasks 5\n\
+ cueloop run loop --resume --max-tasks 5\n\
+ cueloop run loop --phases 3 --max-tasks 0 (unlimited, plan/implement+CI/review+complete)\n\
+ cueloop run loop --phases 2 --max-tasks 0 (unlimited, plan/implement)\n\
+ cueloop run loop --phases 1 --max-tasks 1 (single-pass)\n\
+ cueloop run loop --quick --max-tasks 1 (single-pass, same as --phases 1)\n\
+ cueloop run loop --max-tasks 3\n\
+ cueloop run loop --max-tasks 1 --debug\n\
+ cueloop run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
+ cueloop run loop --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high --max-tasks 1\n\
+ cueloop run loop --runner-phase2 claude --model-phase2 opus --max-tasks 1\n\
+ cueloop run loop --include-draft --max-tasks 1\n\
+ cueloop run loop --git-revert-mode disabled --max-tasks 1\n\
+ cueloop run loop --git-publish-mode off --max-tasks 1\n\
+ cueloop run loop --repo-prompt tools --max-tasks 1\n\
+ cueloop run loop --repo-prompt off --max-tasks 1\n\
+ cueloop run loop --lfs-check --max-tasks 1\n\
+ cueloop run loop --dry-run\n\
+ cueloop run loop --wait-when-blocked\n\
+ cueloop run loop --wait-when-blocked --wait-timeout-seconds 600\n\
+ cueloop run loop --wait-when-blocked --wait-poll-ms 250\n\
+ cueloop run loop --wait-when-blocked --notify-when-unblocked";
 
 pub(super) const PARALLEL_AFTER_LONG_HELP: &str = "Experimental direct-push parallel execution.\n\
 \n\
 Examples:\n\
- ralph run parallel status\n\
- ralph run parallel status --json\n\
- ralph run parallel retry --task RQ-0001";
+ cueloop run parallel status\n\
+ cueloop run parallel status --json\n\
+ cueloop run parallel retry --task RQ-0001";
 
 pub(super) const PARALLEL_STATUS_AFTER_LONG_HELP: &str = "Examples:\n\
- ralph run parallel status\n\
- ralph run parallel status --json\n\
- ralph run parallel retry --task RQ-0001";
+ cueloop run parallel status\n\
+ cueloop run parallel status --json\n\
+ cueloop run parallel retry --task RQ-0001";
 
 pub(super) const PARALLEL_RETRY_AFTER_LONG_HELP: &str = "Examples:\n\
- ralph run parallel retry --task RQ-0001\n\
- ralph run loop --parallel <N>";
+ cueloop run parallel retry --task RQ-0001\n\
+ cueloop run loop --parallel <N>";

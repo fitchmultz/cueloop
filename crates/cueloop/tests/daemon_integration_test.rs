@@ -345,7 +345,7 @@ mod unix_tests {
             .arg("--non-interactive")
             .current_dir(dir_path)
             .output()
-            .expect("run ralph init");
+            .expect("run cueloop init");
         assert!(init.status.success(), "init failed: {:?}", init);
 
         let mut stop_guard = DaemonStopGuard::new(ralph.clone(), dir_path.to_path_buf());
@@ -444,7 +444,7 @@ mod unix_tests {
             .arg("--non-interactive")
             .current_dir(dir_path)
             .output()
-            .expect("Failed to run ralph init");
+            .expect("Failed to run cueloop init");
         assert!(init.status.success());
 
         // Create a fake stale daemon state file with a non-existent PID

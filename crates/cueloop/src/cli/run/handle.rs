@@ -1,7 +1,7 @@
-//! Dispatch logic for `ralph run`.
+//! Dispatch logic for `cueloop run`.
 //!
 //! Purpose:
-//! - Dispatch logic for `ralph run`.
+//! - Dispatch logic for `cueloop run`.
 //!
 //! Responsibilities:
 //! - Resolve config/profile context for run commands.

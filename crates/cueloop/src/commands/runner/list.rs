@@ -63,7 +63,7 @@ pub fn handle_list(format: RunnerFormat) -> Result<()> {
             for r in &runners {
                 println!("  {:12} {} (default: {})", r.id, r.name, r.default_model);
             }
-            println!("\nUse 'ralph runner capabilities <id>' for details.");
+            println!("\nUse 'cueloop runner capabilities <id>' for details.");
         }
         RunnerFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&runners)?);

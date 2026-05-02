@@ -109,7 +109,7 @@ fn print_legacy_plugin_root_warning(resolved: &Resolved) {
         println!(
             "Warning: legacy plugin directories are still supported, but .cueloop/plugins and ~/.config/cueloop/plugins take precedence."
         );
-        println!("Run `ralph migrate runtime-dir --apply` for project runtime state when ready.");
+        println!("Run `cueloop migrate runtime-dir --apply` for project runtime state when ready.");
         println!();
     }
 }

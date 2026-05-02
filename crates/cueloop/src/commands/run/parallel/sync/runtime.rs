@@ -46,7 +46,7 @@ fn sync_cueloop_runtime_tree_recursive(
     target_root: &Path,
 ) -> Result<()> {
     for entry in fs::read_dir(current_source_dir)
-        .with_context(|| format!("read ralph dir {}", current_source_dir.display()))?
+        .with_context(|| format!("read cueloop dir {}", current_source_dir.display()))?
     {
         let entry = entry
             .with_context(|| format!("read runtime entry in {}", current_source_dir.display()))?;

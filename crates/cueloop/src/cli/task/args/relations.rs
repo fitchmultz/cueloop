@@ -51,7 +51,7 @@ pub struct TaskCloneArgs {
 
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph task split RQ-0001\n  ralph task split --number 3 RQ-0001\n  ralph task split --status todo --number 2 RQ-0001\n  ralph task split --distribute-plan RQ-0001"
+    after_long_help = "Examples:\n  cueloop task split RQ-0001\n  cueloop task split --number 3 RQ-0001\n  cueloop task split --status todo --number 2 RQ-0001\n  cueloop task split --distribute-plan RQ-0001"
 )]
 pub struct TaskSplitArgs {
     /// Task ID to split.
@@ -82,7 +82,7 @@ pub struct TaskSplitArgs {
 #[derive(Args)]
 #[command(
     about = "List child tasks (parent_id == TASK_ID)",
-    after_long_help = "Examples:\n ralph task children RQ-0001\n ralph task children RQ-0001 --recursive\n ralph task children RQ-0001 --include-done\n ralph task children RQ-0001 --format json"
+    after_long_help = "Examples:\n cueloop task children RQ-0001\n cueloop task children RQ-0001 --recursive\n cueloop task children RQ-0001 --include-done\n cueloop task children RQ-0001 --format json"
 )]
 pub struct TaskChildrenArgs {
     #[arg(value_name = "TASK_ID")]
@@ -101,7 +101,7 @@ pub struct TaskChildrenArgs {
 #[derive(Args)]
 #[command(
     about = "Show a task's parent (parent_id)",
-    after_long_help = "Examples:\n ralph task parent RQ-0002\n ralph task parent RQ-0002 --include-done\n ralph task parent RQ-0002 --format json"
+    after_long_help = "Examples:\n cueloop task parent RQ-0002\n cueloop task parent RQ-0002 --include-done\n cueloop task parent RQ-0002 --format json"
 )]
 pub struct TaskParentArgs {
     #[arg(value_name = "TASK_ID")]
@@ -116,7 +116,7 @@ pub struct TaskParentArgs {
 
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph task relate RQ-0001 blocks RQ-0002\n  ralph task relate RQ-0001 relates_to RQ-0003\n  ralph task relate RQ-0001 duplicates RQ-0004"
+    after_long_help = "Examples:\n  cueloop task relate RQ-0001 blocks RQ-0002\n  cueloop task relate RQ-0001 relates_to RQ-0003\n  cueloop task relate RQ-0001 duplicates RQ-0004"
 )]
 pub struct TaskRelateArgs {
     /// Source task ID.
@@ -134,7 +134,7 @@ pub struct TaskRelateArgs {
 
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph task blocks RQ-0001 RQ-0002\n  ralph task blocks RQ-0001 RQ-0002 RQ-0003"
+    after_long_help = "Examples:\n  cueloop task blocks RQ-0001 RQ-0002\n  cueloop task blocks RQ-0001 RQ-0002 RQ-0003"
 )]
 pub struct TaskBlocksArgs {
     /// Task that does the blocking.
@@ -147,7 +147,7 @@ pub struct TaskBlocksArgs {
 }
 
 #[derive(Args)]
-#[command(after_long_help = "Examples:\n  ralph task mark-duplicate RQ-0001 RQ-0002")]
+#[command(after_long_help = "Examples:\n  cueloop task mark-duplicate RQ-0001 RQ-0002")]
 pub struct TaskMarkDuplicateArgs {
     /// Task to mark as duplicate.
     #[arg(value_name = "TASK_ID")]

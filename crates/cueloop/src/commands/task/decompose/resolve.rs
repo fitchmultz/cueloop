@@ -65,7 +65,7 @@ fn resolve_inline_source(
             queue::operations::find_task(done_file, source_input).is_some()
         }) {
             bail!(
-                "Task {} is in the done archive. `ralph task decompose` only supports active tasks unless explicitly overridden.",
+                "Task {} is in the done archive. `cueloop task decompose` only supports active tasks unless explicitly overridden.",
                 source_input
             );
         }
@@ -99,7 +99,7 @@ pub(super) fn resolve_attach_target(
     }
     if matches!(source, DecompositionSource::ExistingTask { .. }) {
         bail!(
-            "`ralph task decompose --attach-to` only supports new generated subtree sources such as freeform requests or --from-file plans. Use either an existing task source or --attach-to, not both."
+            "`cueloop task decompose --attach-to` only supports new generated subtree sources such as freeform requests or --from-file plans. Use either an existing task source or --attach-to, not both."
         );
     }
     let task = queue::operations::find_task_across(active, done, attach_to)

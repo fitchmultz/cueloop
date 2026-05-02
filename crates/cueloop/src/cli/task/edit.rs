@@ -1,7 +1,7 @@
-//! Task editing command handlers for `ralph task` subcommands.
+//! Task editing command handlers for `cueloop task` subcommands.
 //!
 //! Purpose:
-//! - Task editing command handlers for `ralph task` subcommands.
+//! - Task editing command handlers for `cueloop task` subcommands.
 //!
 //! Responsibilities:
 //! - Handle `field` command (set custom fields).

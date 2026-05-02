@@ -117,7 +117,7 @@ fn build_blocked_summary(
             } else {
                 log::info!("All runnable tasks are blocked.");
             }
-            log::info!("Run 'ralph queue explain' for details.");
+            log::info!("Run 'cueloop queue explain' for details.");
             report.summary.clone()
         }
         Err(e) => {
@@ -125,7 +125,7 @@ fn build_blocked_summary(
                 "No runnable tasks found (failed to analyze blockers: {}).",
                 e
             );
-            log::info!("Run 'ralph queue explain' for details.");
+            log::info!("Run 'cueloop queue explain' for details.");
             QueueRunnabilitySummary {
                 total_active: queue_file.tasks.len(),
                 candidates_total: candidates.len(),

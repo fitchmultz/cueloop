@@ -1,7 +1,7 @@
-//! Selection helpers for `ralph task batch`.
+//! Selection helpers for `cueloop task batch`.
 //!
 //! Purpose:
-//! - Selection helpers for `ralph task batch`.
+//! - Selection helpers for `cueloop task batch`.
 //!
 //! Responsibilities:
 //! - Translate CLI filters into core queue batch filters.

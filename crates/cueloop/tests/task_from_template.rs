@@ -1,7 +1,7 @@
-//! Integration tests for `ralph task from template` command.
+//! Integration tests for `cueloop task from template` command.
 //!
 //! Purpose:
-//! - Integration tests for `ralph task from template` command.
+//! - Integration tests for `cueloop task from template` command.
 //!
 //! Responsibilities:
 //! - Test CLI argument validation and dry-run mode.
@@ -170,7 +170,7 @@ fn from_template_help_shows_examples() -> Result<()> {
         "expected 'Examples:' in help output"
     );
     anyhow::ensure!(
-        stdout.contains("ralph task from template bug"),
+        stdout.contains("cueloop task from template bug"),
         "expected example command in help output"
     );
     // Help should document template variables

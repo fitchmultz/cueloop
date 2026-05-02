@@ -52,7 +52,7 @@ fn queue_export_help_examples_expanded() {
     let help = export_cmd.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue export"),
+        help.contains("cueloop queue export"),
         "missing export example: {help}"
     );
     assert!(

@@ -29,10 +29,10 @@ use crate::{outpututil, queue};
 
 use super::QueueShowFormat;
 
-/// Arguments for `ralph queue show`.
+/// Arguments for `cueloop queue show`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue show RQ-0001\n  ralph queue show RQ-0001 --format compact"
+    after_long_help = "Examples:\n  cueloop queue show RQ-0001\n  cueloop queue show RQ-0001 --format compact"
 )]
 pub struct QueueShowArgs {
     /// Task ID to show.

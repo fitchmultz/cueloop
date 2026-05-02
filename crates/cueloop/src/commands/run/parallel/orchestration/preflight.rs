@@ -84,7 +84,7 @@ pub(super) fn prepare_parallel_run(
 
     let (queue_file, _done_file) =
         queue::load_and_validate_queues(resolved, true).context(
-            "Parallel preflight is read-only; run `ralph queue repair --dry-run` and then `ralph queue repair` to apply undo-backed normalization before retrying",
+            "Parallel preflight is read-only; run `cueloop queue repair --dry-run` and then `cueloop queue repair` to apply undo-backed normalization before retrying",
         )?;
 
     path_map::map_resolved_path_into_workspace(

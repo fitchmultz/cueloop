@@ -25,10 +25,10 @@ use clap::Args;
 use crate::config::Resolved;
 use crate::queue;
 
-/// Arguments for `ralph queue archive`.
+/// Arguments for `cueloop queue archive`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue archive\n  ralph queue archive --dry-run\n\nDry run:\n  Shows what would be archived without modifying files."
+    after_long_help = "Examples:\n  cueloop queue archive\n  cueloop queue archive --dry-run\n\nDry run:\n  Shows what would be archived without modifying files."
 )]
 pub struct QueueArchiveArgs {
     /// Show what would be archived without writing to disk.

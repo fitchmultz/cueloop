@@ -1,7 +1,7 @@
-//! `ralph prd ...` command group: Clap types and handler.
+//! `cueloop prd ...` command group: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph prd ...` command group: Clap types and handler.
+//! - `cueloop prd ...` command group: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Define clap structures for PRD-related commands.
@@ -48,7 +48,7 @@ pub fn handle_prd(args: PrdArgs, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Convert PRD (Product Requirements Document) markdown to tasks",
-    after_long_help = "Examples:\n  ralph prd create docs/prd/new-feature.md\n  ralph prd create docs/prd/new-feature.md --multi\n  ralph prd create docs/prd/new-feature.md --dry-run\n  ralph prd create docs/prd/new-feature.md --priority high --tag feature\n  ralph prd create docs/prd/new-feature.md --draft"
+    after_long_help = "Examples:\n  cueloop prd create docs/prd/new-feature.md\n  cueloop prd create docs/prd/new-feature.md --multi\n  cueloop prd create docs/prd/new-feature.md --dry-run\n  cueloop prd create docs/prd/new-feature.md --priority high --tag feature\n  cueloop prd create docs/prd/new-feature.md --draft"
 )]
 pub struct PrdArgs {
     #[command(subcommand)]
@@ -59,7 +59,7 @@ pub struct PrdArgs {
 pub enum PrdCommand {
     /// Create task(s) from a PRD markdown file.
     #[command(
-        after_long_help = "Converts a PRD markdown file into one or more Ralph tasks.\n\nBy default, creates a single consolidated task from the PRD.\nUse --multi to create one task per user story found in the PRD.\n\nPRD Format:\nThe PRD should contain standard markdown sections:\n- Title (first # heading)\n- Introduction/Overview (optional)\n- User Stories (### US-XXX: Title format)\n- Functional Requirements (optional)\n- Non-Goals (optional)\n\nExamples:\n  ralph prd create path/to/prd.md\n  ralph prd create path/to/prd.md --multi\n  ralph prd create path/to/prd.md --dry-run\n  ralph prd create path/to/prd.md --priority high --tag feature --tag v2.0\n  ralph prd create path/to/prd.md --draft\n  ralph prd create path/to/prd.md --multi --priority medium --tag user-story"
+        after_long_help = "Converts a PRD markdown file into one or more CueLoop tasks.\n\nBy default, creates a single consolidated task from the PRD.\nUse --multi to create one task per user story found in the PRD.\n\nPRD Format:\nThe PRD should contain standard markdown sections:\n- Title (first # heading)\n- Introduction/Overview (optional)\n- User Stories (### US-XXX: Title format)\n- Functional Requirements (optional)\n- Non-Goals (optional)\n\nExamples:\n  cueloop prd create path/to/prd.md\n  cueloop prd create path/to/prd.md --multi\n  cueloop prd create path/to/prd.md --dry-run\n  cueloop prd create path/to/prd.md --priority high --tag feature --tag v2.0\n  cueloop prd create path/to/prd.md --draft\n  cueloop prd create path/to/prd.md --multi --priority medium --tag user-story"
     )]
     Create(PrdCreateArgs),
 }

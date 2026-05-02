@@ -52,7 +52,7 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
             match daemon_pid_liveness(state.pid) {
                 PidLiveness::Running => {
                     bail!(
-                        "Daemon is already running (PID: {}). Use `ralph daemon stop` to stop it.",
+                        "Daemon is already running (PID: {}). Use `cueloop daemon stop` to stop it.",
                         state.pid
                     );
                 }
@@ -143,7 +143,7 @@ pub fn start(resolved: &Resolved, args: DaemonStartArgs) -> Result<()> {
     {
         let _ = (resolved, args);
         bail!(
-            "Daemon mode is only supported on Unix systems. Use `ralph run loop --continuous` in a terminal or configure a Windows service."
+            "Daemon mode is only supported on Unix systems. Use `cueloop run loop --continuous` in a terminal or configure a Windows service."
         );
     }
 }

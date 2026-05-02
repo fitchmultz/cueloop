@@ -32,11 +32,11 @@ use crate::{outpututil, queue};
 
 use super::{QueueListFormat, StatusArg};
 
-/// Arguments for `ralph queue search`.
+/// Arguments for `cueloop queue search`.
 #[derive(Args)]
 /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
 #[command(
-    after_long_help = "Examples:\n  ralph queue search \"authentication\"\n  ralph queue search \"RQ-\\d{4}\" --regex\n  ralph queue search \"TODO\" --match-case\n  ralph queue search \"fix\" --status todo --tag rust\n  ralph queue search \"refactor\" --scope crates/cueloop --tag rust\n  ralph queue search \"auth bug\" --fuzzy\n  ralph queue search \"fuzzy search\" --fuzzy --match-case"
+    after_long_help = "Examples:\n  cueloop queue search \"authentication\"\n  cueloop queue search \"RQ-\\d{4}\" --regex\n  cueloop queue search \"TODO\" --match-case\n  cueloop queue search \"fix\" --status todo --tag rust\n  cueloop queue search \"refactor\" --scope crates/cueloop --tag rust\n  cueloop queue search \"auth bug\" --fuzzy\n  cueloop queue search \"fuzzy search\" --fuzzy --match-case"
 )]
 pub struct QueueSearchArgs {
     /// Search query (substring or regex pattern).

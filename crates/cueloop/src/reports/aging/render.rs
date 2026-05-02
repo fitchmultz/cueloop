@@ -4,7 +4,7 @@
 //! - Text rendering helpers for aging reports.
 //!
 //! Responsibilities:
-//! - Render the human-readable `ralph queue aging` report.
+//! - Render the human-readable `cueloop queue aging` report.
 //! - Keep presentation separate from bucket computation.
 //!
 //! Not handled here:

@@ -1,7 +1,7 @@
-//! Integration tests for `ralph task clone` / `ralph task duplicate`.
+//! Integration tests for `cueloop task clone` / `cueloop task duplicate`.
 //!
 //! Purpose:
-//! - Integration tests for `ralph task clone` / `ralph task duplicate`.
+//! - Integration tests for `cueloop task clone` / `cueloop task duplicate`.
 //!
 //! Responsibilities:
 //! - Verify clone creates a new task ID and persists it to the queue.

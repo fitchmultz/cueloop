@@ -49,7 +49,7 @@ fn queue_import_help_includes_examples() {
     let help = import_cmd.render_long_help().to_string();
 
     assert!(
-        help.contains("ralph queue import"),
+        help.contains("cueloop queue import"),
         "missing import example: {help}"
     );
     assert!(

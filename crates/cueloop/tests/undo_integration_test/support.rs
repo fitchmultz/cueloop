@@ -9,7 +9,7 @@
 //!
 //! Usage:
 //! - Call `setup_undo_repo()` at the start of each test.
-//! - Call `snapshot_ids_from_list_output()` when a test needs to parse `ralph undo --list` output.
+//! - Call `snapshot_ids_from_list_output()` when a test needs to parse `cueloop undo --list` output.
 //!
 //! Invariants/assumptions callers must respect:
 //! - Helpers preserve the original end-to-end CLI setup flow: temp dir outside repo, git init, seed `.ralph/`.

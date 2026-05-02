@@ -1,7 +1,7 @@
 //! Queue-oriented machine command handlers.
 //!
 //! Purpose:
-//! - Implement `ralph machine queue ...` dispatch and queue snapshot/document routing.
+//! - Implement `cueloop machine queue ...` dispatch and queue snapshot/document routing.
 //!
 //! Responsibilities:
 //! - Render queue snapshots, graph documents, and dashboard documents.
@@ -130,7 +130,7 @@ pub(crate) fn handle_queue(args: MachineQueueArgs, force: bool) -> Result<()> {
                     blocking: None,
                     next_steps: vec![crate::contracts::MachineContinuationAction {
                         title: "Inspect queue lock".to_string(),
-                        command: "ralph machine queue unlock-inspect".to_string(),
+                        command: "cueloop machine queue unlock-inspect".to_string(),
                         detail: "Refresh the structured queue-lock state for this repository."
                             .to_string(),
                     }],

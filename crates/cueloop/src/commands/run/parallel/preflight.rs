@@ -60,7 +60,7 @@ pub(crate) fn preflight_parallel_workspace_root_is_gitignored(
 workspace_root: {}\n\
 repo_root: {}\n\
 \n\
-Ralph will create clone workspaces under this directory, which would leave untracked files and make the repo appear dirty.\n\
+CueLoop will create clone workspaces under this directory, which would leave untracked files and make the repo appear dirty.\n\
 \n\
 Fix options:\n\
 1) Recommended: set parallel.workspace_root to an absolute path OUTSIDE the repo (or remove it to use the default outside-repo location).\n\

@@ -8,7 +8,7 @@
 //! - Support dry-run mode to preview the new order.
 //!
 //! Not handled here:
-//! - Time-based or complex sorting (use `ralph queue list --sort-by` for that).
+//! - Time-based or complex sorting (use `cueloop queue list --sort-by` for that).
 //! - Sorting by arbitrary fields (intentionally limited to prevent footguns).
 //!
 //!
@@ -28,10 +28,10 @@ use crate::queue;
 
 use super::{QueueSortBy, QueueSortOrder};
 
-/// Arguments for `ralph queue sort`.
+/// Arguments for `cueloop queue sort`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue sort\n  ralph queue sort --order descending\n  ralph queue sort --order ascending\n  ralph queue sort --dry-run\n  ralph queue list --scheduled --sort-by scheduled_start --order ascending\n\nDry run:\n  Shows the new queue order without modifying files.\n\nNote:\n  - `ralph queue sort` reorders .ralph/queue.jsonc and intentionally supports priority only.\n  - For triage/time-based sorting without mutating files, use `ralph queue list --sort-by ...`."
+    after_long_help = "Examples:\n  cueloop queue sort\n  cueloop queue sort --order descending\n  cueloop queue sort --order ascending\n  cueloop queue sort --dry-run\n  cueloop queue list --scheduled --sort-by scheduled_start --order ascending\n\nDry run:\n  Shows the new queue order without modifying files.\n\nNote:\n  - `cueloop queue sort` reorders .ralph/queue.jsonc and intentionally supports priority only.\n  - For triage/time-based sorting without mutating files, use `cueloop queue list --sort-by ...`."
 )]
 pub struct QueueSortArgs {
     /// Sort by field (supported: priority only; reorders queue file).

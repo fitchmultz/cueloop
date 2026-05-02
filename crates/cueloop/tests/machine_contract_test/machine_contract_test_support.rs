@@ -1,4 +1,4 @@
-//! Shared helpers for `ralph machine` contract integration tests.
+//! Shared helpers for `cueloop machine` contract integration tests.
 //!
 //! Purpose:
 //! - Provide suite-local repo bootstrap and JSON request helpers for machine contract tests.

@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Create isolated git repositories for doctor contract coverage.
-//! - Seed cached `.ralph/` fixtures instead of running real `ralph init`.
+//! - Seed cached `.ralph/` fixtures instead of running real `cueloop init`.
 //! - Keep doctor-suite bootstrap files centralized in one place.
 //!
 //! Not handled here:

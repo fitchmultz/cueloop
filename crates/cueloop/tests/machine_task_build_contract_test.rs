@@ -1,7 +1,7 @@
 //! Purpose: machine task-build contract regression tests.
 //!
 //! Responsibilities:
-//! - Verify `ralph machine task build` emits a single clean JSON document.
+//! - Verify `cueloop machine task build` emits a single clean JSON document.
 //! - Guard the app-facing task-build path against noisy runner stdout/stderr.
 //!
 //! Scope:

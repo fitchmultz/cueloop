@@ -1,4 +1,4 @@
-//! Parallel runtime contract coverage for `ralph machine`.
+//! Parallel runtime contract coverage for `cueloop machine`.
 //!
 //! Purpose:
 //! - Verify machine-visible parallel execution and run-started documents.
@@ -60,7 +60,7 @@ fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-03-21T12:00:00Z\ncommand: ralph run loop --parallel 4\nlabel: run loop\n"
+            "pid: {stale_pid}\nstarted_at: 2026-03-21T12:00:00Z\ncommand: cueloop run loop --parallel 4\nlabel: run loop\n"
         ),
     )?;
 
@@ -81,7 +81,7 @@ fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<
     );
     assert_eq!(
         document["continuation"]["next_steps"][0]["command"],
-        "ralph queue unlock"
+        "cueloop queue unlock"
     );
     Ok(())
 }
@@ -96,7 +96,7 @@ fn machine_run_started_preserves_repo_trust_in_config_payload() -> Result<()> {
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {}\nstarted_at: 2026-03-21T12:00:00Z\ncommand: ralph run loop --parallel 2\nlabel: run loop\n",
+            "pid: {}\nstarted_at: 2026-03-21T12:00:00Z\ncommand: cueloop run loop --parallel 2\nlabel: run loop\n",
             std::process::id()
         ),
     )?;
@@ -194,7 +194,7 @@ fn machine_parallel_status_surfaces_blocked_worker_operator_state() -> Result<()
     );
     assert_eq!(
         document["continuation"]["next_steps"][1]["command"],
-        "ralph run parallel retry --task <TASK_ID>"
+        "cueloop run parallel retry --task <TASK_ID>"
     );
     Ok(())
 }

@@ -1,7 +1,7 @@
-//! Clap argument definitions for `ralph machine`.
+//! Clap argument definitions for `cueloop machine`.
 //!
 //! Purpose:
-//! - Clap argument definitions for `ralph machine`.
+//! - Clap argument definitions for `cueloop machine`.
 //!
 //! Responsibilities:
 //! - Define the versioned machine-facing subcommands consumed by the macOS app.

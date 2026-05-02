@@ -46,10 +46,10 @@ use crate::{outpututil, queue};
 
 use super::{QueueListFormat, QueueListSortBy, QueueSortOrder, StatusArg};
 
-/// Arguments for `ralph queue list`.
+/// Arguments for `cueloop queue list`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue list\n  ralph queue list --status todo --tag rust\n  ralph queue list --status doing --scope crates/cueloop\n  ralph queue list --include-done --limit 20\n  ralph queue list --only-done --all\n  ralph queue list --filter-deps=RQ-0100\n  ralph queue list --format json\n  ralph queue list --format json | jq '.[] | select(.status == \"todo\")'\n  ralph queue list --scheduled\n  ralph queue list --scheduled-after '2026-01-01T00:00:00Z'\n  ralph queue list --scheduled-before '+7d'\n  ralph queue list --with-eta\n  ralph queue list --with-eta --format long\n  ralph queue list --sort-by updated_at\n  ralph queue list --scheduled --sort-by scheduled_start --order ascending\n  ralph queue list --scheduled-after '+0d' --sort-by scheduled_start --order ascending"
+    after_long_help = "Examples:\n  cueloop queue list\n  cueloop queue list --status todo --tag rust\n  cueloop queue list --status doing --scope crates/cueloop\n  cueloop queue list --include-done --limit 20\n  cueloop queue list --only-done --all\n  cueloop queue list --filter-deps=RQ-0100\n  cueloop queue list --format json\n  cueloop queue list --format json | jq '.[] | select(.status == \"todo\")'\n  cueloop queue list --scheduled\n  cueloop queue list --scheduled-after '2026-01-01T00:00:00Z'\n  cueloop queue list --scheduled-before '+7d'\n  cueloop queue list --with-eta\n  cueloop queue list --with-eta --format long\n  cueloop queue list --sort-by updated_at\n  cueloop queue list --scheduled --sort-by scheduled_start --order ascending\n  cueloop queue list --scheduled-after '+0d' --sort-by scheduled_start --order ascending"
 )]
 pub struct QueueListArgs {
     /// Filter by status (repeatable).

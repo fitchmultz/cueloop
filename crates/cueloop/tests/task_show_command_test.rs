@@ -1,7 +1,7 @@
-//! Integration tests for `ralph task show/details` CLI behavior.
+//! Integration tests for `cueloop task show/details` CLI behavior.
 //!
 //! Purpose:
-//! - Integration tests for `ralph task show/details` CLI behavior.
+//! - Integration tests for `cueloop task show/details` CLI behavior.
 //!
 //! Responsibilities:
 //! - Validate queue + done lookups for task detail output.
@@ -76,7 +76,7 @@ fn task_show_finds_task_in_queue() {
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    assert!(status.success(), "ralph init failed: {}", stderr);
+    assert!(status.success(), "cueloop init failed: {}", stderr);
 
     let queue = make_queue_file(vec![
         make_task("RQ-0001", TaskStatus::Todo, "First task"),
@@ -103,7 +103,7 @@ fn task_show_finds_task_in_done() {
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    assert!(status.success(), "ralph init failed: {}", stderr);
+    assert!(status.success(), "cueloop init failed: {}", stderr);
 
     let done = make_queue_file(vec![make_task(
         "RQ-0001",
@@ -131,7 +131,7 @@ fn task_show_details_alias_works() {
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    assert!(status.success(), "ralph init failed: {}", stderr);
+    assert!(status.success(), "cueloop init failed: {}", stderr);
 
     let queue = make_queue_file(vec![make_task("RQ-0001", TaskStatus::Todo, "Alias test")]);
     let queue_path = project_runtime_dir(dir.path()).join("queue.jsonc");
@@ -155,7 +155,7 @@ fn task_show_reports_missing_task() {
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
-    assert!(status.success(), "ralph init failed: {}", stderr);
+    assert!(status.success(), "cueloop init failed: {}", stderr);
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["task", "show", "RQ-9999"]);
     assert!(!status.success(), "expected failure for missing task");

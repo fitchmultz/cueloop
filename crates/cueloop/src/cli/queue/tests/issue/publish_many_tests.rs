@@ -1,7 +1,7 @@
-//! Batch publish execution tests for `ralph queue issue`.
+//! Batch publish execution tests for `cueloop queue issue`.
 //!
 //! Purpose:
-//! - Batch publish execution tests for `ralph queue issue`.
+//! - Batch publish execution tests for `cueloop queue issue`.
 //!
 //! Responsibilities:
 //! - Validate mixed create/update publish-many behavior.

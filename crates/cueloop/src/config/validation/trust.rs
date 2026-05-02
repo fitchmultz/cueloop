@@ -23,7 +23,7 @@ use super::agent::agent_has_execution_settings;
 use crate::config::{ConfigLayer, RepoTrust};
 use anyhow::{Result, bail};
 
-pub const ERR_PROJECT_EXECUTION_TRUST: &str = "Project config defines execution-sensitive settings (runner binaries, Cursor/project plugin runner selection, agent.ci_gate, plugins, and/or parallel.ignored_file_allowlist), but this repo is not trusted. Run `ralph init` to bootstrap/update repository trust, run `ralph config trust init` for a trust-only repair, create `.ralph/trust.jsonc` with {\"allow_project_commands\": true, \"trusted_at\": \"<RFC3339>\"}, or move those settings to trusted global config. Keep `.ralph/trust.jsonc` untracked.";
+pub const ERR_PROJECT_EXECUTION_TRUST: &str = "Project config defines execution-sensitive settings (runner binaries, Cursor/project plugin runner selection, agent.ci_gate, plugins, and/or parallel.ignored_file_allowlist), but this repo is not trusted. Run `cueloop init` to bootstrap/update repository trust, run `cueloop config trust init` for a trust-only repair, create `.ralph/trust.jsonc` with {\"allow_project_commands\": true, \"trusted_at\": \"<RFC3339>\"}, or move those settings to trusted global config. Keep `.ralph/trust.jsonc` untracked.";
 
 pub fn validate_project_execution_trust(
     project_cfg: Option<&ConfigLayer>,

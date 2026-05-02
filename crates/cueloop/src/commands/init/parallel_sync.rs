@@ -1,4 +1,4 @@
-//! Parallel ignored-file setup helpers for `ralph init`.
+//! Parallel ignored-file setup helpers for `cueloop init`.
 //!
 //! Purpose:
 //! - Discover small gitignored repository-local files that may be useful in parallel workers.

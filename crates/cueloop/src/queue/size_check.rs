@@ -118,8 +118,8 @@ pub fn print_size_warning_if_needed(result: &SizeCheckResult, quiet: bool) {
 
     eprintln!();
     eprintln!("   Consider running maintenance commands:");
-    eprintln!("     ralph queue archive    # Move completed tasks to the done archive");
-    eprintln!("     ralph queue prune      # Remove old tasks from the done archive");
+    eprintln!("     cueloop queue archive  # Move completed tasks to the done archive");
+    eprintln!("     cueloop queue prune    # Remove old tasks from the done archive");
     eprintln!();
 }
 

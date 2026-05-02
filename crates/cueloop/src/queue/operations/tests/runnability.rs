@@ -8,7 +8,7 @@
 //! - Verify correct identification of blockers (deps, schedule, status).
 //!
 //! Non-scope:
-//! - End-to-end CLI invocation (`ralph queue explain`, `ralph run --dry-run`).
+//! - End-to-end CLI invocation (`cueloop queue explain`, `cueloop run --dry-run`).
 //! - Queue persistence/locking or runner execution.
 //!
 //!

@@ -39,8 +39,8 @@ fn phase1_allows_arbitrary_ralph_file_changes() -> Result<()> {
     )?;
     git_status_ok(
         temp.path(),
-        &["commit", "--quiet", "-m", "add ralph state file"],
-        "git commit ralph state file failed",
+        &["commit", "--quiet", "-m", "add cueloop state file"],
+        "git commit cueloop state file failed",
     )?;
 
     let script = format!(

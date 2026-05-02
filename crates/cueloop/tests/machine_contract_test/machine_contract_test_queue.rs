@@ -1,4 +1,4 @@
-//! Queue and workspace contract coverage for `ralph machine`.
+//! Queue and workspace contract coverage for `cueloop machine`.
 //!
 //! Purpose:
 //! - Verify machine queue and workspace JSON documents exposed to app clients.
@@ -414,8 +414,8 @@ fn machine_config_resolve_reports_untrusted_execution_settings_as_config_error()
     let detail = document["detail"].as_str().unwrap_or_default();
     assert!(
         detail.contains("repo is not trusted")
-            && detail.contains("ralph init")
-            && detail.contains("ralph config trust init"),
+            && detail.contains("cueloop init")
+            && detail.contains("cueloop config trust init"),
         "detail should preserve trust remediation: {stderr}"
     );
     Ok(())

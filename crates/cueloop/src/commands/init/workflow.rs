@@ -1,7 +1,7 @@
 //! Initialization workflow orchestration.
 //!
 //! Purpose:
-//! - Implement the end-to-end `ralph init` workflow.
+//! - Implement the end-to-end `cueloop init` workflow.
 //!
 //! Responsibilities:
 //! - Create active runtime state, acquire the queue lock, and run the optional wizard.

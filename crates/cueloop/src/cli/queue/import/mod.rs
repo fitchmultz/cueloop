@@ -45,10 +45,10 @@ use normalize::normalize_task;
 use parse::{parse_csv_tasks, parse_json_tasks};
 use report::ImportReport;
 
-/// Arguments for `ralph queue import`.
+/// Arguments for `cueloop queue import`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  ralph queue export --format json | ralph queue import --format json --dry-run\n  ralph queue import --format csv --input tasks.csv\n  ralph queue import --format tsv --input - --on-duplicate rename < tasks.tsv\n  ralph queue import --format json --input tasks.json --on-duplicate skip"
+    after_long_help = "Examples:\n  cueloop queue export --format json | cueloop queue import --format json --dry-run\n  cueloop queue import --format csv --input tasks.csv\n  cueloop queue import --format tsv --input - --on-duplicate rename < tasks.tsv\n  cueloop queue import --format json --input tasks.json --on-duplicate skip"
 )]
 pub struct QueueImportArgs {
     /// Input format.

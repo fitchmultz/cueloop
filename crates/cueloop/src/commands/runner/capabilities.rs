@@ -258,7 +258,7 @@ pub(crate) fn get_allowed_models(runner: &Runner) -> Option<Vec<String>> {
     }
 }
 
-/// Handle the `ralph runner capabilities` command.
+/// Handle the `cueloop runner capabilities` command.
 pub fn handle_capabilities(runner_str: &str, format: RunnerFormat) -> anyhow::Result<()> {
     let runner: Runner = runner_str
         .parse()

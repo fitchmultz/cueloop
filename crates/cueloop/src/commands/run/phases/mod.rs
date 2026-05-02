@@ -1,7 +1,7 @@
-//! Phase-specific execution logic for `ralph run`.
+//! Phase-specific execution logic for `cueloop run`.
 //!
 //! Purpose:
-//! - Phase-specific execution logic for `ralph run`.
+//! - Phase-specific execution logic for `cueloop run`.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.

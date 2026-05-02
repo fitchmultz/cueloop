@@ -101,13 +101,13 @@ pub fn logs(resolved: &crate::config::Resolved, args: DaemonLogsArgs) -> Result<
     if !log_file.exists() {
         if args.follow {
             bail!(
-                "Daemon log file not found at {}. Start the daemon first with `ralph daemon start` or verify you are in the correct repository.\n",
+                "Daemon log file not found at {}. Start the daemon first with `cueloop daemon start` or verify you are in the correct repository.\n",
                 log_file.display()
             );
         }
 
         println!("No daemon log file found at {}.", log_file.display());
-        println!("Start the daemon with `ralph daemon start` to generate logs.");
+        println!("Start the daemon with `cueloop daemon start` to generate logs.");
         return Ok(());
     }
 

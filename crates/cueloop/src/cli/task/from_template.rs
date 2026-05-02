@@ -1,7 +1,7 @@
-//! Handler for `ralph task from template` command.
+//! Handler for `cueloop task from template` command.
 //!
 //! Purpose:
-//! - Handler for `ralph task from template` command.
+//! - Handler for `cueloop task from template` command.
 //!
 //! Responsibilities:
 //! - Parse template name and variable overrides from CLI arguments.
@@ -31,7 +31,7 @@ use crate::commands::task::{TaskBuildOptions, TaskBuildOutputTarget, build_task}
 use crate::config;
 use crate::template::load_template_with_context;
 
-/// Handle `ralph task from template` command.
+/// Handle `cueloop task from template` command.
 pub fn handle(resolved: &config::Resolved, args: &TaskFromTemplateArgs, force: bool) -> Result<()> {
     // Parse variable overrides from --set flags
     let variables = parse_variable_overrides(&args.variables)?;

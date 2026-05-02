@@ -4,7 +4,7 @@
 //! - Plugin scaffold generation.
 //!
 //! Responsibilities:
-//! - Validate `ralph plugin init` inputs.
+//! - Validate `cueloop plugin init` inputs.
 //! - Build scaffold manifests and write optional runner/processor stubs.
 //!
 //! Not handled here:
@@ -91,7 +91,7 @@ pub(super) fn run_init(resolved: &Resolved, args: &PluginInitArgs) -> Result<()>
     print_enable_hint(&args.id);
     println!();
     println!("Validate the plugin:");
-    println!("  ralph plugin validate --id {}", args.id);
+    println!("  cueloop plugin validate --id {}", args.id);
 
     Ok(())
 }

@@ -1,7 +1,7 @@
-//! Task splitting command handler for `ralph task split` subcommand.
+//! Task splitting command handler for `cueloop task split` subcommand.
 //!
 //! Purpose:
-//! - Task splitting command handler for `ralph task split` subcommand.
+//! - Task splitting command handler for `cueloop task split` subcommand.
 //!
 //! Responsibilities:
 //! - Handle `split` command (break down a task into child tasks).

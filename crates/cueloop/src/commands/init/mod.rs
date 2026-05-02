@@ -8,7 +8,7 @@
 //! - Keep workflow orchestration, migration checks, and tests in focused companions.
 //!
 //! Scope:
-//! - This module coordinates `ralph init` implementation only.
+//! - This module coordinates `cueloop init` implementation only.
 //! - CLI parsing remains in `crate::cli::init`.
 //!
 //! Usage:

@@ -1,7 +1,7 @@
-//! Task scheduling command handler for `ralph task schedule` subcommand.
+//! Task scheduling command handler for `cueloop task schedule` subcommand.
 //!
 //! Purpose:
-//! - Task scheduling command handler for `ralph task schedule` subcommand.
+//! - Task scheduling command handler for `cueloop task schedule` subcommand.
 //!
 //! Responsibilities:
 //! - Handle `schedule` command (set scheduled start time).

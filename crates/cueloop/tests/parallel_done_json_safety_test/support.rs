@@ -14,7 +14,7 @@
 //! - Use the read helpers to inspect queue, done, and parallel-state artifacts after the run.
 //!
 //! Invariants/Assumptions:
-//! - The repo scaffold comes from cached test templates; these helpers must not call real `ralph init`.
+//! - The repo scaffold comes from cached test templates; these helpers must not call real `cueloop init`.
 //! - The fake runner uses an explicit configured binary path, so PATH mutation is unnecessary.
 //! - The bare `origin` tempdir must stay owned by the fixture for the entire test lifetime.
 

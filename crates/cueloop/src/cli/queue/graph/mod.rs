@@ -1,7 +1,7 @@
-//! `ralph queue graph` subcommand facade.
+//! `cueloop queue graph` subcommand facade.
 //!
 //! Purpose:
-//! - `ralph queue graph` subcommand facade.
+//! - `cueloop queue graph` subcommand facade.
 //!
 //! Responsibilities:
 //! - Define CLI arguments for graph rendering.
@@ -36,11 +36,11 @@ use crate::config::Resolved;
 use crate::queue::find_task_across;
 use crate::queue::graph::{GraphFormat, build_graph, find_critical_paths};
 
-/// Arguments for `ralph queue graph`.
+/// Arguments for `cueloop queue graph`.
 #[derive(Args)]
 #[command(
     about = "Visualize task dependencies as a graph",
-    after_long_help = "Examples:\n  ralph queue graph\n  ralph queue graph --task RQ-0001\n  ralph queue graph --format dot\n  ralph queue graph --critical\n  ralph queue graph --reverse --task RQ-0001"
+    after_long_help = "Examples:\n  cueloop queue graph\n  cueloop queue graph --task RQ-0001\n  cueloop queue graph --format dot\n  cueloop queue graph --critical\n  cueloop queue graph --reverse --task RQ-0001"
 )]
 pub struct QueueGraphArgs {
     /// Focus on a specific task (show its dependency tree).

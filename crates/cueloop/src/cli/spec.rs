@@ -10,7 +10,7 @@
 //!
 //! Not handled here:
 //! - Adding a user-facing CLI command that prints the spec (it is currently exposed only as the
-//!   hidden/internal `ralph __cli-spec` command).
+//!   hidden/internal `cueloop __cli-spec` command).
 //! - File IO, stdout/stderr printing, or schema generation.
 //!
 //!

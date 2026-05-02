@@ -59,7 +59,7 @@ fn render_task_builder_prompt_allows_placeholder_like_request() -> Result<()> {
 fn default_task_builder_prompt_mentions_next_id_command() -> Result<()> {
     let dir = TempDir::new()?;
     let prompt = load_task_builder_prompt(dir.path())?;
-    assert!(prompt.contains("ralph queue next-id"));
+    assert!(prompt.contains("cueloop queue next-id"));
     // Should mention --count for multi-task cases
     assert!(
         prompt.contains("next-id --count"),

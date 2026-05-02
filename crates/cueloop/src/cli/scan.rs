@@ -1,7 +1,7 @@
-//! `ralph scan` command: Clap types and handler.
+//! `cueloop scan` command: Clap types and handler.
 //!
 //! Purpose:
-//! - `ralph scan` command: Clap types and handler.
+//! - `cueloop scan` command: Clap types and handler.
 //!
 //! Responsibilities:
 //! - Define clap arguments for scan commands.
@@ -63,10 +63,10 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
         (None, true) => {
             return Err(anyhow::anyhow!(
                 "Please provide one of:\n\
-                 • A focus prompt: ralph scan \"your focus here\"\n\
-                 • A scan mode: ralph scan --mode maintenance\n\
-                 • Both: ralph scan --mode innovation \"your focus here\"\n\n\
-                 Run 'ralph scan --help' for more information."
+                 • A focus prompt: cueloop scan \"your focus here\"\n\
+                 • A scan mode: cueloop scan --mode maintenance\n\
+                 • Both: cueloop scan --mode innovation \"your focus here\"\n\n\
+                 Run 'cueloop scan --help' for more information."
             ));
         }
         // Mode specified → use that mode
@@ -105,7 +105,7 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Scan repository for new tasks and focus areas",
-    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n  - Use --profile to apply a configured profile from `.cueloop/config.jsonc` or `~/.config/cueloop/config.jsonc` (legacy paths still work).\n\nRunner CLI options:\n  - Override approval/sandbox/verbosity/plan-mode via flags.\n  - Unsupported options follow --unsupported-option-policy.\n\nProfile precedence:\n  - CLI flags > task.agent > selected profile > base config\n\nSafety:\n  - Clean-repo checks allow changes to `.cueloop/queue.jsonc`, `.cueloop/done.jsonc`, `.cueloop/config.jsonc`, and legacy `.ralph` equivalents.\n  - Use `--force` to bypass the clean-repo check entirely if needed.\n\nExamples:\n  ralph scan \"production readiness gaps\"                              # General mode with focus prompt\n  ralph scan --focus \"production readiness gaps\"                     # General mode with --focus flag\n  ralph scan --mode maintenance \"security audit\"                     # Maintenance mode with focus\n  ralph scan --mode maintenance                                        # Maintenance mode without focus\n  ralph scan --mode innovation \"feature gaps for CLI\"                # Innovation mode with focus\n  ralph scan --mode innovation                                         # Innovation mode without focus\n  ralph scan -m innovation \"enhancement opportunities\"               # Short flag for mode\n  ralph scan --profile deep-review \"queue correctness audit\"         # Use a configured custom profile\n  ralph scan --profile fast-local \"small cleanup opportunities\"      # Use a configured custom profile\n  ralph scan --runner opencode --model gpt-5.3 \"CI and safety gaps\"  # With runner overrides\n  ralph scan --runner gemini --model gemini-3-flash-preview \"risk audit\"\n  ralph scan --runner codex --model gpt-5.4 --effort high \"queue correctness\"\n  ralph scan --approval-mode auto-edits --runner claude \"auto edits review\"\n  ralph scan --sandbox disabled --runner codex \"sandbox audit\"\n  ralph scan --repo-prompt plan \"Deep codebase analysis\"\n  ralph scan --repo-prompt off \"Quick surface scan\"\n  ralph scan --runner kimi \"risk audit\"\n  ralph scan --runner pi \"risk audit\""
+    after_long_help = "Runner selection:\n  - Override runner/model/effort for this invocation using flags.\n  - Defaults come from config when flags are omitted.\n  - Use --profile to apply a configured profile from `.cueloop/config.jsonc` or `~/.config/cueloop/config.jsonc` (legacy paths still work).\n\nRunner CLI options:\n  - Override approval/sandbox/verbosity/plan-mode via flags.\n  - Unsupported options follow --unsupported-option-policy.\n\nProfile precedence:\n  - CLI flags > task.agent > selected profile > base config\n\nSafety:\n  - Clean-repo checks allow changes to `.cueloop/queue.jsonc`, `.cueloop/done.jsonc`, `.cueloop/config.jsonc`, and legacy `.ralph` equivalents.\n  - Use `--force` to bypass the clean-repo check entirely if needed.\n\nExamples:\n  cueloop scan \"production readiness gaps\"                              # General mode with focus prompt\n  cueloop scan --focus \"production readiness gaps\"                     # General mode with --focus flag\n  cueloop scan --mode maintenance \"security audit\"                     # Maintenance mode with focus\n  cueloop scan --mode maintenance                                        # Maintenance mode without focus\n  cueloop scan --mode innovation \"feature gaps for CLI\"                # Innovation mode with focus\n  cueloop scan --mode innovation                                         # Innovation mode without focus\n  cueloop scan -m innovation \"enhancement opportunities\"               # Short flag for mode\n  cueloop scan --profile deep-review \"queue correctness audit\"         # Use a configured custom profile\n  cueloop scan --profile fast-local \"small cleanup opportunities\"      # Use a configured custom profile\n  cueloop scan --runner opencode --model gpt-5.3 \"CI and safety gaps\"  # With runner overrides\n  cueloop scan --runner gemini --model gemini-3-flash-preview \"risk audit\"\n  cueloop scan --runner codex --model gpt-5.4 --effort high \"queue correctness\"\n  cueloop scan --approval-mode auto-edits --runner claude \"auto edits review\"\n  cueloop scan --sandbox disabled --runner codex \"sandbox audit\"\n  cueloop scan --repo-prompt plan \"Deep codebase analysis\"\n  cueloop scan --repo-prompt off \"Quick surface scan\"\n  cueloop scan --runner kimi \"risk audit\"\n  cueloop scan --runner pi \"risk audit\""
 )]
 pub struct ScanArgs {
     /// Optional focus prompt as positional argument (alternative to --focus).

@@ -244,8 +244,8 @@ fn phase1_followup_allows_preexisting_dirty_arbitrary_ralph_file() -> Result<()>
     )?;
     git_status_ok(
         temp.path(),
-        &["commit", "--quiet", "-m", "add ralph state baseline"],
-        "git commit ralph state baseline failed",
+        &["commit", "--quiet", "-m", "add cueloop state baseline"],
+        "git commit cueloop state baseline failed",
     )?;
     std::fs::write(temp.path().join("impl.txt"), "prior iteration changes")?;
 

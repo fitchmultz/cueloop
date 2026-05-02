@@ -85,7 +85,7 @@ pub(super) fn announce_blocked_tasks_at_loop_start(
             reason
         );
     }
-    log::warn!("Use `ralph run parallel retry --task <TASK_ID>` to retry a blocked task.");
+    log::warn!("Use `cueloop run parallel retry --task <TASK_ID>` to retry a blocked task.");
 }
 
 pub(super) struct FinishedWorkerHandlingContext<'a> {

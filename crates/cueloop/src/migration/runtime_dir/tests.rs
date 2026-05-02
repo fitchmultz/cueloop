@@ -176,7 +176,7 @@ fn apply_blocks_legacy_json_files_before_mutation() -> Result<()> {
         err.to_string()
             .contains("legacy JSON runtime files still exist")
     );
-    assert!(err.to_string().contains("ralph migrate --apply"));
+    assert!(err.to_string().contains("cueloop migrate --apply"));
     assert!(temp.path().join(".ralph/config.json").exists());
     assert!(!temp.path().join(".cueloop").exists());
     Ok(())

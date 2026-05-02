@@ -28,11 +28,11 @@ use std::path::Path;
 use crate::config::Resolved;
 use crate::lock::{self, PidLiveness};
 
-/// Arguments for `ralph queue unlock`.
+/// Arguments for `cueloop queue unlock`.
 #[derive(Args)]
 #[command(after_long_help = "Safely remove the queue lock directory.\n\n\
 Safety:\n  - Checks if the lock holder process is still running\n  - Blocks if process is active (override with --force)\n  - Requires confirmation in interactive mode (bypass with --yes)\n\n\
-Examples:\n  ralph queue unlock --dry-run\n  ralph queue unlock --yes\n  ralph queue unlock --force --yes\n  ralph queue unlock --force  # Still requires confirmation")]
+Examples:\n  cueloop queue unlock --dry-run\n  cueloop queue unlock --yes\n  cueloop queue unlock --force --yes\n  cueloop queue unlock --force  # Still requires confirmation")]
 pub struct QueueUnlockArgs {
     /// Override active process check and remove lock anyway.
     #[arg(long)]
@@ -81,7 +81,7 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueUnlockArgs) -> Result<()> {
             "Refusing to unlock: lock holder process (PID {}) appears to be still running.\n\
              Lock holder: {}\n\n\
              Use --force to override this check, or verify the process has exited.\n\
-             Example: ralph queue unlock --force --yes",
+             Example: cueloop queue unlock --force --yes",
             pid_str,
             owner_info
         );

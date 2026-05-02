@@ -1,7 +1,7 @@
-//! Purpose: dry-run integration tests for `ralph undo`.
+//! Purpose: dry-run integration tests for `cueloop undo`.
 //!
 //! Responsibilities:
-//! - Verify `ralph undo --dry-run` previews changes without mutating queue files.
+//! - Verify `cueloop undo --dry-run` previews changes without mutating queue files.
 //!
 //! Scope:
 //! - Dry-run restore behavior only.
@@ -15,7 +15,7 @@
 
 use super::*;
 
-/// Test that `ralph undo --dry-run` previews without modifying files.
+/// Test that `cueloop undo --dry-run` previews without modifying files.
 #[test]
 fn undo_dry_run_does_not_modify_files() -> Result<()> {
     let dir = setup_undo_repo()?;

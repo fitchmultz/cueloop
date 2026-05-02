@@ -1,7 +1,7 @@
-//! Shared helpers for `ralph context` integration tests.
+//! Shared helpers for `cueloop context` integration tests.
 //!
 //! Purpose:
-//! - Shared helpers for `ralph context` integration tests.
+//! - Shared helpers for `cueloop context` integration tests.
 //!
 //! Responsibilities:
 //! - Create isolated Ralph repositories for context command coverage.

@@ -1,11 +1,11 @@
-//! Purpose: Exercise persisted `ralph queue repair` behavior.
+//! Purpose: Exercise persisted `cueloop queue repair` behavior.
 //!
 //! Responsibilities:
 //! - Verify CLI repair rewrites queue and done files safely.
 //! - Cover regressions that require full on-disk repair and validation flows.
 //!
 //! Scope:
-//! - Integration coverage for the `ralph queue repair` command.
+//! - Integration coverage for the `cueloop queue repair` command.
 //! - Unit-level repair helper behavior belongs in `crates/cueloop/src/queue/repair.rs`.
 //!
 //! Usage:
@@ -33,7 +33,7 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Create broken queue.json
@@ -122,7 +122,7 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "repair"]);
     anyhow::ensure!(
         status.success(),
-        "ralph queue repair failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop queue repair failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Queue repair now narrates continuation guidance on stdout.
@@ -130,7 +130,7 @@ fn repair_queue_fixes_missing_fields_and_duplicates() -> Result<()> {
     assert!(stdout.contains("\"fixed_tasks\": 3"));
     assert!(stdout.contains("\"fixed_timestamps\": 2"));
     assert!(stdout.contains("\"remapped_ids\""));
-    assert!(stdout.contains("ralph machine queue validate"));
+    assert!(stdout.contains("cueloop machine queue validate"));
     assert_repair_undo_snapshot_created(dir.path())?;
 
     // Verify file content
@@ -208,7 +208,7 @@ fn repair_remaps_all_relationship_fields_for_invalid_ids() -> Result<()> {
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(
         status.success(),
-        "ralph init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     // Create broken queue.json:
@@ -267,7 +267,7 @@ fn repair_remaps_all_relationship_fields_for_invalid_ids() -> Result<()> {
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "repair"]);
     anyhow::ensure!(
         status.success(),
-        "ralph queue repair failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop queue repair failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let queue_str = std::fs::read_to_string(project_runtime_dir(dir.path()).join("queue.jsonc"))?;
@@ -304,7 +304,7 @@ fn repair_remaps_all_relationship_fields_for_invalid_ids() -> Result<()> {
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["queue", "validate"]);
     anyhow::ensure!(
         status.success(),
-        "ralph queue validate failed after repair\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "cueloop queue validate failed after repair\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     Ok(())

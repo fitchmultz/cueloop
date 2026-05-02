@@ -1,7 +1,7 @@
-//! Integration tests for `ralph queue unlock` safety features.
+//! Integration tests for `cueloop queue unlock` safety features.
 //!
 //! Purpose:
-//! - Integration tests for `ralph queue unlock` safety features.
+//! - Integration tests for `cueloop queue unlock` safety features.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.

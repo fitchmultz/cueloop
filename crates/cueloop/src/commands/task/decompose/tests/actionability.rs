@@ -151,7 +151,7 @@ fn decompose_document_all_draft_write_guides_first_leaf_promotion() {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph task ready RQ-0002"
+        "cueloop task ready RQ-0002"
     );
     assert!(
         document
@@ -200,7 +200,7 @@ fn decompose_document_single_leaf_draft_write_ignores_parent_status_for_activati
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "ralph task ready RQ-0001"
+        "cueloop task ready RQ-0001"
     );
 }
 
@@ -255,7 +255,7 @@ fn decompose_document_runnable_leaf_write_guides_run_without_activation() {
     assert!(
         !commands
             .iter()
-            .any(|command| command.starts_with("ralph task ready "))
+            .any(|command| command.starts_with("cueloop task ready "))
     );
-    assert!(commands.contains(&"ralph machine run one --resume"));
+    assert!(commands.contains(&"cueloop machine run one --resume"));
 }

@@ -4,7 +4,7 @@
 //! - Ralph CLI facade.
 //!
 //! Responsibilities:
-//! - Expose the top-level Clap surface for the `ralph` binary.
+//! - Expose the top-level Clap surface for the `cueloop` binary.
 //! - Re-export shared CLI helpers used across subcommand modules.
 //! - Keep the root CLI module thin and navigation-friendly.
 //!

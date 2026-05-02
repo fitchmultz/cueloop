@@ -26,7 +26,7 @@ use clap::Args;
 use crate::cli::machine::MachineQueueRepairArgs;
 use crate::config::Resolved;
 
-/// Arguments for `ralph queue repair`.
+/// Arguments for `cueloop queue repair`.
 #[derive(Args)]
 pub struct RepairArgs {
     /// Show what Ralph would normalize without writing queue files.

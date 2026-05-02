@@ -1,11 +1,11 @@
-//! Purpose: list-focused integration tests for `ralph undo`.
+//! Purpose: list-focused integration tests for `cueloop undo`.
 //!
 //! Responsibilities:
 //! - Verify helpful output when no snapshots exist.
 //! - Verify snapshots appear in `undo --list` output after a mutating operation.
 //!
 //! Scope:
-//! - `ralph undo --list` behavior only.
+//! - `cueloop undo --list` behavior only.
 //!
 //! Usage:
 //! - Run via the root `undo_integration_test` integration suite.
@@ -16,7 +16,7 @@
 
 use super::*;
 
-/// Test that `ralph undo --list` shows a helpful message when no snapshots exist.
+/// Test that `cueloop undo --list` shows a helpful message when no snapshots exist.
 #[test]
 fn undo_list_empty_shows_helpful_message() -> Result<()> {
     let dir = setup_undo_repo()?;
@@ -36,7 +36,7 @@ fn undo_list_empty_shows_helpful_message() -> Result<()> {
     );
 
     anyhow::ensure!(
-        stdout.contains("ralph task mutate --dry-run")
+        stdout.contains("cueloop task mutate --dry-run")
             || stdout.contains("checkpoint")
             || stdout.contains("queue writes"),
         "expected helpful continuation guidance, got:\n{stdout}"
@@ -45,7 +45,7 @@ fn undo_list_empty_shows_helpful_message() -> Result<()> {
     Ok(())
 }
 
-/// Test that `ralph task done` creates a snapshot that appears in `--list` output.
+/// Test that `cueloop task done` creates a snapshot that appears in `--list` output.
 #[test]
 fn undo_list_shows_snapshots_after_task_done() -> Result<()> {
     let dir = setup_undo_repo()?;

@@ -172,7 +172,7 @@ fn derive_check_blocking_state_prefers_lock_over_runner_recovery() {
     );
     let lock = BlockingState::lock_blocked(
         Some("/tmp/.ralph/lock".to_string()),
-        Some("ralph run loop".to_string()),
+        Some("cueloop run loop".to_string()),
         Some(1234),
     );
 
@@ -229,7 +229,7 @@ fn check_lock_health_reads_canonical_queue_lock_layout() -> anyhow::Result<()> {
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run loop\n"
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run loop\n"
         ),
     )?;
 
@@ -264,7 +264,7 @@ fn check_lock_health_auto_fix_removes_confirmed_stale_queue_lock() -> anyhow::Re
     std::fs::write(
         lock_dir.join("owner"),
         format!(
-            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: ralph run loop --max-tasks 0\nlabel: run loop\n"
+            "pid: {stale_pid}\nstarted_at: 2026-02-06T00:56:29Z\ncommand: cueloop run loop --max-tasks 0\nlabel: run loop\n"
         ),
     )?;
 

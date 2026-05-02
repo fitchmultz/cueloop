@@ -12,7 +12,7 @@ Complete these in order.
 2. Follow-up proposals
    - follow-ups cannot substitute for finishing the active task's current scope.
    - Create `.ralph/cache/followups/{{TASK_ID}}.json` only for independent out-of-scope work or explicit discovery/queue-shaping deliverables.
-   - `RUN_MODE=normal`: apply proposals with `ralph task followups apply --task {{TASK_ID}}` before terminal bookkeeping.
+   - `RUN_MODE=normal`: apply proposals with `cueloop task followups apply --task {{TASK_ID}}` before terminal bookkeeping.
    - `RUN_MODE=parallel-worker`: do not apply the proposal; leave the artifact for coordinator integration.
    - If there is no independent follow-up work, skip the artifact.
 
@@ -24,9 +24,9 @@ Complete these in order.
    - Ensure `{{config.queue.file}}` remains valid if queue state changed.
 
 4. Task bookkeeping
-   - `RUN_MODE=normal`: finish with `ralph task done --note "<note>" {{TASK_ID}}` or `ralph task reject --note "<note>" {{TASK_ID}}`.
-   - `RUN_MODE=parallel-worker`: do not run `ralph task done` or manually rewrite queue/done; Ralph reconciles bookkeeping after integration.
-   - Do not run `ralph queue archive` for single-task completion.
+   - `RUN_MODE=normal`: finish with `cueloop task done --note "<note>" {{TASK_ID}}` or `cueloop task reject --note "<note>" {{TASK_ID}}`.
+   - `RUN_MODE=parallel-worker`: do not run `cueloop task done` or manually rewrite queue/done; Ralph reconciles bookkeeping after integration.
+   - Do not run `cueloop queue archive` for single-task completion.
    - If stopping incomplete, leave the task active and clearly report state and next step; do not set `blocked`.
 
 5. Git hygiene

@@ -340,7 +340,7 @@ mod tests {
                 pid,
                 started_at: "2026-01-01T00:00:00Z".to_string(),
                 repo_root: "/tmp/repo".to_string(),
-                command: "ralph daemon serve".to_string(),
+                command: "cueloop daemon serve".to_string(),
             },
         )
         .expect("write daemon state");
