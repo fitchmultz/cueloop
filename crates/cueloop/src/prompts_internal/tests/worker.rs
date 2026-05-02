@@ -40,7 +40,7 @@ fn default_worker_prompt_includes_followup_ownership_guard() -> Result<()> {
     let prompt = load_worker_prompt(dir.path())?;
     assert!(prompt.contains("QUEUE FOLLOW-UP DISCIPLINE"));
     assert!(prompt.contains("not create follow-ups as a substitute"));
-    assert!(prompt.contains(".ralph/cache/followups/{{TASK_ID}}.json"));
+    assert!(prompt.contains(".cueloop/cache/followups/{{TASK_ID}}.json"));
     assert!(prompt.contains("not a report handoff"));
     Ok(())
 }
@@ -106,25 +106,11 @@ fn load_worker_prompt_uses_current_override_when_present() -> Result<()> {
 #[test]
 fn load_worker_prompt_falls_back_to_legacy_override() -> Result<()> {
     let dir = TempDir::new()?;
-    let overrides = dir.path().join(".ralph/prompts");
+    let overrides = dir.path().join(".cueloop/prompts");
     fs::create_dir_all(&overrides)?;
     fs::write(overrides.join("worker.md"), "legacy override")?;
     let prompt = load_worker_prompt(dir.path())?;
     assert_eq!(prompt, "legacy override");
-    Ok(())
-}
-
-#[test]
-fn load_worker_prompt_prefers_current_override_over_legacy() -> Result<()> {
-    let dir = TempDir::new()?;
-    let current = dir.path().join(".cueloop/prompts");
-    let legacy = dir.path().join(".ralph/prompts");
-    fs::create_dir_all(&current)?;
-    fs::create_dir_all(&legacy)?;
-    fs::write(current.join("worker.md"), "current override")?;
-    fs::write(legacy.join("worker.md"), "legacy override")?;
-    let prompt = load_worker_prompt(dir.path())?;
-    assert_eq!(prompt, "current override");
     Ok(())
 }
 

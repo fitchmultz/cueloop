@@ -1,4 +1,4 @@
-//! Purpose: Provide the public task-contract API for Ralph queue entries.
+//! Purpose: Provide the public task-contract API for CueLoop queue entries.
 //!
 //! Responsibilities:
 //! - Declare the `contracts::task` child modules.

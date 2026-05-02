@@ -11,12 +11,12 @@
 # - source "$(dirname "$0")/lib/cueloop-shell.sh"
 # Invariants/assumptions:
 # - Caller defines SCRIPT_DIR before sourcing this file.
-# - Scripts source this helper from within the CueLoop/Ralph repository.
+# - Scripts source this helper from within the CueLoop/CueLoop repository.
 
-if [ -n "${RALPH_SHELL_LIB_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_SHELL_LIB_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_SHELL_LIB_SOURCED=1
+CUELOOP_SHELL_LIB_SOURCED=1
 set -euo pipefail
 
 RED='\033[0;31m'
@@ -77,8 +77,8 @@ cueloop_sha256_file() {
 }
 
 cueloop_resolve_make_cmd() {
-    if [ -n "${RALPH_MAKE_CMD:-}" ]; then
-        echo "$RALPH_MAKE_CMD"
+    if [ -n "${CUELOOP_MAKE_CMD:-}" ]; then
+        echo "$CUELOOP_MAKE_CMD"
         return 0
     fi
 

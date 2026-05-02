@@ -36,7 +36,7 @@ use crate::runutil::{
 /// Errors that can occur during git operations.
 #[derive(Error, Debug)]
 pub enum GitError {
-    #[error("repo is dirty; commit/stash your changes before running Ralph.{details}")]
+    #[error("repo is dirty; commit/stash your changes before running CueLoop.{details}")]
     DirtyRepo { details: String },
 
     #[error("git {args} failed (code={code:?}): {stderr}")]
@@ -116,7 +116,7 @@ pub fn classify_push_error(stderr: &str) -> GitError {
 /// Some environments (notably when fsmonitor is enabled but unhealthy) emit:
 ///   error: fsmonitor_ipc__send_query: ... '.git/fsmonitor--daemon.ipc'
 /// This is noisy and can confuse agents/automation. Disabling fsmonitor for
-/// Ralph's git invocations avoids that class of failures.
+/// CueLoop's git invocations avoids that class of failures.
 pub fn git_base_command(repo_root: &Path) -> Command {
     let mut cmd = Command::new("git");
     cmd.arg("-c").arg("core.fsmonitor=false");

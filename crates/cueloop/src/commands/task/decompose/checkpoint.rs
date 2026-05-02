@@ -34,7 +34,7 @@ use crate::{config, timeutil};
 use time::Duration as TimeDuration;
 
 const CHECKPOINT_VERSION: u32 = 1;
-const CHECKPOINT_DIR: &str = ".ralph/cache/decompose-previews";
+const CHECKPOINT_DIR: &str = ".cueloop/cache/decompose-previews";
 const CHECKPOINT_TTL_DAYS: u64 = 7;
 const CHECKPOINT_TTL_SECONDS: u64 = CHECKPOINT_TTL_DAYS * 24 * 60 * 60;
 

@@ -190,7 +190,7 @@ For each attempt (up to `max_push_attempts`):
    - Spawn agent remediation session
    - Require zero unresolved conflicts
    - Continue rebase
-5. **Bookkeeping reconciliation**: Restore queue/done from the latest target branch, archive the current task, and apply any worker-written `.ralph/cache/followups/<TASK_ID>.json` proposal.
+5. **Bookkeeping reconciliation**: Restore queue/done from the latest target branch, archive the current task, and apply any worker-written `.cueloop/cache/followups/<TASK_ID>.json` proposal.
 6. **CI gate**: Run CI check (if enabled)
 7. **CI remediation**: On failure:
    - Generate CI-failure handoff
@@ -199,7 +199,7 @@ For each attempt (up to `max_push_attempts`):
 8. **Push**: `git push origin HEAD:<target_branch>`
 9. **Retry**: On non-fast-forward, retry with backoff
 
-Parallel workers do not mutate shared queue/done files for newly discovered follow-up work. They write proposal artifacts under `.ralph/cache/followups/`; the integration loop applies valid proposals in the same deterministic bookkeeping path that archives the completed task. Invalid proposals block integration and retain the worker workspace for retry.
+Parallel workers do not mutate shared queue/done files for newly discovered follow-up work. They write proposal artifacts under `.cueloop/cache/followups/`; the integration loop applies valid proposals in the same deterministic bookkeeping path that archives the completed task. Invalid proposals block integration and retain the worker workspace for retry.
 
 ### Terminal Outcomes
 
@@ -270,7 +270,7 @@ The following settings were removed in the direct-push rewrite:
 Parallel run state is persisted at:
 
 ```
-.ralph/cache/parallel/state.json
+.cueloop/cache/parallel/state.json
 ```
 
 ### Schema Version 3
@@ -397,7 +397,7 @@ cueloop run loop --parallel 4
 When workers encounter conflicts:
 
 1. **Automatic**: Agent remediation session is spawned with handoff context
-2. **Handoff Packet**: Written to `.ralph/cache/parallel/handoffs/<task-id>/<attempt>.json`
+2. **Handoff Packet**: Written to `.cueloop/cache/parallel/handoffs/<task-id>/<attempt>.json`
 3. **Resolution**: Agent resolves conflicts preserving both upstream and task intent
 4. **Validation**: Worker verifies zero unresolved conflicts before continuing
 5. **Retry**: If resolution fails after max attempts, worker transitions to `blocked_push`
@@ -411,7 +411,7 @@ When workers encounter conflicts:
 Worker logs are written to:
 
 ```
-.ralph/logs/parallel/<task-id>.log
+.cueloop/logs/parallel/<task-id>.log
 ```
 
 ### Handoff Packets
@@ -419,7 +419,7 @@ Worker logs are written to:
 Remediation context is written to:
 
 ```
-.ralph/cache/parallel/handoffs/<task-id>/<attempt>.json
+.cueloop/cache/parallel/handoffs/<task-id>/<attempt>.json
 ```
 
 Contains:
@@ -434,10 +434,10 @@ Contains:
 
 ```bash
 # Pretty-print current state
-cat .ralph/cache/parallel/state.json | jq
+cat .cueloop/cache/parallel/state.json | jq
 
 # Watch for changes
-watch -n 1 'cat .ralph/cache/parallel/state.json | jq .workers'
+watch -n 1 'cat .cueloop/cache/parallel/state.json | jq .workers'
 ```
 
 ### Debugging Blocked Workers
@@ -447,10 +447,10 @@ watch -n 1 'cat .ralph/cache/parallel/state.json | jq .workers'
 cueloop run parallel status
 
 # 2. Inspect handoff packet
-ls .ralph/cache/parallel/handoffs/<task-id>/
+ls .cueloop/cache/parallel/handoffs/<task-id>/
 
 # 3. Check worker logs
-tail -f .ralph/logs/parallel/<task-id>.log
+tail -f .cueloop/logs/parallel/<task-id>.log
 
 # 4. Inspect workspace
 cd <workspace-path>
@@ -479,7 +479,7 @@ cueloop run parallel retry --task <task-id>
   - Use a feature branch workflow (not supported in direct-push mode)
 
 **"CI gate failed after max attempts"**
-- Worker exhausted CI retry budget. Investigate `.ralph/logs/parallel/<task-id>.log` and retry.
+- Worker exhausted CI retry budget. Investigate `.cueloop/logs/parallel/<task-id>.log` and retry.
 
 **Workspace disk space**
 - Workspaces accumulate over time. Run `cueloop cleanup` or adjust `workspace_retention_hours`.

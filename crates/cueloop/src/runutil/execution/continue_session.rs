@@ -7,7 +7,7 @@
 //! - Select a resume session ID.
 //! - Centralize known-invalid continue-session fallback classification.
 //! - Execute continue-session or rerun flows through the backend.
-//! - Narrate when Ralph is resuming, rerunning fresh, or lacking a reusable session id.
+//! - Narrate when CueLoop is resuming, rerunning fresh, or lacking a reusable session id.
 //!
 //! Not handled here:
 //! - Retry policy.

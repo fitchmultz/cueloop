@@ -39,7 +39,7 @@ pub fn safeguard_text_dump_redacted(label: &str, content: &str) -> Result<PathBu
 ///
 /// SECURITY WARNING: This function writes raw content that may contain secrets.
 /// It requires explicit opt-in via either:
-/// - Setting the `CUELOOP_RAW_DUMP=1` environment variable (or legacy `RALPH_RAW_DUMP=1`)
+/// - Setting the `CUELOOP_RAW_DUMP=1` environment variable (or legacy `CUELOOP_RAW_DUMP=1`)
 /// - Passing `is_debug_mode=true` (e.g., when `--debug` flag is used)
 ///
 /// If opt-in is not provided, this function returns an error.

@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::path::Path;
 
@@ -91,8 +91,8 @@ fn kimi_response_parser_extracts_assistant_text() {
 
 #[test]
 fn pi_session_dir_name_normalizes_path() {
-    let name = pi_session_dir_name(Path::new("/Users/mitchfultz/Projects/AI/ralph"));
-    assert_eq!(name, "--Users-mitchfultz-Projects-AI-ralph--");
+    let name = pi_session_dir_name(Path::new("/Users/mitchfultz/Projects/AI/cueloop"));
+    assert_eq!(name, "--Users-mitchfultz-Projects-AI-cueloop--");
 }
 
 #[test]

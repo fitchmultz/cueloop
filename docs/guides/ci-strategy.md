@@ -34,16 +34,16 @@ Behavior:
 - **Tier D — `make macos-ci`**: any path that affects the app bundle, committed schemas, toolchain, macOS/Xcode bundling scripts, or `Makefile` macOS build/test targets (`apps/CueLoopMac/**`, `apps/AGENTS.md`, `schemas/**`, `scripts/cueloop-cli-bundle.sh`, `scripts/macos-*.sh`, `scripts/lib/xcodebuild-lock.sh`, `VERSION`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/**`).
 - `make ci-fast` runs `make rust-toolchain-check` through `deps`, which verifies the repo-pinned `rust-toolchain.toml` channel, crate `rust-version`, active local rustup override, `rustc`, `cargo`, `rustfmt`, and `clippy` agree.
 - `scripts/agent-ci-surface.sh`, `scripts/lib/release_policy.sh`, and CI/router-only `Makefile` edits deliberately stay below tier D so local tooling changes do not rebuild the Mac app.
-- Tier C **does not** run Xcode or Swift tests; it can miss Swift-side integration drift until a tier D run. Use `RALPH_AGENT_CI_MIN_TIER=macos-ci` or run `make macos-ci` before merge when that risk matters (see below).
+- Tier C **does not** run Xcode or Swift tests; it can miss Swift-side integration drift until a tier D run. Use `CUELOOP_AGENT_CI_MIN_TIER=macos-ci` or run `make macos-ci` before merge when that risk matters (see below).
 - On source snapshots without `.git/`, falls back to `make release-gate` so verification stays platform-aware instead of assuming macOS-only tooling.
 - The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.cueloop/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/CueLoopMac/build/`.
 - Toolchain drift checks compare the repo-local override with the global rustup stable toolchain during release/public readiness; the repo-local `rust-toolchain.toml` wins inside the workspace.
 
 Optional environment (see `make help`):
 
-- `RALPH_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.
-- `RALPH_AGENT_CI_MIN_TIER=ci-fast|ci|macos-ci` — raise the selected gate to at least that tier (for example `macos-ci` before merge).
-- `RALPH_XCODE_KEEP_DERIVED_DATA=1` — skip deleting Xcode derived data under `target/tmp/xcode-deriveddata` for `macos-build` / default `macos-test` (faster local iteration; default remains clean derived data per run).
+- `CUELOOP_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.
+- `CUELOOP_AGENT_CI_MIN_TIER=ci-fast|ci|macos-ci` — raise the selected gate to at least that tier (for example `macos-ci` before merge).
+- `CUELOOP_XCODE_KEEP_DERIVED_DATA=1` — skip deleting Xcode derived data under `target/tmp/xcode-deriveddata` for `macos-build` / default `macos-test` (faster local iteration; default remains clean derived data per run).
 
 ### `make ci` on macOS and `macos-ci` dependency graph
 
@@ -82,7 +82,7 @@ File-size guard behavior:
 - Policy is sourced from `AGENTS.md` (`target <500`, soft `~800`, hard `1000` LOC).
 - Soft-limit offenders are always printed as actionable warnings and do not fail the gate.
 - Hard-limit offenders fail the gate with explicit line counts and relative paths.
-- Excludes are intentionally narrow and focused on machine-owned/generated surfaces (for example `schemas/*.json`, `*.xcodeproj/project.pbxproj`, and `.ralph/{queue,done,config}.jsonc`), not broad source-tree bypasses.
+- Excludes are intentionally narrow and focused on machine-owned/generated surfaces (for example `schemas/*.json`, `*.xcodeproj/project.pbxproj`, and `.cueloop/{queue,done,config}.jsonc`), not broad source-tree bypasses.
 
 ## Lower-Level Gates
 
@@ -172,17 +172,17 @@ make macos-ui-artifacts-clean
 CueLoop’s make targets support resource caps:
 
 ```bash
-RALPH_CI_JOBS=4 make agent-ci
-RALPH_XCODE_JOBS=4 make macos-test-window-shortcuts
-RALPH_CI_JOBS=4 RALPH_XCODE_JOBS=4 make pre-public-check
+CUELOOP_CI_JOBS=4 make agent-ci
+CUELOOP_XCODE_JOBS=4 make macos-test-window-shortcuts
+CUELOOP_CI_JOBS=4 CUELOOP_XCODE_JOBS=4 make pre-public-check
 ```
 
 Defaults:
 
-- `RALPH_CI_JOBS=0` lets cargo/nextest use tool-managed parallelism for fastest local iteration.
-- `RALPH_XCODE_JOBS=0` keeps xcodebuild on tool-managed parallelism by default; set `RALPH_XCODE_JOBS=4` on shared workstations when you need a cap.
-- `RALPH_XCODE_KEEP_DERIVED_DATA=0` deletes Xcode derived data for `macos-build` / default `macos-test` before building (reproducible; slower when iterating).
-- Set either value explicitly (for example `RALPH_CI_JOBS=4`) on shared workstations.
+- `CUELOOP_CI_JOBS=0` lets cargo/nextest use tool-managed parallelism for fastest local iteration.
+- `CUELOOP_XCODE_JOBS=0` keeps xcodebuild on tool-managed parallelism by default; set `CUELOOP_XCODE_JOBS=4` on shared workstations when you need a cap.
+- `CUELOOP_XCODE_KEEP_DERIVED_DATA=0` deletes Xcode derived data for `macos-build` / default `macos-test` before building (reproducible; slower when iterating).
+- Set either value explicitly (for example `CUELOOP_CI_JOBS=4`) on shared workstations.
 
 ## Demo automation readiness exception
 
@@ -220,8 +220,8 @@ Prefer headless paths first; interactive UI automation remains opt-in and out of
 
 Optimization rules for Rust integration tests:
 - Hold `env_lock()` only when mutating `PATH` or other process-global env vars.
-- If a fake runner is configured via an explicit `*_bin` path in `.ralph/config.jsonc`, do not also mutate `PATH`.
-- Prefer `seed_ralph_dir()` over `ralph_init()` when the test only needs cached `.ralph/` scaffolding and is not asserting real init behavior.
+- If a fake runner is configured via an explicit `*_bin` path in `.cueloop/config.jsonc`, do not also mutate `PATH`.
+- Prefer `seed_cueloop_dir()` over `cueloop_init()` when the test only needs cached `.cueloop/` scaffolding and is not asserting real init behavior.
 
 ## Expected Runtime Profile (guidance)
 

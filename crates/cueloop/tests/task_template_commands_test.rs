@@ -20,7 +20,7 @@
 //!
 //! Invariants/assumptions:
 //! - Tests run in isolated temp directories.
-//! - `seed_ralph_dir()` provides the baseline `.ralph/` fixture for setup.
+//! - `seed_cueloop_dir()` provides the baseline `.cueloop/` fixture for setup.
 
 use anyhow::Result;
 
@@ -30,7 +30,7 @@ mod test_support;
 fn task_template_list_shows_builtins() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "template", "list"]);
@@ -83,10 +83,10 @@ fn task_template_list_shows_builtins() -> Result<()> {
 fn task_template_show_invalid_template_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create a custom template with invalid JSON
-    let templates_dir = dir.path().join(".ralph/templates");
+    let templates_dir = dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir)?;
     let invalid_template =
         r#"{"id": "", "title": "", "status": "todo", "priority": "high", "plan": [}"#; // Missing closing bracket
@@ -112,7 +112,7 @@ fn task_template_show_invalid_template_fails() -> Result<()> {
 fn task_template_show_displays_template() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "template", "show", "bug"]);
@@ -150,10 +150,10 @@ fn task_template_show_displays_template() -> Result<()> {
 fn task_template_show_custom_template() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create custom template
-    let templates_dir = dir.path().join(".ralph/templates");
+    let templates_dir = dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir)?;
     let custom_template = r#"{
         "id": "",
@@ -204,7 +204,7 @@ fn task_template_show_custom_template() -> Result<()> {
 fn task_template_show_nonexistent_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "template", "show", "nonexistent"]);
@@ -226,7 +226,7 @@ fn task_template_show_nonexistent_fails() -> Result<()> {
 fn task_template_build_missing_request_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Build without providing a request should fail
     let (status, _stdout, stderr) =
@@ -249,7 +249,7 @@ fn task_template_build_missing_request_fails() -> Result<()> {
 fn task_template_build_with_empty_request_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Build with only whitespace request should fail
     let (status, _stdout, _stderr) =
@@ -267,7 +267,7 @@ fn task_template_build_with_empty_request_fails() -> Result<()> {
 fn task_template_help_shows_examples() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Test list --help
     let (status, _stdout, _stderr) =
@@ -317,7 +317,7 @@ fn task_template_help_shows_examples() -> Result<()> {
 fn task_template_all_builtin_templates_listed() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "template", "list"]);
@@ -353,7 +353,7 @@ fn task_template_all_builtin_templates_listed() -> Result<()> {
 fn task_template_show_all_builtins_succeeds() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let templates = [
         "bug",

@@ -12,7 +12,7 @@
 //! - Suite-local helpers call `current_exe()` when spawning the subprocess.
 //!
 //! Invariants/Assumptions:
-//! - `RALPH_TEST_LOCK_HOLD=1` gates the helper so normal suite runs skip it.
+//! - `CUELOOP_TEST_LOCK_HOLD=1` gates the helper so normal suite runs skip it.
 //! - Readiness is signaled by printing `LOCK_HELD`.
 //! - The subprocess exits only after parent stdin closes.
 
@@ -24,17 +24,18 @@ pub(super) fn current_exe() -> PathBuf {
 }
 
 pub(super) fn lock_holder_process() -> Result<()> {
-    if std::env::var("RALPH_TEST_LOCK_HOLD").ok().as_deref() != Some("1") {
+    if std::env::var("CUELOOP_TEST_LOCK_HOLD").ok().as_deref() != Some("1") {
         return Ok(());
     }
 
-    let repo_root = std::env::var("RALPH_TEST_REPO_ROOT").context("read RALPH_TEST_REPO_ROOT")?;
+    let repo_root =
+        std::env::var("CUELOOP_TEST_REPO_ROOT").context("read CUELOOP_TEST_REPO_ROOT")?;
     let repo_root = PathBuf::from(repo_root);
 
-    std::fs::create_dir_all(repo_root.join(".ralph")).context("create .ralph dir")?;
+    std::fs::create_dir_all(repo_root.join(".cueloop")).context("create .cueloop dir")?;
 
     let label =
-        std::env::var("RALPH_TEST_LOCK_LABEL").unwrap_or_else(|_| "lock holder".to_string());
+        std::env::var("CUELOOP_TEST_LOCK_LABEL").unwrap_or_else(|_| "lock holder".to_string());
 
     let _lock = queue::acquire_queue_lock(&repo_root, &label, false)?;
     println!("LOCK_HELD");

@@ -41,7 +41,7 @@ pub(super) fn build_continuation(created_count: usize) -> MachineContinuationSum
     MachineContinuationSummary {
         headline: "AI Build has created task drafts.".to_string(),
         detail: format!(
-            "Ralph ran the task-builder prompt and added {created_count} task(s) to the queue."
+            "CueLoop ran the task-builder prompt and added {created_count} task(s) to the queue."
         ),
         blocking: None,
         next_steps: vec![
@@ -72,7 +72,7 @@ pub(super) fn mutation_continuation(
         return MachineContinuationSummary {
             headline: "Mutation continuation is ready.".to_string(),
             detail: format!(
-                "Ralph validated an atomic mutation affecting {task_count} task(s) without writing queue changes."
+                "CueLoop validated an atomic mutation affecting {task_count} task(s) without writing queue changes."
             ),
             blocking: None,
             next_steps: vec![
@@ -93,7 +93,7 @@ pub(super) fn mutation_continuation(
     MachineContinuationSummary {
         headline: "Task mutation has been applied.".to_string(),
         detail: format!(
-            "Ralph wrote {task_count} task mutation(s) atomically and created an undo checkpoint first."
+            "CueLoop wrote {task_count} task mutation(s) atomically and created an undo checkpoint first."
         ),
         blocking: None,
         next_steps: vec![
@@ -122,15 +122,15 @@ pub(super) fn decompose_continuation(
         let has_runnable_leaf = preview.has_runnable_generated_leaf();
         let detail = match (first_leaf_id, all_draft, has_runnable_leaf) {
             (Some(first_leaf_id), true, _) => format!(
-                "Ralph wrote the planned task tree in draft and created an undo checkpoint before mutating the queue. Promote first actionable leaf {first_leaf_id} before normal run selection."
+                "CueLoop wrote the planned task tree in draft and created an undo checkpoint before mutating the queue. Promote first actionable leaf {first_leaf_id} before normal run selection."
             ),
             (Some(first_leaf_id), _, true) => format!(
-                "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue. Leaf work is already runnable; start review with first actionable leaf {first_leaf_id}."
+                "CueLoop wrote the planned task tree and created an undo checkpoint before mutating the queue. Leaf work is already runnable; start review with first actionable leaf {first_leaf_id}."
             ),
             (Some(first_leaf_id), _, _) => format!(
-                "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue. Start review with first actionable leaf {first_leaf_id}."
+                "CueLoop wrote the planned task tree and created an undo checkpoint before mutating the queue. Start review with first actionable leaf {first_leaf_id}."
             ),
-            (None, _, _) => "Ralph wrote the planned task tree and created an undo checkpoint before mutating the queue."
+            (None, _, _) => "CueLoop wrote the planned task tree and created an undo checkpoint before mutating the queue."
                 .to_string(),
         };
         let headline = if all_draft {
@@ -145,7 +145,7 @@ pub(super) fn decompose_continuation(
             next_steps.push(step(
                 "Promote the first actionable leaf",
                 &format!("cueloop task ready {first_leaf_id}"),
-                "Mark the first actionable leaf todo so Ralph can run it.",
+                "Mark the first actionable leaf todo so CueLoop can run it.",
             ));
         }
         next_steps.push(step(
@@ -180,12 +180,12 @@ pub(super) fn decompose_continuation(
             .as_ref()
             .map(|leaf| {
                 format!(
-                    "Ralph planned a task tree that can be written when you are ready. First actionable leaf: {}.",
+                    "CueLoop planned a task tree that can be written when you are ready. First actionable leaf: {}.",
                     leaf.title
                 )
             })
             .unwrap_or_else(|| {
-                "Ralph planned a task tree that can be written when you are ready.".to_string()
+                "CueLoop planned a task tree that can be written when you are ready.".to_string()
             });
         let write_command = checkpoint
             .map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id))
@@ -211,7 +211,7 @@ pub(super) fn decompose_continuation(
 
     MachineContinuationSummary {
         headline: "Decomposition preview is blocked from being written.".to_string(),
-        detail: "Ralph preserved the proposed tree, but a queue invariant must be resolved before write mode can continue.".to_string(),
+        detail: "CueLoop preserved the proposed tree, but a queue invariant must be resolved before write mode can continue.".to_string(),
         blocking: Some(
             BlockingState::operator_recovery(
                 BlockingStatus::Blocked,
@@ -221,7 +221,7 @@ pub(super) fn decompose_continuation(
                     .attach_target
                     .as_ref()
                     .map(|target| target.task.id.clone()),
-                "Ralph is blocked from continuing this decomposition write.",
+                "CueLoop is blocked from continuing this decomposition write.",
                 preview.write_blockers.join(" "),
                 checkpoint.map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id)),
             )

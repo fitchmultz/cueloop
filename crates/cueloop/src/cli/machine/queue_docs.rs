@@ -54,8 +54,9 @@ pub(crate) fn build_validate_document(
                 warnings: Vec::new(),
                 continuation: MachineContinuationSummary {
                     headline: "Queue continuation is stalled.".to_string(),
-                    detail: "Validate failed before Ralph could confirm a safe continuation state."
-                        .to_string(),
+                    detail:
+                        "Validate failed before CueLoop could confirm a safe continuation state."
+                            .to_string(),
                     blocking: Some(blocking),
                     next_steps: vec![
                         step(
@@ -90,13 +91,13 @@ pub(crate) fn build_validate_document(
                 warnings: Vec::new(),
                 continuation: MachineContinuationSummary {
                     headline: "Queue continuation is stalled.".to_string(),
-                    detail: "The done archive could not be loaded, so Ralph cannot confirm a safe continuation state.".to_string(),
+                    detail: "The done archive could not be loaded, so CueLoop cannot confirm a safe continuation state.".to_string(),
                     blocking: Some(blocking),
                     next_steps: vec![
                         step(
                             "Preview safe normalization",
                             machine_queue_repair_command(true),
-                            "Inspect whether Ralph can normalize the queue and done archive safely.",
+                            "Inspect whether CueLoop can normalize the queue and done archive safely.",
                         ),
                         step(
                             "Apply normalization",
@@ -168,7 +169,7 @@ pub(crate) fn build_validate_document(
                         step(
                             "Preview safe normalization",
                             machine_queue_repair_command(true),
-                            "See which recoverable issues Ralph can normalize.",
+                            "See which recoverable issues CueLoop can normalize.",
                         ),
                         step(
                             "Apply safe normalization",
@@ -225,7 +226,7 @@ pub(crate) fn build_repair_document(
     if !preview.has_changes() {
         let continuation = MachineContinuationSummary {
             headline: "No queue repair changes were needed.".to_string(),
-            detail: "Ralph confirmed the queue already matches its continuation invariants."
+            detail: "CueLoop confirmed the queue already matches its continuation invariants."
                 .to_string(),
             blocking: None,
             next_steps: vec![step(
@@ -330,10 +331,10 @@ pub(crate) fn build_undo_document(
             "Continuation has been restored.".to_string()
         },
         detail: if args.dry_run {
-            "Ralph showed the checkpoint that would be restored without changing queue files."
+            "CueLoop showed the checkpoint that would be restored without changing queue files."
                 .to_string()
         } else {
-            "Ralph restored the selected checkpoint. Continue from the restored queue state."
+            "CueLoop restored the selected checkpoint. Continue from the restored queue state."
                 .to_string()
         },
         blocking: None,

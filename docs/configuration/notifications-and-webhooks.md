@@ -65,7 +65,7 @@ Supported fields:
 - `allow_insecure_http`: when `true`, allow `http://` URLs (default: `false` / unset; HTTPS-only).
 - `allow_private_targets`: when `true`, allow loopback, link-local, and common cloud-metadata hostnames/IPs (default: `false` / unset).
 - `secret`: secret key for HMAC-SHA256 signature generation (optional).
-  When set, webhooks include an `X-Ralph-Signature` header for verification.
+  When set, webhooks include an `X-CueLoop-Signature` header for verification.
 - `events`: list of events to subscribe to (default: legacy task events only).
   - **Task events**: `task_created`, `task_started`, `task_completed`, `task_failed`, `task_status_changed`
   - **Loop events**: `loop_started`, `loop_stopped` (opt-in)
@@ -114,7 +114,7 @@ Webhooks are delivered **asynchronously** by a background worker thread:
 - **Non-blocking**: The `send_webhook` call returns immediately after enqueueing.
 - **Order preservation**: Webhooks are delivered in FIFO order within the constraints of the backpressure policy.
 - **Failure handling**: Failed deliveries are retried (per `retry_count` and `retry_backoff_ms`).
-- **Failure persistence**: Final delivery failures are persisted to `.ralph/cache/webhooks/failures.json` (bounded to the most recent 200 records).
+- **Failure persistence**: Final delivery failures are persisted to `.cueloop/cache/webhooks/failures.json` (bounded to the most recent 200 records).
 - **Worker lifecycle**: The background worker starts on first webhook send and shuts down when the process exits.
 
 Example:
@@ -191,10 +191,10 @@ Optional context fields (only present when applicable):
 
 ### Webhook Security
 
-When a `secret` is configured, webhooks include an `X-Ralph-Signature` header:
+When a `secret` is configured, webhooks include an `X-CueLoop-Signature` header:
 
 ```
-X-Ralph-Signature: sha256=abc123...
+X-CueLoop-Signature: sha256=abc123...
 ```
 
 The signature is computed as HMAC-SHA256 of the request body using the configured secret.
@@ -214,7 +214,7 @@ expected_signature = 'sha256=' + hmac.new(
 
 if not hmac.compare_digest(
     expected_signature,
-    request.headers.get('X-Ralph-Signature', '')
+    request.headers.get('X-CueLoop-Signature', '')
 ):
     raise ValueError("Invalid signature")
 ```

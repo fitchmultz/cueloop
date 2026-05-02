@@ -29,7 +29,7 @@ mod test_support;
 fn task_clone_creates_new_task_with_next_id() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Source", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "Other", TaskStatus::Todo);
@@ -74,7 +74,7 @@ fn task_clone_creates_new_task_with_next_id() -> Result<()> {
 fn task_duplicate_alias_works() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Source", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[t1])?;
@@ -96,16 +96,16 @@ fn task_duplicate_alias_works() -> Result<()> {
 fn task_clone_dry_run_does_not_mutate() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Source", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[t1])?;
 
-    let before = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
+    let before = std::fs::read_to_string(dir.path().join(".cueloop/queue.jsonc"))?;
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "clone", "RQ-0001", "--dry-run"]);
     anyhow::ensure!(status.success(), "dry-run clone failed\nstderr:\n{stderr}");
-    let after = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
+    let after = std::fs::read_to_string(dir.path().join(".cueloop/queue.jsonc"))?;
     anyhow::ensure!(before == after, "queue mutated during --dry-run");
 
     Ok(())
@@ -115,7 +115,7 @@ fn task_clone_dry_run_does_not_mutate() -> Result<()> {
 fn task_clone_missing_task_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "clone", "RQ-9999"]);
@@ -131,7 +131,7 @@ fn task_clone_missing_task_fails() -> Result<()> {
 fn task_clone_copies_task_fields() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let mut t1 = test_support::make_test_task("RQ-0001", "Source Task", TaskStatus::Todo);
     t1.priority = cueloop::contracts::TaskPriority::High;
@@ -168,7 +168,7 @@ fn task_clone_copies_task_fields() -> Result<()> {
 fn task_clone_default_status_is_draft() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Source", TaskStatus::Done);
     test_support::write_queue(dir.path(), &[t1])?;

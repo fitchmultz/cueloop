@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - History persists at `.ralph/cache/execution_history.json`.
+//! - History persists at `.cueloop/cache/execution_history.json`.
 //! - Pruning keeps only the newest bounded set of entries.
 
 use std::fs;

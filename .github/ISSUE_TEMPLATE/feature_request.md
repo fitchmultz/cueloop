@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Propose an enhancement to Ralph
+about: Propose an enhancement to CueLoop
 title: "Feature: <short summary>"
 labels: [enhancement]
 assignees: []

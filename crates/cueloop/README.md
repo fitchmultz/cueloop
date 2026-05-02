@@ -1,8 +1,8 @@
-# Ralph
+# CueLoop
 
-Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue.
 
-Repository: https://github.com/fitchmultz/ralph
+Repository: https://github.com/fitchmultz/cueloop
 
 ## Install
 
@@ -10,24 +10,24 @@ Repository: https://github.com/fitchmultz/ralph
 cargo install cueloop-agent-loop
 ```
 
-This installs the `ralph` executable.
+This installs the `cueloop` executable.
 
 ## Quick Start
 
 ```bash
-ralph init
-ralph task "Create an initial queue item"
-ralph queue list
-ralph run one
+cueloop init
+cueloop task "Create an initial queue item"
+cueloop queue list
+cueloop run one
 ```
 
 ## Documentation
 
-- Docs index: https://github.com/fitchmultz/ralph/blob/main/docs/index.md
-- CLI reference: https://github.com/fitchmultz/ralph/blob/main/docs/cli.md
-- Configuration: https://github.com/fitchmultz/ralph/blob/main/docs/configuration.md
-- Security policy: https://github.com/fitchmultz/ralph/blob/main/SECURITY.md
-- Contributing: https://github.com/fitchmultz/ralph/blob/main/CONTRIBUTING.md
+- Docs index: https://github.com/fitchmultz/cueloop/blob/main/docs/index.md
+- CLI reference: https://github.com/fitchmultz/cueloop/blob/main/docs/cli.md
+- Configuration: https://github.com/fitchmultz/cueloop/blob/main/docs/configuration.md
+- Security policy: https://github.com/fitchmultz/cueloop/blob/main/SECURITY.md
+- Contributing: https://github.com/fitchmultz/cueloop/blob/main/CONTRIBUTING.md
 
 ## License
 

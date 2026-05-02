@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Enforce Ralph's repository file-size policy for human-authored files.
+# Purpose: Enforce CueLoop's repository file-size policy for human-authored files.
 # Responsibilities:
 # - Resolve the repository root from this script path.
 # - Delegate deterministic policy checks to the Python helper.
@@ -22,7 +22,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 usage() {
     cat <<'USAGE'
-Enforce Ralph file-size limits for human-authored repository files.
+Enforce CueLoop file-size limits for human-authored repository files.
 
 Usage:
   scripts/check-file-size-limits.sh

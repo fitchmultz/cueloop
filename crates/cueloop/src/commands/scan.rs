@@ -106,7 +106,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     git::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         opts.force,
-        git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+        git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
     )?;
 
     let _queue_lock = match opts.lock_mode {

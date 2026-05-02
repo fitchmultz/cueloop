@@ -257,17 +257,17 @@
     "RunnerOutputFormat": {
       "oneOf": [
         {
-          "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+          "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
           "type": "string",
           "const": "stream_json"
         },
         {
-          "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+          "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
           "type": "string",
           "const": "json"
         },
         {
-          "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+          "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
           "type": "string",
           "const": "text"
         }
@@ -339,7 +339,7 @@
           "type": "string"
         },
         "custom_fields": {
-          "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; Ralph coerces them to strings when loading.",
+          "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; CueLoop coerces them to strings when loading.",
           "type": "object",
           "additionalProperties": {
             "anyOf": [

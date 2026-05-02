@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Ralph execution requires newline-delimited JSON objects; non-stream formats are rejected.
+//! - CueLoop execution requires newline-delimited JSON objects; non-stream formats are rejected.
 //! - Defaults are intentionally permissive (YOLO) unless overridden.
 
 use anyhow::{Result, bail};
@@ -110,14 +110,14 @@ impl ResolvedRunnerCliOptions {
     pub(crate) fn validate_for_execution(self, runner: &Runner) -> Result<()> {
         if self.output_format != RunnerOutputFormat::StreamJson {
             bail!(
-                "runner_cli.output_format={:?} is not supported for execution. Ralph requires newline-delimited JSON objects; set runner_cli.output_format=stream_json.",
+                "runner_cli.output_format={:?} is not supported for execution. CueLoop requires newline-delimited JSON objects; set runner_cli.output_format=stream_json.",
                 self.output_format
             );
         }
 
         if self.plan_mode != RunnerPlanMode::Default && runner == &Runner::Cursor {
             bail!(
-                "runner_cli.plan_mode is not supported for Cursor SDK runs. Ralph planning phases still write Ralph plan artifacts; do not enable Cursor SDK plan mode."
+                "runner_cli.plan_mode is not supported for Cursor SDK runs. CueLoop planning phases still write CueLoop plan artifacts; do not enable Cursor SDK plan mode."
             );
         }
         if self.plan_mode != RunnerPlanMode::Default && runner != &Runner::Cursor {

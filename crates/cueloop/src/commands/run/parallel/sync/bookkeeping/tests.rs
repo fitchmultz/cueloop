@@ -27,8 +27,8 @@ fn test_resolved(repo_root: &Path) -> config::Resolved {
     config::Resolved {
         config: Config::default(),
         repo_root: repo_root.to_path_buf(),
-        queue_path: repo_root.join(".ralph/queue.jsonc"),
-        done_path: repo_root.join(".ralph/done.jsonc"),
+        queue_path: repo_root.join(".cueloop/queue.jsonc"),
+        done_path: repo_root.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -62,11 +62,11 @@ fn ids(queue: &QueueFile) -> Vec<String> {
 
 fn init_ignored_bookkeeping_repo(temp: &TempDir) -> Result<std::path::PathBuf> {
     let repo_root = temp.path().join("repo");
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     git_test::init_repo(&repo_root)?;
     std::fs::write(
         repo_root.join(".gitignore"),
-        ".ralph/queue.jsonc\n.ralph/done.jsonc\n.ralph/cache/\n",
+        ".cueloop/queue.jsonc\n.cueloop/done.jsonc\n.cueloop/cache/\n",
     )?;
     git_test::git_run(&repo_root, &["add", ".gitignore"])?;
     git_test::git_run(&repo_root, &["commit", "-m", "ignore bookkeeping"])?;
@@ -79,9 +79,9 @@ fn worker_with_done_snapshot(
     done_tasks: Vec<Task>,
 ) -> Result<std::path::PathBuf> {
     let workspace = temp.path().join("workspaces").join(name);
-    std::fs::create_dir_all(workspace.join(".ralph"))?;
+    std::fs::create_dir_all(workspace.join(".cueloop"))?;
     queue::save_queue(
-        &workspace.join(".ralph/done.jsonc"),
+        &workspace.join(".cueloop/done.jsonc"),
         &QueueFile {
             version: 1,
             tasks: done_tasks,
@@ -257,12 +257,18 @@ fn successful_worker_non_done_terminal_status_fails() -> Result<()> {
 fn split_tracked_untracked_bookkeeping_fails_loudly() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     git_test::init_repo(&repo_root)?;
-    std::fs::write(repo_root.join(".gitignore"), ".ralph/done.jsonc\n")?;
-    queue::save_queue(&repo_root.join(".ralph/queue.jsonc"), &QueueFile::default())?;
-    queue::save_queue(&repo_root.join(".ralph/done.jsonc"), &QueueFile::default())?;
-    git_test::git_run(&repo_root, &["add", ".gitignore", ".ralph/queue.jsonc"])?;
+    std::fs::write(repo_root.join(".gitignore"), ".cueloop/done.jsonc\n")?;
+    queue::save_queue(
+        &repo_root.join(".cueloop/queue.jsonc"),
+        &QueueFile::default(),
+    )?;
+    queue::save_queue(
+        &repo_root.join(".cueloop/done.jsonc"),
+        &QueueFile::default(),
+    )?;
+    git_test::git_run(&repo_root, &["add", ".gitignore", ".cueloop/queue.jsonc"])?;
     git_test::git_run(&repo_root, &["commit", "-m", "split bookkeeping"])?;
 
     let err = bookkeeping_authority(&test_resolved(&repo_root))

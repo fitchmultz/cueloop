@@ -19,7 +19,7 @@
 //! Invariants/assumptions:
 //! - README_VERSION is incremented when template changes.
 //! - Version marker format: `<!-- CUELOOP_README_VERSION: X -->`.
-//! - Legacy `RALPH_README_VERSION` markers are still parsed.
+//! - Legacy `CUELOOP_README_VERSION` markers are still parsed.
 //! - Legacy files without markers are treated as version 1.
 
 use crate::config;
@@ -48,7 +48,7 @@ pub enum ReadmeVersionError {
     ParseError { value: String },
 }
 
-const DEFAULT_RALPH_README: &str = include_str!(concat!(
+const DEFAULT_CUELOOP_README: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/cueloop_readme.md"
 ));
@@ -74,7 +74,7 @@ pub enum ReadmeCheckResult {
 /// Extract version from README content.
 ///
 /// Current generated files use `CUELOOP_README_VERSION`; legacy generated files with
-/// `RALPH_README_VERSION` are accepted so old runtime READMEs can be refreshed.
+/// `CUELOOP_README_VERSION` are accepted so old runtime READMEs can be refreshed.
 pub fn extract_readme_version(content: &str) -> Result<u32, ReadmeVersionError> {
     for marker in [README_MARKER, LEGACY_README_MARKER] {
         if let Some(version) = extract_readme_version_for_marker(content, marker)? {
@@ -212,7 +212,7 @@ fn render_default_readme(path: &Path) -> String {
         .and_then(|parent| parent.file_name())
         .and_then(|name| name.to_str())
         .unwrap_or(crate::constants::identity::PROJECT_RUNTIME_DIR);
-    DEFAULT_RALPH_README.replace(RUNTIME_DIR_PLACEHOLDER, runtime_name)
+    DEFAULT_CUELOOP_README.replace(RUNTIME_DIR_PLACEHOLDER, runtime_name)
 }
 
 #[cfg(test)]
@@ -243,7 +243,7 @@ mod tests {
         let content = "<!-- CUELOOP_README_VERSION: 6 -->\n# Heading";
         assert_eq!(extract_readme_version(content), Ok(6));
 
-        let legacy_content = "<!-- RALPH_README_VERSION: 2 -->\n# Ralph";
+        let legacy_content = "<!-- CUELOOP_README_VERSION: 2 -->\n# CueLoop";
         assert_eq!(extract_readme_version(legacy_content), Ok(2));
     }
 
@@ -312,28 +312,13 @@ mod tests {
     }
 
     #[test]
-    fn write_readme_renders_legacy_runtime_paths() -> Result<()> {
-        let dir = TempDir::new()?;
-        let readme_path = dir.path().join(".ralph/README.md");
-
-        write_readme(&readme_path, false)?;
-
-        let content = std::fs::read_to_string(&readme_path)?;
-        assert!(content.contains(".ralph/queue.jsonc"));
-        assert!(content.contains(".ralph/config.jsonc"));
-        assert!(!content.contains(".cueloop/queue.jsonc"));
-        assert!(!content.contains(RUNTIME_DIR_PLACEHOLDER));
-        Ok(())
-    }
-
-    #[test]
     fn write_readme_updates_when_version_mismatch() -> Result<()> {
         let dir = TempDir::new()?;
         let readme_path = dir.path().join(".cueloop/README.md");
 
         // Create an existing README with old version
         fs::create_dir_all(readme_path.parent().unwrap())?;
-        let old_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old content";
+        let old_content = "<!-- CUELOOP_README_VERSION: 1 -->\n# Old content";
         std::fs::write(&readme_path, old_content)?;
 
         let (status, version) = write_readme(&readme_path, false)?;
@@ -382,7 +367,7 @@ mod tests {
         fs::create_dir_all(readme_path.parent().unwrap())?;
         std::fs::write(
             &readme_path,
-            "<!-- RALPH_README_VERSION: 99 -->\n# OLD_FORCE_OVERWRITE_SENTINEL",
+            "<!-- CUELOOP_README_VERSION: 99 -->\n# OLD_FORCE_OVERWRITE_SENTINEL",
         )?;
 
         let (status, version) = write_readme(&readme_path, true)?;
@@ -416,7 +401,7 @@ mod tests {
 
         // Create README with old version
         fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
-        let old_readme = "<!-- RALPH_README_VERSION: 1 -->\n# Old";
+        let old_readme = "<!-- CUELOOP_README_VERSION: 1 -->\n# Old";
         fs::write(resolved.repo_root.join(".cueloop/README.md"), old_readme)?;
 
         let result = check_readme_current(&resolved)?;

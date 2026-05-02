@@ -35,7 +35,7 @@ use super::{
 #[command(version)]
 #[command(after_long_help = r#"Runner selection:
   - CLI flags override project config, which overrides global config, which overrides built-in defaults.
-  - Default runner/model come from config files: project config (.cueloop/config.jsonc, with .ralph fallback) > global config (~/.config/cueloop/config.jsonc, with ~/.config/ralph fallback) > built-in.
+  - Default runner/model come from config files: project config (.cueloop/config.jsonc, with .cueloop fallback) > global config (~/.config/cueloop/config.jsonc, with ~/.config/cueloop fallback) > built-in.
   - `task` and `scan` accept --runner/--model/--effort as one-off overrides.
   - `run one` and `run loop` accept --runner/--model/--effort as one-off overrides; otherwise they use task.agent overrides when present; otherwise config agent defaults.
 
@@ -54,8 +54,8 @@ Config example (.cueloop/config.jsonc):
 Notes:
   - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
   - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
-  - CueLoop is the product and primary executable name; `ralph` remains a compatibility alias in this phase.
-  - New repos default to `.cueloop/`; legacy `.ralph/` remains supported. Use `cueloop migrate runtime-dir --apply` when ready.
+  - CueLoop is the product and primary executable name; `cueloop` remains a compatibility alias in this phase.
+  - New repos default to `.cueloop/`; legacy `.cueloop/` remains supported. Use `cueloop migrate runtime-dir --apply` when ready.
   - On macOS: use `cueloop app open` to launch the GUI (app bundle rename is out of scope for this phase).
   - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only.
 
@@ -165,13 +165,13 @@ pub enum Command {
     /// Check and apply migrations for config and project files.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  cueloop migrate              # Check for pending config/file migrations\n  cueloop migrate --check      # Exit with error code if migrations pending (CI)\n  cueloop migrate --apply      # Apply all pending config/file migrations\n  cueloop migrate --list       # List all migrations and their status\n  cueloop migrate status       # Show detailed migration status\n  cueloop migrate runtime-dir --check  # Check whether .ralph should be moved to .cueloop\n  cueloop migrate runtime-dir --apply  # Explicitly move .ralph project state to .cueloop"
+        after_long_help = "Examples:\n  cueloop migrate              # Check for pending config/file migrations\n  cueloop migrate --check      # Exit with error code if migrations pending (CI)\n  cueloop migrate --apply      # Apply all pending config/file migrations\n  cueloop migrate --list       # List all migrations and their status\n  cueloop migrate status       # Show detailed migration status\n  cueloop migrate runtime-dir --check  # Check whether .cueloop should be moved to .cueloop\n  cueloop migrate runtime-dir --apply  # Explicitly move .cueloop project state to .cueloop"
     )]
     Migrate(migrate::MigrateArgs),
     /// Clean up temporary files created by CueLoop.
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  cueloop cleanup              # Clean temp files older than 7 days\n  cueloop cleanup --force      # Clean all CueLoop and legacy Ralph temp files\n  cueloop cleanup --dry-run    # Show what would be deleted without deleting"
+        after_long_help = "Examples:\n  cueloop cleanup              # Clean temp files older than 7 days\n  cueloop cleanup --force      # Clean all CueLoop and legacy CueLoop temp files\n  cueloop cleanup --dry-run    # Show what would be deleted without deleting"
     )]
     Cleanup(cleanup::CleanupArgs),
     /// Display version information.

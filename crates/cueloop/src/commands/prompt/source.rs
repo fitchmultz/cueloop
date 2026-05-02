@@ -24,9 +24,9 @@ use crate::constants::paths::{
     SCAN_OVERRIDE_PATH, TASK_BUILDER_OVERRIDE_PATH, WORKER_OVERRIDE_PATH,
 };
 
-const LEGACY_WORKER_OVERRIDE_PATH: &str = ".ralph/prompts/worker.md";
-const LEGACY_SCAN_OVERRIDE_PATH: &str = ".ralph/prompts/scan.md";
-const LEGACY_TASK_BUILDER_OVERRIDE_PATH: &str = ".ralph/prompts/task_builder.md";
+const LEGACY_WORKER_OVERRIDE_PATH: &str = ".cueloop/prompts/worker.md";
+const LEGACY_SCAN_OVERRIDE_PATH: &str = ".cueloop/prompts/scan.md";
+const LEGACY_TASK_BUILDER_OVERRIDE_PATH: &str = ".cueloop/prompts/task_builder.md";
 
 pub(super) fn worker_template_source(repo_root: &Path) -> &'static str {
     template_source(repo_root, WORKER_OVERRIDE_PATH, LEGACY_WORKER_OVERRIDE_PATH)

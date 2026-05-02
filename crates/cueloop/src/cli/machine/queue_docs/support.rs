@@ -34,7 +34,7 @@ pub(crate) fn queue_validation_failed_state(detail: String) -> BlockingState {
         "queue_validate",
         "validation_failed",
         None,
-        "Ralph is stalled on queue consistency.",
+        "CueLoop is stalled on queue consistency.",
         detail,
         Some(machine_queue_repair_command(true).to_string()),
     )
@@ -45,14 +45,14 @@ pub(super) fn repair_preview_continuation(changed: bool) -> MachineContinuationS
     if changed {
         return MachineContinuationSummary {
             headline: "Repair preview is ready.".to_string(),
-            detail: "Ralph found recoverable queue issues and can preserve the current queue by normalizing them.".to_string(),
+            detail: "CueLoop found recoverable queue issues and can preserve the current queue by normalizing them.".to_string(),
             blocking: Some(
                 BlockingState::operator_recovery(
                     BlockingStatus::Stalled,
                     "queue_repair",
                     "repair_available",
                     None,
-                    "Ralph found recoverable queue issues.",
+                    "CueLoop found recoverable queue issues.",
                     "Preview completed successfully; apply the repair to continue from a normalized queue state.",
                     Some(machine_queue_repair_command(false).to_string()),
                 )
@@ -75,7 +75,7 @@ pub(super) fn repair_preview_continuation(changed: bool) -> MachineContinuationS
 
     MachineContinuationSummary {
         headline: "No queue repair is needed.".to_string(),
-        detail: "The queue already matches Ralph’s continuation invariants.".to_string(),
+        detail: "The queue already matches CueLoop’s continuation invariants.".to_string(),
         blocking: None,
         next_steps: vec![step(
             "Continue work",
@@ -134,7 +134,7 @@ pub(super) fn continuation_for_valid_queue(
                 BlockingStatus::Stalled => "Queue continuation is stalled.".to_string(),
             },
             detail: if warnings.is_empty() {
-                "The queue structure is valid, but Ralph cannot continue immediately from the current runnability state.".to_string()
+                "The queue structure is valid, but CueLoop cannot continue immediately from the current runnability state.".to_string()
             } else {
                 "The queue structure is valid, but warnings and current runnability should be reviewed before continuing.".to_string()
             },
@@ -157,7 +157,7 @@ pub(super) fn continuation_for_valid_queue(
     if warnings.is_empty() {
         return MachineContinuationSummary {
             headline: "Queue continuation is ready.".to_string(),
-            detail: "Ralph can continue from the current queue state without queue-level repair."
+            detail: "CueLoop can continue from the current queue state without queue-level repair."
                 .to_string(),
             blocking: None,
             next_steps: vec![

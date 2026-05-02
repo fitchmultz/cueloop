@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use clap::Args;
@@ -50,8 +50,8 @@ pub fn handle_tutorial(args: TutorialArgs) -> Result<()> {
 
 #[derive(Args)]
 #[command(
-    about = "Run interactive tutorial for Ralph onboarding",
-    after_long_help = "Examples:\n  cueloop tutorial\n  cueloop tutorial --keep-sandbox\n  cueloop tutorial --non-interactive\n\nThe tutorial creates a temporary sandbox project and walks you through:\n  1. Initializing Ralph in a project\n  2. Creating your first task\n  3. Running a task (dry-run preview)\n  4. Reviewing the results\n\nUse --keep-sandbox to preserve the sandbox directory after the tutorial.\nUse --non-interactive for automated testing or CI environments."
+    about = "Run interactive tutorial for CueLoop onboarding",
+    after_long_help = "Examples:\n  cueloop tutorial\n  cueloop tutorial --keep-sandbox\n  cueloop tutorial --non-interactive\n\nThe tutorial creates a temporary sandbox project and walks you through:\n  1. Initializing CueLoop in a project\n  2. Creating your first task\n  3. Running a task (dry-run preview)\n  4. Reviewing the results\n\nUse --keep-sandbox to preserve the sandbox directory after the tutorial.\nUse --non-interactive for automated testing or CI environments."
 )]
 pub struct TutorialArgs {
     /// Keep the sandbox directory after tutorial completion.

@@ -175,7 +175,7 @@ fn build_run_stop_document(
     resolved: &crate::config::Resolved,
     dry_run: bool,
 ) -> Result<MachineRunStopDocument> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
     let before = crate::signal::stop_signal_snapshot(&cache_dir);
     let (action, marker) = if dry_run {
         let action = if before.exists {
@@ -265,22 +265,22 @@ fn build_run_stop_continuation(
 
     let detail = match (dry_run, action, context.parallel_active) {
         (true, MachineRunStopAction::WouldCreate, true) => {
-            "Ralph would create the stop marker and let parallel workers finish in-flight work before the loop exits."
+            "CueLoop would create the stop marker and let parallel workers finish in-flight work before the loop exits."
         }
         (true, MachineRunStopAction::WouldCreate, false) => {
-            "Ralph would create the stop marker and exit after the current task completes."
+            "CueLoop would create the stop marker and exit after the current task completes."
         }
         (_, MachineRunStopAction::AlreadyPresent, true) => {
-            "A stop marker already exists, so Ralph should stop scheduling new parallel work and wait for in-flight tasks to finish."
+            "A stop marker already exists, so CueLoop should stop scheduling new parallel work and wait for in-flight tasks to finish."
         }
         (_, MachineRunStopAction::AlreadyPresent, false) => {
-            "A stop marker already exists, so Ralph should exit after the current task completes."
+            "A stop marker already exists, so CueLoop should exit after the current task completes."
         }
         (_, _, true) => {
-            "The stop marker is recorded. Ralph should stop scheduling new parallel work and wait for in-flight tasks to finish."
+            "The stop marker is recorded. CueLoop should stop scheduling new parallel work and wait for in-flight tasks to finish."
         }
         (_, _, false) => {
-            "The stop marker is recorded. Ralph should exit after the current task completes."
+            "The stop marker is recorded. CueLoop should exit after the current task completes."
         }
     }
     .to_string();

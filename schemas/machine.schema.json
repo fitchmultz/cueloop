@@ -269,7 +269,7 @@
           },
           "cursor_sdk_node_bin": {
             "default": null,
-            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in Ralph Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
+            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in CueLoop Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
             "type": [
               "string",
               "null"
@@ -556,7 +556,7 @@
       },
       "Config": {
         "additionalProperties": false,
-        "description": "Root configuration struct for Ralph.",
+        "description": "Root configuration struct for CueLoop.",
         "properties": {
           "agent": {
             "$ref": "#/$defs/AgentConfig",
@@ -755,7 +755,7 @@
           },
           {
             "const": "commit_and_push",
-            "description": "Create a local commit and push it using Ralph's guarded push flow.",
+            "description": "Create a local commit and push it using CueLoop's guarded push flow.",
             "type": "string"
           }
         ]
@@ -1218,7 +1218,7 @@
         "properties": {
           "ignored_file_allowlist": {
             "default": null,
-            "description": "Additional small gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nProject config that sets this key requires repo trust. Entries must be repo-relative\nfile paths or file glob patterns such as `local/tool-config.json`,\n`fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe\npaths are rejected, including `node_modules/*`, `target/**`, `dir/`, absolute\npaths, `..`, and known heavy/runtime paths.",
+            "description": "Additional small gitignored non-.cueloop files/globs to sync into parallel worker workspaces.\nProject config that sets this key requires repo trust. Entries must be repo-relative\nfile paths or file glob patterns such as `local/tool-config.json`,\n`fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe\npaths are rejected, including `node_modules/*`, `target/**`, `dir/`, absolute\npaths, `..`, and known heavy/runtime paths.",
             "items": {
               "type": "string"
             },
@@ -1692,17 +1692,17 @@
         "oneOf": [
           {
             "const": "stream_json",
-            "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
             "type": "string"
           },
           {
             "const": "json",
-            "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
             "type": "string"
           },
           {
             "const": "text",
-            "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
             "type": "string"
           }
         ]
@@ -1913,7 +1913,7 @@
           },
           "secret": {
             "default": null,
-            "description": "Secret key for HMAC-SHA256 signature generation.\nWhen set, webhooks include an X-Ralph-Signature header.",
+            "description": "Secret key for HMAC-SHA256 signature generation.\nWhen set, webhooks include an X-CueLoop-Signature header.",
             "type": [
               "string",
               "null"
@@ -3454,17 +3454,17 @@
         "oneOf": [
           {
             "const": "stream_json",
-            "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
             "type": "string"
           },
           {
             "const": "json",
-            "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
             "type": "string"
           },
           {
             "const": "text",
-            "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
             "type": "string"
           }
         ]
@@ -3549,7 +3549,7 @@
               ]
             },
             "default": {},
-            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; Ralph coerces them to strings when loading.",
+            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; CueLoop coerces them to strings when loading.",
             "type": "object"
           },
           "depends_on": {
@@ -6299,17 +6299,17 @@
         "oneOf": [
           {
             "const": "stream_json",
-            "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
             "type": "string"
           },
           {
             "const": "json",
-            "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
             "type": "string"
           },
           {
             "const": "text",
-            "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
             "type": "string"
           }
         ]
@@ -6394,7 +6394,7 @@
               ]
             },
             "default": {},
-            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; Ralph coerces them to strings when loading.",
+            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; CueLoop coerces them to strings when loading.",
             "type": "object"
           },
           "depends_on": {
@@ -7002,17 +7002,17 @@
         "oneOf": [
           {
             "const": "stream_json",
-            "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
             "type": "string"
           },
           {
             "const": "json",
-            "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
             "type": "string"
           },
           {
             "const": "text",
-            "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
             "type": "string"
           }
         ]
@@ -7097,7 +7097,7 @@
               ]
             },
             "default": {},
-            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; Ralph coerces them to strings when loading.",
+            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; CueLoop coerces them to strings when loading.",
             "type": "object"
           },
           "depends_on": {
@@ -7828,7 +7828,7 @@
           },
           "cursor_sdk_node_bin": {
             "default": null,
-            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in Ralph Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
+            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in CueLoop Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
             "type": [
               "string",
               "null"
@@ -8115,7 +8115,7 @@
       },
       "Config": {
         "additionalProperties": false,
-        "description": "Root configuration struct for Ralph.",
+        "description": "Root configuration struct for CueLoop.",
         "properties": {
           "agent": {
             "$ref": "#/$defs/AgentConfig",
@@ -8314,7 +8314,7 @@
           },
           {
             "const": "commit_and_push",
-            "description": "Create a local commit and push it using Ralph's guarded push flow.",
+            "description": "Create a local commit and push it using CueLoop's guarded push flow.",
             "type": "string"
           }
         ]
@@ -8851,7 +8851,7 @@
         "properties": {
           "ignored_file_allowlist": {
             "default": null,
-            "description": "Additional small gitignored non-.ralph files/globs to sync into parallel worker workspaces.\nProject config that sets this key requires repo trust. Entries must be repo-relative\nfile paths or file glob patterns such as `local/tool-config.json`,\n`fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe\npaths are rejected, including `node_modules/*`, `target/**`, `dir/`, absolute\npaths, `..`, and known heavy/runtime paths.",
+            "description": "Additional small gitignored non-.cueloop files/globs to sync into parallel worker workspaces.\nProject config that sets this key requires repo trust. Entries must be repo-relative\nfile paths or file glob patterns such as `local/tool-config.json`,\n`fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe\npaths are rejected, including `node_modules/*`, `target/**`, `dir/`, absolute\npaths, `..`, and known heavy/runtime paths.",
             "items": {
               "type": "string"
             },
@@ -9346,17 +9346,17 @@
         "oneOf": [
           {
             "const": "stream_json",
-            "description": "Newline-delimited JSON objects (required for Ralph's streaming parser).",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
             "type": "string"
           },
           {
             "const": "json",
-            "description": "JSON output (may not be streaming; currently treated as unsupported by Ralph execution).",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
             "type": "string"
           },
           {
             "const": "text",
-            "description": "Plain text output (currently treated as unsupported by Ralph execution).",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
             "type": "string"
           }
         ]
@@ -9518,7 +9518,7 @@
               ]
             },
             "default": {},
-            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; Ralph coerces them to strings when loading.",
+            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; CueLoop coerces them to strings when loading.",
             "type": "object"
           },
           "depends_on": {
@@ -9883,7 +9883,7 @@
           },
           "secret": {
             "default": null,
-            "description": "Secret key for HMAC-SHA256 signature generation.\nWhen set, webhooks include an X-Ralph-Signature header.",
+            "description": "Secret key for HMAC-SHA256 signature generation.\nWhen set, webhooks include an X-CueLoop-Signature header.",
             "type": [
               "string",
               "null"

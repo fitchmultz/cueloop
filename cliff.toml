@@ -1,8 +1,8 @@
-# git-cliff configuration for Ralph
+# git-cliff configuration for CueLoop
 # Generates changelog entries from RQ-####: conventional commits
 #
 # RESPONSIBILITY:
-#   Configures git-cliff to parse Ralph's "RQ-####: <summary>" commit pattern
+#   Configures git-cliff to parse CueLoop's "RQ-####: <summary>" commit pattern
 #   and categorize entries into Keep a Changelog format (Added/Changed/Fixed/etc.)
 #
 # EXPLICITLY DOES NOT HANDLE:
@@ -113,7 +113,7 @@ sort_commits = "oldest"
 
 # Link parsers for issue/PR references
 link_parsers = [
-    { pattern = "RQ-([0-9]+)", href = "https://github.com/mitchfultz/ralph/search?q=RQ-$1&type=commits" },
+    { pattern = "RQ-([0-9]+)", href = "https://github.com/mitchfultz/cueloop/search?q=RQ-$1&type=commits" },
 ]
 
 [bump]

@@ -115,7 +115,7 @@ fn task_custom_fields_deserialize_coerces_scalars_to_strings() {
             "custom_fields": {
                 "guide_line_count": 1411,
                 "enabled": true,
-                "owner": "ralph"
+                "owner": "cueloop"
             }
         }"#;
 
@@ -132,7 +132,7 @@ fn task_custom_fields_deserialize_coerces_scalars_to_strings() {
     );
     assert_eq!(
         task.custom_fields.get("owner").map(String::as_str),
-        Some("ralph")
+        Some("cueloop")
     );
 }
 

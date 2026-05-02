@@ -27,7 +27,7 @@ use super::repoprompt::RepoPromptMode;
 /// CLI arguments for runner CLI overrides.
 #[derive(Args, Clone, Debug, Default)]
 pub struct RunnerCliArgs {
-    /// Desired runner output format (stream-json, json, text). Ralph execution requires stream-json.
+    /// Desired runner output format (stream-json, json, text). CueLoop execution requires stream-json.
     #[arg(long)]
     pub output_format: Option<String>,
 

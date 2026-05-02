@@ -19,13 +19,15 @@
 //! - Parallel fixture files remain synthetic and local to each disposable repo.
 //! - Assertions intentionally preserve the legacy flat suite’s exact contract expectations.
 
-use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo, trust_project_commands};
+use super::machine_contract_test_support::{
+    run_in_dir, setup_cueloop_repo, trust_project_commands,
+};
 use anyhow::Result;
 use serde_json::Value;
 
 #[test]
 fn machine_parallel_status_returns_versioned_continuation_document() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "run", "parallel-status"]);
     assert!(
@@ -52,9 +54,9 @@ fn machine_parallel_status_returns_versioned_continuation_document() -> Result<(
 
 #[test]
 fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
-    let lock_dir = dir.path().join(".ralph/lock");
+    let lock_dir = dir.path().join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     let stale_pid = 999_999;
     std::fs::write(
@@ -88,10 +90,10 @@ fn machine_parallel_status_surfaces_stale_queue_lock_operator_state() -> Result<
 
 #[test]
 fn machine_run_started_preserves_repo_trust_in_config_payload() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     trust_project_commands(dir.path())?;
 
-    let lock_dir = dir.path().join(".ralph/lock");
+    let lock_dir = dir.path().join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     std::fs::write(
         lock_dir.join("owner"),
@@ -128,15 +130,15 @@ fn machine_run_started_preserves_repo_trust_in_config_payload() -> Result<()> {
 
 #[test]
 fn machine_parallel_status_surfaces_blocked_worker_operator_state() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
-    let state_dir = dir.path().join(".ralph/cache/parallel");
+    let state_dir = dir.path().join(".cueloop/cache/parallel");
     std::fs::create_dir_all(&state_dir)?;
     let state_path = state_dir.join("state.json");
-    let workspace_path = dir.path().join(".ralph/workspaces/RQ-1001");
-    std::fs::create_dir_all(workspace_path.join(".ralph/cache/parallel"))?;
+    let workspace_path = dir.path().join(".cueloop/workspaces/RQ-1001");
+    std::fs::create_dir_all(workspace_path.join(".cueloop/cache/parallel"))?;
     std::fs::write(
-        workspace_path.join(".ralph/cache/parallel/blocked_push.json"),
+        workspace_path.join(".cueloop/cache/parallel/blocked_push.json"),
         serde_json::json!({
             "task_id": "RQ-1001",
             "reason": "push rejected after conflict review",

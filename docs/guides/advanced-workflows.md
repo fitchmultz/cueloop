@@ -193,7 +193,7 @@ Store workspaces outside the repo for cleaner git status:
 ```json
 {
   "parallel": {
-    "workspace_root": "/tmp/ralph-workspaces/myrepo"
+    "workspace_root": "/tmp/cueloop-workspaces/myrepo"
   }
 }
 ```
@@ -222,14 +222,14 @@ If parallel run crashes:
 
 ```bash
 # Check current state
-jq '.' .ralph/cache/parallel/state.json
+jq '.' .cueloop/cache/parallel/state.json
 
 # Inspect with CueLoop's status command
 cueloop run parallel status
 
 # Or start fresh (removes all state)
 # Only do this when no active workers are running.
-rm .ralph/cache/parallel/state.json
+rm .cueloop/cache/parallel/state.json
 ```
 
 ---

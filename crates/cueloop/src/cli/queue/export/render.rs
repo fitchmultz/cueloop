@@ -181,7 +181,7 @@ pub(crate) fn render_task_as_github_issue_body(task: &Task) -> String {
     }
 
     out.push('\n');
-    out.push_str(&format!("<!-- ralph_task_id: {} -->\n", task.id));
+    out.push_str(&format!("<!-- cueloop_task_id: {} -->\n", task.id));
     out
 }
 
@@ -244,7 +244,7 @@ fn push_markdown_list_section(out: &mut String, heading: &str, items: &[String])
 
 fn trim_marker<'a>(body: &'a str, task_id: &str) -> &'a str {
     body.trim_end()
-        .trim_end_matches(&format!("<!-- ralph_task_id: {task_id} -->"))
+        .trim_end_matches(&format!("<!-- cueloop_task_id: {task_id} -->"))
         .trim_end()
 }
 

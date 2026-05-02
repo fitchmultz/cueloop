@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -63,12 +63,12 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
     )?;
 
     std::fs::write(
-        temp.path().join(".ralph/config.jsonc"),
+        temp.path().join(".cueloop/config.jsonc"),
         "{ \"version\": 1 }",
     )?;
     git_status_ok(
         temp.path(),
-        &["add", "-f", ".ralph/config.jsonc"],
+        &["add", "-f", ".cueloop/config.jsonc"],
         "git add config.jsonc failed",
     )?;
     git_status_ok(
@@ -78,7 +78,7 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
     )?;
 
     std::fs::write(
-        temp.path().join(".ralph/config.jsonc"),
+        temp.path().join(".cueloop/config.jsonc"),
         "{ \"version\": 2 }",
     )?;
 
@@ -103,12 +103,12 @@ fn ensure_phase3_completion_allows_config_jsonc_changes_when_enabled() -> Result
     )?;
 
     std::fs::write(
-        temp.path().join(".ralph/config.jsonc"),
+        temp.path().join(".cueloop/config.jsonc"),
         "{ \"version\": 1 }",
     )?;
     git_status_ok(
         temp.path(),
-        &["add", "-f", ".ralph/config.jsonc"],
+        &["add", "-f", ".cueloop/config.jsonc"],
         "git add config.jsonc failed",
     )?;
     git_status_ok(
@@ -118,7 +118,7 @@ fn ensure_phase3_completion_allows_config_jsonc_changes_when_enabled() -> Result
     )?;
 
     std::fs::write(
-        temp.path().join(".ralph/config.jsonc"),
+        temp.path().join(".cueloop/config.jsonc"),
         "{ \"version\": 2 }",
     )?;
 

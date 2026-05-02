@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -144,7 +144,7 @@ fn pi_wrapper_builder(
         runner_execution_error_with_source(&Runner::Pi, bin, "create pi wrapper temp dir", err)
     })?;
     let mut wrapper = tempfile::Builder::new()
-        .prefix("ralph_pi_wrapper_")
+        .prefix("cueloop_pi_wrapper_")
         .suffix(".mjs")
         .tempfile_in(temp_dir.path())
         .map_err(|err| {
@@ -164,8 +164,8 @@ fn pi_wrapper_builder(
     let entrypoint_path = entrypoint.to_string_lossy().to_string();
     let builder = RunnerCommandBuilder::new("node", work_dir)
         .arg(&wrapper_path)
-        .env("RALPH_PI_BIN", bin)
-        .env("RALPH_PI_ENTRYPOINT", &entrypoint_path);
+        .env("CUELOOP_PI_BIN", bin)
+        .env("CUELOOP_PI_ENTRYPOINT", &entrypoint_path);
     Ok((builder, vec![Box::new(wrapper), Box::new(temp_dir)]))
 }
 
@@ -213,13 +213,13 @@ const PI_WRAPPER_SOURCE: &str = r#"
 import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const piBin = process.env.RALPH_PI_BIN;
+const piBin = process.env.CUELOOP_PI_BIN;
 if (!piBin) {
-  throw new Error("RALPH_PI_BIN is required");
+  throw new Error("CUELOOP_PI_BIN is required");
 }
-const piEntrypoint = process.env.RALPH_PI_ENTRYPOINT;
+const piEntrypoint = process.env.CUELOOP_PI_ENTRYPOINT;
 if (!piEntrypoint) {
-  throw new Error("RALPH_PI_ENTRYPOINT is required");
+  throw new Error("CUELOOP_PI_ENTRYPOINT is required");
 }
 
 Object.defineProperty(process, "title", {

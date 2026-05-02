@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Cursor SDK smoke test for Ralph integration assumptions (local run + resume).
+# Cursor SDK smoke test for CueLoop integration assumptions (local run + resume).
 #
 # Requirements:
 # - `node` on PATH, or set CURSOR_SDK_NODE_BIN
-# - `@cursor/sdk@1.0.11` resolvable from WORKDIR, or set RALPH_CURSOR_SDK_MODULE_PATH
+# - `@cursor/sdk@1.0.11` resolvable from WORKDIR, or set CUELOOP_CURSOR_SDK_MODULE_PATH
 # - CURSOR_API_KEY exported in the environment
 #
 # Model: composer-2 only (project policy for this smoke script).
@@ -18,11 +18,11 @@ usage() {
 Usage:
   scripts/cursor-agent-runner-smoke.sh [WORKDIR]
 
-Smoke-tests Ralph's Cursor SDK assumptions with a local run and resume.
+Smoke-tests CueLoop's Cursor SDK assumptions with a local run and resume.
 
 Requirements:
   - node on PATH, or CURSOR_SDK_NODE_BIN set to a Node 18+ executable
-  - @cursor/sdk@1.0.11 installed in WORKDIR, or RALPH_CURSOR_SDK_MODULE_PATH set
+  - @cursor/sdk@1.0.11 installed in WORKDIR, or CUELOOP_CURSOR_SDK_MODULE_PATH set
   - CURSOR_API_KEY exported
 
 Examples:
@@ -60,9 +60,9 @@ if [[ -z "${CURSOR_API_KEY:-}" ]]; then
   exit 2
 fi
 
-OUT="$(mktemp -t ralph-cursor-smoke-out.XXXXXX)"
-ERR="$(mktemp -t ralph-cursor-smoke-err.XXXXXX)"
-SCRIPT="$(mktemp -t ralph-cursor-sdk-smoke.XXXXXX.mjs)"
+OUT="$(mktemp -t cueloop-cursor-smoke-out.XXXXXX)"
+ERR="$(mktemp -t cueloop-cursor-smoke-err.XXXXXX)"
+SCRIPT="$(mktemp -t cueloop-cursor-sdk-smoke.XXXXXX.mjs)"
 cleanup() {
   rm -f "$OUT" "$ERR" "$SCRIPT"
 }
@@ -76,8 +76,8 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 
 async function loadSdk(cwd, expectedVersion) {
-  if (process.env.RALPH_CURSOR_SDK_MODULE_PATH) {
-    const configured = path.resolve(process.env.RALPH_CURSOR_SDK_MODULE_PATH);
+  if (process.env.CUELOOP_CURSOR_SDK_MODULE_PATH) {
+    const configured = path.resolve(process.env.CUELOOP_CURSOR_SDK_MODULE_PATH);
     assertSdkVersion(configured, expectedVersion);
     return normalizeSdkModule(await import(pathToFileURL(configured).href));
   }

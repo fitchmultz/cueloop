@@ -5,7 +5,7 @@ Source of truth: this document for documentation navigation
 Parent: [README](../README.md)
 
 
-CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. The primary executable is `cueloop`; the legacy `ralph` executable remains available as a compatibility alias during the migration window. The Cargo package is `cueloop-agent-loop`.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. The primary executable is `cueloop`; the legacy `cueloop` executable remains available as a compatibility alias during the migration window. The Cargo package is `cueloop-agent-loop`.
 
 ## Start Here
 
@@ -73,7 +73,7 @@ Use these when you want to validate a clone, understand the operational model, o
 - Done archive: `.cueloop/done.jsonc`
 - Project config: `.cueloop/config.jsonc`
 - Prompt overrides: `.cueloop/prompts/`
-- Legacy fallback: `.ralph/` remains supported; use `cueloop migrate runtime-dir --apply` when ready.
+- Legacy fallback: `.cueloop/` remains supported; use `cueloop migrate runtime-dir --apply` when ready.
 
 ## Validation and CI
 

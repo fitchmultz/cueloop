@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Purpose: Repeatably dogfood CueLoop against a disposable git project.
 # Responsibilities: Create an isolated fixture repo, exercise CueLoop setup/task/queue surfaces, and run one real three-phase agent task.
-# Scope: Local dogfood automation only; it does not mutate the Ralph source repo except for writing ignored artifacts under target/.
-# Usage: Run from the Ralph repo with `scripts/dogfood-cueloop.sh`; use `--help` for options and examples.
-# Invariants/Assumptions: Requires git, python3, and a CueLoop/Ralph binary; full Phase 3 requires the configured runner/model to be available.
+# Scope: Local dogfood automation only; it does not mutate the CueLoop source repo except for writing ignored artifacts under target/.
+# Usage: Run from the CueLoop repo with `scripts/dogfood-cueloop.sh`; use `--help` for options and examples.
+# Invariants/Assumptions: Requires git, python3, and a CueLoop/CueLoop binary; full Phase 3 requires the configured runner/model to be available.
 
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RALPH_BIN="${RALPH_BIN:-$ROOT_DIR/target/debug/cueloop}"
+CUELOOP_BIN="${CUELOOP_BIN:-$ROOT_DIR/target/debug/cueloop}"
 OUT_ROOT="$ROOT_DIR/target/dogfood-cueloop"
 RUNNER="pi"
 MODEL="zai-glm-5.1"
@@ -16,7 +16,7 @@ MODEL_NOTE=""
 PHASES="3"
 RUN_REAL_AGENT=1
 KEEP_PROJECT=1
-PROJECT_NAME="ralph-dogfood-fixture"
+PROJECT_NAME="cueloop-dogfood-fixture"
 GITHUB_PRIVATE=0
 
 usage() {
@@ -27,27 +27,27 @@ Usage:
   scripts/dogfood-cueloop.sh [options]
 
 Options:
-  --ralph-bin PATH       CueLoop/Ralph binary to test (default: target/debug/cueloop or $RALPH_BIN)
+  --cueloop-bin PATH       CueLoop/CueLoop binary to test (default: target/debug/cueloop or $CUELOOP_BIN)
   --out-root DIR         Artifact root (default: target/dogfood-cueloop)
   --runner NAME          Runner for Phase 3 real execution (default: pi)
   --model ID             Model for Phase 3 real execution (default: zai-glm-5.1;
                          normalized to zai/glm-5.1 for the pi CLI on this machine)
   --phases N             CueLoop run phases for Phase 3 (default: 3)
-  --skip-real-agent      Run setup/workflow checks but skip `ralph run one`
+  --skip-real-agent      Run setup/workflow checks but skip `cueloop run one`
   --github-private       Create a private GitHub repo for the fixture with gh, then push initial state
-  --project-name NAME    Fixture project/repo name (default: ralph-dogfood-fixture)
+  --project-name NAME    Fixture project/repo name (default: cueloop-dogfood-fixture)
   -h, --help             Show this help
 Examples:
   scripts/dogfood-cueloop.sh
   scripts/dogfood-cueloop.sh --skip-real-agent
-  RALPH_BIN=target/release/cueloop scripts/dogfood-cueloop.sh --github-private
+  CUELOOP_BIN=target/release/cueloop scripts/dogfood-cueloop.sh --github-private
 
 Exit codes: 0 success; 1 dogfood failure; 2 invalid usage.
 USAGE
 }
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --ralph-bin) RALPH_BIN="$2"; shift 2 ;;
+    --cueloop-bin) CUELOOP_BIN="$2"; shift 2 ;;
     --out-root) OUT_ROOT="$2"; shift 2 ;;
     --runner) RUNNER="$2"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
@@ -60,8 +60,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ ! -x "$RALPH_BIN" ]]; then
-  echo "CueLoop/Ralph binary not found or not executable: $RALPH_BIN" >&2
+if [[ ! -x "$CUELOOP_BIN" ]]; then
+  echo "CueLoop/CueLoop binary not found or not executable: $CUELOOP_BIN" >&2
   echo "Build one first, for example: cargo build -p cueloop-agent-loop --bin cueloop" >&2
   exit 1
 fi
@@ -96,10 +96,10 @@ CURRENT_STEP="initializing"
 trap 'status=$?; if [[ $status -ne 0 ]]; then echo "\nFAILED during: $CURRENT_STEP" | tee -a "$REPORT" >&2; echo "Artifacts: $RUN_DIR" | tee -a "$REPORT" >&2; fi; exit $status' EXIT
 
 cat >"$REPORT" <<EOF_REPORT
-# Ralph Dogfood Report
+# CueLoop Dogfood Report
 
 - Date (UTC): $STAMP
-- Ralph binary: $RALPH_BIN
+- CueLoop binary: $CUELOOP_BIN
 - Fixture project: $PROJECT_DIR
 - Runner/model: $RUNNER / $MODEL
 - Requested model: $REQUESTED_MODEL
@@ -162,9 +162,9 @@ log_cmd_allow_fail() {
 write_fixture() {
   mkdir -p "$PROJECT_DIR/scripts" "$PROJECT_DIR/tests" "$PROJECT_DIR/docs/prd" "$PROJECT_DIR/src"
   cat >"$PROJECT_DIR/README.md" <<'EOF_README'
-# Ralph Dogfood Fixture
+# CueLoop Dogfood Fixture
 
-A tiny Python CLI used to dogfood Ralph. The intended product behavior is:
+A tiny Python CLI used to dogfood CueLoop. The intended product behavior is:
 
 ```bash
 python3 greeter.py --name Ada
@@ -183,12 +183,12 @@ EOF_README
 
 - Keep changes minimal and user-visible.
 - Validate with `./scripts/ci.sh` before completion.
-- Do not modify `.ralph/done.jsonc` manually; use Ralph task completion flows.
+- Do not modify `.cueloop/done.jsonc` manually; use CueLoop task completion flows.
 EOF_AGENTS
 
   cat >"$PROJECT_DIR/greeter.py" <<'EOF_PY'
 #!/usr/bin/env python3
-"""Small intentionally incomplete greeting CLI for Ralph dogfood runs."""
+"""Small intentionally incomplete greeting CLI for CueLoop dogfood runs."""
 
 import argparse
 
@@ -250,7 +250,7 @@ EOF_TEST
 #!/usr/bin/env bash
 set -euo pipefail
 python3 -m unittest discover -s tests -v
-python3 greeter.py >/tmp/ralph-dogfood-greeter.out
+python3 greeter.py >/tmp/cueloop-dogfood-greeter.out
 EOF_CI
   chmod +x "$PROJECT_DIR/scripts/ci.sh"
 
@@ -282,7 +282,7 @@ EOF_TODO
 }
 
 seed_task() {
-  python3 - "$PROJECT_DIR/.ralph/queue.jsonc" <<'PY'
+  python3 - "$PROJECT_DIR/.cueloop/queue.jsonc" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -309,7 +309,7 @@ task = {
         "Run ./scripts/ci.sh before marking the task complete."
     ],
     "notes": [],
-    "request": "Dogfood Ralph by making this fixture CLI support named greetings.",
+    "request": "Dogfood CueLoop by making this fixture CLI support named greetings.",
     "created_at": now,
     "updated_at": now,
     "depends_on": [],
@@ -326,11 +326,11 @@ PY
 write_fixture
 cd "$PROJECT_DIR"
 log_cmd phase0-git-init git init -b main
-log_cmd phase0-git-config-name git config user.name "Ralph Dogfood"
-log_cmd phase0-git-config-email git config user.email "ralph-dogfood@example.invalid"
+log_cmd phase0-git-config-name git config user.name "CueLoop Dogfood"
+log_cmd phase0-git-config-email git config user.email "cueloop-dogfood@example.invalid"
 log_cmd phase0-initial-ci ./scripts/ci.sh
 log_cmd phase0-initial-commit git add README.md AGENTS.md greeter.py scripts/ci.sh tests/test_greeter.py docs/prd/named-greeting.md src/todo_sample.py
-log_cmd phase0-git-commit git commit -m "Create Ralph dogfood fixture"
+log_cmd phase0-git-commit git commit -m "Create CueLoop dogfood fixture"
 
 if [[ "$GITHUB_PRIVATE" -eq 1 ]]; then
   log_cmd phase0-gh-create gh repo create "$PROJECT_NAME" --private --source . --remote origin --push
@@ -340,9 +340,9 @@ cat >>"$REPORT" <<'EOF_PHASE1'
 
 ### Phase 1 — Bootstrap and diagnostics
 EOF_PHASE1
-log_cmd phase1-ralph-init "$RALPH_BIN" init --non-interactive --no-color
+log_cmd phase1-cueloop-init "$CUELOOP_BIN" init --non-interactive --no-color
 
-python3 - "$PROJECT_DIR/.ralph/config.jsonc" "$RUNNER" "$MODEL" "$PHASES" <<'PY'
+python3 - "$PROJECT_DIR/.cueloop/config.jsonc" "$RUNNER" "$MODEL" "$PHASES" <<'PY'
 import json
 import sys
 
@@ -368,111 +368,111 @@ with open(config_path, "w", encoding="utf-8") as fh:
     fh.write("\n")
 PY
 seed_task
-log_cmd phase1-config-show "$RALPH_BIN" config show --format json --no-color
-log_cmd phase1-doctor "$RALPH_BIN" doctor --no-color
-log_cmd phase1-runner-list "$RALPH_BIN" runner list --no-color
-log_cmd phase1-prompt-preview "$RALPH_BIN" prompt worker --phase 1 --no-color
-log_cmd phase1-version "$RALPH_BIN" version --no-color
-log_cmd phase1-cli-spec "$RALPH_BIN" cli-spec --no-color
-log_cmd phase1-help-all "$RALPH_BIN" help-all
-log_cmd phase1-completions-bash "$RALPH_BIN" completions bash
-log_cmd phase1-context-init "$RALPH_BIN" context init --force --project-type python --no-color
-log_cmd phase1-top-level-help-matrix bash -c 'set -euo pipefail; for c in init app queue task scan run config version prompt doctor context prd completions migrate cleanup watch webhook productivity plugin runner tutorial undo machine cli-spec daemon; do "$0" "$c" --help >/dev/null; done' "$RALPH_BIN"
+log_cmd phase1-config-show "$CUELOOP_BIN" config show --format json --no-color
+log_cmd phase1-doctor "$CUELOOP_BIN" doctor --no-color
+log_cmd phase1-runner-list "$CUELOOP_BIN" runner list --no-color
+log_cmd phase1-prompt-preview "$CUELOOP_BIN" prompt worker --phase 1 --no-color
+log_cmd phase1-version "$CUELOOP_BIN" version --no-color
+log_cmd phase1-cli-spec "$CUELOOP_BIN" cli-spec --no-color
+log_cmd phase1-help-all "$CUELOOP_BIN" help-all
+log_cmd phase1-completions-bash "$CUELOOP_BIN" completions bash
+log_cmd phase1-context-init "$CUELOOP_BIN" context init --force --project-type python --no-color
+log_cmd phase1-top-level-help-matrix bash -c 'set -euo pipefail; for c in init app queue task scan run config version prompt doctor context prd completions migrate cleanup watch webhook productivity plugin runner tutorial undo machine cli-spec daemon; do "$0" "$c" --help >/dev/null; done' "$CUELOOP_BIN"
 
 cat >>"$REPORT" <<'EOF_PHASE2'
 
 ### Phase 2 — Queue and task workflow surfaces
 EOF_PHASE2
-log_cmd phase2-queue-validate "$RALPH_BIN" queue validate --no-color
-log_cmd phase2-queue-list "$RALPH_BIN" queue list --no-color
-log_cmd phase2-queue-next "$RALPH_BIN" queue next --with-title --no-color
-log_cmd phase2-config-paths "$RALPH_BIN" config paths --no-color
-log_cmd phase2-config-schema "$RALPH_BIN" config schema --no-color
-log_cmd phase2-config-profiles "$RALPH_BIN" config profiles list --no-color
-log_cmd phase2-config-trust-init "$RALPH_BIN" config trust init --no-color
-log_cmd phase2-daemon-status "$RALPH_BIN" daemon status --no-color
-log_cmd phase2-daemon-logs-help "$RALPH_BIN" daemon logs --help
-log_cmd phase2-task-show "$RALPH_BIN" task show RQ-0001 --no-color
-log_cmd phase2-task-template-list "$RALPH_BIN" task template list --no-color
-log_cmd phase2-task-decompose-preview "$RALPH_BIN" task decompose --preview --format json --runner "$RUNNER" --model "$MODEL" "Plan docs-only greeting examples" --no-color
+log_cmd phase2-queue-validate "$CUELOOP_BIN" queue validate --no-color
+log_cmd phase2-queue-list "$CUELOOP_BIN" queue list --no-color
+log_cmd phase2-queue-next "$CUELOOP_BIN" queue next --with-title --no-color
+log_cmd phase2-config-paths "$CUELOOP_BIN" config paths --no-color
+log_cmd phase2-config-schema "$CUELOOP_BIN" config schema --no-color
+log_cmd phase2-config-profiles "$CUELOOP_BIN" config profiles list --no-color
+log_cmd phase2-config-trust-init "$CUELOOP_BIN" config trust init --no-color
+log_cmd phase2-daemon-status "$CUELOOP_BIN" daemon status --no-color
+log_cmd phase2-daemon-logs-help "$CUELOOP_BIN" daemon logs --help
+log_cmd phase2-task-show "$CUELOOP_BIN" task show RQ-0001 --no-color
+log_cmd phase2-task-template-list "$CUELOOP_BIN" task template list --no-color
+log_cmd phase2-task-decompose-preview "$CUELOOP_BIN" task decompose --preview --format json --runner "$RUNNER" --model "$MODEL" "Plan docs-only greeting examples" --no-color
 log_cmd phase2-task-mutate-dry-run bash -c 'cat > target-mutation.json <<JSON
 {"version":1,"atomic":true,"tasks":[{"task_id":"RQ-0001","edits":[{"field":"priority","value":"high"}]}]}
 JSON
-"$0" task mutate --dry-run --format json --input target-mutation.json --no-color' "$RALPH_BIN"
-log_cmd phase2-queue-search "$RALPH_BIN" queue search greeting --no-color
-log_cmd phase2-queue-tree "$RALPH_BIN" queue tree --no-color
-log_cmd phase2-queue-explain "$RALPH_BIN" queue explain --no-color
-log_cmd phase2-queue-stats "$RALPH_BIN" queue stats --no-color
-log_cmd phase2-queue-history "$RALPH_BIN" queue history --days 30 --no-color
-log_cmd phase2-queue-burndown "$RALPH_BIN" queue burndown --days 30 --no-color
-log_cmd phase2-queue-aging "$RALPH_BIN" queue aging --no-color
-log_cmd phase2-queue-dashboard "$RALPH_BIN" queue dashboard --no-color
-log_cmd phase2-queue-graph "$RALPH_BIN" queue graph --format dot --no-color
-log_cmd phase2-queue-schema "$RALPH_BIN" queue schema --no-color
-log_cmd phase2-queue-export-json "$RALPH_BIN" queue export --format json --output target-queue-export.json --no-color
-log_cmd phase2-queue-import-dry-run "$RALPH_BIN" queue import --format json --input target-queue-export.json --dry-run --on-duplicate rename --no-color
-log_cmd phase2-queue-repair-dry-run "$RALPH_BIN" queue repair --dry-run --no-color
-log_cmd phase2-queue-prune-dry-run "$RALPH_BIN" queue prune --dry-run --keep-last 10 --no-color
-log_cmd phase2-queue-unlock-inspect "$RALPH_BIN" queue unlock --dry-run --no-color
-log_cmd phase2-machine-system-info "$RALPH_BIN" machine system info --no-color
-log_cmd phase2-machine-config-resolve "$RALPH_BIN" machine config resolve --no-color
-log_cmd phase2-machine-workspace-overview "$RALPH_BIN" machine workspace overview --no-color
-log_cmd phase2-machine-queue-read "$RALPH_BIN" machine queue read --no-color
-log_cmd phase2-machine-queue-validate "$RALPH_BIN" machine queue validate --no-color
-log_cmd phase2-machine-queue-graph "$RALPH_BIN" machine queue graph --no-color
-log_cmd phase2-machine-queue-dashboard "$RALPH_BIN" machine queue dashboard --no-color
-log_cmd phase2-machine-queue-repair-dry-run "$RALPH_BIN" machine queue repair --dry-run --no-color
-log_cmd phase2-machine-queue-undo "$RALPH_BIN" machine queue undo --list --no-color
-log_cmd phase2-machine-queue-unlock-inspect "$RALPH_BIN" machine queue unlock-inspect --no-color
-log_cmd phase2-machine-doctor-report "$RALPH_BIN" machine doctor report --no-color
-log_cmd phase2-machine-schema "$RALPH_BIN" machine schema --no-color
-log_cmd phase2-machine-cli-spec "$RALPH_BIN" machine cli-spec --no-color
-log_cmd phase2-prompt-list "$RALPH_BIN" prompt list --no-color
-log_cmd phase2-prompt-show-worker "$RALPH_BIN" prompt show worker --raw --no-color
-log_cmd phase2-prompt-scan "$RALPH_BIN" prompt scan --focus "dogfood prompt scan" --repo-prompt off --no-color
-log_cmd phase2-prompt-task-builder "$RALPH_BIN" prompt task-builder --request "Add greeting docs" --tags docs --scope README.md --repo-prompt off --no-color
-log_cmd phase2-prompt-export-worker "$RALPH_BIN" prompt export worker --no-color
-log_cmd phase2-prompt-sync-dry-run "$RALPH_BIN" prompt sync --dry-run --no-color
-log_cmd phase2-prompt-diff "$RALPH_BIN" prompt diff worker --no-color
-log_cmd phase2-context-validate "$RALPH_BIN" context validate --no-color
-log_cmd phase2-context-update-dry-run bash -c 'echo "Dogfood learning: keep fixture CI in scripts/ci.sh." > target-learnings.md; "$0" context update --dry-run --section troubleshooting --file target-learnings.md --no-color' "$RALPH_BIN"
-log_cmd phase2-prd-create-dry-run "$RALPH_BIN" prd create docs/prd/named-greeting.md --dry-run --multi --no-color
-log_cmd phase2-migrate-status "$RALPH_BIN" migrate status --no-color
-log_cmd phase2-migrate-check "$RALPH_BIN" migrate --check --no-color
-log_cmd phase2-cleanup-dry-run "$RALPH_BIN" cleanup --dry-run --no-color
-log_cmd phase2-webhook-status "$RALPH_BIN" webhook status --format json --no-color
-log_cmd phase2-webhook-test-print-json "$RALPH_BIN" webhook test --event phase_started --url https://example.com/webhook --print-json --no-color
-log_cmd phase2-productivity-summary "$RALPH_BIN" productivity summary --no-color
-log_cmd phase2-productivity-velocity "$RALPH_BIN" productivity velocity --no-color
-log_cmd phase2-productivity-streak "$RALPH_BIN" productivity streak --no-color
-log_cmd phase2-productivity-estimation "$RALPH_BIN" productivity estimation --no-color
-log_cmd phase2-plugin-list "$RALPH_BIN" plugin list --no-color
-log_cmd phase2-plugin-validate "$RALPH_BIN" plugin validate --no-color
-log_cmd phase2-runner-capabilities-pi "$RALPH_BIN" runner capabilities pi --format json --no-color
-log_cmd phase2-runner-list-json "$RALPH_BIN" runner list --format json --no-color
-log_cmd phase2-task-field-write "$RALPH_BIN" task field dogfood_probe true RQ-0001 --no-color
-log_cmd phase2-undo-list "$RALPH_BIN" undo --list --no-color
-log_cmd phase2-undo-dry-run "$RALPH_BIN" undo --dry-run --no-color
-log_cmd phase2-run-loop-dry-run "$RALPH_BIN" run loop --dry-run --max-tasks 1 --phases "$PHASES" --runner "$RUNNER" --model "$MODEL" --git-publish-mode commit --non-interactive --no-color
-log_cmd phase2-dry-run "$RALPH_BIN" run one --dry-run --id RQ-0001 --phases "$PHASES" --runner "$RUNNER" --model "$MODEL" --git-publish-mode commit --non-interactive --no-color
-log_cmd phase2-app-open-help "$RALPH_BIN" app open --help
-log_cmd phase2-commit-runtime git add -f AGENTS.md .ralph/config.jsonc .ralph/queue.jsonc .ralph/done.jsonc .ralph/README.md .ralph/prompts/worker.md .gitignore target-queue-export.json target-mutation.json target-learnings.md
-log_cmd phase2-commit-runtime-state git commit -m "Initialize Ralph dogfood runtime"
+"$0" task mutate --dry-run --format json --input target-mutation.json --no-color' "$CUELOOP_BIN"
+log_cmd phase2-queue-search "$CUELOOP_BIN" queue search greeting --no-color
+log_cmd phase2-queue-tree "$CUELOOP_BIN" queue tree --no-color
+log_cmd phase2-queue-explain "$CUELOOP_BIN" queue explain --no-color
+log_cmd phase2-queue-stats "$CUELOOP_BIN" queue stats --no-color
+log_cmd phase2-queue-history "$CUELOOP_BIN" queue history --days 30 --no-color
+log_cmd phase2-queue-burndown "$CUELOOP_BIN" queue burndown --days 30 --no-color
+log_cmd phase2-queue-aging "$CUELOOP_BIN" queue aging --no-color
+log_cmd phase2-queue-dashboard "$CUELOOP_BIN" queue dashboard --no-color
+log_cmd phase2-queue-graph "$CUELOOP_BIN" queue graph --format dot --no-color
+log_cmd phase2-queue-schema "$CUELOOP_BIN" queue schema --no-color
+log_cmd phase2-queue-export-json "$CUELOOP_BIN" queue export --format json --output target-queue-export.json --no-color
+log_cmd phase2-queue-import-dry-run "$CUELOOP_BIN" queue import --format json --input target-queue-export.json --dry-run --on-duplicate rename --no-color
+log_cmd phase2-queue-repair-dry-run "$CUELOOP_BIN" queue repair --dry-run --no-color
+log_cmd phase2-queue-prune-dry-run "$CUELOOP_BIN" queue prune --dry-run --keep-last 10 --no-color
+log_cmd phase2-queue-unlock-inspect "$CUELOOP_BIN" queue unlock --dry-run --no-color
+log_cmd phase2-machine-system-info "$CUELOOP_BIN" machine system info --no-color
+log_cmd phase2-machine-config-resolve "$CUELOOP_BIN" machine config resolve --no-color
+log_cmd phase2-machine-workspace-overview "$CUELOOP_BIN" machine workspace overview --no-color
+log_cmd phase2-machine-queue-read "$CUELOOP_BIN" machine queue read --no-color
+log_cmd phase2-machine-queue-validate "$CUELOOP_BIN" machine queue validate --no-color
+log_cmd phase2-machine-queue-graph "$CUELOOP_BIN" machine queue graph --no-color
+log_cmd phase2-machine-queue-dashboard "$CUELOOP_BIN" machine queue dashboard --no-color
+log_cmd phase2-machine-queue-repair-dry-run "$CUELOOP_BIN" machine queue repair --dry-run --no-color
+log_cmd phase2-machine-queue-undo "$CUELOOP_BIN" machine queue undo --list --no-color
+log_cmd phase2-machine-queue-unlock-inspect "$CUELOOP_BIN" machine queue unlock-inspect --no-color
+log_cmd phase2-machine-doctor-report "$CUELOOP_BIN" machine doctor report --no-color
+log_cmd phase2-machine-schema "$CUELOOP_BIN" machine schema --no-color
+log_cmd phase2-machine-cli-spec "$CUELOOP_BIN" machine cli-spec --no-color
+log_cmd phase2-prompt-list "$CUELOOP_BIN" prompt list --no-color
+log_cmd phase2-prompt-show-worker "$CUELOOP_BIN" prompt show worker --raw --no-color
+log_cmd phase2-prompt-scan "$CUELOOP_BIN" prompt scan --focus "dogfood prompt scan" --repo-prompt off --no-color
+log_cmd phase2-prompt-task-builder "$CUELOOP_BIN" prompt task-builder --request "Add greeting docs" --tags docs --scope README.md --repo-prompt off --no-color
+log_cmd phase2-prompt-export-worker "$CUELOOP_BIN" prompt export worker --no-color
+log_cmd phase2-prompt-sync-dry-run "$CUELOOP_BIN" prompt sync --dry-run --no-color
+log_cmd phase2-prompt-diff "$CUELOOP_BIN" prompt diff worker --no-color
+log_cmd phase2-context-validate "$CUELOOP_BIN" context validate --no-color
+log_cmd phase2-context-update-dry-run bash -c 'echo "Dogfood learning: keep fixture CI in scripts/ci.sh." > target-learnings.md; "$0" context update --dry-run --section troubleshooting --file target-learnings.md --no-color' "$CUELOOP_BIN"
+log_cmd phase2-prd-create-dry-run "$CUELOOP_BIN" prd create docs/prd/named-greeting.md --dry-run --multi --no-color
+log_cmd phase2-migrate-status "$CUELOOP_BIN" migrate status --no-color
+log_cmd phase2-migrate-check "$CUELOOP_BIN" migrate --check --no-color
+log_cmd phase2-cleanup-dry-run "$CUELOOP_BIN" cleanup --dry-run --no-color
+log_cmd phase2-webhook-status "$CUELOOP_BIN" webhook status --format json --no-color
+log_cmd phase2-webhook-test-print-json "$CUELOOP_BIN" webhook test --event phase_started --url https://example.com/webhook --print-json --no-color
+log_cmd phase2-productivity-summary "$CUELOOP_BIN" productivity summary --no-color
+log_cmd phase2-productivity-velocity "$CUELOOP_BIN" productivity velocity --no-color
+log_cmd phase2-productivity-streak "$CUELOOP_BIN" productivity streak --no-color
+log_cmd phase2-productivity-estimation "$CUELOOP_BIN" productivity estimation --no-color
+log_cmd phase2-plugin-list "$CUELOOP_BIN" plugin list --no-color
+log_cmd phase2-plugin-validate "$CUELOOP_BIN" plugin validate --no-color
+log_cmd phase2-runner-capabilities-pi "$CUELOOP_BIN" runner capabilities pi --format json --no-color
+log_cmd phase2-runner-list-json "$CUELOOP_BIN" runner list --format json --no-color
+log_cmd phase2-task-field-write "$CUELOOP_BIN" task field dogfood_probe true RQ-0001 --no-color
+log_cmd phase2-undo-list "$CUELOOP_BIN" undo --list --no-color
+log_cmd phase2-undo-dry-run "$CUELOOP_BIN" undo --dry-run --no-color
+log_cmd phase2-run-loop-dry-run "$CUELOOP_BIN" run loop --dry-run --max-tasks 1 --phases "$PHASES" --runner "$RUNNER" --model "$MODEL" --git-publish-mode commit --non-interactive --no-color
+log_cmd phase2-dry-run "$CUELOOP_BIN" run one --dry-run --id RQ-0001 --phases "$PHASES" --runner "$RUNNER" --model "$MODEL" --git-publish-mode commit --non-interactive --no-color
+log_cmd phase2-app-open-help "$CUELOOP_BIN" app open --help
+log_cmd phase2-commit-runtime git add -f AGENTS.md .cueloop/config.jsonc .cueloop/queue.jsonc .cueloop/done.jsonc .cueloop/README.md .cueloop/prompts/worker.md .gitignore target-queue-export.json target-mutation.json target-learnings.md
+log_cmd phase2-commit-runtime-state git commit -m "Initialize CueLoop dogfood runtime"
 
 cat >>"$REPORT" <<'EOF_PHASE3'
 
 ### Phase 3 — Real three-phase agent execution
 EOF_PHASE3
 if [[ "$RUN_REAL_AGENT" -eq 1 ]]; then
-  log_cmd_allow_fail phase3-run-one "$RALPH_BIN" run one --id RQ-0001 --phases "$PHASES" --runner "$RUNNER" --model "$MODEL" --git-publish-mode commit --non-interactive --debug --no-progress --no-color
+  log_cmd_allow_fail phase3-run-one "$CUELOOP_BIN" run one --id RQ-0001 --phases "$PHASES" --runner "$RUNNER" --model "$MODEL" --git-publish-mode commit --non-interactive --debug --no-progress --no-color
   PHASE3_STATUS=$?
   log_cmd_allow_fail phase3-post-ci ./scripts/ci.sh || true
-  log_cmd_allow_fail phase3-post-queue-validate "$RALPH_BIN" queue validate --no-color || true
+  log_cmd_allow_fail phase3-post-queue-validate "$CUELOOP_BIN" queue validate --no-color || true
   log_cmd_allow_fail phase3-git-status git status --short --branch || true
   log_cmd_allow_fail phase3-git-log git log --oneline --decorate -5 || true
   if [[ "$PHASE3_STATUS" -ne 0 ]]; then
     echo "" >>"$REPORT"
-    echo "Phase 3 real agent run failed; inspect logs/phase3-run-one.log and the fixture repo for a reproducible Ralph issue." >>"$REPORT"
+    echo "Phase 3 real agent run failed; inspect logs/phase3-run-one.log and the fixture repo for a reproducible CueLoop issue." >>"$REPORT"
     exit "$PHASE3_STATUS"
   fi
 else

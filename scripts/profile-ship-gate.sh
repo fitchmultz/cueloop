@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Ship-gate profiling orchestration for Ralph CI.
+# Purpose: Ship-gate profiling orchestration for CueLoop CI.
 # Responsibilities:
 #   - Run timed CI/build/test stages and capture per-stage durations.
 #   - Write a profiling bundle (timings.tsv, summary.md, JSONL artifacts).
@@ -13,7 +13,7 @@
 #   scripts/profile-ship-gate.sh -h
 # Invariants/Assumptions:
 #   - Repo root and pinned Rust toolchain are resolved via shared shell helpers.
-#   - RALPH_CI_JOBS and RALPH_XCODE_JOBS are propagated through make.
+#   - CUELOOP_CI_JOBS and CUELOOP_XCODE_JOBS are propagated through make.
 
 set -euo pipefail
 
@@ -43,13 +43,13 @@ Options:
   -h, --help  Show this help message and exit.
 
 Environment:
-  RALPH_CI_JOBS      Cap parallel jobs for Cargo/nextest (0 = tool default).
-  RALPH_XCODE_JOBS   Cap parallel jobs for xcodebuild (0 = tool default).
+  CUELOOP_CI_JOBS      Cap parallel jobs for Cargo/nextest (0 = tool default).
+  CUELOOP_XCODE_JOBS   Cap parallel jobs for xcodebuild (0 = tool default).
 
 Examples:
   scripts/profile-ship-gate.sh run
   scripts/profile-ship-gate.sh clean
-  RALPH_CI_JOBS=4 scripts/profile-ship-gate.sh run
+  CUELOOP_CI_JOBS=4 scripts/profile-ship-gate.sh run
 
 Exit codes:
   0  Success (all stages passed, or clean completed).
@@ -91,8 +91,8 @@ write_summary() {
         echo
         echo "- uname: $(uname -a)"
         echo "- xcodebuild: $(xcodebuild -version 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g' || echo unavailable)"
-        echo "- RALPH_CI_JOBS: ${RALPH_CI_JOBS:-0}"
-        echo "- RALPH_XCODE_JOBS: ${RALPH_XCODE_JOBS:-0}"
+        echo "- CUELOOP_CI_JOBS: ${CUELOOP_CI_JOBS:-0}"
+        echo "- CUELOOP_XCODE_JOBS: ${CUELOOP_XCODE_JOBS:-0}"
         echo
         echo '## Timings'
         echo

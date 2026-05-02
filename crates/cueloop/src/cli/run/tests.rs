@@ -64,7 +64,7 @@ fn run_loop_help_clarifies_unlimited_max_tasks() {
 
 #[test]
 fn run_one_non_interactive_parses() {
-    let cli = Cli::parse_from(["ralph", "run", "one", "--non-interactive"]);
+    let cli = Cli::parse_from(["cueloop", "run", "one", "--non-interactive"]);
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::One(one_args) => assert!(one_args.non_interactive),
@@ -77,7 +77,7 @@ fn run_one_non_interactive_parses() {
 #[test]
 fn run_one_non_interactive_with_id_parses() {
     let cli = Cli::parse_from([
-        "ralph",
+        "cueloop",
         "run",
         "one",
         "--non-interactive",
@@ -98,7 +98,7 @@ fn run_one_non_interactive_with_id_parses() {
 
 #[test]
 fn run_one_dry_run_parses() {
-    let cli = Cli::parse_from(["ralph", "run", "one", "--dry-run"]);
+    let cli = Cli::parse_from(["cueloop", "run", "one", "--dry-run"]);
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::One(one_args) => assert!(one_args.dry_run),
@@ -110,7 +110,7 @@ fn run_one_dry_run_parses() {
 
 #[test]
 fn run_one_dry_run_with_id_parses() {
-    let cli = Cli::parse_from(["ralph", "run", "one", "--dry-run", "--id", "RQ-0001"]);
+    let cli = Cli::parse_from(["cueloop", "run", "one", "--dry-run", "--id", "RQ-0001"]);
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::One(one_args) => {
@@ -125,7 +125,7 @@ fn run_one_dry_run_with_id_parses() {
 
 #[test]
 fn run_loop_dry_run_parses() {
-    let cli = Cli::parse_from(["ralph", "run", "loop", "--dry-run"]);
+    let cli = Cli::parse_from(["cueloop", "run", "loop", "--dry-run"]);
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::Loop(loop_args) => assert!(loop_args.dry_run),
@@ -137,7 +137,7 @@ fn run_loop_dry_run_parses() {
 
 #[test]
 fn run_loop_dry_run_conflicts_with_parallel() {
-    assert!(Cli::try_parse_from(["ralph", "run", "loop", "--dry-run", "--parallel"]).is_err());
+    assert!(Cli::try_parse_from(["cueloop", "run", "loop", "--dry-run", "--parallel"]).is_err());
 }
 
 #[test]
@@ -166,17 +166,17 @@ fn run_loop_help_includes_dry_run_examples() {
 
 #[test]
 fn run_loop_wait_poll_ms_rejects_below_minimum() {
-    assert!(Cli::try_parse_from(["ralph", "run", "loop", "--wait-poll-ms", "10"]).is_err());
+    assert!(Cli::try_parse_from(["cueloop", "run", "loop", "--wait-poll-ms", "10"]).is_err());
 }
 
 #[test]
 fn run_loop_empty_poll_ms_rejects_below_minimum() {
-    assert!(Cli::try_parse_from(["ralph", "run", "loop", "--empty-poll-ms", "10"]).is_err());
+    assert!(Cli::try_parse_from(["cueloop", "run", "loop", "--empty-poll-ms", "10"]).is_err());
 }
 
 #[test]
 fn run_loop_wait_poll_ms_accepts_minimum() {
-    let cli = Cli::try_parse_from(["ralph", "run", "loop", "--wait-poll-ms", "50"]).unwrap();
+    let cli = Cli::try_parse_from(["cueloop", "run", "loop", "--wait-poll-ms", "50"]).unwrap();
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::Loop(loop_args) => assert_eq!(loop_args.wait_poll_ms, 50),
@@ -189,7 +189,7 @@ fn run_loop_wait_poll_ms_accepts_minimum() {
 #[test]
 fn run_one_parallel_worker_with_coordinator_paths_parses() {
     let cli = Cli::parse_from([
-        "ralph",
+        "cueloop",
         "run",
         "one",
         "--parallel-worker",
@@ -228,7 +228,7 @@ fn run_one_parallel_worker_with_coordinator_paths_parses() {
 fn run_one_parallel_worker_requires_coordinator_paths() {
     assert!(
         Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "run",
             "one",
             "--parallel-worker",
@@ -243,7 +243,7 @@ fn run_one_parallel_worker_requires_coordinator_paths() {
 fn run_one_parallel_worker_requires_both_coordinator_paths() {
     assert!(
         Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "run",
             "one",
             "--parallel-worker",
@@ -260,7 +260,7 @@ fn run_one_parallel_worker_requires_both_coordinator_paths() {
 fn run_one_parallel_worker_requires_target_branch() {
     assert!(
         Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "run",
             "one",
             "--parallel-worker",

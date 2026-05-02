@@ -276,7 +276,7 @@ fn trigger_celebration(
     task_title: &str,
     no_progress: bool,
 ) {
-    let cache_dir = resolved.repo_root.join(".ralph").join("cache");
+    let cache_dir = resolved.repo_root.join(".cueloop").join("cache");
     match productivity::record_task_completion_by_id(task_id, task_title, &cache_dir) {
         Ok(result) => {
             if celebrations::should_celebrate(no_progress) {

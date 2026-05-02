@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - State file lives at `.ralph/cache/parallel/state.json`.
+//! - State file lives at `.cueloop/cache/parallel/state.json`.
 //! - Callers update and persist state after each significant transition.
 //! - Deserialization is tolerant of missing/unknown fields; callers normalize and persist the canonical shape.
 //! - Schema version migrations are applied on load to ensure compatibility.
@@ -225,7 +225,7 @@ impl ParallelStateFile {
 }
 
 pub fn state_file_path(repo_root: &Path) -> PathBuf {
-    repo_root.join(".ralph/cache/parallel/state.json")
+    repo_root.join(".cueloop/cache/parallel/state.json")
 }
 
 /// Migrate legacy state to current schema version.

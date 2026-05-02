@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Provide human- and machine-readable views of productivity stats.
-//! - Read from `.ralph/cache/productivity.jsonc` via `crate::productivity`.
+//! - Read from `.cueloop/cache/productivity.jsonc` via `crate::productivity`.
 //!
 //! Not handled here:
 //! - Recording completions (handled where tasks are completed).
@@ -111,7 +111,7 @@ pub struct ProductivityEstimationArgs {
 
 pub fn handle(args: ProductivityArgs) -> Result<()> {
     let resolved = config::resolve_from_cwd()?;
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
     let stats = productivity::load_productivity_stats(&cache_dir)?;
 
     match args.command {
@@ -177,7 +177,7 @@ mod tests {
         let temp = tempfile::tempdir()?;
         let repo_root = temp.path().to_path_buf();
 
-        let default_done_path = repo_root.join(".ralph/done.jsonc");
+        let default_done_path = repo_root.join(".cueloop/done.jsonc");
         let custom_done_path = repo_root.join("archive/done.jsonc");
         std::fs::create_dir_all(default_done_path.parent().expect("default parent"))?;
         std::fs::create_dir_all(custom_done_path.parent().expect("custom parent"))?;

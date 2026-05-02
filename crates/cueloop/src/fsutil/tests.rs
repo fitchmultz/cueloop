@@ -71,7 +71,7 @@ fn safeguard_text_dump_requires_opt_in_without_debug() {
     assert!(result.is_err(), "Raw dump should fail without opt-in");
     let err_msg = result.unwrap_err().to_string();
     assert!(
-        err_msg.contains("CUELOOP_RAW_DUMP") && err_msg.contains("RALPH_RAW_DUMP"),
+        err_msg.contains("CUELOOP_RAW_DUMP") && err_msg.contains("CUELOOP_RAW_DUMP"),
         "Error should mention primary and legacy env vars"
     );
 }
@@ -238,7 +238,7 @@ fn write_atomic_cleans_up_temp_file_on_persist_failure() {
         .filter_map(|e| e.ok())
         .filter(|e| {
             let name = e.file_name().to_string_lossy().to_string();
-            name.starts_with(".") || name.starts_with("tmp") || name.starts_with("ralph")
+            name.starts_with(".") || name.starts_with("tmp") || name.starts_with("cueloop")
         })
         .collect();
     assert!(
@@ -258,13 +258,13 @@ fn create_cueloop_temp_file_uses_legacy_compatible_prefix() {
     let temp = create_cueloop_temp_file("test").unwrap();
     let name = temp.path().file_name().unwrap().to_string_lossy();
     assert!(
-        name.starts_with("ralph_test_"),
+        name.starts_with("cueloop_test_"),
         "temp file should have legacy-compatible prefix, got: {}",
         name
     );
     let parent = temp.path().parent().unwrap();
     assert!(
-        parent.ends_with("ralph"),
+        parent.ends_with("cueloop"),
         "temp file should be in legacy-compatible temp directory, got: {}",
         parent.display()
     );

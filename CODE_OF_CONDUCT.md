@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Purpose: Establish community standards and enforcement guidelines for Ralph contributors and users.
+Purpose: Establish community standards and enforcement guidelines for CueLoop contributors and users.
 
 ## Our Pledge
 

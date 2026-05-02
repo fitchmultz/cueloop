@@ -53,10 +53,10 @@ cueloop daemon start --notify-when-unblocked
 **Behavior on Start:**
 
 1. Checks if daemon is already running (prevents duplicate instances)
-2. Acquires daemon lock at `.ralph/cache/daemon.lock`
-3. Creates log directory `.ralph/logs/`
+2. Acquires daemon lock at `.cueloop/cache/daemon.lock`
+3. Creates log directory `.cueloop/logs/`
 4. Spawns detached process running `cueloop daemon serve`
-5. Writes daemon state to `.ralph/cache/daemon.json`
+5. Writes daemon state to `.cueloop/cache/daemon.json`
 6. Validates successful startup (waits 500ms, checks state file)
 
 #### `cueloop daemon stop`
@@ -69,9 +69,9 @@ cueloop daemon stop
 
 **Behavior:**
 
-1. Reads daemon state from `.ralph/cache/daemon.json`
+1. Reads daemon state from `.cueloop/cache/daemon.json`
 2. Verifies process is running (handles stale state files)
-3. Creates stop signal at `.ralph/cache/stop_requested`
+3. Creates stop signal at `.cueloop/cache/stop_requested`
 4. Waits up to 10 seconds for graceful shutdown
 5. Cleans up state files on successful stop
 
@@ -126,14 +126,14 @@ This ensures:
 
 #### Logging
 
-Daemon output is redirected to `.ralph/logs/daemon.log`:
+Daemon output is redirected to `.cueloop/logs/daemon.log`:
 
 ```bash
 # View daemon logs
-tail -f .ralph/logs/daemon.log
+tail -f .cueloop/logs/daemon.log
 
 # Search for errors
-grep ERROR .ralph/logs/daemon.log
+grep ERROR .cueloop/logs/daemon.log
 ```
 
 Log contents include:
@@ -145,7 +145,7 @@ Log contents include:
 
 #### PID Management
 
-The daemon maintains state in `.ralph/cache/daemon.json`:
+The daemon maintains state in `.cueloop/cache/daemon.json`:
 
 ```json
 {
@@ -157,7 +157,7 @@ The daemon maintains state in `.ralph/cache/daemon.json`:
 }
 ```
 
-**Lock File**: `.ralph/cache/daemon.lock` prevents multiple daemons from starting simultaneously.
+**Lock File**: `.cueloop/cache/daemon.lock` prevents multiple daemons from starting simultaneously.
 
 ---
 
@@ -207,7 +207,7 @@ This triggers:
 
 #### systemd (Linux)
 
-Create `~/.config/systemd/user/ralph.service`:
+Create `~/.config/systemd/user/cueloop.service`:
 
 ```ini
 [Unit]
@@ -246,7 +246,7 @@ journalctl --user -u cueloop -f
 
 #### launchd (macOS)
 
-Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
+Create `~/Library/LaunchAgents/com.cueloop.daemon.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -254,7 +254,7 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.ralph.daemon</string>
+    <string>com.cueloop.daemon</string>
     <key>ProgramArguments</key>
     <array>
         <string>/Users/username/.local/bin/cueloop</string>
@@ -268,9 +268,9 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/path/to/your/repo/.ralph/logs/daemon.log</string>
+    <string>/path/to/your/repo/.cueloop/logs/daemon.log</string>
     <key>StandardErrorPath</key>
-    <string>/path/to/your/repo/.ralph/logs/daemon.log</string>
+    <string>/path/to/your/repo/.cueloop/logs/daemon.log</string>
 </dict>
 </plist>
 ```
@@ -279,16 +279,16 @@ Create `~/Library/LaunchAgents/com.ralph.daemon.plist`:
 
 ```bash
 # Load the plist
-launchctl load ~/Library/LaunchAgents/com.ralph.daemon.plist
+launchctl load ~/Library/LaunchAgents/com.cueloop.daemon.plist
 
 # Start the service
-launchctl start com.ralph.daemon
+launchctl start com.cueloop.daemon
 
 # Check status
-launchctl list | grep com.ralph.daemon
+launchctl list | grep com.cueloop.daemon
 
 # Unload when needed
-launchctl unload ~/Library/LaunchAgents/com.ralph.daemon.plist
+launchctl unload ~/Library/LaunchAgents/com.cueloop.daemon.plist
 ```
 
 ---
@@ -297,7 +297,7 @@ launchctl unload ~/Library/LaunchAgents/com.ralph.daemon.plist
 
 Continuous mode keeps the daemon running indefinitely, waiting for new tasks when the queue is empty.
 
-**INTENDED BEHAVIOR**: Use filesystem notifications (`notify` crate) to watch `.ralph/queue.jsonc` and `.ralph/done.jsonc`, falling back to polling if notifications fail.
+**INTENDED BEHAVIOR**: Use filesystem notifications (`notify` crate) to watch `.cueloop/queue.jsonc` and `.cueloop/done.jsonc`, falling back to polling if notifications fail.
 
 **CURRENTLY IMPLEMENTED BEHAVIOR**: The run loop uses a poll-based approach when `--wait-when-empty` is enabled. The filesystem notification optimization may not be fully implemented in all code paths.
 
@@ -340,7 +340,7 @@ cueloop run loop --wait-when-blocked
 
 1. Polls queue files at `--wait-poll-ms` interval
 2. Detects when blocked tasks become runnable:
-   - Dependencies completed (checked in `.ralph/done.jsonc`)
+   - Dependencies completed (checked in `.cueloop/done.jsonc`)
    - Schedule time reached
 3. Resumes execution automatically
 4. Optional timeout via `--wait-timeout-seconds`
@@ -360,7 +360,7 @@ The daemon implements graceful shutdown through file-based signaling.
 
 **Mechanism:**
 
-1. **Stop Signal**: File at `.ralph/cache/stop_requested`
+1. **Stop Signal**: File at `.cueloop/cache/stop_requested`
 2. **Signal Creation**: `cueloop daemon stop` or `cueloop queue stop` creates this file
 3. **Signal Polling**: Run loop checks for signal presence between tasks
 4. **Cleanup**: Signal file is cleared at loop start (handles stale signals from crashes)

@@ -15,7 +15,7 @@
 //!
 //! Invariants/assumptions:
 //! - The planner has already emitted a complete ordered tree.
-//! - Ralph materialization must preserve node order and sibling dependency mappings.
+//! - CueLoop materialization must preserve node order and sibling dependency mappings.
 
 use anyhow::Result;
 

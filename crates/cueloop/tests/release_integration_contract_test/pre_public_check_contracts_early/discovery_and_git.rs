@@ -130,11 +130,11 @@ fn pre_public_check_rejects_symlinked_required_files_in_git_snapshots() {
     let repo_root = temp_dir.path();
 
     copy_pre_public_check_fixture(repo_root);
-    std::fs::create_dir_all(repo_root.join(".ralph")).expect("create .ralph dir");
-    std::fs::write(repo_root.join(".ralph/trust.json"), "{}\n").expect("write trust file");
+    std::fs::create_dir_all(repo_root.join(".cueloop")).expect("create .cueloop dir");
+    std::fs::write(repo_root.join(".cueloop/trust.json"), "{}\n").expect("write trust file");
     std::fs::remove_file(repo_root.join("LICENSE")).expect("remove copied license");
     symlink(
-        repo_root.join(".ralph/trust.json"),
+        repo_root.join(".cueloop/trust.json"),
         repo_root.join("LICENSE"),
     )
     .expect("create symlinked license");

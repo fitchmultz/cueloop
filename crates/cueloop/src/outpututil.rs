@@ -1,7 +1,7 @@
-//! Output formatting helpers for Ralph CLI and GUI surfaces.
+//! Output formatting helpers for CueLoop CLI and GUI surfaces.
 //!
 //! Purpose:
-//! - Output formatting helpers for Ralph CLI and GUI surfaces.
+//! - Output formatting helpers for CueLoop CLI and GUI surfaces.
 //!
 //! Responsibilities:
 //! - Format task IDs, titles, and fields for display.

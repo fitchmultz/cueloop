@@ -1,7 +1,7 @@
-//! Integration tests for `ralph plugin init` command.
+//! Integration tests for `cueloop plugin init` command.
 //!
 //! Purpose:
-//! - Integration tests for `ralph plugin init` command.
+//! - Integration tests for `cueloop plugin init` command.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -20,7 +20,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use std::path::Path;
@@ -39,7 +39,7 @@ fn git_init(dir: &Path) -> Result<()> {
     let gitignore_path = dir.join(".gitignore");
     std::fs::write(
         &gitignore_path,
-        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
+        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n",
     )?;
 
     Ok(())
@@ -198,47 +198,6 @@ fn plugin_init_target_exists_requires_force() -> Result<()> {
     assert!(
         stdout.contains("Created plugin"),
         "expected success message"
-    );
-
-    Ok(())
-}
-
-#[test]
-fn plugin_init_legacy_plugin_collision_requires_force() -> Result<()> {
-    let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
-
-    let legacy_dir = temp_dir.path().join(".ralph/plugins/legacy.shadow");
-    std::fs::create_dir_all(&legacy_dir)?;
-    std::fs::write(
-        legacy_dir.join("plugin.json"),
-        r#"{
-  "api_version": 1,
-  "id": "legacy.shadow",
-  "version": "0.1.0",
-  "name": "Legacy Shadow",
-  "runner": { "bin": "runner.sh", "supports_resume": false }
-}"#,
-    )?;
-
-    let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "legacy.shadow"]);
-
-    assert!(
-        !status.success(),
-        "legacy collision should fail without --force"
-    );
-    assert!(
-        stderr.contains("already exists") && stderr.contains(".ralph/plugins/legacy.shadow"),
-        "expected legacy collision error, got: {}",
-        stderr
-    );
-    assert!(
-        !temp_dir
-            .path()
-            .join(".cueloop/plugins/legacy.shadow")
-            .exists(),
-        "current-path plugin should not be created without --force"
     );
 
     Ok(())

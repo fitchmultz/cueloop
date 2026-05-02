@@ -71,16 +71,16 @@ pub static MIGRATIONS: &[Migration] = &[
         id: "file_rename_queue_json_to_jsonc_2026_02",
         description: "Migrate queue.json to queue.jsonc for JSONC comment support and remove legacy queue.json",
         migration_type: MigrationType::FileRename {
-            old_path: ".ralph/queue.json",
-            new_path: ".ralph/queue.jsonc",
+            old_path: ".cueloop/queue.json",
+            new_path: ".cueloop/queue.jsonc",
         },
     },
     Migration {
         id: "file_rename_done_json_to_jsonc_2026_02",
         description: "Migrate done.json to done.jsonc for JSONC comment support and remove legacy done.json",
         migration_type: MigrationType::FileRename {
-            old_path: ".ralph/done.json",
-            new_path: ".ralph/done.jsonc",
+            old_path: ".cueloop/done.json",
+            new_path: ".cueloop/done.jsonc",
         },
     },
     Migration {
@@ -92,24 +92,24 @@ pub static MIGRATIONS: &[Migration] = &[
         id: "file_rename_config_json_to_jsonc_2026_02",
         description: "Migrate config.json to config.jsonc for JSONC comment support and remove legacy config.json",
         migration_type: MigrationType::FileRename {
-            old_path: ".ralph/config.json",
-            new_path: ".ralph/config.jsonc",
+            old_path: ".cueloop/config.json",
+            new_path: ".cueloop/config.jsonc",
         },
     },
     Migration {
         id: "file_cleanup_legacy_queue_json_after_jsonc_2026_02",
         description: "Remove legacy queue.json when queue.jsonc already exists",
         migration_type: MigrationType::FileRename {
-            old_path: ".ralph/queue.json",
-            new_path: ".ralph/queue.jsonc",
+            old_path: ".cueloop/queue.json",
+            new_path: ".cueloop/queue.jsonc",
         },
     },
     Migration {
         id: "file_cleanup_legacy_done_json_after_jsonc_2026_02",
         description: "Remove legacy done.json when done.jsonc already exists",
         migration_type: MigrationType::FileRename {
-            old_path: ".ralph/done.json",
-            new_path: ".ralph/done.jsonc",
+            old_path: ".cueloop/done.json",
+            new_path: ".cueloop/done.jsonc",
         },
     },
     Migration {
@@ -126,8 +126,8 @@ pub static MIGRATIONS: &[Migration] = &[
         id: "file_cleanup_legacy_config_json_after_jsonc_2026_02",
         description: "Remove legacy config.json when config.jsonc already exists",
         migration_type: MigrationType::FileRename {
-            old_path: ".ralph/config.json",
-            new_path: ".ralph/config.jsonc",
+            old_path: ".cueloop/config.json",
+            new_path: ".cueloop/config.jsonc",
         },
     },
 ];

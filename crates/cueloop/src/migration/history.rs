@@ -176,13 +176,13 @@ mod tests {
     #[test]
     fn migration_history_path_uses_legacy_runtime_when_marked() {
         let dir = TempDir::new().unwrap();
-        let ralph_dir = dir.path().join(".ralph");
-        fs::create_dir_all(&ralph_dir).unwrap();
-        fs::write(ralph_dir.join("config.jsonc"), r#"{"version":2}"#).unwrap();
+        let cueloop_dir = dir.path().join(".cueloop");
+        fs::create_dir_all(&cueloop_dir).unwrap();
+        fs::write(cueloop_dir.join("config.jsonc"), r#"{"version":2}"#).unwrap();
 
         assert_eq!(
             migration_history_path(dir.path()),
-            dir.path().join(".ralph/cache/migrations.jsonc")
+            dir.path().join(".cueloop/cache/migrations.jsonc")
         );
     }
 

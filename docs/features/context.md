@@ -303,7 +303,7 @@ cueloop context validate --path docs/AGENTS.md
 
 To enable AGENTS.md injection, add it to your configuration:
 
-**`.ralph/config.jsonc`**:
+**`.cueloop/config.jsonc`**:
 ```json
 {
   "agent": {
@@ -312,7 +312,7 @@ To enable AGENTS.md injection, add it to your configuration:
 }
 ```
 
-**`~/.config/ralph/config.jsonc`** (global):
+**`~/.config/cueloop/config.jsonc`** (global):
 ```json
 {
   "agent": {
@@ -495,7 +495,7 @@ cueloop config show --format json | jq '.agent.instruction_files'
 If empty, add it:
 
 ```bash
-# Edit .ralph/config.jsonc
+# Edit .cueloop/config.jsonc
 {
   "agent": {
     "instruction_files": ["AGENTS.md"]
@@ -533,6 +533,6 @@ The `update` command intentionally appends to preserve existing content. To repl
 
 ## See Also
 
-- [CLI Reference](../cli.md#ralph-context) - Complete command documentation
+- [CLI Reference](../cli.md#cueloop-context) - Complete command documentation
 - [Configuration](../configuration.md) - Config file format and options
 - [Workflow](../workflow.md) - How tasks use AGENTS.md context

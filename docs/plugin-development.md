@@ -36,8 +36,8 @@ This creates:
 - `processor.sh` - A processor stub script (if processor support requested)
 
 By default, both runner and processor scripts are created. Plugins are created in:
-- **Project scope**: `.ralph/plugins/<plugin_id>/`
-- **Global scope**: `~/.config/ralph/plugins/<plugin_id>/`
+- **Project scope**: `.cueloop/plugins/<plugin_id>/`
+- **Global scope**: `~/.config/cueloop/plugins/<plugin_id>/`
 
 **Important**: The plugin is NOT automatically enabled. To enable it, add to your config:
 
@@ -63,8 +63,8 @@ cueloop plugin validate --id my.plugin
 
 CueLoop's plugin system allows extending the tool with custom runners and task processors without modifying the core codebase. Plugins are discovered from:
 
-- **Global**: `~/.config/ralph/plugins/<plugin_id>/`
-- **Project**: `.ralph/plugins/<plugin_id>/`
+- **Global**: `~/.config/cueloop/plugins/<plugin_id>/`
+- **Project**: `.cueloop/plugins/<plugin_id>/`
 
 Project plugins override global plugins with the same ID.
 
@@ -154,8 +154,8 @@ The following semantics define how processor hooks are invoked during `cueloop r
 **Environment Variables**
 
 All processor hooks receive:
-- `RALPH_PLUGIN_ID`: The plugin ID (e.g., `my.plugin`)
-- `RALPH_PLUGIN_CONFIG_JSON`: Plugin config blob as JSON string (use `{}` when missing)
+- `CUELOOP_PLUGIN_ID`: The plugin ID (e.g., `my.plugin`)
+- `CUELOOP_PLUGIN_CONFIG_JSON`: Plugin config blob as JSON string (use `{}` when missing)
 
 **Hook Protocol**
 
@@ -211,9 +211,9 @@ When your runner is invoked, these environment variables are set:
 
 | Variable | Description |
 |----------|-------------|
-| `RALPH_PLUGIN_ID` | The plugin ID |
-| `RALPH_PLUGIN_CONFIG_JSON` | Opaque plugin config blob (JSON string) |
-| `RALPH_RUNNER_CLI_JSON` | Resolved runner CLI options (JSON) |
+| `CUELOOP_PLUGIN_ID` | The plugin ID |
+| `CUELOOP_PLUGIN_CONFIG_JSON` | Opaque plugin config blob (JSON string) |
+| `CUELOOP_RUNNER_CLI_JSON` | Resolved runner CLI options (JSON) |
 
 ### Run Command
 
@@ -274,7 +274,7 @@ shift 2
 
 case "$HOOK" in
   post_run)
-    echo "$(date -Iseconds) Task $TASK_ID completed" >> "$RALPH_LOG_PATH"
+    echo "$(date -Iseconds) Task $TASK_ID completed" >> "$CUELOOP_LOG_PATH"
     ;;
 esac
 ```
@@ -341,7 +341,7 @@ cueloop plugin uninstall my.plugin --scope project
    cueloop plugin validate --id my.plugin
    ```
 
-4. **Project vs Global**: Project plugins override global plugins, but only in trusted repos. Untrusted repos ignore `.ralph/plugins/*` at runtime.
+4. **Project vs Global**: Project plugins override global plugins, but only in trusted repos. Untrusted repos ignore `.cueloop/plugins/*` at runtime.
 
 ## Debugging
 
@@ -364,14 +364,14 @@ Verify environment variables in your plugin:
 ```bash
 #!/bin/bash
 # Debug script to see what CueLoop passes
-env | grep RALPH_ > /tmp/ralph_plugin_env.txt
-echo "Environment written to /tmp/ralph_plugin_env.txt"
+env | grep CUELOOP_ > /tmp/cueloop_plugin_env.txt
+echo "Environment written to /tmp/cueloop_plugin_env.txt"
 ```
 
 ## Best Practices
 
 1. **Use semantic versioning** for your plugin versions
-2. **Handle missing config gracefully** - the `RALPH_PLUGIN_CONFIG_JSON` may be `{}`
+2. **Handle missing config gracefully** - the `CUELOOP_PLUGIN_CONFIG_JSON` may be `{}`
 3. **Exit codes matter** - non-zero exit codes are treated as failures
 4. **Idempotent operations** - runner resume should be idempotent
 5. **Document your config** - include expected config fields in your plugin README

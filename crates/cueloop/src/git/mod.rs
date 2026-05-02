@@ -9,7 +9,7 @@
 //! Scope:
 //! - Limited to this file's owning feature boundary.
 //!
-//! This module provides a comprehensive set of git operations for Ralph,
+//! This module provides a comprehensive set of git operations for CueLoop,
 //! organized into focused submodules:
 //!
 //! - `error`: Error types and classification
@@ -44,7 +44,8 @@ pub mod workspace;
 // Re-export commonly used items for convenience within the crate.
 pub(crate) use branch::current_branch;
 pub use clean::{
-    RALPH_RUN_CLEAN_ALLOWED_PATHS, repo_dirty_only_allowed_paths, require_clean_repo_ignoring_paths,
+    CUELOOP_RUN_CLEAN_ALLOWED_PATHS, repo_dirty_only_allowed_paths,
+    require_clean_repo_ignoring_paths,
 };
 pub use commit::{
     abort_rebase, add_paths_force, commit_all, fetch_branch, is_ahead_of_upstream,

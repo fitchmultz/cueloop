@@ -32,7 +32,7 @@ fn task_full_lifecycle_with_runner_execution() -> Result<()> {
     let task = test_support::make_test_task(task_id, "Runner test task", TaskStatus::Todo);
     repo.write_queue(&[task])?;
 
-    let marker_file = repo.path().join(".ralph/runner_executed.marker");
+    let marker_file = repo.path().join(".cueloop/runner_executed.marker");
     let runner_script = format!(
         r#"#!/bin/bash
 # Mock runner that verifies it received task context.

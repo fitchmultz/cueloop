@@ -170,7 +170,7 @@ impl PluginExecutor {
                     output_stream,
                 )?;
 
-                // For runners that require Ralph-managed session IDs (like kimi),
+                // For runners that require CueLoop-managed session IDs (like kimi),
                 // preserve the session_id since it won't be in the runner's output
                 if self.requires_managed_session_id(&runner) {
                     output.session_id = session_id;
@@ -255,7 +255,7 @@ impl PluginExecutor {
         }
     }
 
-    /// Check if a runner requires Ralph-managed session IDs.
+    /// Check if a runner requires CueLoop-managed session IDs.
     pub fn requires_managed_session_id(&self, runner: &Runner) -> bool {
         match runner {
             Runner::Plugin(_) => false, // External plugins manage their own

@@ -12,22 +12,22 @@
 # - cueloop_acquire_xcode_build_lock "$lock_dir" "macos-build"
 # - cueloop_release_xcode_build_lock "$lock_dir"
 # Invariants/assumptions:
-# - Callers source this file from a bash shell inside the CueLoop/Ralph repository.
+# - Callers source this file from a bash shell inside the CueLoop/CueLoop repository.
 # - Stale-lock removal is limited to clearly project-owned lock paths under target/tmp/locks/.
 # - Owner-file gaps are expected only during interrupted acquisition and recover via age-based cleanup.
 
-if [ -n "${RALPH_XCODE_BUILD_LOCK_LIB_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_XCODE_BUILD_LOCK_LIB_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_XCODE_BUILD_LOCK_LIB_SOURCED=1
+CUELOOP_XCODE_BUILD_LOCK_LIB_SOURCED=1
 set -euo pipefail
 
-RALPH_XCODE_BUILD_LOCK_OWNER_FILE_NAME="owner"
-RALPH_XCODE_BUILD_LOCK_OWNERLESS_GRACE_SECONDS=10
-RALPH_XCODE_LOCK_STALE_REASON=""
+CUELOOP_XCODE_BUILD_LOCK_OWNER_FILE_NAME="owner"
+CUELOOP_XCODE_BUILD_LOCK_OWNERLESS_GRACE_SECONDS=10
+CUELOOP_XCODE_LOCK_STALE_REASON=""
 
 cueloop_xcode_build_lock_owner_file() {
-    printf '%s/%s\n' "$1" "$RALPH_XCODE_BUILD_LOCK_OWNER_FILE_NAME"
+    printf '%s/%s\n' "$1" "$CUELOOP_XCODE_BUILD_LOCK_OWNER_FILE_NAME"
 }
 
 cueloop_xcode_build_lock_read_field() {
@@ -82,13 +82,13 @@ cueloop_xcode_build_lock_is_stale() {
     local owner_file
     local owner_pid
 
-    RALPH_XCODE_LOCK_STALE_REASON=""
+    CUELOOP_XCODE_LOCK_STALE_REASON=""
     [ -d "$lock_dir" ] || return 1
 
     owner_file="$(cueloop_xcode_build_lock_owner_file "$lock_dir")"
     if [ ! -f "$owner_file" ]; then
-        if cueloop_xcode_build_lock_is_older_than "$lock_dir" "$RALPH_XCODE_BUILD_LOCK_OWNERLESS_GRACE_SECONDS"; then
-            RALPH_XCODE_LOCK_STALE_REASON="missing owner metadata"
+        if cueloop_xcode_build_lock_is_older_than "$lock_dir" "$CUELOOP_XCODE_BUILD_LOCK_OWNERLESS_GRACE_SECONDS"; then
+            CUELOOP_XCODE_LOCK_STALE_REASON="missing owner metadata"
             return 0
         fi
         return 1
@@ -101,12 +101,12 @@ cueloop_xcode_build_lock_is_stale() {
     fi
 
     if [ -n "$owner_pid" ]; then
-        RALPH_XCODE_LOCK_STALE_REASON="owner pid ${owner_pid:-unknown} is no longer running"
+        CUELOOP_XCODE_LOCK_STALE_REASON="owner pid ${owner_pid:-unknown} is no longer running"
         return 0
     fi
 
-    if cueloop_xcode_build_lock_is_older_than "$lock_dir" "$RALPH_XCODE_BUILD_LOCK_OWNERLESS_GRACE_SECONDS"; then
-        RALPH_XCODE_LOCK_STALE_REASON="invalid owner metadata"
+    if cueloop_xcode_build_lock_is_older_than "$lock_dir" "$CUELOOP_XCODE_BUILD_LOCK_OWNERLESS_GRACE_SECONDS"; then
+        CUELOOP_XCODE_LOCK_STALE_REASON="invalid owner metadata"
         return 0
     fi
 
@@ -141,7 +141,7 @@ cueloop_acquire_xcode_build_lock() {
     while ! mkdir "$lock_dir" 2>/dev/null; do
         if cueloop_xcode_build_lock_is_stale "$lock_dir"; then
             if cueloop_xcode_build_lock_is_project_owned "$lock_dir"; then
-                echo "→ Removing stale Xcode build lock: $lock_dir ($RALPH_XCODE_LOCK_STALE_REASON)"
+                echo "→ Removing stale Xcode build lock: $lock_dir ($CUELOOP_XCODE_LOCK_STALE_REASON)"
                 rm -rf "$lock_dir"
                 continue
             fi

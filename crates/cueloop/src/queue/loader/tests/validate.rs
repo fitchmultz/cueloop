@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -22,9 +22,9 @@ use super::*;
 fn load_and_validate_queues_allows_missing_done_file() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
-    let queue_path = ralph_dir.join("queue.json");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
+    let queue_path = cueloop_dir.join("queue.json");
     save_queue(
         &queue_path,
         &QueueFile {
@@ -32,7 +32,7 @@ fn load_and_validate_queues_allows_missing_done_file() -> Result<()> {
             tasks: vec![task("RQ-0001")],
         },
     )?;
-    let done_path = ralph_dir.join("done.json");
+    let done_path = cueloop_dir.join("done.json");
 
     let resolved = resolved_with_paths(repo_root, queue_path, done_path);
 
@@ -47,9 +47,9 @@ fn load_and_validate_queues_allows_missing_done_file() -> Result<()> {
 fn load_and_validate_queues_rejects_duplicate_ids_across_done() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
-    let queue_path = ralph_dir.join("queue.json");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
+    let queue_path = cueloop_dir.join("queue.json");
     save_queue(
         &queue_path,
         &QueueFile {
@@ -57,7 +57,7 @@ fn load_and_validate_queues_rejects_duplicate_ids_across_done() -> Result<()> {
             tasks: vec![task("RQ-0001")],
         },
     )?;
-    let done_path = ralph_dir.join("done.json");
+    let done_path = cueloop_dir.join("done.json");
     save_queue(
         &done_path,
         &QueueFile {
@@ -85,10 +85,10 @@ fn load_and_validate_queues_rejects_duplicate_ids_across_done() -> Result<()> {
 fn load_and_validate_queues_rejects_invalid_deps_when_include_done_false() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     save_queue(
         &queue_path,
         &QueueFile {
@@ -101,7 +101,7 @@ fn load_and_validate_queues_rejects_invalid_deps_when_include_done_false() -> Re
         },
     )?;
 
-    let done_path = ralph_dir.join("done.json");
+    let done_path = cueloop_dir.join("done.json");
     let resolved = resolved_with_paths(repo_root, queue_path, done_path);
 
     let err =
@@ -119,11 +119,11 @@ fn load_and_validate_queues_rejects_invalid_deps_when_include_done_false() -> Re
 fn load_and_validate_queues_rejects_non_utc_timestamps_without_persisting() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
-    let done_path = ralph_dir.join("done.json");
+    let queue_path = cueloop_dir.join("queue.json");
+    let done_path = cueloop_dir.join("done.json");
 
     let mut active_task = task("RQ-0001");
     active_task.created_at = Some("2026-01-18T12:00:00-05:00".to_string());
@@ -178,11 +178,11 @@ fn load_and_validate_queues_rejects_missing_terminal_completed_at_without_persis
 {
     let temp = TempDir::new()?;
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
-    let done_path = ralph_dir.join("done.json");
+    let queue_path = cueloop_dir.join("queue.json");
+    let done_path = cueloop_dir.join("done.json");
 
     let mut queue_task = task("RQ-0001");
     queue_task.status = TaskStatus::Done;

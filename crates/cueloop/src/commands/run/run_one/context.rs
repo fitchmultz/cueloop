@@ -143,19 +143,19 @@ mod tests {
 
     fn resolved_with_repo_root(repo_root: PathBuf) -> config::Resolved {
         let mut cfg = Config::default();
-        cfg.queue.file = Some(PathBuf::from(".ralph/queue.json"));
-        cfg.queue.done_file = Some(PathBuf::from(".ralph/done.json"));
+        cfg.queue.file = Some(PathBuf::from(".cueloop/queue.json"));
+        cfg.queue.done_file = Some(PathBuf::from(".cueloop/done.json"));
         cfg.agent.notification.enabled = Some(false);
 
         config::Resolved {
             config: cfg,
             repo_root: repo_root.clone(),
-            queue_path: repo_root.join(".ralph/queue.json"),
-            done_path: repo_root.join(".ralph/done.json"),
+            queue_path: repo_root.join(".cueloop/queue.json"),
+            done_path: repo_root.join(".cueloop/done.json"),
             id_prefix: "RQ".to_string(),
             id_width: 4,
             global_config_path: None,
-            project_config_path: Some(repo_root.join(".ralph/config.json")),
+            project_config_path: Some(repo_root.join(".cueloop/config.json")),
         }
     }
 
@@ -191,7 +191,7 @@ mod tests {
     }
 
     fn write_queues(resolved: &config::Resolved) -> anyhow::Result<()> {
-        std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+        std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
         queue::save_queue(
             &resolved.queue_path,
             &QueueFile {

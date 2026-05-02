@@ -1,7 +1,7 @@
-//! File creation utilities for Ralph initialization.
+//! File creation utilities for CueLoop initialization.
 //!
 //! Purpose:
-//! - File creation utilities for Ralph initialization.
+//! - File creation utilities for CueLoop initialization.
 //!
 //! Responsibilities:
 //! - Create and write queue.jsonc, done.jsonc, and config.jsonc files.

@@ -18,7 +18,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Prune operates only on `.ralph/done.jsonc`.
+//! - Prune operates only on `.cueloop/done.jsonc`.
 //! - `--keep-last` uses `completed_at` ordering (missing/invalid treated oldest).
 
 use anyhow::Result;
@@ -35,7 +35,7 @@ fn rfc3339_days_ago(days: i64) -> String {
 fn queue_prune_dry_run_does_not_modify_done_file() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let mut old = test_support::make_test_task("RQ-0100", "Old done", TaskStatus::Done);
     old.completed_at = Some(rfc3339_days_ago(45));
@@ -44,11 +44,11 @@ fn queue_prune_dry_run_does_not_modify_done_file() -> Result<()> {
 
     test_support::write_done(dir.path(), &[old, recent])?;
 
-    let before = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let before = std::fs::read_to_string(dir.path().join(".cueloop/done.jsonc"))?;
     let (status, _stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["queue", "prune", "--dry-run", "--age", "30"]);
     anyhow::ensure!(status.success(), "prune dry-run failed\nstderr:\n{stderr}");
-    let after = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let after = std::fs::read_to_string(dir.path().join(".cueloop/done.jsonc"))?;
 
     anyhow::ensure!(before == after, "done.json mutated during --dry-run");
     Ok(())
@@ -58,7 +58,7 @@ fn queue_prune_dry_run_does_not_modify_done_file() -> Result<()> {
 fn queue_prune_age_filter_respects_keep_last() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let mut a = test_support::make_test_task("RQ-0200", "A", TaskStatus::Done);
     a.completed_at = Some(rfc3339_days_ago(40));
@@ -96,7 +96,7 @@ fn queue_prune_age_filter_respects_keep_last() -> Result<()> {
 fn queue_prune_missing_completed_at_does_not_match_age_filter() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let mut old = test_support::make_test_task("RQ-0300", "Old", TaskStatus::Done);
     old.completed_at = Some(rfc3339_days_ago(60));
@@ -138,7 +138,7 @@ fn queue_prune_missing_completed_at_does_not_match_age_filter() -> Result<()> {
 fn queue_prune_status_filter_works() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let mut done_old = test_support::make_test_task("RQ-0400", "Old done", TaskStatus::Done);
     done_old.completed_at = Some(rfc3339_days_ago(45));

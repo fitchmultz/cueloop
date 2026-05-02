@@ -18,7 +18,7 @@ Purpose: List environment variables recognized by CueLoop and how they affect be
 
 ## Variables
 
-- `CUELOOP_RAW_DUMP`: `1` or `true`. Opt-in to raw (non-redacted) safeguard dumps when set to `1` or `true`. Legacy `RALPH_RAW_DUMP` remains accepted.
+- `CUELOOP_RAW_DUMP`: `1` or `true`. Opt-in to raw (non-redacted) safeguard dumps when set to `1` or `true`. Legacy `CUELOOP_RAW_DUMP` remains accepted.
 
   **Security Warning**: Raw dumps may contain secrets (API keys, tokens, credentials). Only enable when necessary for debugging. Prefer redacted dumps (the default) for sharing error reports.
 

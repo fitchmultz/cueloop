@@ -53,7 +53,7 @@ pub fn build_scan_prompt(resolved: &config::Resolved, opts: ScanPromptOptions) -
     }
 
     let mut header = String::new();
-    header.push_str("# RALPH PROMPT PREVIEW (scan)\n\n");
+    header.push_str("# CUELOOP PROMPT PREVIEW (scan)\n\n");
     header.push_str(&format!(
         "- focus: {}\n",
         if opts.focus.trim().is_empty() {

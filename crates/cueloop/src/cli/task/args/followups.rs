@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Missing `--input` means `.ralph/cache/followups/<TASK_ID>.json`.
+//! - Missing `--input` means `.cueloop/cache/followups/<TASK_ID>.json`.
 //! - `--task` names the source task that authorized the proposal.
 
 use std::path::PathBuf;
@@ -53,7 +53,7 @@ pub struct TaskFollowupsApplyArgs {
 
     /// Read the followups@v1 proposal from this path.
     ///
-    /// When omitted, Ralph reads `.ralph/cache/followups/<TASK_ID>.json`.
+    /// When omitted, CueLoop reads `.cueloop/cache/followups/<TASK_ID>.json`.
     #[arg(long, value_name = "PATH")]
     pub input: Option<PathBuf>,
 

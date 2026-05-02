@@ -46,7 +46,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
             )
             .with_blocking(queue_recovery_state(
                 "queue_missing",
-                "Ralph is stalled because the queue is missing.",
+                "CueLoop is stalled because the queue is missing.",
                 format!("Expected queue file at {}.", resolved.queue_path.display()),
             )),
         );
@@ -112,7 +112,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                                                     .with_fix_applied(false)
                                                     .with_blocking(queue_recovery_state(
                                                         "queue_invalid",
-                                                        "Ralph is stalled because the queue needs recovery.",
+                                                        "CueLoop is stalled because the queue needs recovery.",
                                                         format!(
                                                             "Queue validation failed at {}: {}",
                                                             resolved.queue_path.display(),
@@ -135,7 +135,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                                             .with_fix_applied(false)
                                             .with_blocking(queue_recovery_state(
                                                 "queue_load_failed",
-                                                "Ralph is stalled because the queue cannot be loaded.",
+                                                "CueLoop is stalled because the queue cannot be loaded.",
                                                 format!(
                                                     "Queue load failed at {} after repair: {}",
                                                     resolved.queue_path.display(),
@@ -160,7 +160,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                                     .with_blocking(
                                         queue_recovery_state(
                                             "queue_invalid",
-                                            "Ralph is stalled because the queue needs recovery.",
+                                            "CueLoop is stalled because the queue needs recovery.",
                                             format!(
                                                 "Queue validation failed at {}: {}",
                                                 resolved.queue_path.display(),
@@ -183,7 +183,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                             )
                             .with_blocking(queue_recovery_state(
                                 "queue_invalid",
-                                "Ralph is stalled because the queue needs recovery.",
+                                "CueLoop is stalled because the queue needs recovery.",
                                 format!(
                                     "Queue validation failed at {}: {}",
                                     resolved.queue_path.display(),
@@ -206,7 +206,7 @@ pub(crate) fn check_queue(report: &mut DoctorReport, resolved: &config::Resolved
                 )
                 .with_blocking(queue_recovery_state(
                     "queue_load_failed",
-                    "Ralph is stalled because the queue cannot be loaded.",
+                    "CueLoop is stalled because the queue cannot be loaded.",
                     format!(
                         "Queue load failed at {}: {}",
                         resolved.queue_path.display(),
@@ -248,7 +248,7 @@ pub(crate) fn check_done_archive(report: &mut DoctorReport, resolved: &config::R
                     )
                     .with_blocking(queue_recovery_state(
                         "done_archive_invalid",
-                        "Ralph is stalled because queue history data needs recovery.",
+                        "CueLoop is stalled because queue history data needs recovery.",
                         format!(
                             "Done archive validation failed at {}: {}",
                             resolved.done_path.display(),
@@ -269,7 +269,7 @@ pub(crate) fn check_done_archive(report: &mut DoctorReport, resolved: &config::R
                 )
                 .with_blocking(queue_recovery_state(
                     "done_archive_load_failed",
-                    "Ralph is stalled because queue history data cannot be loaded.",
+                    "CueLoop is stalled because queue history data cannot be loaded.",
                     format!(
                         "Done archive load failed at {}: {}",
                         resolved.done_path.display(),

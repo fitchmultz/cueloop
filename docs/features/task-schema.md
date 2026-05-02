@@ -4,7 +4,7 @@ Owner: Maintainers
 Source of truth: this document for task object fields, per-task agent overrides, examples, and schema-level validation
 Parent: [Task System](tasks.md)
 
-This page defines the shape and validation expectations for CueLoop task objects stored in `.ralph/queue.jsonc` and `.ralph/done.jsonc`. It includes the minimum task-bearing queue envelope only; queue operations, ordering, locking, repair, archive, import/export, and migration behavior live in [Queue](queue.md). Relationship field meanings are summarized here as schema fields; relationship behavior and validation semantics live in [Task Relationships](task-relationships.md).
+This page defines the shape and validation expectations for CueLoop task objects stored in `.cueloop/queue.jsonc` and `.cueloop/done.jsonc`. It includes the minimum task-bearing queue envelope only; queue operations, ordering, locking, repair, archive, import/export, and migration behavior live in [Queue](queue.md). Relationship field meanings are summarized here as schema fields; relationship behavior and validation semantics live in [Task Relationships](task-relationships.md).
 
 ## Related Task Docs
 
@@ -20,7 +20,7 @@ This page defines the shape and validation expectations for CueLoop task objects
 
 ### What is a Task?
 
-A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tasks are stored in `.ralph/queue.jsonc` (active work) or `.ralph/done.jsonc` (completed or rejected work). Each task has:
+A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tasks are stored in `.cueloop/queue.jsonc` (active work) or `.cueloop/done.jsonc` (completed or rejected work). Each task has:
 
 - **Identity**: Unique ID, title, timestamps
 - **State**: Status, priority, tags
@@ -42,7 +42,7 @@ Tasks serve as the fundamental interface between you and AI agents:
 Task objects live inside CueLoop queue files. This page owns the minimum task-bearing envelope shown below; [Queue](queue.md) owns queue file operations, ordering, locking, repair, archive, import/export, and migration behavior.
 
 ```
-.ralph/
+.cueloop/
 ├── queue.jsonc   # Active tasks
 ├── done.jsonc    # Completed/rejected tasks archive
 └── cache/        # Plans, completions, and queue backups
@@ -144,8 +144,8 @@ The `agent` field allows overriding global configuration for individual tasks.
 ### Configuration Precedence (Highest to Lowest)
 
 1. Per-task `agent` field in task
-2. Project config (`.ralph/config.jsonc`)
-3. Global config (`~/.config/ralph/config.jsonc`)
+2. Project config (`.cueloop/config.jsonc`)
+3. Global config (`~/.config/cueloop/config.jsonc`)
 4. Schema defaults
 
 ### Override Fields

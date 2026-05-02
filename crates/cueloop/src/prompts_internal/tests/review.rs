@@ -74,13 +74,14 @@ fn default_completion_checklist_includes_followup_proposal_flow() -> Result<()> 
     let dir = TempDir::new()?;
     let checklist = load_completion_checklist(dir.path())?;
     assert!(checklist.contains("follow-ups cannot substitute"));
-    assert!(checklist.contains(".ralph/cache/followups/{{TASK_ID}}.json"));
+    assert!(checklist.contains(".cueloop/cache/followups/{{TASK_ID}}.json"));
     assert!(checklist.contains("cueloop task followups apply --task {{TASK_ID}}"));
     assert!(checklist.contains("do not apply the proposal"));
     assert!(checklist.contains("RUN_MODE=parallel-worker"));
     assert!(checklist.contains("CI Gate (configured validation only; never a run toggle)"));
     assert!(
-        checklist.contains("`agent.ci_gate.enabled=false` skips Ralph-managed CI validation only")
+        checklist
+            .contains("`agent.ci_gate.enabled=false` skips CueLoop-managed CI validation only")
     );
     assert!(checklist.contains("It does NOT disable this run"));
     assert!(checklist.contains("task execution, queue bookkeeping, or git publish behavior"));
@@ -124,7 +125,7 @@ fn load_phase2_handoff_checklist_falls_back_to_embedded_default_when_missing() -
 #[test]
 fn load_completion_checklist_uses_override_when_present() -> Result<()> {
     let dir = TempDir::new()?;
-    let overrides = dir.path().join(".ralph/prompts");
+    let overrides = dir.path().join(".cueloop/prompts");
     fs::create_dir_all(&overrides)?;
     fs::write(overrides.join("completion_checklist.md"), "override")?;
     let checklist = load_completion_checklist(dir.path())?;
@@ -135,7 +136,7 @@ fn load_completion_checklist_uses_override_when_present() -> Result<()> {
 #[test]
 fn load_iteration_checklist_uses_override_when_present() -> Result<()> {
     let dir = TempDir::new()?;
-    let overrides = dir.path().join(".ralph/prompts");
+    let overrides = dir.path().join(".cueloop/prompts");
     fs::create_dir_all(&overrides)?;
     fs::write(overrides.join("iteration_checklist.md"), "override")?;
     let checklist = load_iteration_checklist(dir.path())?;
@@ -146,7 +147,7 @@ fn load_iteration_checklist_uses_override_when_present() -> Result<()> {
 #[test]
 fn load_phase2_handoff_checklist_uses_override_when_present() -> Result<()> {
     let dir = TempDir::new()?;
-    let overrides = dir.path().join(".ralph/prompts");
+    let overrides = dir.path().join(".cueloop/prompts");
     fs::create_dir_all(&overrides)?;
     fs::write(overrides.join("phase2_handoff_checklist.md"), "override")?;
     let checklist = load_phase2_handoff_checklist(dir.path())?;

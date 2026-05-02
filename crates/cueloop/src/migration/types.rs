@@ -237,20 +237,20 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let ctx = create_test_context(&dir);
 
-        std::fs::create_dir_all(dir.path().join(".ralph")).unwrap();
-        std::fs::write(dir.path().join(".ralph/queue.json"), "{}").unwrap();
+        std::fs::create_dir_all(dir.path().join(".cueloop")).unwrap();
+        std::fs::write(dir.path().join(".cueloop/queue.json"), "{}").unwrap();
 
-        assert!(ctx.file_exists(".ralph/queue.json"));
-        assert!(!ctx.file_exists(".ralph/done.json"));
+        assert!(ctx.file_exists(".cueloop/queue.json"));
+        assert!(!ctx.file_exists(".cueloop/done.json"));
     }
 
     #[test]
     fn migration_context_discovers_repo_without_resolving_config() {
         let dir = TempDir::new().unwrap();
-        let ralph_dir = dir.path().join(".ralph");
-        std::fs::create_dir_all(&ralph_dir).unwrap();
+        let cueloop_dir = dir.path().join(".cueloop");
+        std::fs::create_dir_all(&cueloop_dir).unwrap();
         std::fs::write(
-            ralph_dir.join("config.jsonc"),
+            cueloop_dir.join("config.jsonc"),
             r#"{"version":1,"agent":{"git_commit_push_enabled":true}}"#,
         )
         .unwrap();
@@ -258,7 +258,7 @@ mod tests {
         let ctx = MigrationContext::discover_from_dir(dir.path()).unwrap();
 
         assert_eq!(ctx.repo_root, dir.path());
-        assert_eq!(ctx.project_config_path, ralph_dir.join("config.jsonc"));
+        assert_eq!(ctx.project_config_path, cueloop_dir.join("config.jsonc"));
     }
 
     #[test]

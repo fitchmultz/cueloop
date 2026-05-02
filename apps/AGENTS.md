@@ -1,4 +1,4 @@
-# RalphMac Agent Guide
+# CueLoopMac Agent Guide
 
 <!-- AGENTS ONLY: app-scoped guidance. Repo-wide rules live in ../AGENTS.md. -->
 
@@ -8,8 +8,8 @@ Source of truth: this file for app-scoped guidance only; `../AGENTS.md` for
 repo-wide rules.
 Parent: `../AGENTS.md`
 
-RalphMac is the native SwiftUI app for Ralph. It must stay a thin, user-friendly
-surface over the Rust CLI and versioned `ralph machine ...` JSON contracts.
+CueLoopMac is the native SwiftUI app for CueLoop. It must stay a thin, user-friendly
+surface over the Rust CLI and versioned `cueloop machine ...` JSON contracts.
 
 ## Canonical App Rules
 
@@ -24,19 +24,19 @@ surface over the Rust CLI and versioned `ralph machine ...` JSON contracts.
 - App behavior must preserve CLI parity while improving UX: guided inputs,
   visible state, previews where supported, progress, success/error states,
   recovery actions, keyboard access, and clear labels.
-- If a CLI feature changes, update the machine contract, RalphCore decoding,
+- If a CLI feature changes, update the machine contract, CueLoopCore decoding,
   native SwiftUI surface, tests, and docs together or record the explicit block
   in the parity registry (`../crates/cueloop/src/cli/app_parity.rs`).
 
 ## Security Boundaries
 
-- RalphMac may execute only the validated Ralph CLI path selected by the app or
+- CueLoopMac may execute only the validated CueLoop CLI path selected by the app or
   user. Do not add alternate executable discovery paths, shell-string execution,
   or GUI-controlled arbitrary command launch surfaces.
 - Workspace access is user-selected and workspace-scoped. Do not broaden file
-  reads/writes outside the active workspace except for documented Ralph config,
+  reads/writes outside the active workspace except for documented CueLoop config,
   cache, or app-support locations.
-- The GUI does not make direct network calls for Ralph workflows. Networked
+- The GUI does not make direct network calls for CueLoop workflows. Networked
   behavior must stay behind the CLI/machine contract or a documented app system
   service with explicit owner approval.
 - Keep destructive or trust-changing operations visible and confirmed in the UI;
@@ -59,26 +59,26 @@ required bundling, locks, derived-data policy, and deterministic smoke tests.
 | Capture headed UI artifacts | `make macos-test-ui-artifacts` |
 | Clean UI artifacts | `make macos-ui-artifacts-clean` |
 
-`scripts/ralph-cli-bundle.sh` is the only CLI bundling/build entrypoint for
+`scripts/cueloop-cli-bundle.sh` is the only CLI bundling/build entrypoint for
 Makefile, Xcode, and release consumers. Do not add standalone Cargo fallback
 logic inside Xcode project settings or app-specific scripts.
 
 ## App Architecture Boundaries
 
-- `RalphMacApp.swift` stays a thin shell. Menu commands live in
-  `RalphMacCommands.swift`, URL routing in `RalphMacApp+URLRouting.swift`,
-  bootstrap helpers in `RalphMacApp+Support.swift`, window root composition in
+- `CueLoopMacApp.swift` stays a thin shell. Menu commands live in
+  `CueLoopMacCommands.swift`, URL routing in `CueLoopMacApp+URLRouting.swift`,
+  bootstrap helpers in `CueLoopMacApp+Support.swift`, window root composition in
   `WindowViewContainer.swift`, and UI-test window policy in
   `WorkspaceWindowAnchor.swift`.
 - `Workspace.swift` is a `@MainActor` facade over domain owners and focused
   `Workspace+...` files. Do not re-accumulate runner, persistence, task
   mutation, recovery, or queue refresh logic in the root type.
-- `RalphCLIClient.swift` owns the core subprocess API only. Retry helpers,
+- `CueLoopCLIClient.swift` owns the core subprocess API only. Retry helpers,
   recovery classification, health probing, and process lifecycle ownership live
   in their dedicated companion files.
-- `RalphModels.swift` is a facade only. Keep CLI spec models, generic JSON
+- `CueLoopModels.swift` is a facade only. Keep CLI spec models, generic JSON
   values, argument-building helpers, and task-domain models in dedicated
-  RalphCore files.
+  CueLoopCore files.
 - Task list/detail views should stay orchestration-focused. Put reusable
   sections in `TaskListSections.swift` / `TaskDetailSections.swift` and dense
   transient state in dedicated state owners.
@@ -101,7 +101,7 @@ logic inside Xcode project settings or app-specific scripts.
 
 ## Testing Conventions
 
-- Use `RalphCoreTestSupport` for temp workspaces, readiness polling, and cleanup
+- Use `CueLoopCoreTestSupport` for temp workspaces, readiness polling, and cleanup
   assertions.
 - SwiftUI previews that need workspace URLs derive them from
   `PreviewWorkspaceSupport`.
@@ -109,12 +109,12 @@ logic inside Xcode project settings or app-specific scripts.
   launches use the dedicated test suite.
 - Normal UI-test launches should keep one visible workspace window; multiwindow
   tests should keep two. Avoid widths below the split-view practical minimum.
-- UI screenshot capture is opt-in through `RALPH_UI_SCREENSHOTS=1` or
-  `RALPH_UI_SCREENSHOT_MODE`.
+- UI screenshot capture is opt-in through `CUELOOP_UI_SCREENSHOTS=1` or
+  `CUELOOP_UI_SCREENSHOT_MODE`.
 
 ## File Headers and Style
 
 Every Swift file starts with a purpose header covering responsibilities,
 non-scope, and invariants/assumptions. Keep access control minimal and explicit:
 use `private` for implementation details, internal by default, and `public` only
-for real RalphCore framework exports.
+for real CueLoopCore framework exports.

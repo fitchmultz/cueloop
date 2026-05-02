@@ -14,7 +14,7 @@
 //! Usage:
 //! - Used through the crate module tree or integration test harness.
 //!
-//! Invariants/assumptions: env vars with RALPH_TEST_ prefix are safe to manipulate;
+//! Invariants/assumptions: env vars with CUELOOP_TEST_ prefix are safe to manipulate;
 //! config paths follow dot notation.
 
 use super::*;
@@ -54,7 +54,7 @@ fn unresolved_placeholders_returns_sorted_unique() {
 
 #[test]
 fn expand_variables_expands_env_var_with_default() -> Result<()> {
-    let var_name = "RALPH_TEST_DEFAULT_VAR";
+    let var_name = "CUELOOP_TEST_DEFAULT_VAR";
     unsafe { std::env::remove_var(var_name) };
     let template = format!("Value: ${{{}:-default_value}}", var_name);
     let config = default_config();
@@ -65,7 +65,7 @@ fn expand_variables_expands_env_var_with_default() -> Result<()> {
 
 #[test]
 fn expand_variables_expands_env_var_when_set() -> Result<()> {
-    let var_name = "RALPH_TEST_SET_VAR";
+    let var_name = "CUELOOP_TEST_SET_VAR";
     let template = format!("Value: ${{{}:-default}}", var_name);
     let config = default_config();
     unsafe { std::env::set_var(var_name, "actual_value") };
@@ -136,9 +136,9 @@ fn expand_variables_expands_config_queue_id_prefix() -> Result<()> {
 fn expand_variables_expands_config_queue_file() -> Result<()> {
     let template = "Queue file: {{config.queue.file}}";
     let mut config = default_config();
-    config.queue.file = Some(std::path::PathBuf::from(".ralph/custom_queue.jsonc"));
+    config.queue.file = Some(std::path::PathBuf::from(".cueloop/custom_queue.jsonc"));
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("Queue file: .ralph/custom_queue.jsonc"));
+    assert!(result.contains("Queue file: .cueloop/custom_queue.jsonc"));
     Ok(())
 }
 
@@ -156,9 +156,9 @@ fn expand_variables_uses_default_config_queue_file_when_unset() -> Result<()> {
 fn expand_variables_expands_config_done_file() -> Result<()> {
     let template = "Done file: {{config.queue.done_file}}";
     let mut config = default_config();
-    config.queue.done_file = Some(std::path::PathBuf::from(".ralph/custom_done.jsonc"));
+    config.queue.done_file = Some(std::path::PathBuf::from(".cueloop/custom_done.jsonc"));
     let result = expand_variables(template, &config)?;
-    assert!(result.contains("Done file: .ralph/custom_done.jsonc"));
+    assert!(result.contains("Done file: .cueloop/custom_done.jsonc"));
     Ok(())
 }
 

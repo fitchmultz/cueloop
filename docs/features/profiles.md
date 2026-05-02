@@ -16,7 +16,7 @@ Purpose: Document CueLoop's configuration profiles feature for quick workflow sw
 Configuration profiles let you name a reusable `agent` patch and apply it with `--profile <NAME>`.
 
 Profiles are:
-- Defined under the `profiles` key in `.ralph/config.jsonc` or `~/.config/ralph/config.jsonc` (your profiles are additive patches on top of base `agent` settings)
+- Defined under the `profiles` key in `.cueloop/config.jsonc` or `~/.config/cueloop/config.jsonc` (your profiles are additive patches on top of base `agent` settings)
 - Applied before CLI overrides are resolved
 - Useful for standardizing repeatable workflows without typing many flags each time
 

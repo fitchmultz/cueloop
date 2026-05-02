@@ -13,7 +13,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use crate::contracts::{
     AgentConfig, Config, GitRevertMode, Model, NotificationConfig, PhaseOverrideConfig,
@@ -24,7 +24,7 @@ use crate::contracts::{
 fn parallel_config_rejects_legacy_worktree_root_key() {
     let raw = r#"{
             "version": 2,
-            "parallel": { "worktree_root": ".ralph/worktrees/custom" }
+            "parallel": { "worktree_root": ".cueloop/worktrees/custom" }
         }"#;
     let err = serde_json::from_str::<Config>(raw).unwrap_err();
     assert!(err.to_string().contains("worktree_root"));

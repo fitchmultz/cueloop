@@ -24,7 +24,7 @@
 //!
 //! Invariants/assumptions:
 //! - Callers pass the correct `QueueLockMode` for their context.
-//! - Resume decisions are emitted before task selection so operators can see why Ralph chose a path.
+//! - Resume decisions are emitted before task selection so operators can see why CueLoop chose a path.
 
 use crate::agent::AgentOverrides;
 use crate::commands::run::run_one::RunOneResumeOptions;

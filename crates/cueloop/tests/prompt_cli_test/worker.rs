@@ -18,7 +18,7 @@ use super::*;
 
 #[test]
 fn prompt_worker_parses_phase_1() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "1"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "1"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -33,7 +33,7 @@ fn prompt_worker_parses_phase_1() {
 
 #[test]
 fn prompt_worker_parses_phase_2() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "2"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "2"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -48,7 +48,7 @@ fn prompt_worker_parses_phase_2() {
 
 #[test]
 fn prompt_worker_parses_phase_3() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "3"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "3"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -63,7 +63,7 @@ fn prompt_worker_parses_phase_3() {
 
 #[test]
 fn prompt_worker_parses_single() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--single"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--single"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -78,7 +78,7 @@ fn prompt_worker_parses_single() {
 
 #[test]
 fn prompt_worker_single_conflicts_with_phase() {
-    let err = Cli::try_parse_from(["ralph", "prompt", "worker", "--single", "--phase", "1"])
+    let err = Cli::try_parse_from(["cueloop", "prompt", "worker", "--single", "--phase", "1"])
         .err()
         .expect("parse failure");
     let msg = err.to_string().to_lowercase();
@@ -90,8 +90,8 @@ fn prompt_worker_single_conflicts_with_phase() {
 
 #[test]
 fn prompt_worker_parses_task_id() {
-    let cli =
-        Cli::try_parse_from(["ralph", "prompt", "worker", "--task-id", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--task-id", "RQ-0001"])
+        .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -106,7 +106,7 @@ fn prompt_worker_parses_task_id() {
 #[test]
 fn prompt_worker_parses_plan_file() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "prompt",
         "worker",
         "--plan-file",
@@ -129,7 +129,7 @@ fn prompt_worker_parses_plan_file() {
 
 #[test]
 fn prompt_worker_parses_plan_text() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--plan-text", "my plan"])
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--plan-text", "my plan"])
         .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
@@ -145,7 +145,7 @@ fn prompt_worker_parses_plan_text() {
 #[test]
 fn prompt_worker_parses_iterations() {
     let cli =
-        Cli::try_parse_from(["ralph", "prompt", "worker", "--iterations", "3"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "prompt", "worker", "--iterations", "3"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -159,7 +159,7 @@ fn prompt_worker_parses_iterations() {
 
 #[test]
 fn prompt_worker_parses_iteration_index() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--iteration-index", "2"])
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--iteration-index", "2"])
         .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
@@ -174,7 +174,7 @@ fn prompt_worker_parses_iteration_index() {
 
 #[test]
 fn prompt_worker_parses_repo_prompt_tools() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--repo-prompt", "tools"])
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--repo-prompt", "tools"])
         .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
@@ -189,8 +189,8 @@ fn prompt_worker_parses_repo_prompt_tools() {
 
 #[test]
 fn prompt_worker_parses_repo_prompt_plan() {
-    let cli =
-        Cli::try_parse_from(["ralph", "prompt", "worker", "--repo-prompt", "plan"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--repo-prompt", "plan"])
+        .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -204,8 +204,8 @@ fn prompt_worker_parses_repo_prompt_plan() {
 
 #[test]
 fn prompt_worker_parses_repo_prompt_off() {
-    let cli =
-        Cli::try_parse_from(["ralph", "prompt", "worker", "--repo-prompt", "off"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--repo-prompt", "off"])
+        .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -219,7 +219,7 @@ fn prompt_worker_parses_repo_prompt_off() {
 
 #[test]
 fn prompt_worker_parses_explain() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "worker", "--explain"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "worker", "--explain"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Worker(w) => {
@@ -233,7 +233,7 @@ fn prompt_worker_parses_explain() {
 
 #[test]
 fn prompt_worker_rejects_phase_0() {
-    let err = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "0"])
+    let err = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "0"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();
@@ -242,7 +242,7 @@ fn prompt_worker_rejects_phase_0() {
 
 #[test]
 fn prompt_worker_rejects_phase_4() {
-    let err = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "4"])
+    let err = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "4"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();
@@ -251,7 +251,7 @@ fn prompt_worker_rejects_phase_4() {
 
 #[test]
 fn prompt_worker_rejects_phase_5() {
-    let err = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "5"])
+    let err = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "5"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();
@@ -260,7 +260,7 @@ fn prompt_worker_rejects_phase_5() {
 
 #[test]
 fn prompt_worker_rejects_phase_word() {
-    let err = Cli::try_parse_from(["ralph", "prompt", "worker", "--phase", "one"])
+    let err = Cli::try_parse_from(["cueloop", "prompt", "worker", "--phase", "one"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();

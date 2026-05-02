@@ -13,7 +13,7 @@ Purpose: Provide concrete runner and processor plugin examples that demonstrate 
 Directory:
 
 ```text
-~/.config/ralph/plugins/custom-api/
+~/.config/cueloop/plugins/custom-api/
 ├── plugin.json
 └── runner.sh
 ```
@@ -55,8 +55,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-API_ENDPOINT=$(echo "$RALPH_PLUGIN_CONFIG_JSON" | jq -r '.endpoint // "https://api.example.com/v1"')
-API_KEY=$(echo "$RALPH_PLUGIN_CONFIG_JSON" | jq -r '.api_key // empty')
+API_ENDPOINT=$(echo "$CUELOOP_PLUGIN_CONFIG_JSON" | jq -r '.endpoint // "https://api.example.com/v1"')
+API_KEY=$(echo "$CUELOOP_PLUGIN_CONFIG_JSON" | jq -r '.api_key // empty')
 PROMPT=$(cat)
 
 if [ -n "$SESSION_ID" ]; then
@@ -103,7 +103,7 @@ FILE="$3"
 
 if [ "$HOOK" = "pre_prompt" ]; then
   BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
-  RULES=$(echo "$RALPH_PLUGIN_CONFIG_JSON" | jq -r '.rules // ""')
+  RULES=$(echo "$CUELOOP_PLUGIN_CONFIG_JSON" | jq -r '.rules // ""')
 
   cat >> "$FILE" <<EOF
 
@@ -127,7 +127,7 @@ TASK_ID="$2"
 FILE="$3"
 
 if [ "$HOOK" = "post_run" ]; then
-  LOG_PATH=$(echo "$RALPH_PLUGIN_CONFIG_JSON" | jq -r --arg home "$HOME" '.log_path // ($home + "/.ralph/task-completions.log")')
+  LOG_PATH=$(echo "$CUELOOP_PLUGIN_CONFIG_JSON" | jq -r --arg home "$HOME" '.log_path // ($home + "/.cueloop/task-completions.log")')
   TIMESTAMP=$(date -Iseconds)
   TOOL_COUNT=$(grep -c '"type": "tool_use"' "$FILE" 2>/dev/null || echo "0")
 

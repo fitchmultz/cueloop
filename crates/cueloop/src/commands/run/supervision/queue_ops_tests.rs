@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 use crate::contracts::{
@@ -61,7 +61,7 @@ fn write_queue(repo_root: &Path, status: TaskStatus) -> Result<()> {
     };
 
     queue::save_queue(
-        &repo_root.join(".ralph/queue.json"),
+        &repo_root.join(".cueloop/queue.json"),
         &QueueFile {
             version: 1,
             tasks: vec![task],
@@ -109,8 +109,8 @@ fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
             scan_prompt_version: None,
         },
         queue: QueueConfig {
-            file: Some(PathBuf::from(".ralph/queue.json")),
-            done_file: Some(PathBuf::from(".ralph/done.json")),
+            file: Some(PathBuf::from(".cueloop/queue.json")),
+            done_file: Some(PathBuf::from(".cueloop/done.json")),
             id_prefix: Some("RQ".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
@@ -125,12 +125,12 @@ fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
     crate::config::Resolved {
         config: cfg,
         repo_root: repo_root.to_path_buf(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".cueloop/queue.json"),
+        done_path: repo_root.join(".cueloop/done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".cueloop/config.json")),
     }
 }
 
@@ -162,7 +162,7 @@ fn find_task_status_finds_in_queue() -> Result<()> {
     let temp = TempDir::new()?;
     write_queue(temp.path(), TaskStatus::Todo)?;
 
-    let queue_file = queue::load_queue(&temp.path().join(".ralph/queue.json"))?;
+    let queue_file = queue::load_queue(&temp.path().join(".cueloop/queue.json"))?;
     let done_file = QueueFile::default();
 
     let (status, title, in_done) =
@@ -225,7 +225,7 @@ fn build_post_run_queue_mutation_plan_marks_pending_completion_as_mutating() -> 
     let temp = TempDir::new()?;
     write_queue(temp.path(), TaskStatus::Todo)?;
 
-    let queue_file = queue::load_queue(&temp.path().join(".ralph/queue.json"))?;
+    let queue_file = queue::load_queue(&temp.path().join(".cueloop/queue.json"))?;
     let done_file = QueueFile::default();
     let plan = build_post_run_queue_mutation_plan(&queue_file, &done_file, "RQ-0001")?;
 

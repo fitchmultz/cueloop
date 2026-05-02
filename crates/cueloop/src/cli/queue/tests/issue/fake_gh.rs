@@ -111,7 +111,7 @@ if [ "${{1:-}}" = "issue" ] && [ "${{2:-}}" = "create" ]; then
 
   FOUND=0
   while IFS= read -r line; do
-    if [ "$line" = "<!-- ralph_task_id: $TASK_ID -->" ]; then
+    if [ "$line" = "<!-- cueloop_task_id: $TASK_ID -->" ]; then
       FOUND=1
     fi
   done < "$BODY_FILE"
@@ -207,7 +207,7 @@ if [ "${{1:-}}" = "issue" ] && [ "${{2:-}}" = "create" ]; then
     exit 3
   fi
 
-  if [ -n "$FAIL_TASK_ID" ] && grep -q "ralph_task_id: $FAIL_TASK_ID" "$BODY_FILE"; then
+  if [ -n "$FAIL_TASK_ID" ] && grep -q "cueloop_task_id: $FAIL_TASK_ID" "$BODY_FILE"; then
     echo "simulated failure for task $FAIL_TASK_ID" >&2
     exit 7
   fi
@@ -234,7 +234,7 @@ if [ "${{1:-}}" = "issue" ] && [ "${{2:-}}" = "edit" ]; then
     exit 2
   fi
 
-  if [ -n "$FAIL_TASK_ID" ] && grep -q "ralph_task_id: $FAIL_TASK_ID" "$BODY_FILE"; then
+  if [ -n "$FAIL_TASK_ID" ] && grep -q "cueloop_task_id: $FAIL_TASK_ID" "$BODY_FILE"; then
     echo "simulated failure for task $FAIL_TASK_ID" >&2
     exit 7
   fi

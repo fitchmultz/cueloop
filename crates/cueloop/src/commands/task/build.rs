@@ -4,7 +4,7 @@
 //! - Task building functionality for creating new tasks via runner invocation.
 //!
 //! Responsibilities:
-//! - Build tasks using AI runners via .ralph/prompts/task_builder.md.
+//! - Build tasks using AI runners via .cueloop/prompts/task_builder.md.
 //! - Apply template hints and target contexts when specified.
 //! - Validate queue state before and after runner execution.
 //! - Position new tasks intelligently in the queue.

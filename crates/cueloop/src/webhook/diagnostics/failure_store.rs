@@ -290,7 +290,7 @@ fn sanitize_error(err: &anyhow::Error, destination_url: Option<&str>) -> String 
 
 #[cfg(test)]
 fn maybe_pause_failure_store_mutation_for_tests() {
-    let delay_ms = std::env::var("RALPH_TEST_WEBHOOK_FAILURE_STORE_DELAY_MS")
+    let delay_ms = std::env::var("CUELOOP_TEST_WEBHOOK_FAILURE_STORE_DELAY_MS")
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
         .filter(|delay_ms| *delay_ms > 0);

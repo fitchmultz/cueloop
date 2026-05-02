@@ -1,7 +1,7 @@
-//! Configuration contracts for Ralph.
+//! Configuration contracts for CueLoop.
 //!
 //! Purpose:
-//! - Configuration contracts for Ralph.
+//! - Configuration contracts for CueLoop.
 //!
 //! Responsibilities:
 //! - Define config structs/enums and their merge behavior.
@@ -65,7 +65,7 @@ pub use retry::RunnerRetryConfig;
 pub use webhook::{WebhookConfig, WebhookEventSubscription, WebhookQueuePolicy};
 pub(crate) use webhook::{validate_webhook_destination_url, validate_webhook_settings};
 
-/// Root configuration struct for Ralph.
+/// Root configuration struct for CueLoop.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {

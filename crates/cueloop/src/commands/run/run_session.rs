@@ -121,7 +121,7 @@ pub(crate) fn validate_resumed_task(
     task_id: &str,
     repo_root: &std::path::Path,
 ) -> Result<ResumeTaskValidation> {
-    let cache_dir = repo_root.join(".ralph/cache");
+    let cache_dir = repo_root.join(".cueloop/cache");
     let Some(task) = queue_file.tasks.iter().find(|t| t.id.trim() == task_id) else {
         if let Err(err) = session::clear_session(&cache_dir) {
             log::debug!("Failed to clear invalid session: {}", err);

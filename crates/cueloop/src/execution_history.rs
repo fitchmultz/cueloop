@@ -17,7 +17,7 @@
 //!
 //! Invariants/assumptions:
 //! - Public re-exports preserve the existing `crate::execution_history::*` API surface.
-//! - Persistence stays compatible with `.ralph/cache/execution_history.json`.
+//! - Persistence stays compatible with `.cueloop/cache/execution_history.json`.
 
 mod analytics;
 mod model;

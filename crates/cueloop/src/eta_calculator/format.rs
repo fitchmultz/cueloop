@@ -7,7 +7,7 @@
 //! - Formatting only; ETA modeling and calculation live in sibling modules.
 //!
 //! Usage:
-//! - Used anywhere Ralph needs to present ETA values through
+//! - Used anywhere CueLoop needs to present ETA values through
 //!   `crate::eta_calculator::format_eta`.
 //!
 //! Invariants/Assumptions:

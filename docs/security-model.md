@@ -22,7 +22,7 @@ Out of scope:
 
 ## Trust Boundaries
 
-1. Local repo + `.ralph/` state
+1. Local repo + `.cueloop/` state
    - Trusted for local persistence
    - Must remain schema-valid and auditable
 
@@ -37,13 +37,13 @@ Out of scope:
 
 - Never commit `.env` or `.env.*` (except `.env.example`)
 - Keep runtime directories local-only:
-  - `.ralph/cache/`
-  - `.ralph/logs/`
-  - `.ralph/lock/`
-  - `.ralph/workspaces/`
-  - `.ralph/undo/`
-  - `.ralph/webhooks/`
-- Treat `.ralph/config.jsonc` as sensitive unless intentionally sanitized
+  - `.cueloop/cache/`
+  - `.cueloop/logs/`
+  - `.cueloop/lock/`
+  - `.cueloop/workspaces/`
+  - `.cueloop/undo/`
+  - `.cueloop/webhooks/`
+- Treat `.cueloop/config.jsonc` as sensitive unless intentionally sanitized
 
 ## Guardrails
 

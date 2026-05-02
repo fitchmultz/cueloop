@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use crate::contracts::config::{
     GitPublishMode, GitRevertMode, NotificationConfig, PhaseOverrides, RunnerRetryConfig,
@@ -121,7 +121,7 @@ pub struct AgentConfig {
     /// Override the Node.js executable used for Cursor SDK local runner execution (default is
     /// "node" if None).
     ///
-    /// The Cursor runner uses a checked-in Ralph Node bridge plus `@cursor/sdk@1.0.11`;
+    /// The Cursor runner uses a checked-in CueLoop Node bridge plus `@cursor/sdk@1.0.11`;
     /// it no longer shells out to Cursor's legacy `agent` binary.
     pub cursor_sdk_node_bin: Option<String>,
 

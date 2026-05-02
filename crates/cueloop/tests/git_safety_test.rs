@@ -1,7 +1,7 @@
-//! Safety tests for git cleanup behavior in Ralph.
+//! Safety tests for git cleanup behavior in CueLoop.
 //!
 //! Purpose:
-//! - Safety tests for git cleanup behavior in Ralph.
+//! - Safety tests for git cleanup behavior in CueLoop.
 //!
 //! Responsibilities:
 //! - Provide focused implementation or regression coverage for this file's owning feature.
@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
 use std::fs;

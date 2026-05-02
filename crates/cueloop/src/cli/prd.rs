@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn cli_parses_prd_create_basic() {
-        let cli = crate::cli::Cli::try_parse_from(["ralph", "prd", "create", "docs/prd.md"])
+        let cli = crate::cli::Cli::try_parse_from(["cueloop", "prd", "create", "docs/prd.md"])
             .expect("parse");
         match cli.command {
             crate::cli::Command::Prd(args) => match args.command {
@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn cli_parses_prd_create_with_flags() {
         let cli = crate::cli::Cli::try_parse_from([
-            "ralph",
+            "cueloop",
             "prd",
             "create",
             "docs/prd.md",
@@ -175,7 +175,7 @@ mod tests {
             ("critical", PrdPriorityArg::Critical),
         ] {
             let cli = crate::cli::Cli::try_parse_from([
-                "ralph",
+                "cueloop",
                 "prd",
                 "create",
                 "docs/prd.md",

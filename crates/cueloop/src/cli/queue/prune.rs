@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
 use clap::Args;
@@ -27,7 +27,7 @@ use super::StatusArg;
 /// Arguments for `cueloop queue prune`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Prune removes old tasks from .ralph/done.jsonc while preserving recent history.\n\nSafety:\n  --keep-last always protects the N most recently completed tasks (by completed_at).\n  If no filters are provided, all tasks are pruned except those protected by --keep-last.\n  Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n  but do NOT match the age filter (safety-first).\n\nExamples:\n  cueloop queue prune --dry-run --age 30 --status rejected\n  cueloop queue prune --keep-last 100\n  cueloop queue prune --age 90\n  cueloop queue prune --age 30 --status done --keep-last 50"
+    after_long_help = "Prune removes old tasks from .cueloop/done.jsonc while preserving recent history.\n\nSafety:\n  --keep-last always protects the N most recently completed tasks (by completed_at).\n  If no filters are provided, all tasks are pruned except those protected by --keep-last.\n  Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n  but do NOT match the age filter (safety-first).\n\nExamples:\n  cueloop queue prune --dry-run --age 30 --status rejected\n  cueloop queue prune --keep-last 100\n  cueloop queue prune --age 90\n  cueloop queue prune --age 30 --status done --keep-last 50"
 )]
 pub struct QueuePruneArgs {
     /// Only prune tasks completed at least N days ago.

@@ -445,32 +445,32 @@ fn pi_build_run_command_uses_process_title_wrapper() {
         .collect::<Vec<_>>();
     let wrapper_path = args.first().expect("node wrapper path");
     assert!(
-        wrapper_path.contains("ralph_pi_wrapper_"),
-        "Pi should be launched through Ralph's process-title wrapper"
+        wrapper_path.contains("cueloop_pi_wrapper_"),
+        "Pi should be launched through CueLoop's process-title wrapper"
     );
 
     let pi_bin = cmd
         .get_envs()
         .find_map(|(key, value)| {
-            if key == "RALPH_PI_BIN" {
+            if key == "CUELOOP_PI_BIN" {
                 value.map(|value| value.to_string_lossy().to_string())
             } else {
                 None
             }
         })
-        .expect("RALPH_PI_BIN env missing");
+        .expect("CUELOOP_PI_BIN env missing");
     assert_eq!(pi_bin, fake_pi_path);
 
     let pi_entrypoint = cmd
         .get_envs()
         .find_map(|(key, value)| {
-            if key == "RALPH_PI_ENTRYPOINT" {
+            if key == "CUELOOP_PI_ENTRYPOINT" {
                 value.map(|value| value.to_string_lossy().to_string())
             } else {
                 None
             }
         })
-        .expect("RALPH_PI_ENTRYPOINT env missing");
+        .expect("CUELOOP_PI_ENTRYPOINT env missing");
     assert_eq!(
         pi_entrypoint,
         fake_pi.path().canonicalize().unwrap().to_string_lossy()
@@ -510,25 +510,25 @@ fn pi_build_run_command_wraps_path_resolved_node_binary() {
     let pi_bin = cmd
         .get_envs()
         .find_map(|(key, value)| {
-            if key == "RALPH_PI_BIN" {
+            if key == "CUELOOP_PI_BIN" {
                 value.map(|value| value.to_string_lossy().to_string())
             } else {
                 None
             }
         })
-        .expect("RALPH_PI_BIN env missing");
+        .expect("CUELOOP_PI_BIN env missing");
     assert_eq!(pi_bin, "pi");
 
     let pi_entrypoint = cmd
         .get_envs()
         .find_map(|(key, value)| {
-            if key == "RALPH_PI_ENTRYPOINT" {
+            if key == "CUELOOP_PI_ENTRYPOINT" {
                 value.map(|value| value.to_string_lossy().to_string())
             } else {
                 None
             }
         })
-        .expect("RALPH_PI_ENTRYPOINT env missing");
+        .expect("CUELOOP_PI_ENTRYPOINT env missing");
     assert_eq!(
         pi_entrypoint,
         fake_pi_path.canonicalize().unwrap().to_string_lossy()
@@ -554,7 +554,7 @@ fn pi_build_run_command_preserves_direct_custom_binary_when_not_node_script() {
         .get_args()
         .map(|a| a.to_string_lossy().to_string())
         .collect::<Vec<_>>();
-    assert!(!args.iter().any(|arg| arg.contains("ralph_pi_wrapper_")));
+    assert!(!args.iter().any(|arg| arg.contains("cueloop_pi_wrapper_")));
     assert!(args.contains(&"--mode".to_string()));
     assert!(args.contains(&"json".to_string()));
 }

@@ -31,7 +31,7 @@ pub(crate) const PROMPT_VERSION_SCHEMA: u32 = 2;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct PromptVersionInfo {
     pub schema_version: u32,
-    pub ralph_version: String,
+    pub cueloop_version: String,
     pub exported_at: String,
     pub templates: HashMap<String, TemplateVersion>,
 }

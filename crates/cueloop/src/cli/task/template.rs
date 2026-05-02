@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Templates can be built-in or custom (from .ralph/templates/).
+//! - Templates can be built-in or custom (from .cueloop/templates/).
 //! - Template build merges template defaults with user-provided values.
 
 use anyhow::Result;

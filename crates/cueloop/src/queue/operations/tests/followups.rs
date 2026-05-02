@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::path::Path;
 
@@ -63,12 +63,12 @@ fn resolved_for(root: &Path) -> config::Resolved {
     config::Resolved {
         config: Config::default(),
         repo_root: root.to_path_buf(),
-        queue_path: root.join(".ralph/queue.jsonc"),
-        done_path: root.join(".ralph/done.jsonc"),
+        queue_path: root.join(".cueloop/queue.jsonc"),
+        done_path: root.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(root.join(".ralph/config.jsonc")),
+        project_config_path: Some(root.join(".cueloop/config.jsonc")),
     }
 }
 
@@ -98,7 +98,7 @@ fn apply_followups_materializes_tasks_after_active_doing_task() -> anyhow::Resul
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -147,7 +147,7 @@ fn apply_followups_can_reference_source_task_in_done_archive() -> anyhow::Result
         Some(&done),
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -181,7 +181,7 @@ fn apply_followups_rejects_unknown_dependency_key_before_mutation() {
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -210,7 +210,7 @@ fn apply_followups_rejects_duplicate_keys_before_mutation() {
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -239,7 +239,7 @@ fn apply_followups_rejects_self_dependency_before_mutation() {
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -268,7 +268,7 @@ fn apply_followups_rejects_empty_independence_rationale_before_mutation() {
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -298,7 +298,7 @@ fn apply_followups_rejects_queue_validation_failure_before_mutation() {
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -325,7 +325,7 @@ fn apply_followups_rejects_wrong_source_task_before_mutation() {
         None,
         &proposal,
         "RQ-0001",
-        Path::new(".ralph/cache/followups/RQ-0001.json"),
+        Path::new(".cueloop/cache/followups/RQ-0001.json"),
         "2026-04-23T20:00:00Z",
         "RQ",
         4,
@@ -368,7 +368,7 @@ fn apply_followups_file_creates_undo_and_removes_proposal() -> anyhow::Result<()
     assert_eq!(report.created_tasks.len(), 2);
     assert_eq!(queue.tasks.len(), 3);
     assert!(!proposal_path.exists());
-    assert!(resolved.repo_root.join(".ralph/cache/undo").exists());
+    assert!(resolved.repo_root.join(".cueloop/cache/undo").exists());
 
     Ok(())
 }
@@ -401,7 +401,7 @@ fn apply_followups_file_dry_run_leaves_queue_and_proposal_unchanged() -> anyhow:
     assert!(report.dry_run);
     assert_eq!(queue_snapshot(&queue), queue_snapshot(&initial));
     assert!(proposal_path.exists());
-    assert!(!resolved.repo_root.join(".ralph/cache/undo").exists());
+    assert!(!resolved.repo_root.join(".cueloop/cache/undo").exists());
 
     Ok(())
 }
@@ -437,7 +437,7 @@ fn apply_followups_file_rejects_invalid_priority_without_writing() -> anyhow::Re
     assert!(format!("{err:#}").contains("unknown variant `urgent`"));
     assert_eq!(queue_snapshot(&queue), queue_snapshot(&initial));
     assert!(proposal_path.exists());
-    assert!(!resolved.repo_root.join(".ralph/cache/undo").exists());
+    assert!(!resolved.repo_root.join(".cueloop/cache/undo").exists());
 
     Ok(())
 }

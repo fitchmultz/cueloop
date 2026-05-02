@@ -27,7 +27,7 @@ use tempfile::TempDir;
 
 pub fn path_has_repo_markers(path: &Path) -> bool {
     path.ancestors().any(|dir| {
-        dir.join(".git").exists() || dir.join(".cueloop").is_dir() || dir.join(".ralph").is_dir()
+        dir.join(".git").exists() || dir.join(".cueloop").is_dir() || dir.join(".cueloop").is_dir()
     })
 }
 
@@ -43,7 +43,7 @@ pub fn find_non_repo_temp_base() -> PathBuf {
     if let Some(parent) = repo_root.parent()
         && !path_has_repo_markers(parent)
     {
-        return parent.join(".ralph-integration-tests");
+        return parent.join(".cueloop-integration-tests");
     }
 
     panic!(

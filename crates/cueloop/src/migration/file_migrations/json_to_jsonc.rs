@@ -1,4 +1,4 @@
-//! Purpose: Orchestrate JSON-to-JSONC migration wrappers for Ralph state files.
+//! Purpose: Orchestrate JSON-to-JSONC migration wrappers for CueLoop state files.
 //!
 //! Responsibilities:
 //! - Provide queue/done/config JSON-to-JSONC convenience entrypoints.
@@ -10,7 +10,7 @@
 //!   update internals live in sibling modules.
 //!
 //! Usage:
-//! - Used by file migration dispatch for `.ralph/*.json -> .ralph/*.jsonc` cutovers.
+//! - Used by file migration dispatch for `.cueloop/*.json -> .cueloop/*.jsonc` cutovers.
 //!
 //! Invariants/Assumptions:
 //! - If the `.jsonc` file already exists, the legacy `.json` file should be removed.
@@ -26,35 +26,35 @@ use super::rename::{FileMigrationOptions, apply_file_rename_with_options};
 /// Migrate queue.json to queue.jsonc.
 /// This is a convenience function for the common case.
 pub fn migrate_queue_json_to_jsonc(ctx: &MigrationContext) -> Result<()> {
-    migrate_json_to_jsonc(ctx, ".ralph/queue.json", ".ralph/queue.jsonc")
+    migrate_json_to_jsonc(ctx, ".cueloop/queue.json", ".cueloop/queue.jsonc")
         .context("migrate queue.json to queue.jsonc")
 }
 
 /// Migrate done.json to done.jsonc.
 pub fn migrate_done_json_to_jsonc(ctx: &MigrationContext) -> Result<()> {
-    migrate_json_to_jsonc(ctx, ".ralph/done.json", ".ralph/done.jsonc")
+    migrate_json_to_jsonc(ctx, ".cueloop/done.json", ".cueloop/done.jsonc")
         .context("migrate done.json to done.jsonc")
 }
 
 /// Check if a migration from queue.json to queue.jsonc is applicable.
 pub fn is_queue_json_to_jsonc_applicable(ctx: &MigrationContext) -> bool {
-    ctx.file_exists(".ralph/queue.json")
+    ctx.file_exists(".cueloop/queue.json")
 }
 
 /// Check if a migration from done.json to done.jsonc is applicable.
 pub fn is_done_json_to_jsonc_applicable(ctx: &MigrationContext) -> bool {
-    ctx.file_exists(".ralph/done.json")
+    ctx.file_exists(".cueloop/done.json")
 }
 
 /// Migrate config.json to config.jsonc.
 pub fn migrate_config_json_to_jsonc(ctx: &MigrationContext) -> Result<()> {
-    migrate_json_to_jsonc(ctx, ".ralph/config.json", ".ralph/config.jsonc")
+    migrate_json_to_jsonc(ctx, ".cueloop/config.json", ".cueloop/config.jsonc")
         .context("migrate config.json to config.jsonc")
 }
 
 /// Check if a migration from config.json to config.jsonc is applicable.
 pub fn is_config_json_to_jsonc_applicable(ctx: &MigrationContext) -> bool {
-    ctx.file_exists(".ralph/config.json")
+    ctx.file_exists(".cueloop/config.json")
 }
 
 pub(super) fn migrate_json_to_jsonc(

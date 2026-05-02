@@ -40,12 +40,12 @@ fn resolved_with_config(config: Config) -> (config::Resolved, TempDir) {
         .queue
         .file
         .clone()
-        .unwrap_or_else(|| PathBuf::from(".ralph/queue.jsonc"));
+        .unwrap_or_else(|| PathBuf::from(".cueloop/queue.jsonc"));
     let done_rel = config
         .queue
         .done_file
         .clone()
-        .unwrap_or_else(|| PathBuf::from(".ralph/done.jsonc"));
+        .unwrap_or_else(|| PathBuf::from(".cueloop/done.jsonc"));
     let id_prefix = config
         .queue
         .id_prefix
@@ -62,7 +62,7 @@ fn resolved_with_config(config: Config) -> (config::Resolved, TempDir) {
             id_prefix,
             id_width,
             global_config_path: None,
-            project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+            project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
         },
         dir,
     )
@@ -219,7 +219,7 @@ fn run_scan_backfills_new_tasks_added_by_runner() -> anyhow::Result<()> {
         version: 1,
         tasks: vec![scan_task_missing_request("RQ-0001", "Follow up on TODOs")],
     };
-    let queue_after_path = resolved.repo_root.join(".ralph/cache/queue-after.json");
+    let queue_after_path = resolved.repo_root.join(".cueloop/cache/queue-after.json");
     std::fs::create_dir_all(
         queue_after_path
             .parent()

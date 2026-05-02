@@ -7,6 +7,6 @@ Do not perform terminal task bookkeeping in Phase 2.
 3. Do not run `cueloop task done`, `cueloop task reject`, `git commit`, or `git push`.
 4. Leave the working tree dirty with task changes for Phase 3 review; do not stash or revert completed work.
 5. Resolve in-scope follow-ups, inconsistencies, missing tests, and suspicious leads when practical.
-6. If independent follow-up work remains, write or mention `.ralph/cache/followups/{{TASK_ID}}.json` for Phase 3/coordinator handling.
+6. If independent follow-up work remains, write or mention `.cueloop/cache/followups/{{TASK_ID}}.json` for Phase 3/coordinator handling.
 7. If you are truly blocked, clearly summarize the blocker and exact remediation steps.
 8. Stop after configured Phase 2 validation is satisfied. End with a concise handoff: changed files/outcome, validation result, follow-up proposal status, and blockers/risks.

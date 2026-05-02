@@ -1,7 +1,7 @@
-//! Ralph library surface.
+//! CueLoop library surface.
 //!
 //! Purpose:
-//! - Ralph library surface.
+//! - CueLoop library surface.
 //!
 //! Responsibilities:
 //! - Expose internal modules for tests and CLI integration.

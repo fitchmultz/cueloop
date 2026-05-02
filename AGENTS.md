@@ -1,4 +1,4 @@
-# Repository Guidelines (Ralph)
+# Repository Guidelines (CueLoop)
 
 <!-- AGENTS ONLY: This file is exclusively for AI agents, not humans -->
 
@@ -8,7 +8,7 @@
 
 ## Goal
 
-Ralph is a Rust CLI for running AI agent loops against a structured JSON task queue.
+CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue.
 
 ---
 
@@ -28,7 +28,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 | GitHub Actions (single allowed workflow) | `.github/workflows/cursor-finish-line-ready.yml` — not canonical CI; see below |
 | Core source | `crates/cueloop/src/` |
 | Tests | `crates/cueloop/tests/` |
-| macOS app | `apps/RalphMac/` |
+| macOS app | `apps/CueLoopMac/` |
 
 ---
 
@@ -37,7 +37,7 @@ Ralph is a Rust CLI for running AI agent loops against a structured JSON task qu
 - **CI-first**: Run `make agent-ci` before claiming completion (current uncommitted local diff routes to `ci-docs`, `ci-fast`, `ci`, or `macos-ci`; clean tree is a no-op)
 - **Release gate**: Run `make release-gate` before release tagging/public launch windows
 - **Public-readiness gate**: Use `make pre-public-check` before making broad visibility changes
-- **Resource controls**: Prefer `RALPH_CI_JOBS` / `RALPH_XCODE_JOBS` caps on shared workstations
+- **Resource controls**: Prefer `CUELOOP_CI_JOBS` / `CUELOOP_XCODE_JOBS` caps on shared workstations
 - **Minimal APIs**: Default to private; prefer `pub(crate)` over `pub`
 - **Small files**: Target <500 LOC; hard limit at 1,000 LOC (must split)
 - **Explicit over implicit**: Prefer explicit, minimal usage patterns
@@ -66,12 +66,12 @@ Two-tier approach: `anyhow` for propagation, `thiserror` for domain errors.
 | Domain errors | `thiserror` enums like `RunnerError` |
 
 ### Session ID Format
-`{task_id}-p{phase}-{timestamp}` (Unix epoch seconds). No `ralph-` prefix. Passed via `--session` flag.
+`{task_id}-p{phase}-{timestamp}` (Unix epoch seconds). No `cueloop-` prefix. Passed via `--session` flag.
 
 ### Configuration Precedence
 Derived summary; `docs/configuration.md` is the configuration source of truth.
 
 1. CLI flags
-2. `.ralph/config.jsonc`
-3. `~/.config/ralph/config.jsonc`
+2. `.cueloop/config.jsonc`
+3. `~/.config/cueloop/config.jsonc`
 4. Schema defaults

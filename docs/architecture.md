@@ -13,14 +13,14 @@ CueLoop is a local-first orchestration system for AI-assisted engineering workfl
 
 - Primary runtime: Rust CLI (`crates/cueloop/`)
 - Optional UI: SwiftUI macOS app (`apps/CueLoopMac/`) that shells out to the same CLI binary
-- State store: repo-local `.ralph/` files (`queue.jsonc`, `done.jsonc`, optional `config.jsonc`)
+- State store: repo-local `.cueloop/` files (`queue.jsonc`, `done.jsonc`, optional `config.jsonc`)
 - External dependencies: runner CLIs (Codex/Claude/Gemini/OpenCode/Cursor/Kimi/Pi), git, optional GitHub CLI
 
 ## Operating Model
 
 CueLoop's primary product loop is an operator-started run over explicit repo-local tasks:
 
-1. Tasks are selected from `.ralph/queue.jsonc`.
+1. Tasks are selected from `.cueloop/queue.jsonc`.
 2. The run engine executes one, two, or three supervised phases through the configured runner.
 3. Phase 3, when enabled, performs the review/completion pass before the task is accepted.
 4. The CI gate runs before completion and before any configured automatic publish behavior.
@@ -54,11 +54,11 @@ CueLoop's primary product loop is an operator-started run over explicit repo-loc
 ### 5) macOS App Bridge
 
 - App UI focuses on queue visibility and workflow ergonomics
-- `RalphCLIClient` bridges app actions to CLI commands to preserve behavior parity
+- `CueLoopCLIClient` bridges app actions to CLI commands to preserve behavior parity
 
 ## Trust Boundaries
 
-Boundary 1: Local repository and `.ralph/` state
+Boundary 1: Local repository and `.cueloop/` state
 
 - Trusted for local persistence and auditability
 - Must remain schema-valid and lock-protected during concurrent operations
@@ -102,7 +102,7 @@ sequenceDiagram
   loop each selected task
     Coordinator->>Workspace: Create isolated workspace
     Coordinator->>Worker: Spawn worker run for task
-    Worker->>Workspace: Execute phases + update workspace-local .ralph
+    Worker->>Workspace: Execute phases + update workspace-local .cueloop
     Worker-->>Coordinator: Return status + branch outcome
     Coordinator->>Repo: Merge/retry/fail bookkeeping
   end

@@ -35,13 +35,13 @@ const WEBHOOK_FAILURE_STORE_HELPER_TEST: &str =
 const WEBHOOK_FAILURE_STORE_DELAY_MS: &str = "250";
 const WEBHOOK_FAILURE_STORE_WAIT_TIMEOUT: Duration = Duration::from_secs(10);
 const WEBHOOK_FAILURE_STORE_WAIT_SLICE: Duration = Duration::from_millis(25);
-const ENV_FAILURE_STORE_HELPER: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_HELPER";
-const ENV_FAILURE_STORE_ACTION: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_ACTION";
-const ENV_FAILURE_STORE_READY_FILE: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_READY_FILE";
-const ENV_FAILURE_STORE_START_FILE: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_START_FILE";
-const ENV_FAILURE_STORE_REPO_ROOT: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_REPO_ROOT";
-const ENV_FAILURE_STORE_TASK_ID: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_TASK_ID";
-const ENV_FAILURE_STORE_REPLAY_ID: &str = "RALPH_TEST_WEBHOOK_FAILURE_STORE_REPLAY_ID";
+const ENV_FAILURE_STORE_HELPER: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_HELPER";
+const ENV_FAILURE_STORE_ACTION: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_ACTION";
+const ENV_FAILURE_STORE_READY_FILE: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_READY_FILE";
+const ENV_FAILURE_STORE_START_FILE: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_START_FILE";
+const ENV_FAILURE_STORE_REPO_ROOT: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_REPO_ROOT";
+const ENV_FAILURE_STORE_TASK_ID: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_TASK_ID";
+const ENV_FAILURE_STORE_REPLAY_ID: &str = "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_REPLAY_ID";
 
 #[test]
 #[serial]
@@ -232,7 +232,7 @@ fn failure_store_runtime_persistence_uses_payload_repo_root_not_cwd() -> Result<
         anyhow::ensure!(
             !other_cwd
                 .path()
-                .join(".ralph/cache/webhooks/failures.json")
+                .join(".cueloop/cache/webhooks/failures.json")
                 .exists(),
             "cwd fallback should not create an unrelated failure store"
         );
@@ -275,7 +275,7 @@ fn failure_store_runtime_persistence_skips_missing_repo_root_without_cwd_fallbac
         anyhow::ensure!(
             !other_cwd
                 .path()
-                .join(".ralph/cache/webhooks/failures.json")
+                .join(".cueloop/cache/webhooks/failures.json")
                 .exists(),
             "missing repo_root should not create a failure store in cwd"
         );
@@ -559,7 +559,7 @@ fn spawn_failure_store_helper(
         .env(ENV_FAILURE_STORE_START_FILE, start_file)
         .env(ENV_FAILURE_STORE_REPO_ROOT, repo_root)
         .env(
-            "RALPH_TEST_WEBHOOK_FAILURE_STORE_DELAY_MS",
+            "CUELOOP_TEST_WEBHOOK_FAILURE_STORE_DELAY_MS",
             WEBHOOK_FAILURE_STORE_DELAY_MS,
         )
         .stdout(Stdio::null())

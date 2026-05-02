@@ -38,7 +38,7 @@ The easiest way to install CueLoop is via Cargo:
 cargo install cueloop-agent-loop
 ```
 
-This installs the latest published version from crates.io and provides the primary `cueloop` executable at `~/.cargo/bin/cueloop` plus the legacy `ralph` compatibility alias.
+This installs the latest published version from crates.io and provides the primary `cueloop` executable at `~/.cargo/bin/cueloop` plus the legacy `cueloop` compatibility alias.
 
 ### From Source
 
@@ -46,14 +46,14 @@ If you want the latest development version or to contribute:
 
 ```bash
 # Clone the repository
-git clone https://github.com/fitchmultz/ralph cueloop
+git clone https://github.com/fitchmultz/cueloop cueloop
 cd cueloop
 
 # Build and install
 make install
 ```
 
-This installs the primary `cueloop` binary to `~/.local/bin/cueloop` and the legacy `ralph` compatibility alias to `~/.local/bin/cueloop` (or a writable fallback path).
+This installs the primary `cueloop` binary to `~/.local/bin/cueloop` and the legacy `cueloop` compatibility alias to `~/.local/bin/cueloop` (or a writable fallback path).
 
 ### Verify Installation
 
@@ -141,8 +141,8 @@ Select [1-3]: 3
 Would you like to create your first task? [y/N]: y
 Enter task title: Add user authentication feature
 
-✓ Created .ralph/config.jsonc
-✓ Created .ralph/queue.jsonc
+✓ Created .cueloop/config.jsonc
+✓ Created .cueloop/queue.jsonc
 ✓ Created first task: RQ-0001
 ✓ CueLoop is ready to use!
 ```
@@ -249,7 +249,7 @@ Starting RQ-0001: Add user authentication feature
 
 === Phase 1: Planning ===
 Generating implementation plan...
-Plan cached to .ralph/cache/plans/RQ-0001.md
+Plan cached to .cueloop/cache/plans/RQ-0001.md
 
 === Phase 2: Implementation ===
 Implementing plan...
@@ -288,7 +288,7 @@ CueLoop uses a structured **3-phase workflow** to ensure quality. Understanding 
 
 **Phase 1: Planning**
 - The AI analyzes the task and creates a detailed implementation plan
-- The plan is cached to `.ralph/cache/plans/<TASK_ID>.md`
+- The plan is cached to `.cueloop/cache/plans/<TASK_ID>.md`
 - You can review and edit this plan before implementation
 
 **Phase 2: Implementation**
@@ -438,8 +438,8 @@ CueLoop uses a two-layer JSON configuration system:
 
 | Location | Purpose | Precedence |
 |----------|---------|------------|
-| `~/.config/ralph/config.jsonc` | Global defaults | Lower |
-| `.ralph/config.jsonc` | Project-specific settings | Higher |
+| `~/.config/cueloop/config.jsonc` | Global defaults | Lower |
+| `.cueloop/config.jsonc` | Project-specific settings | Higher |
 | CLI flags | One-time overrides | Highest |
 
 ### Essential Configuration
@@ -460,8 +460,8 @@ A minimal effective configuration:
     "git_publish_mode": "off"
   },
   "queue": {
-    "file": ".ralph/queue.jsonc",
-    "done_file": ".ralph/done.jsonc"
+    "file": ".cueloop/queue.jsonc",
+    "done_file": ".cueloop/done.jsonc"
   }
 }
 ```
@@ -493,8 +493,8 @@ A minimal effective configuration:
 ```json
 {
   "queue": {
-    "file": ".ralph/queue.jsonc",
-    "done_file": ".ralph/done.jsonc",
+    "file": ".cueloop/queue.jsonc",
+    "done_file": ".cueloop/done.jsonc",
     "id_prefix": "RQ",
     "id_width": 4,
     "auto_archive_terminal_after_days": 7
@@ -748,7 +748,7 @@ cueloop prd create requirements.md
 3. **Use the app (macOS)**: Keep the queue visible while you work
 4. **Archive regularly**: Keep your queue clean with `cueloop queue archive`
 5. **Run doctor**: Check `cueloop doctor` if something seems off
-6. **Version control**: Keep your `.ralph/` directory in git
+6. **Version control**: Keep your `.cueloop/` directory in git
 7. **CI gate**: Always ensure the configured CI gate passes before considering work done (`make agent-ci` in this repo)
 
 ### Getting Help
@@ -770,7 +770,7 @@ cueloop prd create requirements.md
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ RALPH QUICK REFERENCE                                          │
+│ CUELOOP QUICK REFERENCE                                          │
 ├────────────────────────────────────────────────────────────────┤
 │ INSTALL    cargo install cueloop-agent-loop                      │
 │ INIT       cueloop init                                          │

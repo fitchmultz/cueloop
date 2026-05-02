@@ -31,7 +31,7 @@ git rm --cached <env-file>
 
 ## `make pre-public-check` Fails on Runtime Artifacts
 
-Symptom: tracked `.ralph/...` runtime paths or build outputs detected.
+Symptom: tracked `.cueloop/...` runtime paths or build outputs detected.
 
 Fix:
 

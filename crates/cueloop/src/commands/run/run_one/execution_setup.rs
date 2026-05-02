@@ -106,12 +106,12 @@ pub(crate) fn setup_task_execution<'a>(
 
     let preexisting_dirty_allowed = git::repo_dirty_only_allowed_paths(
         &resolved.repo_root,
-        git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+        git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
     )?;
     git::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         force,
-        git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+        git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
     )?;
 
     let plugin_registry = PluginRegistry::load(&resolved.repo_root, &resolved.config)

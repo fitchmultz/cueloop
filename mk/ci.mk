@@ -1,4 +1,4 @@
-# Purpose: Define Ralph local CI and release-gate targets included by the root Makefile.
+# Purpose: Define CueLoop local CI and release-gate targets included by the root Makefile.
 # Responsibilities: Own docs, fast Rust, full Rust, release, profile, and diff-routed agent CI gates.
 # Scope: Target bodies only; lower-level build/test/check targets are owned by sibling fragments.
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.
@@ -39,28 +39,28 @@ profile-ship-gate-clean:
 	@bash scripts/profile-ship-gate.sh clean
 
 # Agent CI: route to the smallest valid gate for the current local working-tree diff.
-# Set RALPH_AGENT_CI_FORCE_MACOS=1 to force macos-ci. Optional RALPH_AGENT_CI_MIN_TIER raises the floor.
+# Set CUELOOP_AGENT_CI_FORCE_MACOS=1 to force macos-ci. Optional CUELOOP_AGENT_CI_MIN_TIER raises the floor.
 agent-ci:
 	@echo "→ Agent CI gate (current local diff routing: docs, fast Rust, full Rust release, macOS ship)..."
-	@force_macos="$${RALPH_AGENT_CI_FORCE_MACOS:-0}"; \
+	@force_macos="$${CUELOOP_AGENT_CI_FORCE_MACOS:-0}"; \
 	if [ "$$force_macos" = "1" ]; then \
-		echo "  → RALPH_AGENT_CI_FORCE_MACOS=1; running macOS gate"; \
-		RALPH_CARGO_MODE=agent $(MAKE) --no-print-directory macos-ci; \
+		echo "  → CUELOOP_AGENT_CI_FORCE_MACOS=1; running macOS gate"; \
+		CUELOOP_CARGO_MODE=agent $(MAKE) --no-print-directory macos-ci; \
 		exit 0; \
 	fi; \
 	if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
 		echo "  → Not in a git worktree; using platform-aware release gate fallback"; \
-		RALPH_CARGO_MODE=agent $(MAKE) --no-print-directory release-gate; \
+		CUELOOP_CARGO_MODE=agent $(MAKE) --no-print-directory release-gate; \
 		exit 0; \
 	fi; \
 	eval "$$(scripts/agent-ci-surface.sh --emit-eval)"; \
-	target_name="$$RALPH_AGENT_CI_TARGET"; \
+	target_name="$$CUELOOP_AGENT_CI_TARGET"; \
 	if [ "$$target_name" = "noop" ]; then \
-		echo "  → $$RALPH_AGENT_CI_REASON"; \
+		echo "  → $$CUELOOP_AGENT_CI_REASON"; \
 		echo "  ✓ No local changes; nothing to validate"; \
 		exit 0; \
 	fi; \
-	min_tier="$${RALPH_AGENT_CI_MIN_TIER:-}"; \
+	min_tier="$${CUELOOP_AGENT_CI_MIN_TIER:-}"; \
 	if [ -n "$$min_tier" ]; then \
 		case "$$min_tier" in \
 			macos-ci) \
@@ -73,10 +73,10 @@ agent-ci:
 				case "$$target_name" in ci-docs) target_name=ci-fast ;; esac \
 				;; \
 			*) \
-				echo "  → ERROR: unknown RALPH_AGENT_CI_MIN_TIER=$$min_tier (use macos-ci, ci, or ci-fast)" >&2; \
+				echo "  → ERROR: unknown CUELOOP_AGENT_CI_MIN_TIER=$$min_tier (use macos-ci, ci, or ci-fast)" >&2; \
 				exit 2 \
 				;; \
 		esac; \
 	fi; \
-	echo "  → $$RALPH_AGENT_CI_REASON"; \
-	RALPH_CARGO_MODE=agent $(MAKE) --no-print-directory "$$target_name"
+	echo "  → $$CUELOOP_AGENT_CI_REASON"; \
+	CUELOOP_CARGO_MODE=agent $(MAKE) --no-print-directory "$$target_name"

@@ -60,7 +60,7 @@ pub fn should_process_file(path: &Path, patterns: &[String], ignore_patterns: &[
         "/node_modules/",
         "/.git/",
         "/vendor/",
-        "/.ralph/",
+        "/.cueloop/",
     ];
     for dir in &ignore_dirs {
         if path_str.contains(dir) {
@@ -329,8 +329,8 @@ mod tests {
     }
 
     #[test]
-    fn should_process_file_skips_ralph_directory() {
-        let path = Path::new("/project/.ralph/queue.json");
+    fn should_process_file_skips_cueloop_directory() {
+        let path = Path::new("/project/.cueloop/queue.json");
 
         assert!(!should_process_file(path, &["*.json".to_string()], &[]));
     }

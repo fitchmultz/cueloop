@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
@@ -86,7 +86,7 @@ pub fn write_handoff_packet(
     handoff: &RemediationHandoff,
 ) -> Result<PathBuf> {
     let handoff_dir = workspace_path
-        .join(".ralph/cache/parallel/handoffs")
+        .join(".cueloop/cache/parallel/handoffs")
         .join(task_id);
     std::fs::create_dir_all(&handoff_dir)
         .with_context(|| format!("create handoff directory {}", handoff_dir.display()))?;

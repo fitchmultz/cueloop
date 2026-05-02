@@ -18,7 +18,7 @@
 //! Invariants/assumptions:
 //! - New project-scope plugins are installed under `.cueloop/plugins`.
 //! - New global-scope plugins are installed under `~/.config/cueloop/plugins`.
-//! - Legacy `.ralph` and `~/.config/ralph` plugin roots remain discoverable elsewhere.
+//! - Legacy `.cueloop` and `~/.config/cueloop` plugin roots remain discoverable elsewhere.
 
 use anyhow::{Result, anyhow};
 use std::path::{Path, PathBuf};

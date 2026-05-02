@@ -53,7 +53,7 @@ Those decisions appear across:
 Session state is persisted to:
 
 ```text
-.ralph/cache/session.jsonc
+.cueloop/cache/session.jsonc
 ```
 
 This file is created when a task starts and is normally cleared when the run completes successfully or when CueLoop explicitly abandons an invalid saved session during execution.
@@ -163,8 +163,8 @@ This prevents headless automation from silently discarding or duplicating interr
   "version": 5,
   "paths": {
     "repo_root": "/repo",
-    "queue_path": "/repo/.ralph/queue.jsonc",
-    "done_path": "/repo/.ralph/done.jsonc"
+    "queue_path": "/repo/.cueloop/queue.jsonc",
+    "done_path": "/repo/.cueloop/done.jsonc"
   },
   "safety": {
     "repo_trusted": true,
@@ -271,7 +271,7 @@ This keeps planning / implementation / review recovery isolated from each other.
 
 ## Configuration
 
-Configure timeout behavior in `.ralph/config.jsonc`:
+Configure timeout behavior in `.cueloop/config.jsonc`:
 
 ```json
 {

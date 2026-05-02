@@ -78,7 +78,7 @@ fn scan_help_examples_include_runner_cli_overrides() {
 
 #[test]
 fn scan_parses_repo_prompt_and_effort_alias() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--repo-prompt", "tools", "-e", "high"])
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--repo-prompt", "tools", "-e", "high"])
         .expect("parse");
 
     match cli.command {
@@ -93,7 +93,7 @@ fn scan_parses_repo_prompt_and_effort_alias() {
 #[test]
 fn scan_parses_runner_cli_overrides() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "scan",
         "--approval-mode",
         "auto-edits",
@@ -114,7 +114,7 @@ fn scan_parses_runner_cli_overrides() {
 #[test]
 fn scan_parses_positional_prompt() {
     let cli =
-        Cli::try_parse_from(["ralph", "scan", "production", "readiness", "gaps"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "scan", "production", "readiness", "gaps"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -128,7 +128,7 @@ fn scan_parses_positional_prompt() {
 #[test]
 fn scan_parses_positional_prompt_with_flags() {
     let cli = Cli::try_parse_from([
-        "ralph", "scan", "--runner", "opencode", "--model", "gpt-5.3", "CI", "and", "safety",
+        "cueloop", "scan", "--runner", "opencode", "--model", "gpt-5.3", "CI", "and", "safety",
         "gaps",
     ])
     .expect("parse");
@@ -145,7 +145,7 @@ fn scan_parses_positional_prompt_with_flags() {
 
 #[test]
 fn scan_backward_compatible_with_focus_flag() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--focus", "production readiness gaps"])
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--focus", "production readiness gaps"])
         .expect("parse");
 
     match cli.command {
@@ -160,7 +160,7 @@ fn scan_backward_compatible_with_focus_flag() {
 #[test]
 fn scan_positional_takes_precedence_over_focus_flag() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "scan",
         "--focus",
         "flag-based focus",
@@ -180,7 +180,7 @@ fn scan_positional_takes_precedence_over_focus_flag() {
 
 #[test]
 fn scan_parses_mode_maintenance() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--mode", "maintenance"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--mode", "maintenance"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -192,7 +192,7 @@ fn scan_parses_mode_maintenance() {
 
 #[test]
 fn scan_parses_mode_innovation() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--mode", "innovation"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--mode", "innovation"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -204,7 +204,7 @@ fn scan_parses_mode_innovation() {
 
 #[test]
 fn scan_parses_mode_general() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--mode", "general"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--mode", "general"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -216,7 +216,7 @@ fn scan_parses_mode_general() {
 
 #[test]
 fn scan_parses_mode_short_flag() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "-m", "innovation"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan", "-m", "innovation"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -228,7 +228,7 @@ fn scan_parses_mode_short_flag() {
 
 #[test]
 fn scan_no_mode_no_focus_requires_input() {
-    let cli = Cli::try_parse_from(["ralph", "scan"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -242,7 +242,7 @@ fn scan_no_mode_no_focus_requires_input() {
 
 #[test]
 fn scan_focus_only_defaults_to_general_mode() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "production", "readiness"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan", "production", "readiness"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -256,7 +256,7 @@ fn scan_focus_only_defaults_to_general_mode() {
 #[test]
 fn scan_explicit_maintenance_mode_with_focus() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "scan",
         "--mode",
         "maintenance",
@@ -276,7 +276,7 @@ fn scan_explicit_maintenance_mode_with_focus() {
 
 #[test]
 fn scan_explicit_innovation_mode_without_focus() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--mode", "innovation"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--mode", "innovation"]).expect("parse");
 
     match cli.command {
         crate::cli::Command::Scan(args) => {
@@ -289,7 +289,7 @@ fn scan_explicit_innovation_mode_without_focus() {
 
 #[test]
 fn scan_mode_with_positional_prompt() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--mode", "innovation", "feature gaps"])
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--mode", "innovation", "feature gaps"])
         .expect("parse");
 
     match cli.command {
@@ -303,7 +303,7 @@ fn scan_mode_with_positional_prompt() {
 
 #[test]
 fn scan_general_mode_explicit() {
-    let cli = Cli::try_parse_from(["ralph", "scan", "--mode", "general", "some", "focus"])
+    let cli = Cli::try_parse_from(["cueloop", "scan", "--mode", "general", "some", "focus"])
         .expect("parse");
 
     match cli.command {
@@ -317,11 +317,12 @@ fn scan_general_mode_explicit() {
 
 #[test]
 fn scan_explicit_general_mode_equivalent_to_implicit_with_focus() {
-    let cli_explicit = Cli::try_parse_from(["ralph", "scan", "--mode", "general", "test", "focus"])
-        .expect("parse explicit mode");
+    let cli_explicit =
+        Cli::try_parse_from(["cueloop", "scan", "--mode", "general", "test", "focus"])
+            .expect("parse explicit mode");
 
     let cli_implicit =
-        Cli::try_parse_from(["ralph", "scan", "test", "focus"]).expect("parse implicit mode");
+        Cli::try_parse_from(["cueloop", "scan", "test", "focus"]).expect("parse implicit mode");
 
     match (cli_explicit.command, cli_implicit.command) {
         (crate::cli::Command::Scan(args_explicit), crate::cli::Command::Scan(args_implicit)) => {

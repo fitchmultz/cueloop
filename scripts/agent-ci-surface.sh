@@ -12,7 +12,7 @@
 # Usage:
 # - scripts/agent-ci-surface.sh --target
 # - scripts/agent-ci-surface.sh --reason
-# - scripts/agent-ci-surface.sh --emit-eval   # shell-evaluable RALPH_AGENT_CI_* assignments
+# - scripts/agent-ci-surface.sh --emit-eval   # shell-evaluable CUELOOP_AGENT_CI_* assignments
 # Invariants/assumptions:
 # - When no git worktree is available, callers should conservatively run `macos-ci`.
 # - `ci-docs` is reserved for changes that cannot alter executable behavior.
@@ -36,7 +36,7 @@ Usage:
 Outputs:
   --target     Print the target name (`noop`, `ci-docs`, `ci-fast`, `ci`, or `macos-ci`)
   --reason     Print a short routing explanation
-  --emit-eval  Print `RALPH_AGENT_CI_TARGET=...` and `RALPH_AGENT_CI_REASON=...` for `eval` in bash
+  --emit-eval  Print `CUELOOP_AGENT_CI_TARGET=...` and `CUELOOP_AGENT_CI_REASON=...` for `eval` in bash
 EOF
 }
 
@@ -47,8 +47,8 @@ emit_result() {
         target) printf '%s\n' "$target" ;;
         reason) printf '%s\n' "$reason" ;;
         emit-eval)
-            printf 'RALPH_AGENT_CI_TARGET=%q\n' "$target"
-            printf 'RALPH_AGENT_CI_REASON=%q\n' "$reason"
+            printf 'CUELOOP_AGENT_CI_TARGET=%q\n' "$target"
+            printf 'CUELOOP_AGENT_CI_REASON=%q\n' "$reason"
             ;;
     esac
 }
@@ -122,7 +122,7 @@ makefile_diff_requires_macos_ship_gate() {
     local diff
     diff="$(combined_local_diff_for_path "Makefile")"
     case "$diff" in
-        *"macos-preflight:"*|*"macos-build:"*|*"macos-install-app:"*|*"macos-test:"*|*"macos-test-contracts:"*|*"macos-test-settings-smoke:"*|*"macos-test-workspace-routing-contract:"*|*"XCODE_"*|*"RALPH_XCODE_"*|*"MACOS_APP_INSTALL_DIR"*|*"scripts/cueloop-cli-bundle.sh"*|*"xcodebuild"*)
+        *"macos-preflight:"*|*"macos-build:"*|*"macos-install-app:"*|*"macos-test:"*|*"macos-test-contracts:"*|*"macos-test-settings-smoke:"*|*"macos-test-workspace-routing-contract:"*|*"XCODE_"*|*"CUELOOP_XCODE_"*|*"MACOS_APP_INSTALL_DIR"*|*"scripts/cueloop-cli-bundle.sh"*|*"xcodebuild"*)
             return 0
             ;;
     esac
@@ -133,7 +133,7 @@ makefile_diff_requires_rust_release_gate() {
     local diff
     diff="$(combined_local_diff_for_path "Makefile")"
     case "$diff" in
-        *"build:"*|*"generate:"*|*"install:"*|*"RALPH_RELEASE_BUILD_STAMP"*|*"RALPH_STAMP_DIR"*|*"RALPH_CLI_BUILD_JOBS_ARG"*|*"BIN_NAME"*|*"BIN_DIR"*|*"PREFIX"*|*"release-gate:"*|*"profile-ship-gate:"*|*"scripts/cueloop-cli-bundle.sh"*)
+        *"build:"*|*"generate:"*|*"install:"*|*"CUELOOP_RELEASE_BUILD_STAMP"*|*"CUELOOP_STAMP_DIR"*|*"CUELOOP_CLI_BUILD_JOBS_ARG"*|*"BIN_NAME"*|*"BIN_DIR"*|*"PREFIX"*|*"release-gate:"*|*"profile-ship-gate:"*|*"scripts/cueloop-cli-bundle.sh"*)
             return 0
             ;;
     esac

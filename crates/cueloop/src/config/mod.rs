@@ -1,4 +1,4 @@
-//! Configuration resolution facade for CueLoop's transitional `ralph` CLI.
+//! Configuration resolution facade for CueLoop's transitional `cueloop` CLI.
 //!
 //! Purpose:
 //! - Expose the config layer, resolution, trust, and validation APIs from one module.
@@ -9,7 +9,7 @@
 //! - Merge configuration layers via `ConfigLayer` and `apply_layer`.
 //! - Validate configuration values (version, paths, numeric ranges, runner binaries).
 //! - Resolve queue/done file paths, ID generation settings, and active runtime layout.
-//! - Discover repository roots via `.cueloop/`, legacy `.ralph/`, or `.git/` markers.
+//! - Discover repository roots via `.cueloop/`, legacy `.cueloop/`, or `.git/` markers.
 //!
 //! Not handled here:
 //! - CLI argument parsing (see `crate::cli`).
@@ -24,8 +24,8 @@
 //! Invariants/assumptions:
 //! - Config version must be 2; unsupported versions are rejected.
 //! - Paths are resolved relative to repo root unless absolute.
-//! - Global config resolves from `~/.config/cueloop/config.jsonc` with legacy `~/.config/ralph/config.jsonc` fallback.
-//! - Project config resolves from `.cueloop/config.jsonc` or legacy `.ralph/config.jsonc` based on active runtime markers.
+//! - Global config resolves from `~/.config/cueloop/config.jsonc` with legacy `~/.config/cueloop/config.jsonc` fallback.
+//! - Project config resolves from `.cueloop/config.jsonc` or legacy `.cueloop/config.jsonc` based on active runtime markers.
 //! - Config layers are applied in this order: defaults, legacy global, current global, then project.
 //! - `save_layer` creates parent directories automatically if needed.
 

@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::bookkeeping::{finalize_bookkeeping_and_push, rebuild_bookkeeping_from_target};
 use super::*;
@@ -163,7 +163,7 @@ fn integration_prompt_uses_explicit_target_branch_for_integration() {
 
     assert!(prompt.contains("git fetch origin release/2026"));
     assert!(prompt.contains("git rebase origin/release/2026"));
-    assert!(prompt.contains("Ralph will reconcile queue/done bookkeeping"));
+    assert!(prompt.contains("CueLoop will reconcile queue/done bookkeeping"));
 }
 
 #[test]
@@ -220,8 +220,8 @@ fn integration_config_uses_explicit_target_branch() -> anyhow::Result<()> {
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: dir.path().to_path_buf(),
-        queue_path: dir.path().join(".ralph/queue.json"),
-        done_path: dir.path().join(".ralph/done.json"),
+        queue_path: dir.path().join(".cueloop/queue.json"),
+        done_path: dir.path().join(".cueloop/done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -239,12 +239,12 @@ fn task_archived_validation_uses_resolved_paths_not_workspace_local_files() -> a
     let coordinator = dir.path().join("coordinator");
     let worker_workspace = dir.path().join("worker-ws");
     std::fs::create_dir_all(&coordinator)?;
-    std::fs::create_dir_all(worker_workspace.join(".ralph"))?;
+    std::fs::create_dir_all(worker_workspace.join(".cueloop"))?;
 
     let coordinator_queue = coordinator.join("queue.json");
     let coordinator_done = coordinator.join("done.json");
-    let workspace_queue = worker_workspace.join(".ralph/queue.json");
-    let workspace_done = worker_workspace.join(".ralph/done.json");
+    let workspace_queue = worker_workspace.join(".cueloop/queue.json");
+    let workspace_done = worker_workspace.join(".cueloop/done.json");
 
     let mut coordinator_queue_file = QueueFile::default();
     coordinator_queue_file
@@ -287,12 +287,12 @@ fn queue_done_semantics_validation_uses_resolved_paths() -> anyhow::Result<()> {
     let coordinator = dir.path().join("coordinator");
     let worker_workspace = dir.path().join("worker-ws");
     std::fs::create_dir_all(&coordinator)?;
-    std::fs::create_dir_all(worker_workspace.join(".ralph"))?;
+    std::fs::create_dir_all(worker_workspace.join(".cueloop"))?;
 
     let coordinator_queue = coordinator.join("queue.json");
     let coordinator_done = coordinator.join("done.json");
-    let workspace_queue = worker_workspace.join(".ralph/queue.json");
-    let workspace_done = worker_workspace.join(".ralph/done.json");
+    let workspace_queue = worker_workspace.join(".cueloop/queue.json");
+    let workspace_done = worker_workspace.join(".cueloop/done.json");
 
     let mut invalid_queue = QueueFile::default();
     invalid_queue
@@ -362,8 +362,8 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     target_done
         .tasks
         .push(make_task("RQ-0002", TaskStatus::Done));
-    crate::queue::save_queue(&seed.join(".ralph/queue.jsonc"), &target_queue)?;
-    crate::queue::save_queue(&seed.join(".ralph/done.jsonc"), &target_done)?;
+    crate::queue::save_queue(&seed.join(".cueloop/queue.jsonc"), &target_queue)?;
+    crate::queue::save_queue(&seed.join(".cueloop/done.jsonc"), &target_done)?;
     std::fs::write(seed.join("README.md"), "base\n")?;
     git_test::commit_all(&seed, "seed queue")?;
     let branch = git_test::git_output(&seed, &["rev-parse", "--abbrev-ref", "HEAD"])?;
@@ -387,16 +387,16 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     stale_queue
         .tasks
         .push(make_task("RQ-0003", TaskStatus::Todo));
-    crate::queue::save_queue(&worker.join(".ralph/queue.jsonc"), &stale_queue)?;
-    crate::queue::save_queue(&worker.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    crate::queue::save_queue(&worker.join(".cueloop/queue.jsonc"), &stale_queue)?;
+    crate::queue::save_queue(&worker.join(".cueloop/done.jsonc"), &QueueFile::default())?;
     std::fs::write(worker.join("work.txt"), "worker implementation\n")?;
     git_test::commit_all(&worker, "worker stale bookkeeping snapshot")?;
 
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
-        queue_path: worker.join(".ralph/queue.jsonc"),
-        done_path: worker.join(".ralph/done.jsonc"),
+        queue_path: worker.join(".cueloop/queue.jsonc"),
+        done_path: worker.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -423,16 +423,16 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     )?;
     let remote_queue_json = git_test::git_output(
         &worker,
-        &["show", &format!("origin/{branch}:.ralph/queue.jsonc")],
+        &["show", &format!("origin/{branch}:.cueloop/queue.jsonc")],
     )?;
     let remote_done_json = git_test::git_output(
         &worker,
-        &["show", &format!("origin/{branch}:.ralph/done.jsonc")],
+        &["show", &format!("origin/{branch}:.cueloop/done.jsonc")],
     )?;
     let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
     let remote_done: QueueFile = serde_json::from_str(&remote_done_json)?;
 
-    assert_eq!(remote_subject, "ralph: archive RQ-0001 queue bookkeeping");
+    assert_eq!(remote_subject, "cueloop: archive RQ-0001 queue bookkeeping");
     assert_eq!(task_ids(&remote_queue), vec!["RQ-0003"]);
     assert_eq!(task_ids(&remote_done), vec!["RQ-0002", "RQ-0001"]);
     Ok(())
@@ -456,8 +456,8 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
         version: 1,
         tasks: vec![source],
     };
-    crate::queue::save_queue(&seed.join(".ralph/queue.jsonc"), &target_queue)?;
-    crate::queue::save_queue(&seed.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    crate::queue::save_queue(&seed.join(".cueloop/queue.jsonc"), &target_queue)?;
+    crate::queue::save_queue(&seed.join(".cueloop/done.jsonc"), &QueueFile::default())?;
     std::fs::write(seed.join("README.md"), "base\n")?;
     git_test::commit_all(&seed, "seed queue")?;
     let branch = git_test::git_output(&seed, &["rev-parse", "--abbrev-ref", "HEAD"])?;
@@ -477,8 +477,8 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
-        queue_path: worker.join(".ralph/queue.jsonc"),
-        done_path: worker.join(".ralph/done.jsonc"),
+        queue_path: worker.join(".cueloop/queue.jsonc"),
+        done_path: worker.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -498,11 +498,11 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
     git_test::git_run(&worker, &["fetch", "origin", &branch])?;
     let remote_queue_json = git_test::git_output(
         &worker,
-        &["show", &format!("origin/{branch}:.ralph/queue.jsonc")],
+        &["show", &format!("origin/{branch}:.cueloop/queue.jsonc")],
     )?;
     let remote_done_json = git_test::git_output(
         &worker,
-        &["show", &format!("origin/{branch}:.ralph/done.jsonc")],
+        &["show", &format!("origin/{branch}:.cueloop/done.jsonc")],
     )?;
     let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
     let remote_done: QueueFile = serde_json::from_str(&remote_done_json)?;
@@ -534,13 +534,13 @@ fn machine_bookkeeping_keeps_followup_proposal_until_push_succeeds() -> anyhow::
     let mut source = make_task("RQ-0001", TaskStatus::Todo);
     source.request = Some("Audit docs and create follow-up work".to_string());
     crate::queue::save_queue(
-        &seed.join(".ralph/queue.jsonc"),
+        &seed.join(".cueloop/queue.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![source],
         },
     )?;
-    crate::queue::save_queue(&seed.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    crate::queue::save_queue(&seed.join(".cueloop/done.jsonc"), &QueueFile::default())?;
     std::fs::write(seed.join("README.md"), "base\n")?;
     git_test::commit_all(&seed, "seed queue")?;
     let branch = git_test::git_output(&seed, &["rev-parse", "--abbrev-ref", "HEAD"])?;
@@ -558,8 +558,8 @@ fn machine_bookkeeping_keeps_followup_proposal_until_push_succeeds() -> anyhow::
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
-        queue_path: worker.join(".ralph/queue.jsonc"),
-        done_path: worker.join(".ralph/done.jsonc"),
+        queue_path: worker.join(".cueloop/queue.jsonc"),
+        done_path: worker.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -591,8 +591,8 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
         version: 1,
         tasks: vec![make_task("RQ-0001", TaskStatus::Todo)],
     };
-    crate::queue::save_queue(&seed.join(".ralph/queue.jsonc"), &target_queue)?;
-    crate::queue::save_queue(&seed.join(".ralph/done.jsonc"), &QueueFile::default())?;
+    crate::queue::save_queue(&seed.join(".cueloop/queue.jsonc"), &target_queue)?;
+    crate::queue::save_queue(&seed.join(".cueloop/done.jsonc"), &QueueFile::default())?;
     std::fs::write(seed.join("README.md"), "base\n")?;
     git_test::commit_all(&seed, "seed queue")?;
     let branch = git_test::git_output(&seed, &["rev-parse", "--abbrev-ref", "HEAD"])?;
@@ -615,8 +615,8 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
-        queue_path: worker.join(".ralph/queue.jsonc"),
-        done_path: worker.join(".ralph/done.jsonc"),
+        queue_path: worker.join(".cueloop/queue.jsonc"),
+        done_path: worker.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -643,7 +643,7 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
     git_test::git_run(&worker, &["fetch", "origin", &branch])?;
     let remote_queue_json = git_test::git_output(
         &worker,
-        &["show", &format!("origin/{branch}:.ralph/queue.jsonc")],
+        &["show", &format!("origin/{branch}:.cueloop/queue.jsonc")],
     )?;
     let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
     assert_eq!(task_ids(&remote_queue), vec!["RQ-0001"]);

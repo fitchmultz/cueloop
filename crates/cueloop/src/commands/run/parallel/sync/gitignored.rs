@@ -4,13 +4,13 @@
 //! - Gitignored allowlist syncing for worker workspaces.
 //!
 //! Responsibilities:
-//! - Filter ignored repository paths through Ralph's canonical parallel-worker policy.
+//! - Filter ignored repository paths through CueLoop's canonical parallel-worker policy.
 //! - Copy safe ignored files such as `.env*` plus trusted explicit allowlist matches.
 //! - Validate configured ignored-file allowlist entries and fail fast on unsafe input.
 //! - Avoid recursive self-copy when workspaces live under the repo root.
 //!
 //! Non-scope:
-//! - `.ralph` runtime-tree traversal.
+//! - `.cueloop` runtime-tree traversal.
 //! - Queue/done bookkeeping path seeding.
 //! - Recursive directory allowlisting or broad ignored-file mirroring.
 //!
@@ -36,10 +36,10 @@ const NEVER_COPY_PREFIXES: &[&str] = &[
     "target/",
     "node_modules/",
     ".venv/",
-    ".ralph/cache/",
-    ".ralph/workspaces/",
-    ".ralph/logs/",
-    ".ralph/lock/",
+    ".cueloop/cache/",
+    ".cueloop/workspaces/",
+    ".cueloop/logs/",
+    ".cueloop/lock/",
     "__pycache__/",
     ".ruff_cache/",
     ".pytest_cache/",

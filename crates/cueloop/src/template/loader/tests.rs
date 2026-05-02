@@ -45,7 +45,7 @@ fn test_load_builtin_template() {
 #[test]
 fn test_load_custom_template() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -71,7 +71,7 @@ fn test_load_custom_template() {
 #[test]
 fn test_custom_overrides_builtin() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -105,7 +105,7 @@ fn test_load_nonexistent_template() {
 #[test]
 fn test_list_templates() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{"title": "", "priority": "low"}"#;
@@ -128,7 +128,7 @@ fn test_template_exists() {
     assert!(template_exists("feature", temp_dir.path()));
     assert!(!template_exists("nonexistent", temp_dir.path()));
 
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
     let mut file = std::fs::File::create(templates_dir.join("custom.json")).unwrap();
     file.write_all(b"{}").unwrap();
@@ -139,7 +139,7 @@ fn test_template_exists() {
 #[test]
 fn test_load_template_with_context_substitutes_variables() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -187,7 +187,7 @@ fn test_load_template_with_context_no_target() {
 #[test]
 fn test_load_template_with_context_returns_warnings() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -215,7 +215,7 @@ fn test_load_template_with_context_returns_warnings() {
 #[test]
 fn test_load_template_strict_mode_fails_on_unknown() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -246,7 +246,7 @@ fn test_load_template_strict_mode_succeeds_when_no_unknown() {
 #[test]
 fn test_load_template_with_context_git_warning() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -282,7 +282,7 @@ fn test_load_template_with_context_git_warning() {
 #[test]
 fn test_load_template_with_context_no_git_warning_when_no_branch_var() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -311,7 +311,7 @@ fn test_load_template_with_context_no_git_warning_when_no_branch_var() {
 #[test]
 fn test_load_custom_template_with_unknown_variable_logs_warning() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{
@@ -334,7 +334,7 @@ fn test_load_custom_template_with_unknown_variable_logs_warning() {
 #[test]
 fn test_load_custom_template_with_known_variables_succeeds() {
     let temp_dir = create_test_project();
-    let templates_dir = temp_dir.path().join(".ralph/templates");
+    let templates_dir = temp_dir.path().join(".cueloop/templates");
     std::fs::create_dir_all(&templates_dir).unwrap();
 
     let custom_template = r#"{

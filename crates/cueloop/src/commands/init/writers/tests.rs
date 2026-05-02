@@ -26,9 +26,9 @@ use tempfile::TempDir;
 
 fn resolved_for(dir: &TempDir) -> config::Resolved {
     let repo_root = dir.path().to_path_buf();
-    let queue_path = repo_root.join(".ralph/queue.jsonc");
-    let done_path = repo_root.join(".ralph/done.jsonc");
-    let project_config_path = Some(repo_root.join(".ralph/config.jsonc"));
+    let queue_path = repo_root.join(".cueloop/queue.jsonc");
+    let done_path = repo_root.join(".cueloop/done.jsonc");
+    let project_config_path = Some(repo_root.join(".cueloop/config.jsonc"));
     config::Resolved {
         config: Config::default(),
         repo_root,
@@ -80,7 +80,7 @@ fn init_creates_missing_files() -> Result<()> {
 fn init_skips_existing_when_not_forced() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
     let queue_json = r#"{
   "version": 1,
   "tasks": [
@@ -121,7 +121,7 @@ fn init_skips_existing_when_not_forced() -> Result<()> {
     let config_json = r#"{
   "version": 2,
   "queue": {
-    "file": ".ralph/queue.jsonc"
+    "file": ".cueloop/queue.jsonc"
   }
 }"#;
     std::fs::write(resolved.project_config_path.as_ref().unwrap(), config_json)?;
@@ -157,7 +157,7 @@ fn init_skips_existing_when_not_forced() -> Result<()> {
 fn init_overwrites_when_forced() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
     std::fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
     std::fs::write(&resolved.done_path, r#"{"version":1,"tasks":[]}"#)?;
     std::fs::write(
@@ -195,7 +195,7 @@ fn init_overwrites_when_forced() -> Result<()> {
 fn init_fails_on_invalid_existing_queue() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
 
     let queue_json = r#"{
   "version": 1,
@@ -240,7 +240,7 @@ fn init_fails_on_invalid_existing_queue() -> Result<()> {
 fn init_fails_on_invalid_existing_done() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
 
     std::fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
 
@@ -333,7 +333,7 @@ fn init_with_wizard_answers_creates_configured_files() -> Result<()> {
 fn write_config_merges_parallel_allowlist_into_existing_config() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);
-    std::fs::create_dir_all(resolved.repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
     let config_path = resolved.project_config_path.as_ref().unwrap();
     std::fs::write(
         config_path,

@@ -28,14 +28,14 @@ fn render_worker_phase1_prompt_replaces_placeholders() -> Result<()> {
         "TASK_REFRESH",
         "RQ-0001",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         true,
         true,
         &config,
     )?;
     assert!(rendered.contains("ID=RQ-0001"));
     assert!(rendered.contains("PHASE=2"));
-    assert!(rendered.contains("PLAN=.ralph/cache/plans/RQ-0001.md"));
+    assert!(rendered.contains("PLAN=.cueloop/cache/plans/RQ-0001.md"));
     assert!(rendered.contains("BASE"));
     assert!(rendered.contains("REPOPROMPT TOOLING (WHEN CONNECTED)"));
     assert!(rendered.contains("REPOPROMPT PLANNING FLOW"));
@@ -55,7 +55,7 @@ fn render_worker_phase1_prompt_handles_repoprompt_flag_combinations() -> Result<
         "TASK_REFRESH",
         "RQ-0001",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         true,
         false,
         &config,
@@ -70,7 +70,7 @@ fn render_worker_phase1_prompt_handles_repoprompt_flag_combinations() -> Result<
         "TASK_REFRESH",
         "RQ-0001",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         false,
         true,
         &config,
@@ -85,7 +85,7 @@ fn render_worker_phase1_prompt_handles_repoprompt_flag_combinations() -> Result<
         "TASK_REFRESH",
         "RQ-0001",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         false,
         false,
         &config,
@@ -108,7 +108,7 @@ fn render_worker_phase1_prompt_allows_placeholder_like_base_prompt() -> Result<(
         "TASK_REFRESH",
         "RQ-0001",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         false,
         false,
         &config,
@@ -129,7 +129,7 @@ fn render_worker_phase1_prompt_allows_placeholder_like_iteration_context() -> Re
         "TASK_REFRESH",
         "RQ-0001",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         false,
         false,
         &config,
@@ -380,7 +380,7 @@ fn render_worker_phase1_prompt_requires_task_id() -> Result<()> {
         "TASK_REFRESH",
         "",
         2,
-        ".ralph/cache/plans/RQ-0001.md",
+        ".cueloop/cache/plans/RQ-0001.md",
         false,
         false,
         &config,

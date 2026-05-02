@@ -37,7 +37,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static TASK_OWNER_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 pub fn queue_lock_dir(repo_root: &Path) -> PathBuf {
-    repo_root.join(".ralph").join("lock")
+    repo_root.join(".cueloop").join("lock")
 }
 
 pub fn is_supervising_process(lock_dir: &Path) -> Result<bool> {

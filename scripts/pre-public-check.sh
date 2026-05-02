@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Run a repo-wide public-readiness audit for the Ralph repository.
+# Purpose: Run a repo-wide public-readiness audit for the CueLoop repository.
 # Responsibilities:
 # - Validate required public-facing files and forbid tracked runtime/build artifacts.
 # - Scan the repo working tree for broken markdown links and high-confidence secret material.
@@ -32,7 +32,7 @@ ALLOW_NO_GIT=0
 
 usage() {
     cat <<'EOF'
-Pre-publication audit for Ralph.
+Pre-publication audit for CueLoop.
 
 Usage:
   scripts/pre-public-check.sh [OPTIONS]
@@ -135,7 +135,7 @@ collect_tracked_runtime_build_path_violations() {
 collect_tracked_runtime_state_allowlist_violations() {
     local path="$1"
     if release_is_runtime_state_path "$path"; then
-        if [ "$path" = ".cueloop" ] || [ "$path" = ".ralph" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_runtime_state_path "$path"; then
+        if [ "$path" = ".cueloop" ] || [ "$path" = ".cueloop" ] || [ -L "$REPO_ROOT/$path" ] || ! release_is_allowed_tracked_runtime_state_path "$path"; then
             unexpected+=("$path")
         fi
     fi
@@ -160,7 +160,7 @@ check_source_snapshot_artifacts() {
     done
 
     local runtime_dir
-    for runtime_dir in ".cueloop" ".ralph"; do
+    for runtime_dir in ".cueloop" ".cueloop"; do
         if [ -e "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
             if [ ! -d "$REPO_ROOT/$runtime_dir" ] || [ -L "$REPO_ROOT/$runtime_dir" ]; then
                 violations+=("$runtime_dir")

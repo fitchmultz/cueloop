@@ -88,7 +88,7 @@ fn default_task_builder_prompt_treats_discovery_as_queue_shaping() -> Result<()>
 fn render_task_builder_prompt_expands_queue_file_variable() -> Result<()> {
     let template = "Queue: {{config.queue.file}}\nRequest:\n{{USER_REQUEST}}\nTags:\n{{HINT_TAGS}}\nScope:\n{{HINT_SCOPE}}\n";
     let mut config = default_config();
-    config.queue.file = Some(std::path::PathBuf::from(".ralph/custom_queue.jsonc"));
+    config.queue.file = Some(std::path::PathBuf::from(".cueloop/custom_queue.jsonc"));
     let rendered = render_task_builder_prompt(
         template,
         "do thing",
@@ -97,7 +97,7 @@ fn render_task_builder_prompt_expands_queue_file_variable() -> Result<()> {
         ProjectType::Code,
         &config,
     )?;
-    assert!(rendered.contains("Queue: .ralph/custom_queue.jsonc"));
+    assert!(rendered.contains("Queue: .cueloop/custom_queue.jsonc"));
     Ok(())
 }
 
@@ -123,11 +123,11 @@ fn render_task_updater_prompt_expands_queue_and_done_file_variables() -> Result<
     let template =
         "Queue: {{config.queue.file}}\nDone: {{config.queue.done_file}}\nTask: {{TASK_ID}}";
     let mut config = default_config();
-    config.queue.file = Some(std::path::PathBuf::from(".ralph/custom_queue.jsonc"));
-    config.queue.done_file = Some(std::path::PathBuf::from(".ralph/custom_done.jsonc"));
+    config.queue.file = Some(std::path::PathBuf::from(".cueloop/custom_queue.jsonc"));
+    config.queue.done_file = Some(std::path::PathBuf::from(".cueloop/custom_done.jsonc"));
     let rendered = render_task_updater_prompt(template, "RQ-0001", ProjectType::Code, &config)?;
-    assert!(rendered.contains("Queue: .ralph/custom_queue.jsonc"));
-    assert!(rendered.contains("Done: .ralph/custom_done.jsonc"));
+    assert!(rendered.contains("Queue: .cueloop/custom_queue.jsonc"));
+    assert!(rendered.contains("Done: .cueloop/custom_done.jsonc"));
     assert!(rendered.contains("Task: RQ-0001"));
     Ok(())
 }

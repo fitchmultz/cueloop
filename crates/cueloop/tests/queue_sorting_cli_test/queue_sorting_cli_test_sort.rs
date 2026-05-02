@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Persisted ordering assertions read task IDs from `.ralph/queue.jsonc`.
+//! - Persisted ordering assertions read task IDs from `.cueloop/queue.jsonc`.
 
 use super::queue_sorting_cli_test_support::{queue_sort_ids, setup_repo, write_priority_queue};
 use anyhow::Result;

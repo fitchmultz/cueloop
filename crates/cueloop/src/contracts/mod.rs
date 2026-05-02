@@ -1,7 +1,7 @@
-//! Contracts module for Ralph configuration and queue/task JSON structures.
+//! Contracts module for CueLoop configuration and queue/task JSON structures.
 //!
 //! Purpose:
-//! - Contracts module for Ralph configuration and queue/task JSON structures.
+//! - Contracts module for CueLoop configuration and queue/task JSON structures.
 //!
 //! Responsibilities:
 //! - Own the canonical data models for config, queue, and task contracts.

@@ -29,7 +29,7 @@ For copy-paste ready examples with Slack, Discord, and GitHub Actions, see **[We
 
 ## Configuration
 
-Webhooks are configured via the `agent.webhook` section in your config file (`.ralph/config.jsonc` or `~/.config/ralph/config.jsonc`).
+Webhooks are configured via the `agent.webhook` section in your config file (`.cueloop/config.jsonc` or `~/.config/cueloop/config.jsonc`).
 
 ### Configuration Options
 
@@ -84,7 +84,7 @@ When `enabled` is `true`, CueLoop validates `url` before delivery: HTTPS is the 
   "agent": {
     "webhook": {
       "enabled": true,
-      "url": "https://ci.example.com/webhooks/ralph",
+      "url": "https://ci.example.com/webhooks/cueloop",
       "events": ["loop_started", "phase_started", "phase_completed", "loop_stopped"],
       "queue_capacity": 500,
       "queue_policy": "block_with_timeout"
@@ -398,7 +398,7 @@ const WEBHOOK_SECRET = 'my-webhook-secret';
 app.use(express.raw({ type: 'application/json' }));
 
 app.post('/webhook', (req, res) => {
-  const signature = req.headers['x-ralph-signature'];
+  const signature = req.headers['x-cueloop-signature'];
   
   // Compute expected signature
   const expected = 'sha256=' + crypto
@@ -434,7 +434,7 @@ post '/webhook' do
   request.body.rewind
   body = request.body.read
   
-  signature = request.env['HTTP_X_RALPH_SIGNATURE']
+  signature = request.env['HTTP_X_CUELOOP_SIGNATURE']
   expected = 'sha256=' + OpenSSL::HMAC.hexdigest(
     OpenSSL::Digest.new('sha256'),
     WEBHOOK_SECRET,
@@ -469,7 +469,7 @@ CueLoop's webhook system follows **best-effort delivery semantics**:
 - **Non-blocking**: Webhook calls return immediately after enqueueing
 - **Async processing**: A background worker handles HTTP delivery
 - **FIFO ordering**: Webhooks are delivered in order (within queue policy constraints)
-- **Bounded failure persistence**: Final delivery failures are written to `.ralph/cache/webhooks/failures.json` (latest 200 records)
+- **Bounded failure persistence**: Final delivery failures are written to `.cueloop/cache/webhooks/failures.json` (latest 200 records)
 
 ### Retry Behavior
 
@@ -616,7 +616,7 @@ diagnostics, and troubleshooting.
 Enable debug logging to see webhook delivery details:
 
 ```bash
-RALPH_LOG=debug cueloop run loop
+CUELOOP_LOG=debug cueloop run loop
 ```
 
 Look for log lines containing `Webhook`:
@@ -658,7 +658,7 @@ Subscribe to all: ["*"]
 | Header | Value | Condition |
 |--------|-------|-----------|
 | `Content-Type` | `application/json` | Always |
-| `User-Agent` | `ralph/{version}` | Always |
+| `User-Agent` | `cueloop/{version}` | Always |
 | `X-CueLoop-Signature` | `sha256={hex}` | When `secret` is configured |
 
 ### Response Handling

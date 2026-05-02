@@ -152,9 +152,9 @@ pub trait RunnerPlugin: Send + Sync {
     /// Called line-by-line on the JSON stream.
     fn parse_response_line(&self, line: &str, buffer: &mut String) -> Option<String>;
 
-    /// Returns true if this runner requires Ralph-managed session IDs.
+    /// Returns true if this runner requires CueLoop-managed session IDs.
     ///
-    /// For example, Kimi doesn't emit session IDs in JSON, so Ralph must supply one.
+    /// For example, Kimi doesn't emit session IDs in JSON, so CueLoop must supply one.
     fn requires_managed_session_id(&self) -> bool {
         false
     }

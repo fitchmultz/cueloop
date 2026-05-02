@@ -64,7 +64,7 @@ fn webhook_includes_signature_header() {
                 let Some((key, value)) = line.split_once(':') else {
                     continue;
                 };
-                if key.trim().eq_ignore_ascii_case("x-ralph-signature") {
+                if key.trim().eq_ignore_ascii_case("x-cueloop-signature") {
                     *sig_clone.lock().unwrap() = Some(value.trim().to_string());
                     break;
                 }
@@ -84,7 +84,10 @@ fn webhook_includes_signature_header() {
         Duration::from_secs(10),
         Duration::from_millis(50),
     );
-    assert!(sig.is_some(), "X-Ralph-Signature header should be present");
+    assert!(
+        sig.is_some(),
+        "X-CueLoop-Signature header should be present"
+    );
     let sig_str = sig.expect("signature must be present").to_lowercase();
     assert!(
         sig_str.contains("sha256="),

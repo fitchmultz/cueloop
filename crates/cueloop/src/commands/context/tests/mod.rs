@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::detect::detect_project_type;
 use super::markdown::{extract_section_titles, parse_markdown_sections};
@@ -32,12 +32,12 @@ fn create_test_resolved(dir: &TempDir) -> config::Resolved {
     let repo_root = dir.path().to_path_buf();
     config::Resolved {
         config: crate::contracts::Config::default(),
-        queue_path: repo_root.join(".ralph/queue.json"),
-        done_path: repo_root.join(".ralph/done.json"),
+        queue_path: repo_root.join(".cueloop/queue.json"),
+        done_path: repo_root.join(".cueloop/done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.json")),
+        project_config_path: Some(repo_root.join(".cueloop/config.json")),
         repo_root,
     }
 }

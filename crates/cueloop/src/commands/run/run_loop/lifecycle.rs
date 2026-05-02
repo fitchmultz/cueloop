@@ -45,7 +45,7 @@ impl LoopLifecycle {
         initial_todo_count: u32,
         completed: u32,
     ) -> Self {
-        let cache_dir = resolved.repo_root.join(".ralph/cache");
+        let cache_dir = resolved.repo_root.join(".cueloop/cache");
         signal::clear_stop_signal_at_loop_start(&cache_dir);
 
         let loop_start_time = Instant::now();

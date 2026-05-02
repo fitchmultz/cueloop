@@ -30,16 +30,16 @@ use tempfile::TempDir;
 
 fn make_resolved(temp: &TempDir) -> cueloop::config::Resolved {
     let repo_root = temp.path().to_path_buf();
-    let queue_path = repo_root.join(".ralph/queue.jsonc");
-    let done_path = repo_root.join(".ralph/done.jsonc");
+    let queue_path = repo_root.join(".cueloop/queue.jsonc");
+    let done_path = repo_root.join(".cueloop/done.jsonc");
 
     let cfg = Config {
         profiles: None,
         version: 2,
         project_type: Some(ProjectType::Code),
         queue: QueueConfig {
-            file: Some(PathBuf::from(".ralph/queue.jsonc")),
-            done_file: Some(PathBuf::from(".ralph/done.jsonc")),
+            file: Some(PathBuf::from(".cueloop/queue.jsonc")),
+            done_file: Some(PathBuf::from(".cueloop/done.jsonc")),
             id_prefix: Some("RQ".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
@@ -77,10 +77,10 @@ fn make_resolved(temp: &TempDir) -> cueloop::config::Resolved {
 }
 
 fn write_minimal_queue(temp: &TempDir) -> Result<()> {
-    let ralph_dir = temp.path().join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = temp.path().join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
     std::fs::write(
-        ralph_dir.join("queue.jsonc"),
+        cueloop_dir.join("queue.jsonc"),
         r#"{
   "version": 1,
   "tasks": [

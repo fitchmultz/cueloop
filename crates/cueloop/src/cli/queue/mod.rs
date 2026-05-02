@@ -122,15 +122,15 @@ pub struct QueueArgs {
 
 #[derive(Subcommand)]
 pub enum QueueCommand {
-    /// Inspect whether Ralph can safely continue from the current queue state.
+    /// Inspect whether CueLoop can safely continue from the current queue state.
     #[command(
-        after_long_help = "Continuation workflow:\n - This command is read-only.\n - If the queue is valid, Ralph tells you whether continuation is ready, waiting, or blocked.\n - If recoverable issues are present, Ralph explains the blocking state and the next repair/undo steps.\n - Warnings are preserved as partial value; they do not force manual queue surgery.\n\nExamples:\n cueloop queue validate\n cueloop --verbose queue validate\n cueloop queue repair --dry-run\n cueloop queue repair\n cueloop undo --dry-run"
+        after_long_help = "Continuation workflow:\n - This command is read-only.\n - If the queue is valid, CueLoop tells you whether continuation is ready, waiting, or blocked.\n - If recoverable issues are present, CueLoop explains the blocking state and the next repair/undo steps.\n - Warnings are preserved as partial value; they do not force manual queue surgery.\n\nExamples:\n cueloop queue validate\n cueloop --verbose queue validate\n cueloop queue repair --dry-run\n cueloop queue repair\n cueloop undo --dry-run"
     )]
     Validate,
 
     /// Prune tasks from the done archive based on age, status, or keep-last rules.
     #[command(
-        after_long_help = "Prune removes old tasks from .ralph/done.jsonc while preserving recent history.\n\nSafety:\n --keep-last always protects the N most recently completed tasks (by completed_at).\n If no filters are provided, all tasks are pruned except those protected by --keep-last.\n Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n but do NOT match the age filter (safety-first).\n\nExamples:\n cueloop queue prune --dry-run --age 30 --status rejected\n cueloop queue prune --keep-last 100\n cueloop queue prune --age 90\n cueloop queue prune --age 30 --status done --keep-last 50"
+        after_long_help = "Prune removes old tasks from .cueloop/done.jsonc while preserving recent history.\n\nSafety:\n --keep-last always protects the N most recently completed tasks (by completed_at).\n If no filters are provided, all tasks are pruned except those protected by --keep-last.\n Missing or invalid completed_at timestamps are treated as oldest for keep-last ordering\n but do NOT match the age filter (safety-first).\n\nExamples:\n cueloop queue prune --dry-run --age 30 --status rejected\n cueloop queue prune --keep-last 100\n cueloop queue prune --age 90\n cueloop queue prune --age 30 --status done --keep-last 50"
     )]
     Prune(QueuePruneArgs),
 
@@ -164,7 +164,7 @@ pub enum QueueCommand {
     )]
     Archive(QueueArchiveArgs),
 
-    /// Normalize recoverable queue issues so Ralph can continue safely.
+    /// Normalize recoverable queue issues so CueLoop can continue safely.
     #[command(
         after_long_help = "Continuation workflow:\n - Use --dry-run first to preview recoverable fixes.\n - Applying the repair creates an undo checkpoint before queue files are rewritten.\n - This command is for normal continuation, not manual emergency surgery.\n\nExamples:\n cueloop queue repair --dry-run\n cueloop queue repair\n cueloop undo --dry-run"
     )]

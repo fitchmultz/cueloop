@@ -87,7 +87,7 @@ impl TaskBuildOutputTarget {
     }
 }
 
-// TaskBuildOptions controls runner-driven task creation via .ralph/prompts/task_builder.md.
+// TaskBuildOptions controls runner-driven task creation via .cueloop/prompts/task_builder.md.
 pub struct TaskBuildOptions {
     pub request: String,
     pub hint_tags: String,
@@ -110,7 +110,7 @@ pub struct TaskBuildOptions {
     pub estimated_minutes: Option<u32>,
 }
 
-// TaskUpdateSettings controls runner-driven task updates via .ralph/prompts/task_updater.md.
+// TaskUpdateSettings controls runner-driven task updates via .cueloop/prompts/task_updater.md.
 pub struct TaskUpdateSettings {
     pub fields: String,
     pub runner_override: Option<Runner>,

@@ -4,7 +4,7 @@
 //! - Queue sort subcommand.
 //!
 //! Responsibilities:
-//! - Reorder tasks in .ralph/queue.jsonc by priority.
+//! - Reorder tasks in .cueloop/queue.jsonc by priority.
 //! - Support dry-run mode to preview the new order.
 //!
 //! Not handled here:
@@ -31,7 +31,7 @@ use super::{QueueSortBy, QueueSortOrder};
 /// Arguments for `cueloop queue sort`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  cueloop queue sort\n  cueloop queue sort --order descending\n  cueloop queue sort --order ascending\n  cueloop queue sort --dry-run\n  cueloop queue list --scheduled --sort-by scheduled_start --order ascending\n\nDry run:\n  Shows the new queue order without modifying files.\n\nNote:\n  - `cueloop queue sort` reorders .ralph/queue.jsonc and intentionally supports priority only.\n  - For triage/time-based sorting without mutating files, use `cueloop queue list --sort-by ...`."
+    after_long_help = "Examples:\n  cueloop queue sort\n  cueloop queue sort --order descending\n  cueloop queue sort --order ascending\n  cueloop queue sort --dry-run\n  cueloop queue list --scheduled --sort-by scheduled_start --order ascending\n\nDry run:\n  Shows the new queue order without modifying files.\n\nNote:\n  - `cueloop queue sort` reorders .cueloop/queue.jsonc and intentionally supports priority only.\n  - For triage/time-based sorting without mutating files, use `cueloop queue list --sort-by ...`."
 )]
 pub struct QueueSortArgs {
     /// Sort by field (supported: priority only; reorders queue file).

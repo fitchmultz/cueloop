@@ -18,8 +18,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - `seed_ralph_dir()` creates a usable `.ralph/` structure for fixture setup.
-//! - Archive operates on `.ralph/queue.jsonc` and `.ralph/done.jsonc`.
+//! - `seed_cueloop_dir()` creates a usable `.cueloop/` structure for fixture setup.
+//! - Archive operates on `.cueloop/queue.jsonc` and `.cueloop/done.jsonc`.
 
 use anyhow::Result;
 use cueloop::contracts::TaskStatus;
@@ -30,7 +30,7 @@ mod test_support;
 fn queue_archive_moves_terminal_tasks_to_done() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let mut t2 = test_support::make_test_task("RQ-0002", "Done", TaskStatus::Done);
@@ -72,7 +72,7 @@ fn queue_archive_moves_terminal_tasks_to_done() -> Result<()> {
 fn queue_archive_is_noop_when_no_terminal_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let t2 = test_support::make_test_task("RQ-0002", "Doing", TaskStatus::Doing);
@@ -80,14 +80,14 @@ fn queue_archive_is_noop_when_no_terminal_tasks() -> Result<()> {
     test_support::write_queue(dir.path(), &[t1, t2])?;
     test_support::write_done(dir.path(), &[])?;
 
-    let before_queue = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
-    let before_done = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let before_queue = std::fs::read_to_string(dir.path().join(".cueloop/queue.jsonc"))?;
+    let before_done = std::fs::read_to_string(dir.path().join(".cueloop/done.jsonc"))?;
 
     let (status, _stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "archive"]);
     anyhow::ensure!(status.success(), "archive failed\nstderr:\n{stderr}");
 
-    let after_queue = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
-    let after_done = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let after_queue = std::fs::read_to_string(dir.path().join(".cueloop/queue.jsonc"))?;
+    let after_done = std::fs::read_to_string(dir.path().join(".cueloop/done.jsonc"))?;
 
     anyhow::ensure!(before_queue == after_queue, "queue changed on noop archive");
     anyhow::ensure!(before_done == after_done, "done changed on noop archive");
@@ -99,7 +99,7 @@ fn queue_archive_is_noop_when_no_terminal_tasks() -> Result<()> {
 fn queue_archive_appends_to_existing_done_file() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Create an existing done task
     let mut existing_done =
@@ -132,7 +132,7 @@ fn queue_archive_appends_to_existing_done_file() -> Result<()> {
 fn queue_archive_dry_run_does_not_modify_files() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let mut t2 = test_support::make_test_task("RQ-0002", "Done", TaskStatus::Done);
@@ -141,8 +141,8 @@ fn queue_archive_dry_run_does_not_modify_files() -> Result<()> {
     test_support::write_queue(dir.path(), &[t1.clone(), t2.clone()])?;
     test_support::write_done(dir.path(), &[])?;
 
-    let before_queue = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
-    let before_done = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let before_queue = std::fs::read_to_string(dir.path().join(".cueloop/queue.jsonc"))?;
+    let before_done = std::fs::read_to_string(dir.path().join(".cueloop/done.jsonc"))?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["queue", "archive", "--dry-run"]);
@@ -158,8 +158,8 @@ fn queue_archive_dry_run_does_not_modify_files() -> Result<()> {
     );
 
     // Verify files unchanged
-    let after_queue = std::fs::read_to_string(dir.path().join(".ralph/queue.jsonc"))?;
-    let after_done = std::fs::read_to_string(dir.path().join(".ralph/done.jsonc"))?;
+    let after_queue = std::fs::read_to_string(dir.path().join(".cueloop/queue.jsonc"))?;
+    let after_done = std::fs::read_to_string(dir.path().join(".cueloop/done.jsonc"))?;
 
     anyhow::ensure!(before_queue == after_queue, "queue changed during dry-run");
     anyhow::ensure!(before_done == after_done, "done changed during dry-run");
@@ -171,7 +171,7 @@ fn queue_archive_dry_run_does_not_modify_files() -> Result<()> {
 fn queue_archive_dry_run_shows_what_would_be_archived() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     let mut t2 = test_support::make_test_task("RQ-0002", "Done", TaskStatus::Done);
@@ -206,7 +206,7 @@ fn queue_archive_dry_run_shows_what_would_be_archived() -> Result<()> {
 fn queue_archive_dry_run_no_terminal_tasks() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let t1 = test_support::make_test_task("RQ-0001", "Todo", TaskStatus::Todo);
     test_support::write_queue(dir.path(), &[t1])?;

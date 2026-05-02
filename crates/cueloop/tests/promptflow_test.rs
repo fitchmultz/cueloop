@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use cueloop::contracts::Config;
 use cueloop::promptflow::{self, PromptPolicy};
@@ -50,7 +50,7 @@ fn build_phase1_prompt_contains_required_elements() {
     assert!(prompt.contains(prompts::REPOPROMPT_REQUIRED_INSTRUCTION));
     assert!(prompt.contains(prompts::REPOPROMPT_CONTEXT_BUILDER_PLANNING_INSTRUCTION));
     assert!(prompt.contains("Plan only"));
-    assert!(prompt.contains(".ralph/cache/plans/RQ-1234.md"));
+    assert!(prompt.contains(".cueloop/cache/plans/RQ-1234.md"));
     assert!(prompt.contains(base));
     assert!(!prompt.contains("IMPLEMENTATION COMPLETION CHECKLIST"));
 }
@@ -283,7 +283,7 @@ fn phase2_handoff_checklist_discourages_deferrals() {
     let rendered = prompts::render_phase2_handoff_checklist(&template, "RQ-0004", &config).unwrap();
 
     assert!(rendered.contains("Resolve in-scope follow-ups"));
-    assert!(rendered.contains(".ralph/cache/followups/RQ-0004.json"));
+    assert!(rendered.contains(".cueloop/cache/followups/RQ-0004.json"));
     assert!(!rendered.contains("{{TASK_ID}}"));
     assert!(rendered.contains("If you are truly blocked"));
 }

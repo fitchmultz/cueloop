@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::support::{resolved_for_repo, write_queue};
 use crate::commands::run::supervision::{PushPolicy, post_run_supervise};

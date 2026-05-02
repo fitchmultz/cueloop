@@ -4,7 +4,7 @@
 //! - Queue validation subcommand.
 //!
 //! Responsibilities:
-//! - Inspect whether Ralph can safely continue from the current queue state.
+//! - Inspect whether CueLoop can safely continue from the current queue state.
 //! - Keep the command read-only while providing continuation guidance.
 //! - Reuse the same blocking and continuation language as machine/app surfaces.
 //!

@@ -273,7 +273,7 @@ Override runner binary paths in your config:
 }
 ```
 
-**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. The trusted target workspace must be able to resolve the pinned `@cursor/sdk` package (for example, via `npm install --save-exact @cursor/sdk@1.0.11`) or `RALPH_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
+**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. The trusted target workspace must be able to resolve the pinned `@cursor/sdk` package (for example, via `npm install --save-exact @cursor/sdk@1.0.11`) or `CUELOOP_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
 
 ### Configuration Precedence
 
@@ -438,7 +438,7 @@ CueLoop manages runner sessions explicitly for reliable crash recovery. Each pha
 - `phase` - Phase number (1, 2, or 3)
 - `timestamp` - Unix epoch seconds
 
-> **Note:** No `ralph-` prefix, no PID suffix. The same session ID is reused for all continue/resume operations within a phase.
+> **Note:** No `cueloop-` prefix, no PID suffix. The same session ID is reused for all continue/resume operations within a phase.
 
 ### Kimi Session Handling
 
@@ -503,7 +503,7 @@ CueLoop provides configurable retry behavior for transient runner failures.
 
 Retries only occur when:
 - The repository is clean, OR
-- Only CueLoop-allowed paths (`.ralph/`) are dirty, OR
+- Only CueLoop-allowed paths (`.cueloop/`) are dirty, OR
 - `git_revert_mode` is `enabled` for auto-revert
 
 ### Disabling Retry
@@ -580,9 +580,9 @@ Custom runner plugins must implement this CLI protocol:
 ```
 
 **Environment Variables:**
-- `RALPH_PLUGIN_ID` - Plugin identifier
-- `RALPH_PLUGIN_CONFIG_JSON` - Opaque plugin configuration
-- `RALPH_RUNNER_CLI_JSON` - Resolved normalized CLI options
+- `CUELOOP_PLUGIN_ID` - Plugin identifier
+- `CUELOOP_PLUGIN_CONFIG_JSON` - Opaque plugin configuration
+- `CUELOOP_RUNNER_CLI_JSON` - Resolved normalized CLI options
 
 ### Plugin Configuration
 
@@ -610,8 +610,8 @@ Enable and configure a plugin:
 ### Plugin Manifest
 
 Plugin manifests are located at:
-- Project: `.ralph/plugins/<plugin_id>/plugin.json`
-- Global: `~/.config/ralph/plugins/<plugin_id>/plugin.json`
+- Project: `.cueloop/plugins/<plugin_id>/plugin.json`
+- Global: `~/.config/cueloop/plugins/<plugin_id>/plugin.json`
 
 ### Security Warning
 

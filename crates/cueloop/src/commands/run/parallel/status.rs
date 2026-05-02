@@ -294,23 +294,23 @@ fn build_parallel_queue_lock_guidance(
     let (headline, detail, next_steps) = match lock.condition {
         QueueLockCondition::Live => (
             "Parallel execution is stalled on queue lock contention.",
-            "Another Ralph process currently owns the coordinator queue lock. Wait for it to finish, or clear a verified stale lock before restarting the coordinator.",
+            "Another CueLoop process currently owns the coordinator queue lock. Wait for it to finish, or clear a verified stale lock before restarting the coordinator.",
             vec![
                 step(
                     "Inspect the current lock owner",
                     machine_doctor_report_command(),
-                    "Confirm which Ralph process owns the queue lock and whether it is still healthy.",
+                    "Confirm which CueLoop process owns the queue lock and whether it is still healthy.",
                 ),
                 step(
                     "Resume the coordinator after the lock clears",
                     machine_run_loop_command(true, false),
-                    "Retry the coordinator once the other Ralph process has finished.",
+                    "Retry the coordinator once the other CueLoop process has finished.",
                 ),
             ],
         ),
         QueueLockCondition::Stale => (
             "Parallel execution is stalled on queue lock recovery.",
-            "A dead Ralph process left the coordinator queue lock behind. Clear the stale lock before restarting the coordinator.",
+            "A dead CueLoop process left the coordinator queue lock behind. Clear the stale lock before restarting the coordinator.",
             vec![
                 step(
                     "Clear the verified stale lock",
@@ -331,7 +331,7 @@ fn build_parallel_queue_lock_guidance(
         ),
         QueueLockCondition::OwnerMissing | QueueLockCondition::OwnerUnreadable => (
             "Parallel execution is stalled on queue lock metadata recovery.",
-            "The coordinator queue lock exists, but its owner metadata is incomplete. Verify no other Ralph process is active before clearing it.",
+            "The coordinator queue lock exists, but its owner metadata is incomplete. Verify no other CueLoop process is active before clearing it.",
             vec![
                 step(
                     "Inspect lock health",
@@ -341,7 +341,7 @@ fn build_parallel_queue_lock_guidance(
                 step(
                     "Clear the broken lock record",
                     "cueloop queue unlock",
-                    "Remove the queue lock after confirming no other Ralph process is running.",
+                    "Remove the queue lock after confirming no other CueLoop process is running.",
                 ),
                 step(
                     "Resume the coordinator",

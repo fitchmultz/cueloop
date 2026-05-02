@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use std::process::Command;
 
@@ -32,7 +32,7 @@ fn run_loop_wait_when_empty_flag_parses() {
         .arg("--wait-when-empty")
         .arg("--help")
         .output()
-        .expect("Failed to run ralph");
+        .expect("Failed to run cueloop");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -64,7 +64,7 @@ fn run_loop_continuous_alias_parses() {
         .arg("--continuous")
         .arg("--help")
         .output()
-        .expect("Failed to run ralph");
+        .expect("Failed to run cueloop");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -91,7 +91,7 @@ fn run_loop_empty_poll_ms_flag_parses() {
         .arg("5000")
         .arg("--help")
         .output()
-        .expect("Failed to run ralph");
+        .expect("Failed to run cueloop");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -122,7 +122,7 @@ fn run_loop_wait_when_empty_conflicts_with_parallel() {
         .arg("--wait-when-empty")
         .arg("--parallel")
         .output()
-        .expect("Failed to run ralph");
+        .expect("Failed to run cueloop");
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 

@@ -5,7 +5,7 @@ Source of truth: this document for its stated scope
 Parent: [CueLoop Documentation](index.md)
 
 
-This page documents CueLoop's current command surface. The primary executable is `cueloop`; the legacy `ralph` executable remains available as a compatibility alias during the migration window. Default `cueloop --help` shows the core workflow only; use `cueloop help-all` or `cueloop <command> --help` to reveal advanced and experimental surfaces.
+This page documents CueLoop's current command surface. The primary executable is `cueloop`; the legacy `cueloop` executable remains available as a compatibility alias during the migration window. Default `cueloop --help` shows the core workflow only; use `cueloop help-all` or `cueloop <command> --help` to reveal advanced and experimental surfaces.
 
 ## Global Flags
 
@@ -13,7 +13,7 @@ These are available on most commands:
 
 - `--force`
 - `-v, --verbose`
-- `--debug` (supported on run flows; writes raw logs to `.cueloop/logs/debug.log`; legacy `.ralph/logs/debug.log` remains possible in legacy repos)
+- `--debug` (supported on run flows; writes raw logs to `.cueloop/logs/debug.log`; legacy `.cueloop/logs/debug.log` remains possible in legacy repos)
 - `--color <auto|always|never>`
 - `--no-color`
 - `--auto-fix`
@@ -26,7 +26,7 @@ These are available on most commands:
 - `cueloop run` - Execute tasks (`one`, `loop`, `resume`, `parallel`)
 - `cueloop task` - Build/create and manage task lifecycle
 - `cueloop scan` - Create tasks by scanning repository state
-- `cueloop init` - Bootstrap `.cueloop/` files for new repos, or keep `.ralph/` for legacy repos
+- `cueloop init` - Bootstrap `.cueloop/` files for new repos, or keep `.cueloop/` for legacy repos
 - `cueloop app` - macOS app integration
 - `cueloop version` - Build/version info
 
@@ -39,7 +39,7 @@ These are available on most commands:
 - `cueloop daemon` - Background daemon controls
 - `cueloop prd` - Convert PRD markdown into tasks
 - `cueloop completions` - Generate shell completions
-- `cueloop migrate` - Check/apply config migrations and explicit `runtime-dir` migration (`.ralph` → `.cueloop`)
+- `cueloop migrate` - Check/apply config migrations and explicit `runtime-dir` migration (`.cueloop` → `.cueloop`)
 - `cueloop cleanup` - Remove temporary runtime artifacts
 - `cueloop version` - Build/version info
 - `cueloop watch` - File watch to detect task comments
@@ -63,7 +63,7 @@ cueloop init
 cueloop init --non-interactive
 ```
 
-`cueloop init` creates or updates local repository trust (`.cueloop/trust.jsonc` by default, `.ralph/trust.jsonc` for legacy repos), refreshes the generated runtime README, and adds the trust file to `.gitignore`. Use `cueloop config trust init` only for trust-only repair in an already-initialized repo.
+`cueloop init` creates or updates local repository trust (`.cueloop/trust.jsonc` by default, `.cueloop/trust.jsonc` for legacy repos), refreshes the generated runtime README, and adds the trust file to `.gitignore`. Use `cueloop config trust init` only for trust-only repair in an already-initialized repo.
 
 Interactive init can select extra ignored files for parallel workers; manual additions belong in trusted `parallel.ignored_file_allowlist` and follow the small-file allowlist contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync).
 
@@ -185,7 +185,7 @@ cueloop task children <ROOT_TASK_ID>
 
 Expected result: every meaningful plan section appears as a task or a documented warning, ordered phases stay in logical execution order, and `--with-dependencies` creates sibling prerequisite edges for ordered phase work. Written decomposition trees persist umbrella/root/phase nodes as `kind: group`, leave runnable leaf work as the default `kind: work_item`, and report both the root/group task and the first actionable leaf task in text and JSON output.
 
-Preview-only decomposition saves an exact replay checkpoint under `.cueloop/cache/decompose-previews/` (or legacy `.ralph/cache/decompose-previews/`) and prints a copy/pasteable continuation command with the checkpoint ID.
+Preview-only decomposition saves an exact replay checkpoint under `.cueloop/cache/decompose-previews/` (or legacy `.cueloop/cache/decompose-previews/`) and prints a copy/pasteable continuation command with the checkpoint ID.
 
 Decomposition status controls are explicit and opt-in. `--status <STATUS>` applies to every generated node by default; `--parent-status <STATUS>` overrides generated group/non-leaf nodes; `--leaf-status <STATUS>` overrides generated leaf work items. Plain `--write` remains review-first and writes generated tasks as `draft`. To make leaf work immediately runnable while keeping parent/group nodes as drafts, use `--parent-status draft --leaf-status todo`. If a write leaves every generated task in `draft`, the continuation output prints an exact activation command such as `cueloop task ready RQ-0003` for the first actionable leaf. `cueloop queue validate` and `cueloop queue explain` use the same calm activation guidance instead of reporting an all-draft decomposition as dependency failure.
 
@@ -224,7 +224,7 @@ These commands are now first-class continuation tools. They explain whether CueL
 If `cueloop run loop` stops on queue validation, start with `cueloop queue repair --dry-run` to preview recoverable fixes, apply them with `cueloop queue repair`, and optionally confirm the result with `cueloop queue validate`.
 
 `cueloop task mutate --format json` and `cueloop task decompose --format json` now emit the same shared versioned continuation documents used by `cueloop machine` commands.
-`cueloop task followups apply` consumes `.cueloop/cache/followups/<TASK_ID>.json` (or legacy `.ralph/cache/followups/<TASK_ID>.json`), validates the proposal, creates undo, inserts generated tasks into the queue, and records continuation state in the same family as task mutate/decompose.
+`cueloop task followups apply` consumes `.cueloop/cache/followups/<TASK_ID>.json` (or legacy `.cueloop/cache/followups/<TASK_ID>.json`), validates the proposal, creates undo, inserts generated tasks into the queue, and records continuation state in the same family as task mutate/decompose.
 
 ### Machine API
 

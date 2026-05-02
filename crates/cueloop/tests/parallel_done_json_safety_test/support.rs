@@ -1,7 +1,7 @@
 //! Purpose: suite-local fixtures and assertions for `parallel_done_json_safety_test`.
 //!
 //! Responsibilities:
-//! - Create disposable git+`.ralph/` repos from the cached integration-test scaffold.
+//! - Create disposable git+`.cueloop/` repos from the cached integration-test scaffold.
 //! - Keep a bare `origin` remote alive for the full test so push/fetch assertions are real.
 //! - Centralize repeated parallel-run task fixtures, runner configuration, and git plumbing.
 //!
@@ -45,7 +45,7 @@ pub(super) struct ParallelDoneJsonRepo {
 impl ParallelDoneJsonRepo {
     pub(super) fn new() -> Result<Self> {
         let dir = super::test_support::temp_dir_outside_repo();
-        super::test_support::seed_git_repo_with_ralph(dir.path())?;
+        super::test_support::seed_git_repo_with_cueloop(dir.path())?;
 
         let origin = super::test_support::temp_dir_outside_repo();
         init_bare_remote(origin.path())?;
@@ -85,11 +85,11 @@ impl ParallelDoneJsonRepo {
     }
 
     pub(super) fn read_queue_text(&self) -> Result<Option<String>> {
-        read_text_if_exists(&self.path().join(".ralph/queue.jsonc"))
+        read_text_if_exists(&self.path().join(".cueloop/queue.jsonc"))
     }
 
     pub(super) fn read_done_text(&self) -> Result<Option<String>> {
-        read_text_if_exists(&self.path().join(".ralph/done.jsonc"))
+        read_text_if_exists(&self.path().join(".cueloop/done.jsonc"))
     }
 
     pub(super) fn read_parallel_state(&self) -> Result<Option<serde_json::Value>> {

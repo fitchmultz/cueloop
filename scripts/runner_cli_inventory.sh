@@ -2,8 +2,8 @@
 # runner_cli_inventory.sh
 #
 # Responsible for capturing `--help` (and best-effort `--version`) output for the
-# runner CLIs Ralph uses: `codex`, `opencode`, `gemini`, `claude`, `kimi`, and `pi`.
-# Cursor runs through Ralph's SDK bridge and is intentionally excluded. Outputs are written into a stable directory structure to support
+# runner CLIs CueLoop uses: `codex`, `opencode`, `gemini`, `claude`, `kimi`, and `pi`.
+# Cursor runs through CueLoop's SDK bridge and is intentionally excluded. Outputs are written into a stable directory structure to support
 # Phase 2 discovery and later Phase 3 runner unification work.
 #
 # Subcommand discovery:
@@ -28,7 +28,7 @@ usage() {
   cat <<'EOF'
 runner_cli_inventory.sh
 
-Capture `--help` (and best-effort `--version`) outputs for runner binaries used by Ralph.
+Capture `--help` (and best-effort `--version`) outputs for runner binaries used by CueLoop.
 Automatically discovers and captures subcommand help as well.
 
 USAGE:

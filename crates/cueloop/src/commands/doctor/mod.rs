@@ -8,7 +8,7 @@
 //! - Validate queue and done archive files.
 //! - Check runner binary availability and configuration.
 //! - Inspect canonical queue-lock health and identify stale or ambiguous ownership.
-//! - Check project git hygiene (e.g., sensitive debug logs in `.ralph/logs/` are gitignored).
+//! - Check project git hygiene (e.g., sensitive debug logs in `.cueloop/logs/` are gitignored).
 //! - Apply safe auto-fixes when requested (`--auto-fix` flag).
 //! - Derive canonical operator-facing blocking-state diagnostics for doctor surfaces.
 //!
@@ -64,15 +64,15 @@ pub fn run_doctor(resolved: &config::Resolved, auto_fix: bool) -> anyhow::Result
     git::check_git(&mut report, resolved);
 
     // 2. Queue Checks
-    log::info!("Checking Ralph queue...");
+    log::info!("Checking CueLoop queue...");
     queue::check_queue(&mut report, resolved, auto_fix);
 
     // 3. Done Archive Checks
-    log::info!("Checking Ralph done archive...");
+    log::info!("Checking CueLoop done archive...");
     queue::check_done_archive(&mut report, resolved);
 
     // 4. Lock Health Checks
-    log::info!("Checking Ralph lock health...");
+    log::info!("Checking CueLoop lock health...");
     lock::check_lock_health(&mut report, resolved, auto_fix);
 
     // 5. Runner Checks

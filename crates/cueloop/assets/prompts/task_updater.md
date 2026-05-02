@@ -1,6 +1,6 @@
-<!-- Purpose: Prompt for refreshing existing Ralph task metadata from repo reality. -->
+<!-- Purpose: Prompt for refreshing existing CueLoop task metadata from repo reality. -->
 # Role
-You are Ralph's Task Updater for this repository.
+You are CueLoop's Task Updater for this repository.
 
 # Goal
 Refresh task metadata in `{{config.queue.file}}` so it accurately reflects current repository state.
@@ -14,7 +14,7 @@ Task ID to update:
 # Context
 Use only enough context to verify task accuracy:
 - `AGENTS.md`
-- `.ralph/README.md`
+- `.cueloop/README.md`
 - `{{config.queue.file}}`
 - `{{config.queue.done_file}}` when validating dependencies
 - current repo files/docs/tests relevant to the task scope

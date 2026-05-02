@@ -17,7 +17,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - The stop signal file path is `.ralph/cache/stop_requested`.
+//! - The stop signal file path is `.cueloop/cache/stop_requested`.
 //! - Operations are synchronous and atomic where possible.
 //! - Creating a signal when one exists is a no-op (overwrites with same content).
 //! - Clearing a non-existent signal is a no-op.
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn stop_signal_path_construction() {
         let repo_root = crate::testsupport::path::portable_abs_path("signal-path-construction");
-        let cache_dir = repo_root.join(".ralph/cache");
+        let cache_dir = repo_root.join(".cueloop/cache");
         let path = stop_signal_path(&cache_dir);
         assert_eq!(path, cache_dir.join("stop_requested"));
     }

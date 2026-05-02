@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -124,11 +124,11 @@ fn select_next_task_locked_rejects_non_utc_done_timestamps_without_persisting() 
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
-    let done_path = ralph_dir.join("done.json");
+    let queue_path = cueloop_dir.join("queue.json");
+    let done_path = cueloop_dir.join("done.json");
 
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
@@ -234,10 +234,10 @@ fn parallel_select_next_task_locked_repairs_trailing_commas() -> Result<()> {
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     let malformed = r#"{"version": 1, "tasks": [{"id": "RQ-0001", "title": "Test task", "status": "todo", "tags": ["bug",], "scope": ["file",], "evidence": ["observed",], "plan": ["do thing",], "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",}]}"#;
     std::fs::write(&queue_path, malformed)?;
 
@@ -245,7 +245,7 @@ fn parallel_select_next_task_locked_repairs_trailing_commas() -> Result<()> {
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path,
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
@@ -271,10 +271,10 @@ fn parallel_select_next_task_locked_rejects_semantically_invalid_queue() -> Resu
 
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
 
-    let queue_path = ralph_dir.join("queue.json");
+    let queue_path = cueloop_dir.join("queue.json");
     // Intentionally missing created_at / updated_at (should fail semantic validation).
     let invalid = r#"{"version": 1, "tasks": [{"id": "RQ-0001", "title": "Test task", "status": "todo", "tags": ["bug"], "scope": ["file"], "evidence": [], "plan": []}]}"#;
     std::fs::write(&queue_path, invalid)?;
@@ -283,7 +283,7 @@ fn parallel_select_next_task_locked_rejects_semantically_invalid_queue() -> Resu
         config: crate::contracts::Config::default(),
         repo_root: repo_root.clone(),
         queue_path,
-        done_path: ralph_dir.join("done.json"),
+        done_path: cueloop_dir.join("done.json"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,

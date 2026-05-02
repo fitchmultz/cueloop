@@ -84,7 +84,7 @@ fn shared_cli_bundle_script_supports_configuration_and_bundle_dir() {
         "shared CLI bundle script should act as the canonical build entrypoint for both native and cross-target builds"
     );
     assert!(
-        !script.contains("RALPH_BIN_PATH"),
+        !script.contains("CUELOOP_BIN_PATH"),
         "shared CLI bundle script should not allow callers to bypass the canonical build contract with an arbitrary binary override"
     );
 }

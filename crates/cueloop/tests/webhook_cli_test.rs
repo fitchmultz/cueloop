@@ -1,7 +1,7 @@
-//! Integration tests for `ralph webhook` diagnostics and replay commands.
+//! Integration tests for `cueloop webhook` diagnostics and replay commands.
 //!
 //! Purpose:
-//! - Integration tests for `ralph webhook` diagnostics and replay commands.
+//! - Integration tests for `cueloop webhook` diagnostics and replay commands.
 //!
 //! Responsibilities:
 //! - Verify `webhook status --format json` emits parseable diagnostics.
@@ -18,7 +18,7 @@
 //!
 //! Invariants/assumptions:
 //! - Tests run in isolated temp repos initialized with `cueloop init --non-interactive`.
-//! - Failure records are stored under `.ralph/cache/webhooks/failures.json`.
+//! - Failure records are stored under `.cueloop/cache/webhooks/failures.json`.
 
 use anyhow::{Context, Result};
 use cueloop::config::project_runtime_dir;

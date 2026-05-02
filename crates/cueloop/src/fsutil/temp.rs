@@ -13,9 +13,9 @@
 //!
 //! Invariants/Assumptions:
 //! - CueLoop temp artifacts currently live under the legacy-compatible
-//!   `std::env::temp_dir()/ralph` namespace.
+//!   `std::env::temp_dir()/cueloop` namespace.
 //! - Cleanup is prefix-based and best-effort on per-entry metadata or deletion failures.
-//! - CueLoop-created temp files currently use the legacy-compatible `ralph_` prefix so
+//! - CueLoop-created temp files currently use the legacy-compatible `cueloop_` prefix so
 //!   cleanup can discover them.
 
 use crate::constants::paths::{CUELOOP_TEMP_DIR_NAME, CUELOOP_TEMP_PREFIX, LEGACY_PROMPT_PREFIX};

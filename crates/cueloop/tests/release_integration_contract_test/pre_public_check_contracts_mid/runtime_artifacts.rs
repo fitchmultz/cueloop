@@ -151,14 +151,14 @@ fn pre_public_check_rejects_tracked_runtime_artifact_control_character_paths() {
 
 #[cfg(unix)]
 #[test]
-fn pre_public_check_rejects_tracked_ralph_control_character_paths() {
+fn pre_public_check_rejects_tracked_cueloop_control_character_paths() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path();
 
     copy_pre_public_check_fixture(repo_root);
     write_file(
-        &repo_root.join(".ralph/bad\nqueue.jsonc"),
-        "tracked .ralph newline path\n",
+        &repo_root.join(".cueloop/bad\nqueue.jsonc"),
+        "tracked .cueloop newline path\n",
     );
 
     init_git_repo(repo_root);
@@ -176,11 +176,11 @@ fn pre_public_check_rejects_tracked_ralph_control_character_paths() {
         ])
         .current_dir(repo_root)
         .output()
-        .expect("run pre-public-check with tracked .ralph control-character path");
+        .expect("run pre-public-check with tracked .cueloop control-character path");
 
     assert!(
         !output.status.success(),
-        "pre-public-check should reject tracked .ralph control-character paths\nstdout:\n{}\nstderr:\n{}",
+        "pre-public-check should reject tracked .cueloop control-character paths\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
@@ -191,9 +191,9 @@ fn pre_public_check_rejects_tracked_ralph_control_character_paths() {
     );
     assert!(
         combined.contains("unsupported control characters")
-            && combined.contains(".ralph/bad")
+            && combined.contains(".cueloop/bad")
             && combined.contains("queue.jsonc"),
-        "tracked .ralph control-character rejection should explain the offending path\noutput:\n{}",
+        "tracked .cueloop control-character rejection should explain the offending path\noutput:\n{}",
         combined
     );
 }

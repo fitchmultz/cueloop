@@ -307,7 +307,7 @@ fn commit_pending_integration_changes(repo_root: &Path, task_id: &str) -> Result
 }
 
 fn format_machine_bookkeeping_commit_message(task_id: &str) -> String {
-    let raw = format!("ralph: archive {} queue bookkeeping", task_id.trim());
+    let raw = format!("cueloop: archive {} queue bookkeeping", task_id.trim());
     let scrubbed = raw.replace(['\n', '\r', '\t'], " ");
     let squashed = scrubbed.split_whitespace().collect::<Vec<&str>>().join(" ");
     outpututil::truncate_chars(&squashed, 100)

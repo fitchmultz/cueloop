@@ -18,7 +18,7 @@ use super::*;
 
 #[test]
 fn prompt_list_subcommand() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "list"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "list"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::List => {}
@@ -30,7 +30,7 @@ fn prompt_list_subcommand() {
 
 #[test]
 fn prompt_show_parses_name() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "show", "worker"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "show", "worker"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Show(s) => {
@@ -45,7 +45,7 @@ fn prompt_show_parses_name() {
 
 #[test]
 fn prompt_show_parses_raw() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "show", "worker", "--raw"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "show", "worker", "--raw"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Show(s) => {
@@ -60,7 +60,7 @@ fn prompt_show_parses_raw() {
 
 #[test]
 fn prompt_export_parses_all() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "export", "--all"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "export", "--all"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Export(e) => {
@@ -75,7 +75,7 @@ fn prompt_export_parses_all() {
 
 #[test]
 fn prompt_export_parses_name() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "export", "worker"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "export", "worker"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Export(e) => {
@@ -91,7 +91,7 @@ fn prompt_export_parses_name() {
 #[test]
 fn prompt_export_parses_force() {
     let cli =
-        Cli::try_parse_from(["ralph", "prompt", "export", "worker", "--force"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "prompt", "export", "worker", "--force"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Export(e) => {
@@ -106,7 +106,7 @@ fn prompt_export_parses_force() {
 
 #[test]
 fn prompt_sync_parses_dry_run() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "sync", "--dry-run"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "sync", "--dry-run"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Sync(s) => {
@@ -121,7 +121,7 @@ fn prompt_sync_parses_dry_run() {
 
 #[test]
 fn prompt_sync_parses_force() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "sync", "--force"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "sync", "--force"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Sync(s) => {
@@ -137,7 +137,7 @@ fn prompt_sync_parses_force() {
 #[test]
 fn prompt_sync_parses_dry_run_and_force() {
     let cli =
-        Cli::try_parse_from(["ralph", "prompt", "sync", "--dry-run", "--force"]).expect("parse");
+        Cli::try_parse_from(["cueloop", "prompt", "sync", "--dry-run", "--force"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Sync(s) => {
@@ -152,7 +152,7 @@ fn prompt_sync_parses_dry_run_and_force() {
 
 #[test]
 fn prompt_diff_parses_name() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "diff", "worker"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "diff", "worker"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::Diff(d) => {

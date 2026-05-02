@@ -14,7 +14,7 @@ RUST_JOBS ?= 8
 SCCACHE ?= /opt/homebrew/bin/sccache
 AGENT_ID ?= manual
 AGENT_TARGET := $(CURDIR)/target/agents/$(AGENT_ID)
-RALPH_CARGO_MODE ?= local
+CUELOOP_CARGO_MODE ?= local
 XCODE_DERIVED_DATA_ROOT ?= target/tmp/xcode-deriveddata
 # Pin destination arch to avoid xcodebuild's "first of multiple matching destinations" warning.
 # Override if you intentionally want a different destination.
@@ -38,46 +38,46 @@ MACOS_APP_INSTALL_DIR ?= /Applications
 XCODE_BUILD_LOCK_DIR ?= target/tmp/locks/xcodebuild.lock
 # Default to bounded Rust/nextest parallelism for predictable local and agent runs.
 # Set an explicit cap (for example `RUST_JOBS=4`) on shared workstations.
-RALPH_CI_JOBS ?= $(RUST_JOBS)
+CUELOOP_CI_JOBS ?= $(RUST_JOBS)
 # Default to xcodebuild-managed parallelism for best local throughput.
-# Set an explicit cap (for example `RALPH_XCODE_JOBS=4`) on shared workstations.
-RALPH_XCODE_JOBS ?= 0
+# Set an explicit cap (for example `CUELOOP_XCODE_JOBS=4`) on shared workstations.
+CUELOOP_XCODE_JOBS ?= 0
 # Build stamp path to avoid duplicate release builds in a single make invocation.
-RALPH_STAMP_DIR ?= target/tmp/stamps
-RALPH_RELEASE_BUILD_STAMP := $(RALPH_STAMP_DIR)/cueloop-release-build.stamp
+CUELOOP_STAMP_DIR ?= target/tmp/stamps
+CUELOOP_RELEASE_BUILD_STAMP := $(CUELOOP_STAMP_DIR)/cueloop-release-build.stamp
 # Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `cueloop-cli-bundle.sh`.
-RALPH_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh
-RALPH_CRATE_SOURCE_FILES := $(shell find crates -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) 2>/dev/null | LC_ALL=C sort)
+CUELOOP_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh
+CUELOOP_CRATE_SOURCE_FILES := $(shell find crates -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) 2>/dev/null | LC_ALL=C sort)
 # Set to 1 to keep Xcode derived data between runs (faster local iteration; less pristine than default).
-RALPH_XCODE_KEEP_DERIVED_DATA ?= 0
+CUELOOP_XCODE_KEEP_DERIVED_DATA ?= 0
 # Internal ship-gate toggle: reuse one derived-data tree across macos-build/test/contracts.
-RALPH_XCODE_REUSE_SHIP_DERIVED_DATA ?= 0
+CUELOOP_XCODE_REUSE_SHIP_DERIVED_DATA ?= 0
 # Prefer the rustup-managed pinned toolchain from rust-toolchain.toml when present.
-RALPH_RUST_TOOLCHAIN_FILE := rust-toolchain.toml
-RALPH_PINNED_RUST_TOOLCHAIN := $(shell sed -n 's/^[[:space:]]*channel = "\(.*\)"/\1/p' $(RALPH_RUST_TOOLCHAIN_FILE) 2>/dev/null | head -1)
-RALPH_PINNED_RUSTC := $(shell if command -v rustup >/dev/null 2>&1 && [ -n "$(RALPH_PINNED_RUST_TOOLCHAIN)" ]; then rustup which rustc --toolchain "$(RALPH_PINNED_RUST_TOOLCHAIN)" 2>/dev/null; fi)
-RALPH_PINNED_RUST_BIN_DIR := $(patsubst %/,%,$(dir $(RALPH_PINNED_RUSTC)))
+CUELOOP_RUST_TOOLCHAIN_FILE := rust-toolchain.toml
+CUELOOP_PINNED_RUST_TOOLCHAIN := $(shell sed -n 's/^[[:space:]]*channel = "\(.*\)"/\1/p' $(CUELOOP_RUST_TOOLCHAIN_FILE) 2>/dev/null | head -1)
+CUELOOP_PINNED_RUSTC := $(shell if command -v rustup >/dev/null 2>&1 && [ -n "$(CUELOOP_PINNED_RUST_TOOLCHAIN)" ]; then rustup which rustc --toolchain "$(CUELOOP_PINNED_RUST_TOOLCHAIN)" 2>/dev/null; fi)
+CUELOOP_PINNED_RUST_BIN_DIR := $(patsubst %/,%,$(dir $(CUELOOP_PINNED_RUSTC)))
 # Shell snippets that make Cargo build mode explicit for every recipe.
-RALPH_RUSTUP_ENV_RESET := :
-ifneq ($(strip $(RALPH_PINNED_RUST_BIN_DIR)),)
-RALPH_RUSTUP_ENV_RESET := export PATH="$(RALPH_PINNED_RUST_BIN_DIR):$$PATH"; export RUSTC="$(RALPH_PINNED_RUSTC)"
+CUELOOP_RUSTUP_ENV_RESET := :
+ifneq ($(strip $(CUELOOP_PINNED_RUST_BIN_DIR)),)
+CUELOOP_RUSTUP_ENV_RESET := export PATH="$(CUELOOP_PINNED_RUST_BIN_DIR):$$PATH"; export RUSTC="$(CUELOOP_PINNED_RUSTC)"
 endif
 
-ifeq ($(RALPH_CARGO_MODE),agent)
-RALPH_CARGO_ENV_RESET := export CARGO_TARGET_DIR="$(AGENT_TARGET)"; export RUSTC_WRAPPER="$(SCCACHE)"; export CARGO_INCREMENTAL=0; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
+ifeq ($(CUELOOP_CARGO_MODE),agent)
+CUELOOP_CARGO_ENV_RESET := export CARGO_TARGET_DIR="$(AGENT_TARGET)"; export RUSTC_WRAPPER="$(SCCACHE)"; export CARGO_INCREMENTAL=0; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
 else
-RALPH_CARGO_ENV_RESET := unset RUSTC_WRAPPER RUSTFLAGS CARGO_ENCODED_RUSTFLAGS CARGO_TARGET_DIR CARGO_INCREMENTAL; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
+CUELOOP_CARGO_ENV_RESET := unset RUSTC_WRAPPER RUSTFLAGS CARGO_ENCODED_RUSTFLAGS CARGO_TARGET_DIR CARGO_INCREMENTAL; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
 endif
-RALPH_ENV_RESET := $(RALPH_RUSTUP_ENV_RESET); $(RALPH_CARGO_ENV_RESET)
+CUELOOP_ENV_RESET := $(CUELOOP_RUSTUP_ENV_RESET); $(CUELOOP_CARGO_ENV_RESET)
 
-CARGO_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
-NEXTEST_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
-CARGO_TEST_THREADS_FLAG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--test-threads $(RALPH_CI_JOBS),)
-XCODE_JOBS_FLAG := $(if $(filter-out 0,$(RALPH_XCODE_JOBS)),-jobs $(RALPH_XCODE_JOBS),)
+CARGO_JOBS_FLAG := $(if $(filter-out 0,$(CUELOOP_CI_JOBS)),--jobs $(CUELOOP_CI_JOBS),)
+NEXTEST_JOBS_FLAG := $(if $(filter-out 0,$(CUELOOP_CI_JOBS)),--jobs $(CUELOOP_CI_JOBS),)
+CARGO_TEST_THREADS_FLAG := $(if $(filter-out 0,$(CUELOOP_CI_JOBS)),--test-threads $(CUELOOP_CI_JOBS),)
+XCODE_JOBS_FLAG := $(if $(filter-out 0,$(CUELOOP_XCODE_JOBS)),-jobs $(CUELOOP_XCODE_JOBS),)
 XCODE_ACTIVE_ARCH_FLAGS := ARCHS=$(XCODE_ARCHS) ONLY_ACTIVE_ARCH=YES
-RALPH_CLI_BUILD_JOBS_ARG := $(if $(filter-out 0,$(RALPH_CI_JOBS)),--jobs $(RALPH_CI_JOBS),)
-XCODE_MACOS_BUILD_DERIVED_DATA_PATH := $(if $(filter 1,$(RALPH_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/build)
-XCODE_MACOS_TEST_DERIVED_DATA_PATH := $(if $(filter 1,$(RALPH_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/test)
+CUELOOP_CLI_BUILD_JOBS_ARG := $(if $(filter-out 0,$(CUELOOP_CI_JOBS)),--jobs $(CUELOOP_CI_JOBS),)
+XCODE_MACOS_BUILD_DERIVED_DATA_PATH := $(if $(filter 1,$(CUELOOP_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/build)
+XCODE_MACOS_TEST_DERIVED_DATA_PATH := $(if $(filter 1,$(CUELOOP_XCODE_REUSE_SHIP_DERIVED_DATA)),$(XCODE_DERIVED_DATA_ROOT)/ship,$(XCODE_DERIVED_DATA_ROOT)/test)
 XCODE_MACOS_RELEASE_APP_BUNDLE := $(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)/Build/Products/Release/CueLoopMac.app
 
 .DELETE_ON_ERROR:
@@ -141,15 +141,15 @@ help:
 	@echo "Resource knobs (optional):"
 	@echo "  RUST_JOBS=4         # Example Rust/nextest job cap for shared workstations (default 8)"
 	@echo "  AGENT_ID=agent-a    # Isolated target/agents/<id> directory for make agent-ci"
-	@echo "  RALPH_XCODE_JOBS=4  # Example cap for shared workstations (0 = xcodebuild default)"
+	@echo "  CUELOOP_XCODE_JOBS=4  # Example cap for shared workstations (0 = xcodebuild default)"
 	@echo "  XCODE_ARCHS=$$(uname -m) # Host-arch Xcode CI/test builds (override only for cross-arch validation)"
 	@echo "  rust-toolchain.toml is respected automatically when rustup is available"
 	@echo "  CUELOOP_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
 	@echo "  CUELOOP_UI_ONLY_TESTING=CueLoopMacUITests/CueLoopMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
 	@echo "  CUELOOP_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
-	@echo "  RALPH_XCODE_KEEP_DERIVED_DATA=1 # Keep Xcode incremental caches (default 0 = clean derived data per gate)"
-	@echo "  RALPH_AGENT_CI_MIN_TIER=macos-ci|ci|ci-fast # Floor for agent-ci routing (optional)"
-	@echo "  RALPH_AGENT_CI_FORCE_MACOS=1 # Always run macos-ci from agent-ci"
+	@echo "  CUELOOP_XCODE_KEEP_DERIVED_DATA=1 # Keep Xcode incremental caches (default 0 = clean derived data per gate)"
+	@echo "  CUELOOP_AGENT_CI_MIN_TIER=macos-ci|ci|ci-fast # Floor for agent-ci routing (optional)"
+	@echo "  CUELOOP_AGENT_CI_FORCE_MACOS=1 # Always run macos-ci from agent-ci"
 
 include mk/rust.mk
 include mk/repo-safety.mk

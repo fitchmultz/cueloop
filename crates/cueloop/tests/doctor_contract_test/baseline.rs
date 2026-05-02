@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Missing-queue coverage intentionally uses a git-only repo with no seeded `.ralph/` files.
+//! - Missing-queue coverage intentionally uses a git-only repo with no seeded `.cueloop/` files.
 //! - Success-path coverage uses trusted seeded fixtures rather than real init.
 
 use super::*;
@@ -24,7 +24,7 @@ use super::*;
 fn doctor_passes_in_clean_env() -> Result<()> {
     let dir = setup_trusted_doctor_repo()?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -46,7 +46,7 @@ fn doctor_passes_in_clean_env() -> Result<()> {
 fn doctor_fails_when_queue_missing() -> Result<()> {
     let dir = setup_git_repo()?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     assert!(!output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -60,7 +60,7 @@ fn doctor_fails_when_queue_missing() -> Result<()> {
 fn doctor_warns_on_missing_upstream() -> Result<()> {
     let dir = setup_trusted_doctor_repo()?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);

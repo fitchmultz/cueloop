@@ -151,14 +151,14 @@ mod tests {
     fn map_resolved_path_into_workspace_accepts_valid_path() {
         let repo_root = PathBuf::from("/repo");
         let workspace_root = PathBuf::from("/workspace");
-        let resolved_path = PathBuf::from("/repo/.ralph/queue.json");
+        let resolved_path = PathBuf::from("/repo/.cueloop/queue.json");
 
         let result =
             map_resolved_path_into_workspace(&repo_root, &workspace_root, &resolved_path, "queue");
         assert!(result.is_ok());
         assert_eq!(
             result.unwrap(),
-            PathBuf::from("/workspace/.ralph/queue.json")
+            PathBuf::from("/workspace/.cueloop/queue.json")
         );
     }
 
@@ -185,14 +185,14 @@ mod tests {
         let repo_alias = temp.path().join("repo-alias");
         let workspace_root = temp.path().join("workspace");
 
-        std::fs::create_dir_all(repo_root.join(".ralph"))?;
+        std::fs::create_dir_all(repo_root.join(".cueloop"))?;
         symlink(&repo_root, &repo_alias)?;
-        let resolved_path = repo_alias.join(".ralph/queue.json");
+        let resolved_path = repo_alias.join(".cueloop/queue.json");
         std::fs::write(&resolved_path, "{}")?;
 
         let mapped =
             map_resolved_path_into_workspace(&repo_root, &workspace_root, &resolved_path, "queue")?;
-        assert_eq!(mapped, workspace_root.join(".ralph/queue.json"));
+        assert_eq!(mapped, workspace_root.join(".cueloop/queue.json"));
         Ok(())
     }
 
@@ -204,15 +204,15 @@ mod tests {
         let repo_alias = temp.path().join("repo-alias");
         let workspace_root = temp.path().join("workspace");
 
-        std::fs::create_dir_all(repo_root.join(".ralph"))?;
+        std::fs::create_dir_all(repo_root.join(".cueloop"))?;
         symlink(&repo_root, &repo_alias)?;
-        let resolved_path = repo_alias.join(".ralph/cache/missing-done.json");
+        let resolved_path = repo_alias.join(".cueloop/cache/missing-done.json");
 
         let mapped =
             map_resolved_path_into_workspace(&repo_root, &workspace_root, &resolved_path, "done")?;
         assert_eq!(
             mapped,
-            workspace_root.join(".ralph/cache/missing-done.json")
+            workspace_root.join(".cueloop/cache/missing-done.json")
         );
         Ok(())
     }

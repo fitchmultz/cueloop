@@ -80,9 +80,9 @@ fn is_migration_applicable(ctx: &MigrationContext, migration: &Migration) -> boo
                 return ctx.file_exists(old_path) && ctx.file_exists(new_path);
             }
             match (*old_path, *new_path) {
-                (".ralph/queue.json", ".ralph/queue.jsonc")
-                | (".ralph/done.json", ".ralph/done.jsonc")
-                | (".ralph/config.json", ".ralph/config.jsonc") => ctx.file_exists(old_path),
+                (".cueloop/queue.json", ".cueloop/queue.jsonc")
+                | (".cueloop/done.json", ".cueloop/done.jsonc")
+                | (".cueloop/config.json", ".cueloop/config.jsonc") => ctx.file_exists(old_path),
                 _ => ctx.file_exists(old_path) && !ctx.file_exists(new_path),
             }
         }
@@ -142,15 +142,15 @@ pub fn apply_migration(ctx: &mut MigrationContext, migration: &Migration) -> Res
                 .with_context(|| format!("apply Cursor binary key removal for {}", migration.id))?;
         }
         MigrationType::FileRename { old_path, new_path } => match (*old_path, *new_path) {
-            (".ralph/queue.json", ".ralph/queue.jsonc") => {
+            (".cueloop/queue.json", ".cueloop/queue.jsonc") => {
                 file_migrations::migrate_queue_json_to_jsonc(ctx)
                     .with_context(|| format!("apply file rename for {}", migration.id))?;
             }
-            (".ralph/done.json", ".ralph/done.jsonc") => {
+            (".cueloop/done.json", ".cueloop/done.jsonc") => {
                 file_migrations::migrate_done_json_to_jsonc(ctx)
                     .with_context(|| format!("apply file rename for {}", migration.id))?;
             }
-            (".ralph/config.json", ".ralph/config.jsonc") => {
+            (".cueloop/config.json", ".cueloop/config.jsonc") => {
                 file_migrations::migrate_config_json_to_jsonc(ctx)
                     .with_context(|| format!("apply file rename for {}", migration.id))?;
             }
@@ -199,7 +199,7 @@ pub fn apply_all_migrations(ctx: &mut MigrationContext) -> Result<Vec<&'static s
 
 /// Apply README update migration.
 fn apply_readme_update(ctx: &MigrationContext) -> Result<()> {
-    let readme_path = ctx.repo_root.join(".ralph/README.md");
+    let readme_path = ctx.repo_root.join(".cueloop/README.md");
     if !readme_path.exists() {
         anyhow::bail!("README.md does not exist at {}", readme_path.display());
     }

@@ -1,7 +1,7 @@
 //! Purpose: suite-local fixtures and helpers for `parallel_direct_push_test` integration coverage.
 //!
 //! Responsibilities:
-//! - Create disposable git+`.ralph/` repos from the cached integration-test scaffold.
+//! - Create disposable git+`.cueloop/` repos from the cached integration-test scaffold.
 //! - Keep a bare `origin` remote alive for tests that exercise real direct-push flows.
 //! - Centralize parallel state writes, noop-runner setup, and common CLI invocation boilerplate.
 //!
@@ -14,8 +14,8 @@
 //! - Use `configure_default_runner()` or `configure_runner_script()` before `run_parallel()`.
 //!
 //! Invariants/Assumptions:
-//! - Helpers preserve end-to-end CLI coverage; they do not bypass the `ralph` binary.
-//! - The cached git+`.ralph/` scaffold replaces repeated `git init` + `seed_ralph_dir()` setup.
+//! - Helpers preserve end-to-end CLI coverage; they do not bypass the `cueloop` binary.
+//! - The cached git+`.cueloop/` scaffold replaces repeated `git init` + `seed_cueloop_dir()` setup.
 //! - The bare `origin` tempdir must stay owned by the fixture for the entire test lifetime.
 
 use anyhow::{Context, Result, ensure};
@@ -36,7 +36,7 @@ pub(super) struct ParallelDirectPushRepo {
 impl ParallelDirectPushRepo {
     pub(super) fn new() -> Result<Self> {
         let dir = super::test_support::temp_dir_outside_repo();
-        super::test_support::seed_git_repo_with_ralph(dir.path())?;
+        super::test_support::seed_git_repo_with_cueloop(dir.path())?;
         Ok(Self { dir, _origin: None })
     }
 
@@ -124,7 +124,7 @@ impl ParallelDirectPushRepo {
     }
 
     pub(super) fn state_path(&self) -> PathBuf {
-        self.path().join(".ralph/cache/parallel/state.json")
+        self.path().join(".cueloop/cache/parallel/state.json")
     }
 
     pub(super) fn write_parallel_state(&self, state: &serde_json::Value) -> Result<()> {

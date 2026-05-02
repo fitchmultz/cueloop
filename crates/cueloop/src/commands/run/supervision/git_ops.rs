@@ -47,7 +47,7 @@ pub(crate) fn finalize_git_state(
         git::require_clean_repo_ignoring_paths(
             &resolved.repo_root,
             false,
-            git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+            git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
         )?;
     } else {
         log::info!("Git publish mode is off; leaving repo dirty after queue updates.");
@@ -229,7 +229,7 @@ mod tests {
     fn push_if_ahead_skips_when_not_ahead() -> Result<()> {
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
-        // Create a file to commit (init_repo creates .ralph dir but git needs a file)
+        // Create a file to commit (init_repo creates .cueloop dir but git needs a file)
         std::fs::write(temp.path().join("init.txt"), "init")?;
         git_test::commit_all(temp.path(), "init")?;
 
@@ -243,7 +243,7 @@ mod tests {
     fn push_if_ahead_errors_on_missing_remote() -> Result<()> {
         let temp = TempDir::new()?;
         git_test::init_repo(temp.path())?;
-        // Create a file to commit (init_repo creates .ralph dir but git needs a file)
+        // Create a file to commit (init_repo creates .cueloop dir but git needs a file)
         std::fs::write(temp.path().join("init.txt"), "init")?;
         git_test::commit_all(temp.path(), "init")?;
 
@@ -320,10 +320,10 @@ mod tests {
         std::fs::write(seed.path().join("base.txt"), "base\n")?;
         git_test::commit_all(seed.path(), "init")?;
         git_test::git_run(seed.path(), &["push", "-u", "origin", "HEAD"])?;
-        git_test::git_run(seed.path(), &["checkout", "-b", "ralph/RQ-0940"])?;
+        git_test::git_run(seed.path(), &["checkout", "-b", "cueloop/RQ-0940"])?;
         std::fs::write(seed.path().join("task.txt"), "remote-only\n")?;
         git_test::commit_all(seed.path(), "remote task")?;
-        git_test::git_run(seed.path(), &["push", "-u", "origin", "ralph/RQ-0940"])?;
+        git_test::git_run(seed.path(), &["push", "-u", "origin", "cueloop/RQ-0940"])?;
 
         let local = TempDir::new()?;
         git_test::clone_repo(remote.path(), local.path())?;
@@ -334,7 +334,7 @@ mod tests {
                 "checkout",
                 "--no-track",
                 "-b",
-                "ralph/RQ-0940",
+                "cueloop/RQ-0940",
                 "origin/main",
             ],
         )?;
@@ -346,7 +346,7 @@ mod tests {
             local.path(),
             &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
         )?;
-        assert_eq!(upstream, "origin/ralph/RQ-0940");
+        assert_eq!(upstream, "origin/cueloop/RQ-0940");
 
         Ok(())
     }

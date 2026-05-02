@@ -34,7 +34,7 @@ use super::{
 
 /// Show daemon status.
 pub fn status(resolved: &Resolved) -> Result<()> {
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
 
     match get_daemon_state(&cache_dir)? {
         Some(state) => match daemon_pid_liveness(state.pid) {

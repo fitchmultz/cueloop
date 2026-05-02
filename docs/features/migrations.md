@@ -45,7 +45,7 @@ README template updates are handled by `cueloop init` and agent-facing write-ena
 - **Idempotent**: Running the same migration twice is safe (no-op if already applied)
 - **JSONC-Preserving**: Comments and formatting are preserved during config migrations
 - **Backup-Capable**: Original files are kept as backups during file migrations
-- **History-Tracked**: All applied migrations are recorded in `.ralph/cache/migrations.jsonc`
+- **History-Tracked**: All applied migrations are recorded in `.cueloop/cache/migrations.jsonc`
 - **Scoped Renames**: Config key renames are scoped to their parent object (e.g., `parallel.worktree_root` only renames within `parallel` objects)
 
 ---
@@ -96,7 +96,7 @@ Upgrades pre-`0.3` config files so current CueLoop builds can load them again.
 **Behavior:**
 - Supports dot notation for nested keys (`agent.runner_cli`)
 - Scoped to parent object (only renames within the specified parent)
-- Updates both project config (`.ralph/config.jsonc`) and global config (`~/.config/ralph/config.jsonc`)
+- Updates both project config (`.cueloop/config.jsonc`) and global config (`~/.config/cueloop/config.jsonc`)
 - Preserves all JSONC comments and formatting
 
 **Example:**
@@ -123,8 +123,8 @@ Moves or renames a file, with optional config reference updates.
 **Structure:**
 ```rust
 MigrationType::FileRename {
-    old_path: ".ralph/queue.json",
-    new_path: ".ralph/queue.jsonc",
+    old_path: ".cueloop/queue.json",
+    new_path: ".cueloop/queue.jsonc",
 }
 ```
 
@@ -143,7 +143,7 @@ MigrationType::FileRename {
 
 ### ReadmeUpdate
 
-Legacy migration type for updating the generated `.ralph/README.md` to the latest template version. Current releases refresh this file through `cueloop init` and agent-facing write-enabled commands instead of relying on a registered README migration.
+Legacy migration type for updating the generated `.cueloop/README.md` to the latest template version. Current releases refresh this file through `cueloop init` and agent-facing write-enabled commands instead of relying on a registered README migration.
 
 **Structure:**
 ```rust
@@ -154,7 +154,7 @@ MigrationType::ReadmeUpdate {
 ```
 
 **Behavior:**
-- Regenerates `.ralph/README.md` with the latest template
+- Regenerates `.cueloop/README.md` with the latest template
 - Replaces local README drift because the file is CueLoop-owned/generated
 - Only applicable if current README version < target version
 
@@ -213,7 +213,7 @@ Migration {
 
 ## History Tracking
 
-Migration history is stored in `.ralph/cache/migrations.jsonc`.
+Migration history is stored in `.cueloop/cache/migrations.jsonc`.
 
 ### File Format
 
@@ -245,7 +245,7 @@ Migration history is stored in `.ralph/cache/migrations.jsonc`.
 - **Auto-created**: History file is created on first migration
 - **Version-checked**: Warns if schema version mismatches (attempts to proceed)
 - **Atomic writes**: Uses atomic file writes to prevent corruption
-- **Git-ignored**: The entire `.ralph/cache/` directory should be gitignored
+- **Git-ignored**: The entire `.cueloop/cache/` directory should be gitignored
 
 ---
 
@@ -345,7 +345,7 @@ cueloop migrate status
 Migration Status
 
 History:
-  Location: /path/to/project/.ralph/cache/migrations.jsonc
+  Location: /path/to/project/.cueloop/cache/migrations.jsonc
   Applied migrations: 1
 
 Pending migrations: None
@@ -404,7 +404,7 @@ Potential future enhancements may include:
 ### Best Practices
 
 1. **Check after updates**: Run `cueloop migrate` after updating CueLoop to check for pending migrations
-2. **Upgrade older repos after install**: `make install` updates binaries, but repo-local `.ralph/config.jsonc` still needs `cueloop migrate --apply` if it predates `0.3`
+2. **Upgrade older repos after install**: `make install` updates binaries, but repo-local `.cueloop/config.jsonc` still needs `cueloop migrate --apply` if it predates `0.3`
 3. **CI integration**: Use `cueloop migrate --check` in CI to fail builds if migrations are needed
 4. **Version control**: Review migration changes before committing
 
@@ -448,13 +448,13 @@ If a migration causes issues, you can manually rollback:
 ```bash
 # Manually edit the config file to rename the key back
 # Or restore from version control
-git checkout .ralph/config.jsonc
+git checkout .cueloop/config.jsonc
 ```
 
 **For FileRename:**
 ```bash
 # Remove the new file
-rm .ralph/queue.jsonc
+rm .cueloop/queue.jsonc
 
 # Restore the original (if backup was kept)
 # Original is kept by default, so just remove the new one
@@ -464,7 +464,7 @@ rm .ralph/queue.jsonc
 ```bash
 # Remove the history entry for the migration
 # WARNING: Only do this if you understand the implications
-rm .ralph/cache/migrations.jsonc
+rm .cueloop/cache/migrations.jsonc
 ```
 
 ### CI Integration
@@ -533,7 +533,7 @@ MigrationType::ConfigKeyRename {
 
 ### State Files Note
 
-> **Important:** State files are not migrated and may need to be deleted if incompatible. For example, parallel mode state files (`.ralph/cache/parallel/state.json`) may contain references to old config keys.
+> **Important:** State files are not migrated and may need to be deleted if incompatible. For example, parallel mode state files (`.cueloop/cache/parallel/state.json`) may contain references to old config keys.
 
 ---
 

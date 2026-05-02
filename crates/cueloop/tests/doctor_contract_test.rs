@@ -18,7 +18,7 @@
 //!
 //! Invariants/assumptions:
 //! - Child modules use cached seeded fixtures unless a test intentionally needs a git-only repo.
-//! - `ralph_cmd_in_dir()` delegates to shared test support for environment isolation.
+//! - `cueloop_cmd_in_dir()` delegates to shared test support for environment isolation.
 
 use std::path::Path;
 use std::process::Command;
@@ -33,8 +33,8 @@ pub(crate) use support::{
     write_repo_config,
 };
 
-/// Create a ralph command scoped to the given directory.
-fn ralph_cmd_in_dir(dir: &Path) -> Command {
+/// Create a cueloop command scoped to the given directory.
+fn cueloop_cmd_in_dir(dir: &Path) -> Command {
     test_support::cueloop_command(dir)
 }
 

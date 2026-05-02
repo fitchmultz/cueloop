@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 
@@ -26,13 +26,13 @@ fn phase1_followup_allows_preexisting_iteration_dirty_state() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
     std::fs::write(temp.path().join("impl.txt"), "prior iteration changes")?;
 
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
 echo "plan content iteration 2" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
 echo '{{"type":"session","sessionID":"sess-123"}}'
@@ -118,15 +118,15 @@ fn phase1_followup_allows_preexisting_dirty_queue_refresh() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
     std::fs::write(
-        temp.path().join(".ralph/queue.jsonc"),
+        temp.path().join(".cueloop/queue.jsonc"),
         "{\n  \"version\": 1,\n  \"tasks\": []\n}\n",
     )?;
     git_status_ok(
         temp.path(),
-        &["add", "-f", ".ralph/queue.jsonc"],
-        "git add .ralph/queue.jsonc failed",
+        &["add", "-f", ".cueloop/queue.jsonc"],
+        "git add .cueloop/queue.jsonc failed",
     )?;
     git_status_ok(
         temp.path(),
@@ -137,8 +137,8 @@ fn phase1_followup_allows_preexisting_dirty_queue_refresh() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
-queue="{root}/.ralph/queue.jsonc"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+queue="{root}/.cueloop/queue.jsonc"
 cat > "$queue" <<'EOF'
 {{
   "version": 1,
@@ -217,7 +217,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
     let mut paths = git::status_paths(temp.path())?;
     paths.sort();
     anyhow::ensure!(
-        paths == vec![".ralph/queue.jsonc".to_string()],
+        paths == vec![".cueloop/queue.jsonc".to_string()],
         "expected only dirty queue bookkeeping path, got: {:?}",
         paths
     );
@@ -226,21 +226,21 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
 }
 
 #[test]
-fn phase1_followup_allows_preexisting_dirty_arbitrary_ralph_file() -> Result<()> {
+fn phase1_followup_allows_preexisting_dirty_arbitrary_cueloop_file() -> Result<()> {
     let interrupt_mutex = INTERRUPT_TEST_MUTEX.get_or_init(|| Mutex::new(()));
     let _interrupt_guard = interrupt_mutex.lock().unwrap();
     reset_ctrlc_interrupt_flag();
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
-    std::fs::create_dir_all(temp.path().join(".ralph/state"))?;
-    let ralph_state = temp.path().join(".ralph/state/worker.json");
-    std::fs::write(&ralph_state, "{ \"v\": 1 }\n")?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/state"))?;
+    let cueloop_state = temp.path().join(".cueloop/state/worker.json");
+    std::fs::write(&cueloop_state, "{ \"v\": 1 }\n")?;
     git_status_ok(
         temp.path(),
-        &["add", "-f", ".ralph/state/worker.json"],
-        "git add .ralph/state/worker.json failed",
+        &["add", "-f", ".cueloop/state/worker.json"],
+        "git add .cueloop/state/worker.json failed",
     )?;
     git_status_ok(
         temp.path(),
@@ -252,8 +252,8 @@ fn phase1_followup_allows_preexisting_dirty_arbitrary_ralph_file() -> Result<()>
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
-state="{root}/.ralph/state/worker.json"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+state="{root}/.cueloop/state/worker.json"
 echo '{{"v":2}}' > "$state"
 echo "plan content iteration 2" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
@@ -325,10 +325,10 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
     anyhow::ensure!(
         paths
             == vec![
-                ".ralph/state/worker.json".to_string(),
+                ".cueloop/state/worker.json".to_string(),
                 "impl.txt".to_string()
             ],
-        "expected dirty .ralph state path + preexisting impl baseline, got: {:?}",
+        "expected dirty .cueloop state path + preexisting impl baseline, got: {:?}",
         paths
     );
 
@@ -343,13 +343,13 @@ fn phase1_followup_rejects_new_disallowed_dirty_paths() -> Result<()> {
 
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
     std::fs::write(temp.path().join("impl.txt"), "prior iteration changes")?;
 
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.ralph/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/RQ-0001.md"
 disallowed="{root}/src/new_file.rs"
 mkdir -p "$(dirname "$disallowed")"
 echo "disallowed" > "$disallowed"

@@ -42,7 +42,7 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
     let (code, message, retryable) = if normalized.contains("task mutation conflict for") {
         (
             MachineErrorCode::TaskMutationConflict,
-            "Task changed on disk before Ralph could apply the mutation.",
+            "Task changed on disk before CueLoop could apply the mutation.",
             false,
         )
     } else if normalized.contains("permission denied") {
@@ -54,13 +54,13 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
     } else if normalized.contains("queue file") && normalized.contains("no such file") {
         (
             MachineErrorCode::QueueCorrupted,
-            "No Ralph queue file found.",
+            "No CueLoop queue file found.",
             false,
         )
     } else if is_cli_unavailable_error(&normalized) {
         (
             MachineErrorCode::CliUnavailable,
-            "Ralph CLI executable is not available.",
+            "CueLoop CLI executable is not available.",
             false,
         )
     } else if normalized.contains("queue validation failed")
@@ -88,7 +88,7 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
     {
         (
             MachineErrorCode::ConfigIncompatible,
-            "Workspace config is incompatible with this Ralph version.",
+            "Workspace config is incompatible with this CueLoop version.",
             false,
         )
     } else if normalized.contains("version")
@@ -99,7 +99,7 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
     {
         (
             MachineErrorCode::VersionMismatch,
-            "Ralph CLI version is incompatible with this app.",
+            "CueLoop CLI version is incompatible with this app.",
             false,
         )
     } else if normalized.contains("network")
@@ -137,7 +137,7 @@ fn build_machine_error_document(err: &anyhow::Error) -> MachineErrorDocument {
     } else {
         (
             MachineErrorCode::Unknown,
-            "Ralph CLI command failed.",
+            "CueLoop CLI command failed.",
             false,
         )
     };
@@ -179,7 +179,7 @@ fn sanitized_detail(err: &anyhow::Error) -> String {
     let redacted = crate::redaction::redact_text(&format!("{:#}", err));
     let trimmed = redacted.trim();
     if trimmed.is_empty() {
-        return "Ralph CLI command failed.".to_string();
+        return "CueLoop CLI command failed.".to_string();
     }
 
     let truncated: String = trimmed.chars().take(2_000).collect();
@@ -197,12 +197,12 @@ mod tests {
     #[test]
     fn build_machine_error_document_classifies_queue_missing() {
         let err = anyhow::anyhow!(
-            "read queue file /tmp/example/.ralph/queue.jsonc: No such file or directory (os error 2)"
+            "read queue file /tmp/example/.cueloop/queue.jsonc: No such file or directory (os error 2)"
         );
 
         let document = build_machine_error_document(&err);
         assert_eq!(document.code, MachineErrorCode::QueueCorrupted);
-        assert_eq!(document.message, "No Ralph queue file found.");
+        assert_eq!(document.message, "No CueLoop queue file found.");
         assert!(!document.retryable);
         assert!(
             document
@@ -215,11 +215,11 @@ mod tests {
 
     #[test]
     fn build_machine_error_document_classifies_command_not_found_as_cli_unavailable() {
-        let err = anyhow::anyhow!("ralph: command not found");
+        let err = anyhow::anyhow!("cueloop: command not found");
 
         let document = build_machine_error_document(&err);
         assert_eq!(document.code, MachineErrorCode::CliUnavailable);
-        assert_eq!(document.message, "Ralph CLI executable is not available.");
+        assert_eq!(document.message, "CueLoop CLI executable is not available.");
         assert!(!document.retryable);
     }
 
@@ -249,7 +249,7 @@ mod tests {
         assert_eq!(document.code, MachineErrorCode::ConfigIncompatible);
         assert_eq!(
             document.message,
-            "Workspace config is incompatible with this Ralph version."
+            "Workspace config is incompatible with this CueLoop version."
         );
         assert!(!document.retryable);
     }
@@ -264,7 +264,7 @@ mod tests {
         assert_eq!(document.code, MachineErrorCode::TaskMutationConflict);
         assert_eq!(
             document.message,
-            "Task changed on disk before Ralph could apply the mutation."
+            "Task changed on disk before CueLoop could apply the mutation."
         );
         assert!(!document.retryable);
     }
@@ -295,7 +295,7 @@ mod tests {
 
         let document = build_machine_error_document(&err);
         assert_eq!(document.code, MachineErrorCode::Unknown);
-        assert_eq!(document.message, "Ralph CLI command failed.");
+        assert_eq!(document.message, "CueLoop CLI command failed.");
         let detail = document
             .detail
             .expect("unknown failures keep sanitized detail");

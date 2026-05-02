@@ -168,7 +168,7 @@ fn pre_public_check_allow_no_git_rejects_runtime_artifacts() {
 
     copy_pre_public_check_fixture(repo_root);
     write_file(
-        &repo_root.join(".ralph/cache/session.jsonc"),
+        &repo_root.join(".cueloop/cache/session.jsonc"),
         "{\"session\":\"test\"}\n",
     );
 
@@ -192,7 +192,7 @@ fn pre_public_check_allow_no_git_rejects_runtime_artifacts() {
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("local/runtime artifacts") && stderr.contains(".ralph/cache"),
+        stderr.contains("local/runtime artifacts") && stderr.contains(".cueloop/cache"),
         "runtime artifact rejection should explain the offending path\nstderr:\n{}",
         stderr
     );

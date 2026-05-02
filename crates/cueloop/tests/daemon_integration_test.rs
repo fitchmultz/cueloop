@@ -1,7 +1,7 @@
-//! Integration tests for daemon mode (`ralph daemon`).
+//! Integration tests for daemon mode (`cueloop daemon`).
 //!
 //! Purpose:
-//! - Integration tests for daemon mode (`ralph daemon`).
+//! - Integration tests for daemon mode (`cueloop daemon`).
 //!
 //! Responsibilities:
 //! - Test that daemon commands exist and have proper help output
@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 mod test_support;
 
@@ -32,15 +32,15 @@ mod unix_tests {
     use std::time::Duration;
 
     struct DaemonStopGuard {
-        ralph: PathBuf,
+        cueloop: PathBuf,
         repo_root: PathBuf,
         armed: bool,
     }
 
     impl DaemonStopGuard {
-        fn new(ralph: PathBuf, repo_root: PathBuf) -> Self {
+        fn new(cueloop: PathBuf, repo_root: PathBuf) -> Self {
             Self {
-                ralph,
+                cueloop,
                 repo_root,
                 armed: true,
             }
@@ -57,7 +57,7 @@ mod unix_tests {
                 return;
             }
 
-            let _ = Command::new(&self.ralph)
+            let _ = Command::new(&self.cueloop)
                 .arg("daemon")
                 .arg("stop")
                 .current_dir(&self.repo_root)
@@ -66,7 +66,7 @@ mod unix_tests {
     }
 
     fn write_log_file(dir: &Path, lines: &[&str]) {
-        let log_dir = dir.join(".ralph/logs");
+        let log_dir = dir.join(".cueloop/logs");
         std::fs::create_dir_all(&log_dir).expect("create log dir");
         let log_file = log_dir.join("daemon.log");
         let mut file = std::fs::File::create(&log_file).expect("create daemon log");
@@ -84,7 +84,7 @@ mod unix_tests {
             .args(args)
             .current_dir(current_dir)
             .output()
-            .expect("failed to run ralph daemon logs");
+            .expect("failed to run cueloop daemon logs");
 
         (
             output.status,
@@ -102,7 +102,7 @@ mod unix_tests {
             .arg("daemon")
             .arg("--help")
             .output()
-            .expect("Failed to run ralph daemon --help");
+            .expect("Failed to run cueloop daemon --help");
 
         assert!(help.status.success(), "daemon --help should succeed");
         let stdout = String::from_utf8_lossy(&help.stdout);
@@ -257,7 +257,7 @@ mod unix_tests {
 
         write_log_file(dir_path, &["2026-02-10T10:00:00Z INFO initial line"]);
 
-        let log_path = dir_path.join(".ralph/logs/daemon.log");
+        let log_path = dir_path.join(".cueloop/logs/daemon.log");
         let cueloop = test_support::cueloop_bin();
         let mut child = Command::new(&cueloop)
             .arg("daemon")
@@ -321,7 +321,7 @@ mod unix_tests {
             .arg("start")
             .arg("--help")
             .output()
-            .expect("Failed to run ralph daemon start --help");
+            .expect("Failed to run cueloop daemon start --help");
 
         assert!(help.status.success(), "daemon start --help should succeed");
         let stdout = String::from_utf8_lossy(&help.stdout);
@@ -364,7 +364,7 @@ mod unix_tests {
             start_stdout
         );
 
-        let cache_dir = dir_path.join(".ralph/cache");
+        let cache_dir = dir_path.join(".cueloop/cache");
         assert!(
             cache_dir.join("daemon.json").exists(),
             "daemon state file should exist after start"
@@ -437,7 +437,7 @@ mod unix_tests {
         // Initialize git repo
         test_support::git_init(dir_path).expect("git init");
 
-        // Initialize ralph
+        // Initialize cueloop
         let init = Command::new(&cueloop)
             .arg("init")
             .arg("--force")
@@ -448,14 +448,14 @@ mod unix_tests {
         assert!(init.status.success());
 
         // Create a fake stale daemon state file with a non-existent PID
-        let cache_dir = dir_path.join(".ralph/cache");
+        let cache_dir = dir_path.join(".cueloop/cache");
         std::fs::create_dir_all(&cache_dir).expect("create cache dir");
         let fake_state = serde_json::json!({
             "version": 1,
             "pid": test_support::deterministic_non_running_pid(),
             "started_at": "2026-01-01T00:00:00Z",
             "repo_root": dir_path.to_string_lossy().to_string(),
-            "command": "ralph daemon serve"
+            "command": "cueloop daemon serve"
         });
         std::fs::write(
             cache_dir.join("daemon.json"),
@@ -469,7 +469,7 @@ mod unix_tests {
             .arg("status")
             .current_dir(dir_path)
             .output()
-            .expect("Failed to run ralph daemon status");
+            .expect("Failed to run cueloop daemon status");
 
         let status_stdout = String::from_utf8_lossy(&status.stdout);
         assert!(

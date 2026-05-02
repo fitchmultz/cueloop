@@ -202,10 +202,10 @@ mod tests {
     }
 
     fn trust_repo(repo_root: &Path) {
-        let ralph_dir = repo_root.join(".ralph");
-        std::fs::create_dir_all(&ralph_dir).unwrap();
+        let cueloop_dir = repo_root.join(".cueloop");
+        std::fs::create_dir_all(&cueloop_dir).unwrap();
         std::fs::write(
-            ralph_dir.join("trust.jsonc"),
+            cueloop_dir.join("trust.jsonc"),
             r#"{"allow_project_commands": true}"#,
         )
         .unwrap();
@@ -215,7 +215,7 @@ mod tests {
     fn is_enabled_defaults_to_false() {
         let tmp = TempDir::new().unwrap();
         trust_repo(tmp.path());
-        let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+        let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         create_test_plugin(&plugin_dir, "test.plugin").unwrap();
 
@@ -229,7 +229,7 @@ mod tests {
     fn is_enabled_respects_config() {
         let tmp = TempDir::new().unwrap();
         trust_repo(tmp.path());
-        let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+        let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         create_test_plugin(&plugin_dir, "test.plugin").unwrap();
 
@@ -250,7 +250,7 @@ mod tests {
     fn resolve_runner_bin_rejects_disabled_plugin() {
         let tmp = TempDir::new().unwrap();
         trust_repo(tmp.path());
-        let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+        let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         create_test_plugin(&plugin_dir, "test.plugin").unwrap();
 
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn load_ignores_project_plugins_in_untrusted_repo() {
         let tmp = TempDir::new().unwrap();
-        let plugin_dir = tmp.path().join(".ralph/plugins/test.plugin");
+        let plugin_dir = tmp.path().join(".cueloop/plugins/test.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         create_test_plugin(&plugin_dir, "test.plugin").unwrap();
 
@@ -376,11 +376,11 @@ mod tests {
     #[test]
     fn load_keeps_project_plugins_in_trusted_repo() {
         let tmp = TempDir::new().unwrap();
-        let ralph_dir = tmp.path().join(".ralph");
-        let plugin_dir = ralph_dir.join("plugins/test.plugin");
+        let cueloop_dir = tmp.path().join(".cueloop");
+        let plugin_dir = cueloop_dir.join("plugins/test.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         std::fs::write(
-            ralph_dir.join("trust.jsonc"),
+            cueloop_dir.join("trust.jsonc"),
             r#"{"allow_project_commands": true}"#,
         )
         .unwrap();

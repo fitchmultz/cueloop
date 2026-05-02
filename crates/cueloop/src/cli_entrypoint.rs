@@ -246,14 +246,14 @@ fn emit_legacy_compat_warnings() {
 
     if current_runtime.is_dir() && legacy_runtime.is_dir() {
         log::warn!(
-            "CueLoop found both .cueloop and legacy .cueloop runtime directories. .cueloop takes precedence; resolve or remove .ralph when ready."
+            "CueLoop found both .cueloop and legacy .cueloop runtime directories. .cueloop takes precedence; resolve or remove .cueloop when ready."
         );
     } else if matches!(
         crate::config::project_runtime_layout(&repo_root),
         crate::config::ProjectRuntimeLayout::Legacy
     ) {
         log::warn!(
-            "CueLoop is using legacy project runtime directory .ralph. This remains supported for now. Run `cueloop migrate runtime-dir --apply` to move project state to .cueloop."
+            "CueLoop is using legacy project runtime directory .cueloop. This remains supported for now. Run `cueloop migrate runtime-dir --apply` to move project state to .cueloop."
         );
     }
 
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn normalize_repo_prompt_args_rewrites_short_flag() {
         let args = vec![
-            OsString::from("ralph"),
+            OsString::from("cueloop"),
             OsString::from("-rp"),
             OsString::from("plan"),
         ];
@@ -364,7 +364,7 @@ mod tests {
         assert_eq!(
             normalized,
             vec![
-                OsString::from("ralph"),
+                OsString::from("cueloop"),
                 OsString::from("--repo-prompt"),
                 OsString::from("plan")
             ]
@@ -373,12 +373,12 @@ mod tests {
 
     #[test]
     fn normalize_repo_prompt_args_rewrites_equals_form() {
-        let args = vec![OsString::from("ralph"), OsString::from("-rp=tools")];
+        let args = vec![OsString::from("cueloop"), OsString::from("-rp=tools")];
         let normalized = normalize_repo_prompt_args(args);
         assert_eq!(
             normalized,
             vec![
-                OsString::from("ralph"),
+                OsString::from("cueloop"),
                 OsString::from("--repo-prompt=tools")
             ]
         );
@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn normalize_repo_prompt_args_respects_double_dash() {
         let args = vec![
-            OsString::from("ralph"),
+            OsString::from("cueloop"),
             OsString::from("--"),
             OsString::from("-rp"),
             OsString::from("plan"),
@@ -396,7 +396,7 @@ mod tests {
         assert_eq!(
             normalized,
             vec![
-                OsString::from("ralph"),
+                OsString::from("cueloop"),
                 OsString::from("--"),
                 OsString::from("-rp"),
                 OsString::from("plan")
@@ -407,7 +407,7 @@ mod tests {
     #[test]
     fn is_machine_command_args_detects_machine_after_globals() {
         let args = vec![
-            OsString::from("ralph"),
+            OsString::from("cueloop"),
             OsString::from("--no-color"),
             OsString::from("--color=never"),
             OsString::from("machine"),
@@ -421,7 +421,7 @@ mod tests {
     #[test]
     fn is_machine_command_args_rejects_non_machine_commands() {
         let args = vec![
-            OsString::from("ralph"),
+            OsString::from("cueloop"),
             OsString::from("--verbose"),
             OsString::from("queue"),
             OsString::from("read"),

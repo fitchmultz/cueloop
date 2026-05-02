@@ -60,14 +60,14 @@ impl LockStalenessAdvisory {
         match self {
             Self::None => None,
             Self::InvalidStartedAt => Some(format!(
-                "  The owner `started_at` value is missing or invalid, so Ralph cannot use lock age as a PID-reuse signal. The owner PID {liveness_text}; Ralph preserves the lock until an operator verifies it."
+                "  The owner `started_at` value is missing or invalid, so CueLoop cannot use lock age as a PID-reuse signal. The owner PID {liveness_text}; CueLoop preserves the lock until an operator verifies it."
             )),
             Self::FutureStartedAt => Some(format!(
-                "  The owner `started_at` value is more than {} minutes in the future. The owner PID {liveness_text}; Ralph preserves the lock and requires operator verification before unlock.",
+                "  The owner `started_at` value is more than {} minutes in the future. The owner PID {liveness_text}; CueLoop preserves the lock and requires operator verification before unlock.",
                 FUTURE_STARTED_AT_GRACE_SECONDS / 60
             )),
             Self::AgedLivePid => Some(format!(
-                "  The owner `started_at` value is older than {} days while the owner PID {liveness_text}. This can be a long-running Ralph process or a reused PID, so Ralph does not auto-clear it; verify the PID, command, and timestamp before using `cueloop queue unlock`.",
+                "  The owner `started_at` value is older than {} days while the owner PID {liveness_text}. This can be a long-running CueLoop process or a reused PID, so CueLoop does not auto-clear it; verify the PID, command, and timestamp before using `cueloop queue unlock`.",
                 PID_REUSE_REVIEW_AFTER_SECONDS / 60 / 60 / 24
             )),
         }
@@ -188,7 +188,7 @@ pub(crate) fn format_lock_error(
 
     if is_stale {
         message.push_str(
-            "\n\nStaleness Policy:\n  Ralph automatically treats and clears a PID lock as stale only when the owner PID is definitely not running.",
+            "\n\nStaleness Policy:\n  CueLoop automatically treats and clears a PID lock as stale only when the owner PID is definitely not running.",
         );
     } else if let Some(note) = staleness.and_then(LockStaleness::advisory_note) {
         message.push_str("\n\nStaleness Policy:\n");
@@ -198,11 +198,11 @@ pub(crate) fn format_lock_error(
     message.push_str("\n\nSuggested Action:");
     if is_stale {
         message.push_str(
-            "\n  The process that held this lock is no longer running. Ralph normally auto-clears this verified stale lock before acquiring the queue lock. If this message persists, use the built-in unlock command:\n  cueloop queue unlock --yes",
+            "\n  The process that held this lock is no longer running. CueLoop normally auto-clears this verified stale lock before acquiring the queue lock. If this message persists, use the built-in unlock command:\n  cueloop queue unlock --yes",
         );
     } else {
         message.push_str(
-            "\n  If you are sure no other ralph process is running, use the built-in unlock command:\n  cueloop queue unlock",
+            "\n  If you are sure no other cueloop process is running, use the built-in unlock command:\n  cueloop queue unlock",
         );
     }
 

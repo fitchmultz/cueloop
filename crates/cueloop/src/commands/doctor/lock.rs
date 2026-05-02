@@ -46,13 +46,13 @@ pub(crate) fn check_lock_health(
     let fix_available = matches!(inspection.condition, QueueLockCondition::Stale);
     let suggested_fix = match inspection.condition {
         QueueLockCondition::Live => Some(
-            "Wait for the owning Ralph process to finish, or inspect the current lock owner before retrying.",
+            "Wait for the owning CueLoop process to finish, or inspect the current lock owner before retrying.",
         ),
         QueueLockCondition::Stale => Some(
             "Use --auto-fix to remove the confirmed stale queue lock, or clear it manually once you verify the recorded PID is dead.",
         ),
         QueueLockCondition::OwnerMissing | QueueLockCondition::OwnerUnreadable => Some(
-            "Verify no other Ralph process is active, then clear the broken queue lock record explicitly.",
+            "Verify no other CueLoop process is active, then clear the broken queue lock record explicitly.",
         ),
     };
 

@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - `repo_root` and `workspace_root` are absolute or normalized paths Ralph already resolved.
+//! - `repo_root` and `workspace_root` are absolute or normalized paths CueLoop already resolved.
 
 use crate::git;
 use anyhow::{Context, Result, bail};
@@ -43,7 +43,7 @@ pub(crate) fn preflight_parallel_workspace_root_is_gitignored(
 
     // Check ignore rules without creating the directory:
     let dir_candidate = rel_trimmed.to_string();
-    let dummy_candidate = format!("{}/__ralph_ignore_probe__", rel_trimmed);
+    let dummy_candidate = format!("{}/__cueloop_ignore_probe__", rel_trimmed);
 
     let ignored_dir = git::is_path_ignored(repo_root, &dir_candidate)
         .with_context(|| format!("Parallel preflight: check-ignore {}", dir_candidate))?;

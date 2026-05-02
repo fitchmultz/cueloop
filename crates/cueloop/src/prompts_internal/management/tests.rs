@@ -74,31 +74,9 @@ fn check_sync_status_reports_missing_and_up_to_date() {
 }
 
 #[test]
-fn current_override_precedes_legacy_override_in_inventory_and_content() {
-    let temp = TempDir::new().unwrap();
-    let current = temp.path().join(".cueloop/prompts");
-    let legacy = temp.path().join(".ralph/prompts");
-    fs::create_dir_all(&current).unwrap();
-    fs::create_dir_all(&legacy).unwrap();
-    fs::write(current.join("worker.md"), "current").unwrap();
-    fs::write(legacy.join("worker.md"), "legacy").unwrap();
-
-    let templates = list_templates(temp.path());
-    let worker = templates
-        .iter()
-        .find(|template| template.name == "worker")
-        .unwrap();
-    assert!(worker.has_override);
-    assert_eq!(
-        get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
-        "current"
-    );
-}
-
-#[test]
 fn legacy_override_counts_as_fallback_override() {
     let temp = TempDir::new().unwrap();
-    let legacy = temp.path().join(".ralph/prompts");
+    let legacy = temp.path().join(".cueloop/prompts");
     fs::create_dir_all(&legacy).unwrap();
     fs::write(legacy.join("worker.md"), "legacy").unwrap();
 
@@ -108,23 +86,6 @@ fn legacy_override_counts_as_fallback_override() {
         .find(|template| template.name == "worker")
         .unwrap();
     assert!(worker.has_override);
-    assert_eq!(
-        get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
-        "legacy"
-    );
-}
-
-#[test]
-fn export_template_preserves_legacy_override_without_force() {
-    let temp = TempDir::new().unwrap();
-    let legacy = temp.path().join(".ralph/prompts");
-    fs::create_dir_all(&legacy).unwrap();
-    fs::write(legacy.join("worker.md"), "legacy").unwrap();
-
-    let written = export_template(temp.path(), PromptTemplateId::Worker, false, "0.5.0").unwrap();
-
-    assert!(!written);
-    assert!(!temp.path().join(".cueloop/prompts/worker.md").exists());
     assert_eq!(
         get_effective_content(temp.path(), PromptTemplateId::Worker).unwrap(),
         "legacy"
@@ -139,7 +100,7 @@ fn load_version_info_ignores_legacy_schema_during_cutover() {
     fs::write(
         cache_dir.join("prompt_versions.json"),
         r#"{
-  "ralph_version": "0.5.0",
+  "cueloop_version": "0.5.0",
   "exported_at": "2026-01-28T22:30:00Z",
   "templates": {
     "worker": {
@@ -159,7 +120,7 @@ fn version_info_round_trip_uses_digest_field() {
     let temp = TempDir::new().unwrap();
     let info = PromptVersionInfo {
         schema_version: PROMPT_VERSION_SCHEMA,
-        ralph_version: "0.5.0".to_string(),
+        cueloop_version: "0.5.0".to_string(),
         exported_at: "2026-01-28T22:30:00Z".to_string(),
         templates: {
             let mut templates = HashMap::new();

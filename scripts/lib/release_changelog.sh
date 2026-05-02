@@ -12,10 +12,10 @@
 # - CHANGELOG.md follows Keep a Changelog-style section headers.
 # - REPO_HTTP_URL is set before link rewriting.
 
-if [ -n "${RALPH_RELEASE_CHANGELOG_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_CHANGELOG_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_CHANGELOG_SOURCED=1
+CUELOOP_RELEASE_CHANGELOG_SOURCED=1
 set -euo pipefail
 
 release_render_notes_template() {
@@ -60,7 +60,7 @@ release_promote_changelog() {
     local version="$2"
     local today="$3"
     local temp_file
-    temp_file=$(cueloop_mktemp_file "ralph-release-changelog")
+    temp_file=$(cueloop_mktemp_file "cueloop-release-changelog")
 
     local unreleased_base_version
     unreleased_base_version=$(sed -n -E 's|^\[Unreleased\]: .*compare/v([0-9]+\.[0-9]+\.[0-9]+)\.\.\.HEAD.*|\1|p' "$changelog" | head -1 || true)

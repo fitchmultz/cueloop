@@ -30,7 +30,7 @@ Notifications are designed to be:
 
 ## Configuration
 
-Notifications are configured via the `agent.notification` section in your config file (`.ralph/config.jsonc` or `~/.config/ralph/config.jsonc`).
+Notifications are configured via the `agent.notification` section in your config file (`.cueloop/config.jsonc` or `~/.config/cueloop/config.jsonc`).
 
 ### Configuration Options
 
@@ -52,8 +52,8 @@ Settings are resolved in this order (highest to lowest):
 
 1. **CLI flags** (`--notify`, `--no-notify`, etc.)
 2. **Task-level overrides** (if supported in future versions)
-3. **Project config** (`.ralph/config.jsonc`)
-4. **Global config** (`~/.config/ralph/config.jsonc`)
+3. **Project config** (`.cueloop/config.jsonc`)
+4. **Global config** (`~/.config/cueloop/config.jsonc`)
 5. **Built-in defaults**
 
 ### Basic Configuration Example
@@ -496,7 +496,7 @@ Disable desktop notifications (no GUI available):
     },
     "webhook": {
       "enabled": true,
-      "url": "https://ci.example.com/webhooks/ralph"
+      "url": "https://ci.example.com/webhooks/cueloop"
     }
   }
 }
@@ -506,7 +506,7 @@ Disable desktop notifications (no GUI available):
 
 Use different sounds for work vs personal projects:
 
-**Work project** (`.ralph/config.jsonc`):
+**Work project** (`.cueloop/config.jsonc`):
 ```json
 {
   "agent": {
@@ -518,7 +518,7 @@ Use different sounds for work vs personal projects:
 }
 ```
 
-**Personal project** (`.ralph/config.jsonc`):
+**Personal project** (`.cueloop/config.jsonc`):
 ```json
 {
   "agent": {

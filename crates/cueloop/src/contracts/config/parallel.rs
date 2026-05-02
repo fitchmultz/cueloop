@@ -13,7 +13,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,7 +41,7 @@ pub struct ParallelConfig {
     #[schemars(range(min = 1))]
     pub workspace_retention_hours: Option<u32>,
 
-    /// Additional small gitignored non-.ralph files/globs to sync into parallel worker workspaces.
+    /// Additional small gitignored non-.cueloop files/globs to sync into parallel worker workspaces.
     /// Project config that sets this key requires repo trust. Entries must be repo-relative
     /// file paths or file glob patterns such as `local/tool-config.json`,
     /// `fixtures/local-*.json`, or `config/**/*.local.toml`. Directory trees and unsafe

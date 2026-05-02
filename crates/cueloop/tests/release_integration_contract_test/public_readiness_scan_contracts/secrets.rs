@@ -4,7 +4,7 @@
 //! - Keep secret-scanning and allowlist regression coverage grouped together.
 //!
 //! Responsibilities:
-//! - Verify excluded build artifacts, allowlisted `.ralph` files, injected helper/docs secrets, and private-key detection.
+//! - Verify excluded build artifacts, allowlisted `.cueloop` files, injected helper/docs secrets, and private-key detection.
 //!
 //! Scope:
 //! - Limited to public-readiness secret-scanning contracts.
@@ -51,14 +51,14 @@ fn public_readiness_scan_excludes_macos_target_build_artifacts() {
 }
 
 #[test]
-fn public_readiness_scan_scans_allowlisted_ralph_files_for_secrets() {
+fn public_readiness_scan_scans_allowlisted_cueloop_files_for_secrets() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path();
     let secret_token = ["gh", "p_12345678901234567890"].concat();
 
     copy_public_readiness_scan_fixture(repo_root);
     write_file(
-        &repo_root.join(".ralph/config.jsonc"),
+        &repo_root.join(".cueloop/config.jsonc"),
         &format!("token: {secret_token}\n"),
     );
 
@@ -67,18 +67,18 @@ fn public_readiness_scan_scans_allowlisted_ralph_files_for_secrets() {
         .arg("secrets")
         .current_dir(repo_root)
         .output()
-        .expect("run public-readiness secret scan over allowlisted .ralph file");
+        .expect("run public-readiness secret scan over allowlisted .cueloop file");
 
     assert_eq!(
         output.status.code(),
         Some(1),
-        "public-readiness scan should inspect allowlisted .ralph files for secrets"
+        "public-readiness scan should inspect allowlisted .cueloop files for secrets"
     );
     assert_output_redacts_secret(&output, &secret_token);
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains(".ralph/config.jsonc:1: github_classic_token: [REDACTED length=24]"),
-        "secret scan should report secrets inside allowlisted .ralph files\nstdout:\n{}",
+        stdout.contains(".cueloop/config.jsonc:1: github_classic_token: [REDACTED length=24]"),
+        "secret scan should report secrets inside allowlisted .cueloop files\nstdout:\n{}",
         stdout
     );
 }
@@ -101,7 +101,7 @@ fn public_readiness_scan_rejects_injected_secret_in_scan_helper_source() {
         .arg(repo_root.join("scripts/lib/public_readiness_scan.py"))
         .arg("secrets")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan helper against injected source");
 
@@ -140,7 +140,7 @@ fn public_readiness_scan_rejects_same_line_secret_in_security_docs_allowlist() {
         .arg(public_readiness_scan_python_path())
         .arg("secrets")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan over same-line injected security docs secret");
 
@@ -185,7 +185,7 @@ fn public_readiness_scan_rejects_same_line_secret_in_scan_helper_source() {
         .arg(repo_root.join("scripts/lib/public_readiness_scan.py"))
         .arg("secrets")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan helper against same-line injected source");
 
@@ -224,7 +224,7 @@ fn public_readiness_scan_rejects_private_key_in_pre_public_check_script() {
         .arg(public_readiness_scan_python_path())
         .arg("secrets")
         .arg(&repo_root)
-        .env("RALPH_PUBLIC_SCAN_EXCLUDES", "")
+        .env("CUELOOP_PUBLIC_SCAN_EXCLUDES", "")
         .output()
         .expect("run public-readiness scan over pre-public-check fixture");
 

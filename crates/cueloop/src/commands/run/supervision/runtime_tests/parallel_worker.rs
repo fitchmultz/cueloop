@@ -31,12 +31,12 @@ fn init_parallel_worker_repo(
 ) -> anyhow::Result<(crate::config::Resolved, PathBuf, String, String, String)> {
     git_test::init_repo(repo_root)?;
 
-    let cache_dir = repo_root.join(".ralph/cache");
+    let cache_dir = repo_root.join(".cueloop/cache");
     std::fs::create_dir_all(&cache_dir)?;
 
     write_queue(repo_root, TaskStatus::Todo)?;
     queue::save_queue(
-        &repo_root.join(".ralph/done.jsonc"),
+        &repo_root.join(".cueloop/done.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![],
@@ -65,7 +65,7 @@ fn init_parallel_worker_repo_with_custom_bookkeeping(
 ) -> anyhow::Result<(crate::config::Resolved, PathBuf, String, String, String)> {
     git_test::init_repo(repo_root)?;
 
-    let cache_dir = repo_root.join(".ralph/cache");
+    let cache_dir = repo_root.join(".cueloop/cache");
     std::fs::create_dir_all(&cache_dir)?;
     std::fs::create_dir_all(repo_root.join("queue"))?;
     std::fs::create_dir_all(repo_root.join("archive"))?;

@@ -15,7 +15,7 @@
 //! Invariants/Assumptions:
 //! - Custom templates override built-ins with the same name.
 //! - Listing order remains stable via name sorting.
-//! - Only `.json` files under `.ralph/templates/` are considered custom
+//! - Only `.json` files under `.cueloop/templates/` are considered custom
 //!   templates.
 
 use std::collections::HashSet;
@@ -35,7 +35,7 @@ pub fn list_templates(project_root: &Path) -> Vec<TemplateInfo> {
     let mut templates = Vec::new();
     let mut seen_names = HashSet::new();
 
-    let custom_dir = project_root.join(".ralph/templates");
+    let custom_dir = project_root.join(".cueloop/templates");
     if let Ok(entries) = std::fs::read_dir(&custom_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -84,7 +84,7 @@ pub fn list_templates(project_root: &Path) -> Vec<TemplateInfo> {
 /// Check if a template exists (either custom or built-in).
 pub fn template_exists(name: &str, project_root: &Path) -> bool {
     let custom_path = project_root
-        .join(".ralph/templates")
+        .join(".cueloop/templates")
         .join(format!("{}.json", name));
     custom_path.exists() || get_builtin_template(name).is_some()
 }

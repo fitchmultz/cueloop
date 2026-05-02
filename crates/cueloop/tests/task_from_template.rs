@@ -19,7 +19,7 @@
 //!
 //! Invariants/assumptions:
 //! - Tests run in isolated temp directories.
-//! - `seed_ralph_dir()` provides the baseline `.ralph/` fixture for setup.
+//! - `seed_cueloop_dir()` provides the baseline `.cueloop/` fixture for setup.
 
 use anyhow::Result;
 
@@ -29,7 +29,7 @@ mod test_support;
 fn from_template_dry_run_succeeds() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
@@ -70,7 +70,7 @@ fn from_template_dry_run_succeeds() -> Result<()> {
 fn from_template_invalid_template_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, _stdout, stderr) = test_support::run_in_dir(
         dir.path(),
@@ -92,7 +92,7 @@ fn from_template_invalid_template_fails() -> Result<()> {
 fn from_template_dry_run_with_target_shows_target() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
@@ -124,7 +124,7 @@ fn from_template_dry_run_with_target_shows_target() -> Result<()> {
 fn from_template_dry_run_with_tags_shows_tags() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) = test_support::run_in_dir(
         dir.path(),
@@ -156,7 +156,7 @@ fn from_template_dry_run_with_tags_shows_tags() -> Result<()> {
 fn from_template_help_shows_examples() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let (status, stdout, stderr) =
         test_support::run_in_dir(dir.path(), &["task", "from", "template", "--help"]);
@@ -194,7 +194,7 @@ fn from_template_help_shows_examples() -> Result<()> {
 fn from_template_missing_title_fails() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Running without --title should fail
     let (status, _stdout, _stderr) =
@@ -209,7 +209,7 @@ fn from_template_missing_title_fails() -> Result<()> {
 fn from_template_all_builtin_templates_dry_run() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     let templates = [
         "bug",
@@ -251,7 +251,7 @@ fn from_template_all_builtin_templates_dry_run() -> Result<()> {
 fn from_template_invalid_set_format_shows_error() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Invalid --set format (missing =)
     let (status, _stdout, stderr) = test_support::run_in_dir(
@@ -284,7 +284,7 @@ fn from_template_invalid_set_format_shows_error() -> Result<()> {
 fn from_template_with_multiple_set_vars() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
 
     // Multiple --set args should work
     let (status, stdout, stderr) = test_support::run_in_dir(

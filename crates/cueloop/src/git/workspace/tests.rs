@@ -39,19 +39,19 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 fn workspace_root_uses_repo_root_for_relative_path() {
     let cfg = Config {
         parallel: ParallelConfig {
-            workspace_root: Some(PathBuf::from(".ralph/workspaces/custom")),
+            workspace_root: Some(PathBuf::from(".cueloop/workspaces/custom")),
             ..ParallelConfig::default()
         },
         ..Config::default()
     };
-    let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
+    let repo_root = crate::testsupport::path::portable_abs_path("cueloop-test");
     let root = workspace_root(&repo_root, &cfg);
-    assert_eq!(root, repo_root.join(".ralph/workspaces/custom"));
+    assert_eq!(root, repo_root.join(".cueloop/workspaces/custom"));
 }
 
 #[test]
 fn workspace_root_accepts_absolute_path() {
-    let absolute_root = crate::testsupport::path::portable_abs_path("ralph-workspaces");
+    let absolute_root = crate::testsupport::path::portable_abs_path("cueloop-workspaces");
     let cfg = Config {
         parallel: ParallelConfig {
             workspace_root: Some(absolute_root.clone()),
@@ -59,7 +59,7 @@ fn workspace_root_accepts_absolute_path() {
         },
         ..Config::default()
     };
-    let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
+    let repo_root = crate::testsupport::path::portable_abs_path("cueloop-test");
     let root = workspace_root(&repo_root, &cfg);
     assert_eq!(root, absolute_root);
 }
@@ -70,7 +70,7 @@ fn workspace_root_defaults_outside_repo() {
         parallel: ParallelConfig::default(),
         ..Config::default()
     };
-    let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
+    let repo_root = crate::testsupport::path::portable_abs_path("cueloop-test");
     let root = workspace_root(&repo_root, &cfg);
     assert_eq!(
         root,
@@ -78,7 +78,7 @@ fn workspace_root_defaults_outside_repo() {
             .parent()
             .unwrap()
             .join(".workspaces")
-            .join("ralph-test")
+            .join("cueloop-test")
             .join("parallel")
     );
 }
@@ -87,7 +87,7 @@ fn workspace_root_defaults_outside_repo() {
 fn create_and_remove_workspace_round_trips() -> Result<()> {
     let temp = seeded_repo()?;
     let base_branch = current_branch(temp.path())?;
-    let root = temp.path().join(".ralph/workspaces/parallel");
+    let root = temp.path().join(".cueloop/workspaces/parallel");
 
     let spec = create_workspace_at(temp.path(), &root, "RQ-0001", &base_branch)?;
     assert!(spec.path.exists(), "workspace path should exist");
@@ -102,7 +102,7 @@ fn create_and_remove_workspace_round_trips() -> Result<()> {
 fn create_workspace_reuses_existing_and_cleans() -> Result<()> {
     let temp = seeded_repo()?;
     let base_branch = current_branch(temp.path())?;
-    let root = temp.path().join(".ralph/workspaces/parallel");
+    let root = temp.path().join(".cueloop/workspaces/parallel");
 
     let first = create_workspace_at(temp.path(), &root, "RQ-0001", &base_branch)?;
     std::fs::write(first.path.join("dirty.txt"), "dirty")?;
@@ -119,23 +119,29 @@ fn create_workspace_reuses_existing_and_cleans() -> Result<()> {
 #[test]
 fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() -> Result<()> {
     let temp = seeded_repo()?;
-    std::fs::create_dir_all(temp.path().join(".ralph"))?;
-    std::fs::write(temp.path().join(".ralph/config.jsonc"), "{tracked_config}")?;
+    std::fs::create_dir_all(temp.path().join(".cueloop"))?;
+    std::fs::write(
+        temp.path().join(".cueloop/config.jsonc"),
+        "{tracked_config}",
+    )?;
     git_test::commit_all(temp.path(), "add tracked cueloop config")?;
 
     let base_branch = current_branch(temp.path())?;
-    let root = temp.path().join(".ralph/workspaces/parallel");
+    let root = temp.path().join(".cueloop/workspaces/parallel");
     let first = create_workspace_at(temp.path(), &root, "RQ-0009", &base_branch)?;
 
     git_test::git_run(&first.path, &["checkout", "-b", "stale-no-config"])?;
-    git_test::git_run(&first.path, &["rm", "--cached", ".ralph/config.jsonc"])?;
+    git_test::git_run(&first.path, &["rm", "--cached", ".cueloop/config.jsonc"])?;
     git_test::git_run(
         &first.path,
         &["commit", "-m", "drop tracked config in stale branch"],
     )?;
 
     // Leave an untracked file at a path that is tracked on base_branch.
-    std::fs::write(first.path.join(".ralph/config.jsonc"), "{untracked_config}")?;
+    std::fs::write(
+        first.path.join(".cueloop/config.jsonc"),
+        "{untracked_config}",
+    )?;
 
     let stale_status = git_test::git_output(
         &first.path,
@@ -144,8 +150,8 @@ fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() ->
     assert!(
         stale_status
             .lines()
-            .any(|line| line.trim() == "?? .ralph/config.jsonc"),
-        "expected stale branch to have untracked .ralph/config.jsonc, got: {stale_status}"
+            .any(|line| line.trim() == "?? .cueloop/config.jsonc"),
+        "expected stale branch to have untracked .cueloop/config.jsonc, got: {stale_status}"
     );
 
     let second = create_workspace_at(temp.path(), &root, "RQ-0009", &base_branch)?;
@@ -158,7 +164,7 @@ fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() ->
         status_after.trim().is_empty(),
         "expected clean workspace after reuse reset, got: {status_after}"
     );
-    assert!(second.path.join(".ralph/config.jsonc").exists());
+    assert!(second.path.join(".cueloop/config.jsonc").exists());
 
     remove_workspace(&root, &second, true)?;
     Ok(())
@@ -168,7 +174,7 @@ fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() ->
 fn create_workspace_with_existing_branch() -> Result<()> {
     let temp = seeded_repo()?;
     let base_branch = current_branch(temp.path())?;
-    let root = temp.path().join(".ralph/workspaces/parallel");
+    let root = temp.path().join(".cueloop/workspaces/parallel");
 
     let spec = create_workspace_at(temp.path(), &root, "RQ-0002", &base_branch)?;
     assert!(spec.path.exists());
@@ -186,7 +192,7 @@ fn create_workspace_requires_origin_remote() -> Result<()> {
     git_test::commit_all(temp.path(), "init")?;
 
     let base_branch = current_branch(temp.path())?;
-    let root = temp.path().join(".ralph/workspaces/parallel");
+    let root = temp.path().join(".cueloop/workspaces/parallel");
 
     let err = create_workspace_at(temp.path(), &root, "RQ-0003", &base_branch)
         .expect_err("missing origin should fail");
@@ -198,7 +204,7 @@ fn create_workspace_requires_origin_remote() -> Result<()> {
 fn remove_workspace_requires_force_when_dirty() -> Result<()> {
     let temp = seeded_repo()?;
     let base_branch = current_branch(temp.path())?;
-    let root = temp.path().join(".ralph/workspaces/parallel");
+    let root = temp.path().join(".cueloop/workspaces/parallel");
 
     let spec = create_workspace_at(temp.path(), &root, "RQ-0004", &base_branch)?;
     std::fs::write(spec.path.join("dirty.txt"), "dirty")?;
@@ -320,14 +326,14 @@ fn workspace_root_expands_tilde_to_home() {
 
     let cfg = Config {
         parallel: ParallelConfig {
-            workspace_root: Some(PathBuf::from("~/ralph-workspaces")),
+            workspace_root: Some(PathBuf::from("~/cueloop-workspaces")),
             ..ParallelConfig::default()
         },
         ..Config::default()
     };
-    let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
+    let repo_root = crate::testsupport::path::portable_abs_path("cueloop-test");
     let root = workspace_root(&repo_root, &cfg);
-    assert_eq!(root, PathBuf::from("/custom/home/ralph-workspaces"));
+    assert_eq!(root, PathBuf::from("/custom/home/cueloop-workspaces"));
 
     restore_home(original_home);
 }
@@ -347,7 +353,7 @@ fn workspace_root_expands_tilde_alone_to_home() {
         },
         ..Config::default()
     };
-    let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
+    let repo_root = crate::testsupport::path::portable_abs_path("cueloop-test");
     let root = workspace_root(&repo_root, &cfg);
     assert_eq!(root, PathBuf::from("/custom/home"));
 
@@ -369,7 +375,7 @@ fn workspace_root_relative_when_home_unset() {
         },
         ..Config::default()
     };
-    let repo_root = crate::testsupport::path::portable_abs_path("ralph-test");
+    let repo_root = crate::testsupport::path::portable_abs_path("cueloop-test");
     let root = workspace_root(&repo_root, &cfg);
     assert_eq!(root, repo_root.join("~/workspaces"));
 

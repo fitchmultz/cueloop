@@ -120,17 +120,17 @@ fn parallel_path_map_workspace_sync() -> Result<()> {
     let repo = support::RunParallelRepo::new()?;
     repo.write_queue(&support::todo_tasks(&[("RQ-0001", "Test path mapping")]))?;
     repo.write_relative_file(
-        ".ralph/config.jsonc",
+        ".cueloop/config.jsonc",
         r#"{"version":2,"agent":{"runner":"opencode","model":"test-model"}}"#,
     )?;
-    repo.write_relative_file(".ralph/prompts/worker.md", "# Custom prompt")?;
+    repo.write_relative_file(".cueloop/prompts/worker.md", "# Custom prompt")?;
     repo.configure_default_runner()?;
 
     let _ = repo.run_parallel(1);
 
     for workspace in repo.workspace_dirs()? {
-        let workspace_config = workspace.join(".ralph/config.jsonc");
-        let workspace_prompt = workspace.join(".ralph/prompts/worker.md");
+        let workspace_config = workspace.join(".cueloop/config.jsonc");
+        let workspace_prompt = workspace.join(".cueloop/prompts/worker.md");
 
         if workspace_config.exists() {
             let config_content = std::fs::read_to_string(&workspace_config)?;

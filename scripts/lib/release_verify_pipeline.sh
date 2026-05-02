@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Prepare and validate Ralph release verification snapshots.
+# Purpose: Prepare and validate CueLoop release verification snapshots.
 # Responsibilities:
 # - Run ship/public-readiness gates for the release snapshot.
 # - Build artifacts and render release notes for the verified snapshot.
@@ -12,10 +12,10 @@
 # Invariants/assumptions:
 # - Caller already sourced release policy, verify-state helpers, and changelog helpers.
 
-if [ -n "${RALPH_RELEASE_VERIFY_PIPELINE_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_VERIFY_PIPELINE_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_VERIFY_PIPELINE_SOURCED=1
+CUELOOP_RELEASE_VERIFY_PIPELINE_SOURCED=1
 set -euo pipefail
 
 release_run_ship_gate() {
@@ -81,8 +81,8 @@ release_generate_release_notes() {
 
     local changelog_tmp
     local checksums_tmp
-    changelog_tmp=$(cueloop_mktemp_file "ralph-release-notes-changelog")
-    checksums_tmp=$(cueloop_mktemp_file "ralph-release-notes-checksums")
+    changelog_tmp=$(cueloop_mktemp_file "cueloop-release-notes-changelog")
+    checksums_tmp=$(cueloop_mktemp_file "cueloop-release-notes-checksums")
     printf '%s\n' "$changelog_section" > "$changelog_tmp"
     if [ -d "$RELEASE_ARTIFACTS_DIR" ]; then
         (cd "$RELEASE_ARTIFACTS_DIR" && cat ./*.sha256 2>/dev/null || true) > "$checksums_tmp"

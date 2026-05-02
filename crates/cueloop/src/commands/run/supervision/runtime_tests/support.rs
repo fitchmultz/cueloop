@@ -70,7 +70,7 @@ pub(super) fn write_queue(repo_root: &Path, status: TaskStatus) -> anyhow::Resul
 
 pub(super) fn write_queue_tasks(repo_root: &Path, tasks: Vec<Task>) -> anyhow::Result<()> {
     queue::save_queue(
-        &repo_root.join(".ralph/queue.jsonc"),
+        &repo_root.join(".cueloop/queue.jsonc"),
         &QueueFile { version: 1, tasks },
     )?;
     Ok(())
@@ -78,7 +78,7 @@ pub(super) fn write_queue_tasks(repo_root: &Path, tasks: Vec<Task>) -> anyhow::R
 
 pub(super) fn write_done_tasks(repo_root: &Path, tasks: Vec<Task>) -> anyhow::Result<()> {
     queue::save_queue(
-        &repo_root.join(".ralph/done.jsonc"),
+        &repo_root.join(".cueloop/done.jsonc"),
         &QueueFile { version: 1, tasks },
     )?;
     Ok(())
@@ -123,8 +123,8 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
             scan_prompt_version: None,
         },
         queue: QueueConfig {
-            file: Some(PathBuf::from(".ralph/queue.jsonc")),
-            done_file: Some(PathBuf::from(".ralph/done.jsonc")),
+            file: Some(PathBuf::from(".cueloop/queue.jsonc")),
+            done_file: Some(PathBuf::from(".cueloop/done.jsonc")),
             id_prefix: Some("RQ".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
@@ -139,12 +139,12 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
     crate::config::Resolved {
         config: cfg,
         repo_root: repo_root.to_path_buf(),
-        queue_path: repo_root.join(".ralph/queue.jsonc"),
-        done_path: repo_root.join(".ralph/done.jsonc"),
+        queue_path: repo_root.join(".cueloop/queue.jsonc"),
+        done_path: repo_root.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+        project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
     }
 }
 

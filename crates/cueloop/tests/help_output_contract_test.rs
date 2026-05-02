@@ -73,7 +73,7 @@ fn root_help_mentions_runner_and_models_and_precedence() {
     let (status, stdout, stderr) = run(&["--help"]);
     assert!(
         status.success(),
-        "expected `ralph --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");

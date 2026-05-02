@@ -68,4 +68,4 @@ For validation gate definitions and macOS-specific verification behavior, use [c
 ## Notes
 
 - `make release-verify` is the canonical preflight for real releases and now prepares the exact local snapshot that `make release` publishes.
-- Public-readiness scans the repo working tree, excluding explicit local/runtime/build directories only; allowlisted tracked `.ralph/README.md`, `.ralph/queue.jsonc`, `.ralph/done.jsonc`, and `.ralph/config.jsonc` remain in scope for secret/link checks.
+- Public-readiness scans the repo working tree, excluding explicit local/runtime/build directories only; allowlisted tracked `.cueloop/README.md`, `.cueloop/queue.jsonc`, `.cueloop/done.jsonc`, and `.cueloop/config.jsonc` remain in scope for secret/link checks.

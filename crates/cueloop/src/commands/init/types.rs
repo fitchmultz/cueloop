@@ -18,7 +18,7 @@
 //! - Reported file paths reflect the actual paths used for initialization.
 //! - File status values stay aligned with writer behavior.
 
-/// Options for initializing Ralph files.
+/// Options for initializing CueLoop files.
 pub struct InitOptions {
     /// Overwrite existing files if they already exist.
     pub force: bool,

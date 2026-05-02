@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::*;
 use crate::commands::run::PhaseType;
@@ -143,8 +143,8 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
 fn phase2_final_three_phase_iteration_skips_duplicate_ci_gate() -> Result<()> {
     let temp = TempDir::new()?;
     git_init(temp.path())?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/plans"))?;
-    std::fs::create_dir_all(temp.path().join(".ralph/cache/phase2_final"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/plans"))?;
+    std::fs::create_dir_all(temp.path().join(".cueloop/cache/phase2_final"))?;
 
     let script = r#"#!/bin/sh
 set -e

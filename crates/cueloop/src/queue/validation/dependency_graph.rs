@@ -59,7 +59,7 @@ fn build_dependency_graph<'a>(
 
             if !catalog.all_task_ids.contains(dep_id) {
                 bail!(
-                    "Invalid dependency: task {} depends on non-existent task {}. Ensure the dependency task ID exists in .ralph/queue.jsonc or .ralph/done.jsonc.",
+                    "Invalid dependency: task {} depends on non-existent task {}. Ensure the dependency task ID exists in .cueloop/queue.jsonc or .cueloop/done.jsonc.",
                     task_id,
                     dep_id
                 );

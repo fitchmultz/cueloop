@@ -16,7 +16,7 @@ Purpose: Comprehensive guide to CueLoop's prompt template system, including embe
 CueLoop uses a sophisticated prompt system to guide AI agents through task execution. The system is designed around these core principles:
 
 1. **Embedded Defaults**: All default prompts are embedded in the Rust binary at compile time, ensuring CueLoop works out-of-the-box without external dependencies.
-2. **Repository Overrides**: Teams can customize prompts per repository by placing override files in `.ralph/prompts/`.
+2. **Repository Overrides**: Teams can customize prompts per repository by placing override files in `.cueloop/prompts/`.
 3. **Template Variables**: Dynamic placeholders (`{{TASK_ID}}`, `{{USER_REQUEST}}`, etc.) are replaced at runtime with context-specific values.
 4. **Multi-Phase Composition**: Worker prompts are composed by combining base prompts with phase-specific wrappers.
 5. **RepoPrompt Integration**: Optional integration with RepoPrompt tools for enhanced codebase exploration and planning.
@@ -31,7 +31,7 @@ CueLoop uses a sophisticated prompt system to guide AI agents through task execu
 │  ┌─────────────────┐    ┌──────────────────┐                   │
 │  │  Embedded       │    │  Repository      │                   │
 │  │  Defaults       │    │  Overrides       │                   │
-│  │  (Binary)       │    │  (.ralph/prompts)│                   │
+│  │  (Binary)       │    │  (.cueloop/prompts)│                   │
 │  └────────┬────────┘    └────────┬─────────┘                   │
 │           │                      │                              │
 │           └──────────┬───────────┘                              │
@@ -98,7 +98,7 @@ crates/cueloop/assets/prompts/
 
 When loading a prompt, CueLoop follows this resolution order:
 
-1. Check for override at `.ralph/prompts/<name>.md`
+1. Check for override at `.cueloop/prompts/<name>.md`
 2. If override exists → use it
 3. If override missing → use embedded default
 4. If override errors → propagate error (don't silently fall back)
@@ -112,26 +112,26 @@ This ensures that:
 
 ## Prompt Overrides
 
-To customize prompts for a repository, create files in `.ralph/prompts/`:
+To customize prompts for a repository, create files in `.cueloop/prompts/`:
 
 ```bash
-mkdir -p .ralph/prompts
+mkdir -p .cueloop/prompts
 
 # Override the base worker prompt
-cat > .ralph/prompts/worker.md << 'EOF'
+cat > .cueloop/prompts/worker.md << 'EOF'
 # CUSTOM MISSION
 You are an autonomous engineer specializing in this codebase...
 
 # CONTEXT (READ IN ORDER)
 1. `AGENTS.md`
-2. `.ralph/README.md`
+2. `.cueloop/README.md`
 3. Task details via `cueloop task show {{TASK_ID}}`
 
 {{PROJECT_TYPE_GUIDANCE}}
 EOF
 
 # Override phase 1 planning
-cat > .ralph/prompts/worker_phase1.md << 'EOF'
+cat > .cueloop/prompts/worker_phase1.md << 'EOF'
 # CUSTOM PLANNING MODE
 
 CURRENT TASK: {{TASK_ID}}
@@ -190,7 +190,7 @@ CueLoop does not auto-inject `~/.codex/AGENTS.md` or repo `AGENTS.md`; prompt te
 
 The foundation prompt used across all phases. Defines:
 - Mission statement
-- Context reading order (AGENTS.md, .ralph/README.md, etc.)
+- Context reading order (AGENTS.md, .cueloop/README.md, etc.)
 - Operating rules (don't ask permission, fix root causes, etc.)
 - Pre-flight safety checks
 - Stop/cancel semantics
@@ -209,7 +209,7 @@ Wraps the base worker for the planning phase:
 
 **Key Placeholders:**
 - `{{TOTAL_PHASES}}` - Number of phases (2 or 3)
-- `{{PLAN_PATH}}` - Where to write the plan (e.g., `.ralph/cache/plans/RQ-0001.md`)
+- `{{PLAN_PATH}}` - Where to write the plan (e.g., `.cueloop/cache/plans/RQ-0001.md`)
 - `{{ITERATION_CONTEXT}}` - Refinement guidance for multi-iteration runs
 - `{{REPOPROMPT_BLOCK}}` - Tool instructions when RepoPrompt is enabled
 
@@ -257,7 +257,7 @@ Combined plan+implement for simple tasks:
 Converts user requests into queue tasks:
 - Analyzes user request
 - Generates proper task JSON
-- Inserts into `.ralph/queue.jsonc`
+- Inserts into `.cueloop/queue.jsonc`
 
 **Key Placeholders:**
 - `{{USER_REQUEST}}` - Original user input
@@ -318,7 +318,7 @@ Review body injected in Phase 3:
 | `{{USER_FOCUS}}` | Scan focus area | "authentication" |
 | `{{HINT_TAGS}}` | Suggested tags | `["ui", "bug"]` |
 | `{{HINT_SCOPE}}` | Suggested scope | `["src/auth/"]` |
-| `{{PLAN_PATH}}` | Plan cache file path | `.ralph/cache/plans/RQ-0001.md` |
+| `{{PLAN_PATH}}` | Plan cache file path | `.cueloop/cache/plans/RQ-0001.md` |
 | `{{PLAN_TEXT}}` | Content of plan file | (full plan markdown) |
 | `{{TOTAL_PHASES}}` | Phase count | `2` or `3` |
 | `{{CONFLICT_FILES}}` | Conflicted file list | `["file1.rs", "file2.rs"]` |
@@ -395,7 +395,7 @@ This is a documentation repository. Prioritize:
 
 ### Configuration
 
-Set project type in `.ralph/config.jsonc`:
+Set project type in `.cueloop/config.jsonc`:
 
 ```json
 {
@@ -451,7 +451,7 @@ The planning block still keeps the hard artifact boundary intact: Phase 1 must w
 
 ### Configuration
 
-Enable RepoPrompt integration in `.ralph/config.jsonc`:
+Enable RepoPrompt integration in `.cueloop/config.jsonc`:
 
 ```json
 {
@@ -647,12 +647,12 @@ For organizations with multiple repositories:
 
 ```bash
 # Create a shared prompt template repository
-git clone https://github.com/org/ralph-prompts.git
+git clone https://github.com/org/cueloop-prompts.git
 
 # Link to each project
 cd project-a
-ln -s ../ralph-prompts/worker.md .ralph/prompts/worker.md
-ln -s ../ralph-prompts/worker_phase1.md .ralph/prompts/worker_phase1.md
+ln -s ../cueloop-prompts/worker.md .cueloop/prompts/worker.md
+ln -s ../cueloop-prompts/worker_phase1.md .cueloop/prompts/worker_phase1.md
 ```
 
 ### Debugging Prompts
@@ -664,7 +664,7 @@ Use `--debug` flag to see rendered prompts:
 cueloop run --debug
 
 # Check the debug log
-cat .ralph/logs/debug.log | grep -A 50 "Rendered prompt"
+cat .cueloop/logs/debug.log | grep -A 50 "Rendered prompt"
 ```
 
 ---

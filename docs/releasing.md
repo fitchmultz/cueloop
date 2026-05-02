@@ -83,7 +83,7 @@ If reconcile is resuming before crates.io publication, the transaction is still 
 
 ## Artifacts
 
-Release artifacts live under `target/release-artifacts/` and are rebuilt from scratch for each run. The artifact builder uses the shared CLI bundling entrypoint (`scripts/ralph-cli-bundle.sh`) for native release binaries so app bundling and release packaging consume the same CLI build contract.
+Release artifacts live under `target/release-artifacts/` and are rebuilt from scratch for each run. The artifact builder uses the shared CLI bundling entrypoint (`scripts/cueloop-cli-bundle.sh`) for native release binaries so app bundling and release packaging consume the same CLI build contract.
 
 ## Version Metadata
 

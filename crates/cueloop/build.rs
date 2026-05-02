@@ -1,4 +1,4 @@
-//! Build script for Ralph CLI.
+//! Build script for CueLoop CLI.
 //!
 //! Responsibilities:
 //! - Capture build-time information (git commit hash, build timestamp).

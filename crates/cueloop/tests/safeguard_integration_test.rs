@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
 use cueloop::config::project_runtime_dir;
@@ -35,7 +35,7 @@ fn git_init(dir: &Path) -> Result<()> {
     anyhow::ensure!(status.success(), "git init failed");
 
     let gitignore_path = dir.join(".gitignore");
-    std::fs::write(&gitignore_path, ".cueloop/lock\n.ralph/lock\n")?;
+    std::fs::write(&gitignore_path, ".cueloop/lock\n.cueloop/lock\n")?;
     Command::new("git")
         .current_dir(dir)
         .args(["add", ".gitignore"])
@@ -160,7 +160,7 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
-    // 1. Setup Ralph
+    // 1. Setup CueLoop
     let (status, _stdout, _stderr) =
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(status.success(), "cueloop init failed");
@@ -170,7 +170,7 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
 
     // 3. Create a runner that prints and fails.
     // Drain stdin first so the runner exits with the intended failure instead of
-    // tripping a broken pipe while Ralph is still streaming prompt input.
+    // tripping a broken pipe while CueLoop is still streaming prompt input.
     let script = "#!/bin/sh\ncat > /dev/null\necho 'VALUABLE_LLM_OUTPUT'\nexit 1\n";
     let runner_path = create_fake_runner(dir.path(), "codex", script)?;
     configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
@@ -185,7 +185,7 @@ fn runner_fails_and_safeguards_stdout() -> Result<()> {
         .args(["commit", "-m", "setup"])
         .status()?;
 
-    // 5. Run ralph
+    // 5. Run cueloop
     let (status, _stdout, stderr) = run_in_dir(dir.path(), &["run", "one"]);
     anyhow::ensure!(!status.success(), "expected run one to fail");
 
@@ -226,7 +226,7 @@ fn scan_fails_validation_and_safeguards_stdout() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     git_init(dir.path())?;
 
-    // 1. Setup Ralph
+    // 1. Setup CueLoop
     let (status, _stdout, _stderr) =
         run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
     anyhow::ensure!(status.success(), "cueloop init failed");

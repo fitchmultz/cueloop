@@ -17,7 +17,7 @@
 //!
 //! Invariants/assumptions:
 //! - Export/sync operations target `.cueloop/prompts/`.
-//! - Legacy `.ralph/prompts/` overrides remain readable as fallback.
+//! - Legacy `.cueloop/prompts/` overrides remain readable as fallback.
 //! - Errors are surfaced per-template without aborting unrelated exports.
 
 use std::path::Path;
@@ -52,7 +52,7 @@ pub fn list_prompts(repo_root: &Path) -> Result<()> {
     }
 
     println!("\nOverride paths: .cueloop/prompts/<name>.md");
-    println!("Legacy fallback: .ralph/prompts/<name>.md");
+    println!("Legacy fallback: .cueloop/prompts/<name>.md");
     println!("Use 'cueloop prompt show <name> --raw' to view raw embedded content");
     Ok(())
 }
@@ -72,13 +72,13 @@ pub fn show_prompt(repo_root: &Path, name: &str, raw: bool) -> Result<()> {
 }
 
 pub fn export_prompts(repo_root: &Path, name: Option<&str>, force: bool) -> Result<()> {
-    let ralph_version = env!("CARGO_PKG_VERSION");
+    let cueloop_version = env!("CARGO_PKG_VERSION");
 
     if let Some(name) = name {
         let id = prompt_mgmt::parse_template_name(name)
             .ok_or_else(|| anyhow::anyhow!("Unknown template name: '{}'", name))?;
         let file_name = prompt_mgmt::template_file_name(id);
-        let written = prompt_mgmt::export_template(repo_root, id, force, ralph_version)?;
+        let written = prompt_mgmt::export_template(repo_root, id, force, cueloop_version)?;
         if written {
             println!(
                 "Exported {} to .cueloop/prompts/{}.md",
@@ -97,7 +97,7 @@ pub fn export_prompts(repo_root: &Path, name: Option<&str>, force: bool) -> Resu
     let mut skipped = 0;
     for id in prompt_mgmt::all_template_ids() {
         let file_name = prompt_mgmt::template_file_name(id);
-        match prompt_mgmt::export_template(repo_root, id, force, ralph_version) {
+        match prompt_mgmt::export_template(repo_root, id, force, cueloop_version) {
             Ok(true) => {
                 exported += 1;
                 println!("Exported {}", file_name);
@@ -118,7 +118,7 @@ pub fn export_prompts(repo_root: &Path, name: Option<&str>, force: bool) -> Resu
 }
 
 pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> {
-    let ralph_version = env!("CARGO_PKG_VERSION");
+    let cueloop_version = env!("CARGO_PKG_VERSION");
     let templates = prompt_mgmt::all_template_ids();
     let mut up_to_date = Vec::new();
     let mut outdated = Vec::new();
@@ -156,7 +156,7 @@ pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> 
     let mut created = 0;
 
     for (name, id) in outdated {
-        match prompt_mgmt::sync_template(repo_root, id, false, ralph_version) {
+        match prompt_mgmt::sync_template(repo_root, id, false, cueloop_version) {
             Ok((true, _)) => {
                 updated += 1;
                 println!("Updated {} (outdated)", name);
@@ -173,7 +173,7 @@ pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> 
     }
 
     for (name, id) in missing {
-        match prompt_mgmt::sync_template(repo_root, id, false, ralph_version) {
+        match prompt_mgmt::sync_template(repo_root, id, false, cueloop_version) {
             Ok((true, _)) => {
                 created += 1;
                 println!("Created {}", name);
@@ -190,7 +190,7 @@ pub fn sync_prompts(repo_root: &Path, dry_run: bool, force: bool) -> Result<()> 
     }
 
     for (name, id) in user_modified {
-        match prompt_mgmt::sync_template(repo_root, id, force, ralph_version) {
+        match prompt_mgmt::sync_template(repo_root, id, force, cueloop_version) {
             Ok((true, _)) => {
                 updated += 1;
                 println!("Overwrote {} (user modified, --force)", name);
@@ -224,10 +224,10 @@ pub fn diff_prompt(repo_root: &Path, name: &str) -> Result<()> {
 }
 
 fn print_legacy_prompt_warning(repo_root: &Path) {
-    let legacy_prompts = repo_root.join(".ralph/prompts");
+    let legacy_prompts = repo_root.join(".cueloop/prompts");
     if legacy_prompts.is_dir() {
         println!(
-            "Warning: legacy prompt overrides in .ralph/prompts are still supported, but .cueloop/prompts takes precedence."
+            "Warning: legacy prompt overrides in .cueloop/prompts are still supported, but .cueloop/prompts takes precedence."
         );
         println!("Run `cueloop migrate runtime-dir --apply` for project runtime state when ready.");
         println!();

@@ -19,7 +19,9 @@
 //! - Tests execute against disposable repos initialized through the public CLI.
 //! - Contract assertions preserve the historical flat suite behavior exactly.
 
-use super::machine_contract_test_support::{run_in_dir, setup_ralph_repo, trust_project_commands};
+use super::machine_contract_test_support::{
+    run_in_dir, setup_cueloop_repo, trust_project_commands,
+};
 use anyhow::{Context, Result};
 use serde_json::Value;
 
@@ -34,7 +36,7 @@ const SENSITIVE_PROJECT_CONFIG: &str = r#"{
 
 #[test]
 fn machine_queue_read_returns_versioned_snapshot() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
     assert!(
@@ -52,7 +54,7 @@ fn machine_queue_read_returns_versioned_snapshot() -> Result<()> {
 
 #[test]
 fn machine_queue_read_suppresses_invalid_dotenv_warning() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     std::fs::write(
         dir.path().join(".env"),
         "INVALID LINE WITHOUT EQUALS SIGN\nVALID_KEY=valid\n",
@@ -79,7 +81,7 @@ fn machine_queue_read_failure_returns_structured_error_document() -> Result<()> 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
     assert!(
         !status.success(),
-        "machine queue read should fail outside a Ralph repo\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "machine queue read should fail outside a CueLoop repo\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
         stdout.trim().is_empty(),
@@ -89,7 +91,7 @@ fn machine_queue_read_failure_returns_structured_error_document() -> Result<()> 
     let document: Value = serde_json::from_str(&stderr)?;
     assert_eq!(document["version"], 1);
     assert_eq!(document["code"], "queue_corrupted");
-    assert_eq!(document["message"], "No Ralph queue file found.");
+    assert_eq!(document["message"], "No CueLoop queue file found.");
     assert_eq!(document["retryable"], false);
     assert!(
         document["detail"]
@@ -102,8 +104,8 @@ fn machine_queue_read_failure_returns_structured_error_document() -> Result<()> 
 
 #[test]
 fn machine_queue_read_gates_runnability_when_queue_validation_fails() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    let dir = setup_cueloop_repo()?;
+    let queue_path = dir.path().join(".cueloop/queue.jsonc");
     std::fs::write(
         &queue_path,
         r#"{
@@ -160,7 +162,7 @@ fn machine_queue_read_gates_runnability_when_queue_validation_fails() -> Result<
 
 #[test]
 fn machine_workspace_overview_returns_queue_and_config_in_one_document() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "workspace", "overview"]);
     assert!(
@@ -186,8 +188,8 @@ fn machine_workspace_overview_returns_queue_and_config_in_one_document() -> Resu
 
 #[test]
 fn machine_config_resolve_succeeds_without_queue_file_and_omits_resume_preview() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    let dir = setup_cueloop_repo()?;
+    let queue_path = dir.path().join(".cueloop/queue.jsonc");
     std::fs::remove_file(&queue_path)?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "config", "resolve"]);
@@ -218,7 +220,7 @@ fn machine_config_resolve_succeeds_without_queue_file_and_omits_resume_preview()
 
 #[test]
 fn machine_config_resolve_docs_example_matches_execution_controls_contract() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "config", "resolve"]);
     assert!(
@@ -264,9 +266,9 @@ fn session_management_config_preview_example(docs: &str) -> Result<Value> {
 
 #[test]
 fn machine_config_resolve_reports_plugin_registry_load_failures_as_diagnostics() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     trust_project_commands(dir.path())?;
-    let plugin_dir = dir.path().join(".ralph/plugins/broken.runner");
+    let plugin_dir = dir.path().join(".cueloop/plugins/broken.runner");
     std::fs::create_dir_all(&plugin_dir)?;
     std::fs::write(plugin_dir.join("plugin.json"), "{not valid json")?;
 
@@ -317,9 +319,9 @@ fn machine_config_resolve_reports_plugin_registry_load_failures_as_diagnostics()
 
 #[test]
 fn machine_config_resolve_reports_plugin_runner_id_conflicts_as_diagnostics() -> Result<()> {
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     trust_project_commands(dir.path())?;
-    let plugin_dir = dir.path().join(".ralph/plugins/codex-shadow.runner");
+    let plugin_dir = dir.path().join(".cueloop/plugins/codex-shadow.runner");
     std::fs::create_dir_all(&plugin_dir)?;
     std::fs::write(
         plugin_dir.join("plugin.json"),
@@ -334,7 +336,7 @@ fn machine_config_resolve_reports_plugin_runner_id_conflicts_as_diagnostics() ->
 }"#,
     )?;
     std::fs::write(
-        dir.path().join(".ralph/config.jsonc"),
+        dir.path().join(".cueloop/config.jsonc"),
         r#"{
   "version": 2,
   "plugins": {
@@ -386,10 +388,10 @@ fn machine_config_resolve_reports_plugin_runner_id_conflicts_as_diagnostics() ->
 
 #[test]
 fn machine_config_resolve_reports_untrusted_execution_settings_as_config_error() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    std::fs::remove_file(dir.path().join(".ralph/trust.jsonc"))?;
+    let dir = setup_cueloop_repo()?;
+    std::fs::remove_file(dir.path().join(".cueloop/trust.jsonc"))?;
     std::fs::write(
-        dir.path().join(".ralph/config.jsonc"),
+        dir.path().join(".cueloop/config.jsonc"),
         SENSITIVE_PROJECT_CONFIG,
     )?;
 
@@ -423,8 +425,8 @@ fn machine_config_resolve_reports_untrusted_execution_settings_as_config_error()
 
 #[test]
 fn machine_workspace_overview_still_fails_without_queue_file() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    std::fs::remove_file(dir.path().join(".ralph/queue.jsonc"))?;
+    let dir = setup_cueloop_repo()?;
+    std::fs::remove_file(dir.path().join(".cueloop/queue.jsonc"))?;
 
     let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "workspace", "overview"]);
     assert!(
@@ -439,7 +441,7 @@ fn machine_workspace_overview_still_fails_without_queue_file() -> Result<()> {
     let document: Value = serde_json::from_str(&stderr)?;
     assert_eq!(document["version"], 1);
     assert_eq!(document["code"], "queue_corrupted");
-    assert_eq!(document["message"], "No Ralph queue file found.");
+    assert_eq!(document["message"], "No CueLoop queue file found.");
     Ok(())
 }
 
@@ -448,10 +450,10 @@ fn machine_workspace_overview_still_fails_without_queue_file() -> Result<()> {
 fn machine_config_resolve_fails_when_queue_path_metadata_is_inaccessible() -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
-    let dir = setup_ralph_repo()?;
+    let dir = setup_cueloop_repo()?;
     let restricted_dir = dir.path().join("restricted");
     let queue_path = restricted_dir.join("queue.jsonc");
-    let config_path = dir.path().join(".ralph/config.jsonc");
+    let config_path = dir.path().join(".cueloop/config.jsonc");
     let config_contents = format!(
         "{{\n  \"queue\": {{\n    \"file\": {}\n  }}\n}}\n",
         serde_json::to_string(&queue_path.display().to_string())?
@@ -490,8 +492,8 @@ fn machine_config_resolve_fails_when_queue_path_metadata_is_inaccessible() -> Re
 
 #[test]
 fn machine_queue_read_preserves_group_kind_and_selects_work_item() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    let dir = setup_cueloop_repo()?;
+    let queue_path = dir.path().join(".cueloop/queue.jsonc");
     std::fs::write(
         &queue_path,
         r#"{
@@ -539,8 +541,8 @@ fn machine_queue_read_preserves_group_kind_and_selects_work_item() -> Result<()>
 
 #[test]
 fn machine_queue_read_validation_failed_counts_only_executable_candidates() -> Result<()> {
-    let dir = setup_ralph_repo()?;
-    let queue_path = dir.path().join(".ralph/queue.jsonc");
+    let dir = setup_cueloop_repo()?;
+    let queue_path = dir.path().join(".cueloop/queue.jsonc");
     std::fs::write(
         &queue_path,
         r#"{

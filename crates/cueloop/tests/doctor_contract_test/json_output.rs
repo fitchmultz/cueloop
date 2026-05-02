@@ -16,7 +16,7 @@
 //!
 //! Invariants/assumptions:
 //! - JSON payloads come from stdout while logs may still go to stderr.
-//! - Missing-queue coverage intentionally omits seeded `.ralph/` files.
+//! - Missing-queue coverage intentionally omits seeded `.cueloop/` files.
 
 use super::*;
 
@@ -24,7 +24,7 @@ use super::*;
 fn doctor_json_output_format() -> Result<()> {
     let dir = setup_doctor_repo()?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 
@@ -112,7 +112,7 @@ fn doctor_json_output_format() -> Result<()> {
 fn doctor_json_output_with_failed_check() -> Result<()> {
     let dir = setup_git_repo()?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 
@@ -164,7 +164,7 @@ esac
             runner_path.display()
         ),
     )?;
-    std::fs::write(dir.path().join(".gitignore"), ".ralph/logs/\n")?;
+    std::fs::write(dir.path().join(".gitignore"), ".cueloop/logs/\n")?;
 
     let invalid_done = r#"{
   "version": 1,
@@ -185,9 +185,9 @@ esac
     }
   ]
 }"#;
-    std::fs::write(dir.path().join(".ralph/done.jsonc"), invalid_done)?;
+    std::fs::write(dir.path().join(".cueloop/done.jsonc"), invalid_done)?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 
@@ -251,9 +251,9 @@ esac
             runner_path.display()
         ),
     )?;
-    std::fs::write(dir.path().join(".gitignore"), ".ralph/logs/\n")?;
+    std::fs::write(dir.path().join(".gitignore"), ".cueloop/logs/\n")?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json"])
         .output()?;
 

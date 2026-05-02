@@ -61,10 +61,10 @@ pub(super) fn prepare_parallel_run(
     git::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         opts.force,
-        git::RALPH_RUN_CLEAN_ALLOWED_PATHS,
+        git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
     )?;
 
-    let cache_dir = resolved.repo_root.join(".ralph/cache");
+    let cache_dir = resolved.repo_root.join(".cueloop/cache");
 
     let ctrlc = crate::runner::ctrlc_state();
     if let Ok(ctrlc) = ctrlc {
@@ -94,7 +94,7 @@ pub(super) fn prepare_parallel_run(
         "queue",
     )
     .with_context(|| {
-        "Parallel preflight: queue.file must be under repo root (try a repo-relative path like '.ralph/queue.jsonc')".to_string()
+        "Parallel preflight: queue.file must be under repo root (try a repo-relative path like '.cueloop/queue.jsonc')".to_string()
     })?;
 
     path_map::map_resolved_path_into_workspace(
@@ -104,7 +104,7 @@ pub(super) fn prepare_parallel_run(
         "done",
     )
     .with_context(|| {
-        "Parallel preflight: queue.done_file must be under repo root (try a repo-relative path like '.ralph/done.jsonc')".to_string()
+        "Parallel preflight: queue.done_file must be under repo root (try a repo-relative path like '.cueloop/done.jsonc')".to_string()
     })?;
 
     let settings = resolve_parallel_settings(resolved, opts)?;

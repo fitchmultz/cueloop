@@ -3,12 +3,12 @@
 Status: Active
 Owner: Maintainers
 Source of truth: this document
-Parent: [Ralph Documentation](index.md)
+Parent: [CueLoop Documentation](index.md)
 Related: [Project Operating Constitution](guides/project-operating-constitution.md)
 Last updated: 2026-04-27
 
 This is the canonical decision log for project-level decisions that affect
-Ralph architecture, operations, documentation, release flow, or contributor and
+CueLoop architecture, operations, documentation, release flow, or contributor and
 agent behavior. Keep execution instructions in their canonical operating docs;
 record only the decision and its rationale here.
 
@@ -27,15 +27,15 @@ Follow-up actions:
 Review date, if any:
 ```
 
-## 2026-04-27: Align Ralph's source-build MSRV with the pinned Rust toolchain
+## 2026-04-27: Align CueLoop's source-build MSRV with the pinned Rust toolchain
 
-Decision: Treat the repo-local `rust-toolchain.toml` channel as Ralph's source-build Rust baseline and keep the CLI crate's `rust-version` aligned to the same minor Rust release.
+Decision: Treat the repo-local `rust-toolchain.toml` channel as CueLoop's source-build Rust baseline and keep the CLI crate's `rust-version` aligned to the same minor Rust release.
 
 Date: 2026-04-27
 
 Owner: Maintainers
 
-Context: Ralph is a source-built CLI and macOS app project whose local development, release builds, schema generation, and app bundling all run through the pinned rustup toolchain. The system global stable toolchain moved to Rust `1.95.0`, but the repository still pinned `1.94.1`, which masked the global update and caused release-note research to start from the wrong baseline.
+Context: CueLoop is a source-built CLI and macOS app project whose local development, release builds, schema generation, and app bundling all run through the pinned rustup toolchain. The system global stable toolchain moved to Rust `1.95.0`, but the repository still pinned `1.94.1`, which masked the global update and caused release-note research to start from the wrong baseline.
 
 Chosen option: Bump `rust-toolchain.toml` to Rust `1.95.0` and bump `crates/cueloop/Cargo.toml` `rust-version` to `1.95` in the same cutover.
 
@@ -49,10 +49,10 @@ Follow-up actions: Existing Rust 1.95.0 follow-up tasks RQ-0051 through RQ-0055 
 
 Review date, if any: None.
 
-## 2026-04-27: Accept current binary replacement behavior during Ralph self-development loops
+## 2026-04-27: Accept current binary replacement behavior during CueLoop self-development loops
 
-Decision: Keep Ralph's current long-running loop behavior when the installed
-`ralph` binary changes during Ralph self-development. Do not add automatic
+Decision: Keep CueLoop's current long-running loop behavior when the installed
+`cueloop` binary changes during CueLoop self-development. Do not add automatic
 re-exec, stop-on-change, run-pinned executable copies, or queued remediation for
 this concern unless the maintainer explicitly reopens it.
 
@@ -60,11 +60,11 @@ Date: 2026-04-27
 
 Owner: Maintainers
 
-Context: Ralph workers may change Ralph itself and run `make agent-ci`. For Rust
+Context: CueLoop workers may change CueLoop itself and run `make agent-ci`. For Rust
 crate changes, `make agent-ci` can route to `make ci`, and `make ci` runs
 `install-verify`, which installs the release CLI into the writable bin directory
-(typically `~/.local/bin/ralph`). Long-running loops are commonly started as
-`ralph run loop ...`, so the active coordinator process may have been launched
+(typically `~/.local/bin/cueloop`). Long-running loops are commonly started as
+`cueloop run loop ...`, so the active coordinator process may have been launched
 from the same path that later gets replaced. The existing coordinator remains
 its original in-memory process, while later subprocesses may execute the
 replacement binary from that path.
@@ -80,20 +80,20 @@ future workers from a different binary discovery mechanism.
 
 Reason: No concrete failures have been observed from the current behavior, while
 the alternatives add non-trivial orchestration complexity or materially reduce
-parallel-loop productivity. Stop-on-change would make Ralph self-development
-loops behave like one task at a time because most meaningful Ralph changes can
+parallel-loop productivity. Stop-on-change would make CueLoop self-development
+loops behave like one task at a time because most meaningful CueLoop changes can
 alter the binary. Parallel safe-boundary re-exec would still make throughput
 beholden to the slowest in-flight worker after each binary-changing task. More
 aggressive hot-swap/re-exec designs risk introducing worker lifecycle, queue,
 state, and cleanup bugs.
 
-Expected consequences: Ralph self-development loops may continue to run with an
-old in-memory coordinator after `~/.local/bin/ralph` is replaced. This is an
+Expected consequences: CueLoop self-development loops may continue to run with an
+old in-memory coordinator after `~/.local/bin/cueloop` is replaced. This is an
 accepted risk, not an open defect. Operators who want a fully fresh generation
 should restart the loop manually.
 
 Follow-up actions: None. Do not automatically add this as an outstanding task
-from `ralph scan`, audits, TODO sweeps, or agent-created follow-up queues. Only
+from `cueloop scan`, audits, TODO sweeps, or agent-created follow-up queues. Only
 create work for this topic if a maintainer explicitly asks to revisit it or a
 concrete reproducible failure is reported.
 
@@ -101,7 +101,7 @@ Review date, if any: None.
 
 ## 2026-04-26: Enforce repository file-size policy in local CI tiers
 
-Decision: Enforce Ralph's documented file-size policy through a deterministic
+Decision: Enforce CueLoop's documented file-size policy through a deterministic
 local guardrail (`scripts/check-file-size-limits.sh`) wired into both
 `make ci-docs` and `make ci-fast`.
 
@@ -146,7 +146,7 @@ Date: 2026-04-26
 Owner: Maintainers
 
 Context: Top-level command-family parity labels were too coarse to catch the
-cross-surface drift found in the Ralph audit. Important user-visible gaps lived
+cross-surface drift found in the CueLoop audit. Important user-visible gaps lived
 inside specific scenarios such as empty versus blocked loop summaries, Stop
 After Current, custom queue-path resolution, execution-control visibility, and
 continuation next-step mapping.
@@ -175,13 +175,13 @@ Review date, if any: None.
 ## 2026-04-23: Adopt Project Operating Constitution
 
 Decision: Adopt a project operating constitution as the canonical rule set for
-accepting, modifying, and closing Ralph project work.
+accepting, modifying, and closing CueLoop project work.
 
 Date: 2026-04-23
 
 Owner: Maintainers
 
-Context: Ralph has multiple human-facing and agent-facing surfaces, including
+Context: CueLoop has multiple human-facing and agent-facing surfaces, including
 the Rust CLI, machine contracts, the macOS app, documentation, release scripts,
 and local CI gates. Work in one area can easily create unmanaged drift if source
 of truth, canonical path, downstream dependents, and validation are not explicit.

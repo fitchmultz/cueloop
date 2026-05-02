@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Restore tracked queue/done/productivity files to HEAD.
-//! - Remove generated runtime artifacts under `.ralph/cache` and `.ralph/logs`.
+//! - Remove generated runtime artifacts under `.cueloop/cache` and `.cueloop/logs`.
 //! - Detect lingering bookkeeping dirtiness after restore attempts.
 //!
 //! Scope:
@@ -23,27 +23,27 @@ use anyhow::{Context, Result};
 use crate::{git, promptflow};
 
 const PRODUCTIVITY_BOOKKEEPING_FILES: [&str; 2] = [
-    ".ralph/cache/productivity.json",
-    ".ralph/cache/productivity.jsonc",
+    ".cueloop/cache/productivity.json",
+    ".cueloop/cache/productivity.jsonc",
 ];
 
 const GENERATED_BOOKKEEPING_STATUS_FRAGMENTS: [&str; 8] = [
-    ".ralph/cache/productivity.json",
-    ".ralph/cache/productivity.jsonc",
-    ".ralph/cache/plans/",
-    ".ralph/cache/phase2_final/",
-    ".ralph/cache/session.jsonc",
-    ".ralph/cache/migrations.jsonc",
-    ".ralph/cache/parallel/",
-    ".ralph/logs/",
+    ".cueloop/cache/productivity.json",
+    ".cueloop/cache/productivity.jsonc",
+    ".cueloop/cache/plans/",
+    ".cueloop/cache/phase2_final/",
+    ".cueloop/cache/session.jsonc",
+    ".cueloop/cache/migrations.jsonc",
+    ".cueloop/cache/parallel/",
+    ".cueloop/logs/",
 ];
 
 const GENERATED_PARALLEL_PATHS: [&str; 5] = [
-    ".ralph/cache/phase2_final",
-    ".ralph/cache/session.jsonc",
-    ".ralph/cache/migrations.jsonc",
-    ".ralph/cache/parallel",
-    ".ralph/logs",
+    ".cueloop/cache/phase2_final",
+    ".cueloop/cache/session.jsonc",
+    ".cueloop/cache/migrations.jsonc",
+    ".cueloop/cache/parallel",
+    ".cueloop/logs",
 ];
 
 pub(super) fn restore_parallel_worker_bookkeeping_and_check_clean(

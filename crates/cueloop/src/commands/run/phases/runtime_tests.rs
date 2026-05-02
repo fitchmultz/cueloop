@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::phase2::cache_phase2_final_response;
 use super::super::phase3::ensure_phase3_completion;
@@ -55,7 +55,7 @@ fn git_init(dir: &Path) -> Result<()> {
     git_status_ok(dir, &["init", "--quiet"], "git init failed")?;
 
     let gitignore_path = dir.join(".gitignore");
-    std::fs::write(&gitignore_path, ".ralph/lock\n.ralph/cache/\nbin/\n")?;
+    std::fs::write(&gitignore_path, ".cueloop/lock\n.cueloop/cache/\nbin/\n")?;
     git_status_ok(dir, &["add", ".gitignore"], "git add .gitignore failed")?;
     git_status_ok(
         dir,
@@ -100,7 +100,7 @@ fn generate_phase_session_id_uses_task_phase_and_timestamp_format() {
         session_id.starts_with(&prefix),
         "expected prefix {prefix}, got {session_id}"
     );
-    assert!(!session_id.starts_with("ralph-"));
+    assert!(!session_id.starts_with("cueloop-"));
     let suffix = session_id.strip_prefix(&prefix).expect("session id prefix");
     assert!(
         !suffix.is_empty(),
@@ -144,8 +144,8 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
         argv: None,
     });
     cfg.queue = QueueConfig {
-        file: Some(PathBuf::from(".ralph/queue.jsonc")),
-        done_file: Some(PathBuf::from(".ralph/done.jsonc")),
+        file: Some(PathBuf::from(".cueloop/queue.jsonc")),
+        done_file: Some(PathBuf::from(".cueloop/done.jsonc")),
         id_prefix: Some("RQ".to_string()),
         id_width: Some(4),
         size_warning_threshold_kb: Some(500),
@@ -158,12 +158,12 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
     crate::config::Resolved {
         config: cfg,
         repo_root: repo_root.clone(),
-        queue_path: repo_root.join(".ralph/queue.jsonc"),
-        done_path: repo_root.join(".ralph/done.jsonc"),
+        queue_path: repo_root.join(".cueloop/queue.jsonc"),
+        done_path: repo_root.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+        project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
     }
 }
 
@@ -171,17 +171,17 @@ fn resolved_for_completion(repo_root: PathBuf) -> crate::config::Resolved {
     crate::config::Resolved {
         config: Config::default(),
         repo_root: repo_root.clone(),
-        queue_path: repo_root.join(".ralph/queue.jsonc"),
-        done_path: repo_root.join(".ralph/done.jsonc"),
+        queue_path: repo_root.join(".cueloop/queue.jsonc"),
+        done_path: repo_root.join(".cueloop/done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+        project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
     }
 }
 
 fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     let task = Task {
         id: "RQ-0001".to_string(),
         status,
@@ -212,14 +212,14 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
     };
 
     queue::save_queue(
-        &repo_root.join(".ralph/queue.jsonc"),
+        &repo_root.join(".cueloop/queue.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![],
         },
     )?;
     queue::save_queue(
-        &repo_root.join(".ralph/done.jsonc"),
+        &repo_root.join(".cueloop/done.jsonc"),
         &QueueFile {
             version: 1,
             tasks: vec![task],
@@ -227,16 +227,16 @@ fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
     )?;
     git_status_ok(
         repo_root,
-        &["add", "-f", ".ralph/queue.jsonc", ".ralph/done.jsonc"],
+        &["add", "-f", ".cueloop/queue.jsonc", ".cueloop/done.jsonc"],
         "git add queue bookkeeping failed",
     )?;
     Ok(())
 }
 
 fn trust_repo(repo_root: &Path) -> Result<()> {
-    std::fs::create_dir_all(repo_root.join(".ralph"))?;
+    std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     std::fs::write(
-        repo_root.join(".ralph/trust.jsonc"),
+        repo_root.join(".cueloop/trust.jsonc"),
         "{\n  \"allow_project_commands\": true\n}\n",
     )?;
     Ok(())

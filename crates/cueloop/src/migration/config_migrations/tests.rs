@@ -380,7 +380,7 @@ fn remove_key_in_file_removes_nested_key() {
 fn cursor_bin_remove_preserves_jsonc_comments_and_formatting() {
     let dir = TempDir::new().unwrap();
     let repo_root = dir.path();
-    let config_path = repo_root.join(".ralph/config.jsonc");
+    let config_path = repo_root.join(".cueloop/config.jsonc");
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
     let original = r#"{
   // Header comment
@@ -410,9 +410,9 @@ fn cursor_bin_remove_reads_legacy_project_config_json_when_jsonc_missing() {
     let dir = TempDir::new().unwrap();
     let repo_root = dir.path();
     fs::create_dir_all(repo_root.join(".git")).unwrap();
-    fs::create_dir_all(repo_root.join(".ralph")).unwrap();
+    fs::create_dir_all(repo_root.join(".cueloop")).unwrap();
     fs::write(
-        repo_root.join(".ralph/config.json"),
+        repo_root.join(".cueloop/config.json"),
         r#"{"version":2,"agent":{"runner":"cursor","cursor_bin":"/opt/x"}}"#,
     )
     .unwrap();
@@ -422,7 +422,7 @@ fn cursor_bin_remove_reads_legacy_project_config_json_when_jsonc_missing() {
 
     apply_cursor_bin_remove(&ctx).unwrap();
 
-    let content = fs::read_to_string(repo_root.join(".ralph/config.json")).unwrap();
+    let content = fs::read_to_string(repo_root.join(".cueloop/config.json")).unwrap();
     assert!(!content.contains("cursor_bin"));
     assert!(content.contains("\"runner\":\"cursor\""));
 }
@@ -431,7 +431,7 @@ fn cursor_bin_remove_reads_legacy_project_config_json_when_jsonc_missing() {
 fn cursor_bin_remove_handles_agent_and_profiles() {
     let dir = TempDir::new().unwrap();
     let repo_root = dir.path();
-    let config_path = repo_root.join(".ralph/config.jsonc");
+    let config_path = repo_root.join(".cueloop/config.jsonc");
     fs::create_dir_all(config_path.parent().unwrap()).unwrap();
     fs::write(
         &config_path,

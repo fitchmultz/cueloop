@@ -9,7 +9,7 @@
 //! - Verify unit-level filtering behavior for gitignored path normalization.
 //!
 //! Non-scope:
-//! - `.ralph` runtime-tree recursion coverage.
+//! - `.cueloop` runtime-tree recursion coverage.
 //! - Custom bookkeeping path mapping scenarios.
 //!
 //!
@@ -79,7 +79,7 @@ fn sync_cueloop_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> R
 
     fs::write(
         repo_root.join(".gitignore"),
-        ".env\n.env.local\ntarget/\n.ralph/cache/parallel/\n",
+        ".env\n.env.local\ntarget/\n.cueloop/cache/parallel/\n",
     )?;
     fs::write(repo_root.join(".env"), "secret")?;
     fs::write(repo_root.join(".env.local"), "local_secret")?;
@@ -88,9 +88,9 @@ fn sync_cueloop_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> R
         repo_root.join("target/very_large_file.txt"),
         "heavy build output",
     )?;
-    fs::create_dir_all(repo_root.join(".ralph/cache/parallel"))?;
+    fs::create_dir_all(repo_root.join(".cueloop/cache/parallel"))?;
     fs::write(
-        repo_root.join(".ralph/cache/parallel/state.json"),
+        repo_root.join(".cueloop/cache/parallel/state.json"),
         "{\"cached\": true}",
     )?;
 
@@ -103,7 +103,7 @@ fn sync_cueloop_state_copies_allowlisted_env_files_but_skips_ignored_dirs() -> R
         "local_secret"
     );
     assert!(!workspace_root.join("target").exists());
-    assert!(!workspace_root.join(".ralph/cache/parallel").exists());
+    assert!(!workspace_root.join(".cueloop/cache/parallel").exists());
     Ok(())
 }
 
@@ -477,16 +477,16 @@ fn preflight_parallel_ignored_file_allowlist_rejects_broad_glob_matching_denied_
 fn preflight_parallel_ignored_file_allowlist_rejects_workspace_descendants() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
-    let workspace_root = repo_root.join(".ralph/workspaces/RQ-0001");
+    let workspace_root = repo_root.join(".cueloop/workspaces/RQ-0001");
     fs::create_dir_all(&repo_root)?;
     git_test::init_repo(&repo_root)?;
-    fs::write(repo_root.join(".gitignore"), ".ralph/workspaces/\n")?;
+    fs::write(repo_root.join(".gitignore"), ".cueloop/workspaces/\n")?;
     fs::create_dir_all(&workspace_root)?;
     fs::write(workspace_root.join("local.json"), "workspace artifact")?;
 
     let resolved = build_test_resolved_with_ignored_allowlist(
         &repo_root,
-        vec![".ralph/workspaces/RQ-0001/local.json"],
+        vec![".cueloop/workspaces/RQ-0001/local.json"],
     );
     let err =
         sync_gitignored_impl::preflight_parallel_ignored_file_allowlist(&resolved, &workspace_root)
@@ -503,13 +503,13 @@ fn preflight_parallel_ignored_file_allowlist_rejects_workspace_descendants() -> 
 fn sync_cueloop_state_skips_parent_of_workspace() -> Result<()> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().join("repo");
-    let workspace_root = repo_root.join(".ralph/workspaces/RQ-0001");
+    let workspace_root = repo_root.join(".cueloop/workspaces/RQ-0001");
     fs::create_dir_all(&repo_root)?;
     git_test::init_repo(&repo_root)?;
-    fs::write(repo_root.join(".gitignore"), ".ralph/workspaces/\n")?;
-    fs::create_dir_all(repo_root.join(".ralph/workspaces"))?;
+    fs::write(repo_root.join(".gitignore"), ".cueloop/workspaces/\n")?;
+    fs::create_dir_all(repo_root.join(".cueloop/workspaces"))?;
     fs::write(
-        repo_root.join(".ralph/workspaces/shared.txt"),
+        repo_root.join(".cueloop/workspaces/shared.txt"),
         "shared ignored",
     )?;
     fs::create_dir_all(&workspace_root)?;
@@ -517,7 +517,11 @@ fn sync_cueloop_state_skips_parent_of_workspace() -> Result<()> {
     let resolved = build_test_resolved(&repo_root, None, None);
     sync_cueloop_state(&resolved, &workspace_root)?;
 
-    assert!(!workspace_root.join(".ralph/workspaces/shared.txt").exists());
+    assert!(
+        !workspace_root
+            .join(".cueloop/workspaces/shared.txt")
+            .exists()
+    );
     Ok(())
 }
 
@@ -594,19 +598,19 @@ fn should_sync_gitignored_entry_skips_never_copy_prefixes() {
         ".venv/bin/python"
     ));
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
-        ".ralph/cache/parallel/state.json"
+        ".cueloop/cache/parallel/state.json"
     ));
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
-        ".ralph/cache/plans/RQ-0001.md"
+        ".cueloop/cache/plans/RQ-0001.md"
     ));
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
-        ".ralph/workspaces/RQ-0001/.env"
+        ".cueloop/workspaces/RQ-0001/.env"
     ));
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
-        ".ralph/logs/run.log"
+        ".cueloop/logs/run.log"
     ));
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
-        ".ralph/lock/sync.lock"
+        ".cueloop/lock/sync.lock"
     ));
     assert!(!sync_gitignored_impl::should_sync_gitignored_entry(
         "__pycache__/module.cpython-311.pyc"

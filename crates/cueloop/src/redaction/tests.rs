@@ -124,14 +124,14 @@ fn redact_text_masks_sensitive_context_hex_tokens() {
     let session_token = "abcdef0123456789abcdef0123456789";
     let webhook_signature = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
     let input =
-        format!("session token {session_token}; X-Ralph-Signature: sha256={webhook_signature}");
+        format!("session token {session_token}; X-CueLoop-Signature: sha256={webhook_signature}");
 
     let output = redact_text(&input);
 
     assert!(!output.contains(session_token));
     assert!(!output.contains(webhook_signature));
     assert!(output.contains("session token [REDACTED]"));
-    assert!(output.contains("X-Ralph-Signature: sha256=[REDACTED]"));
+    assert!(output.contains("X-CueLoop-Signature: sha256=[REDACTED]"));
 }
 
 #[test]
@@ -186,7 +186,7 @@ fn redact_text_masks_sensitive_env_values() {
 #[test]
 fn redact_text_leaves_non_sensitive_env_values() {
     let _guard = env_lock().lock().expect("env lock");
-    let key = "RALPH_NON_SENSITIVE_ENV";
+    let key = "CUELOOP_NON_SENSITIVE_ENV";
     let value = "visible_plain_value";
     unsafe { std::env::set_var(key, value) };
 
@@ -247,7 +247,7 @@ fn redact_text_writes_safe_debug_metadata_for_fired_classes() {
     assert!(!output.contains(contextual_hex));
     assert!(!output.contains("supersecretenvvalue"));
 
-    let debug_log = dir.path().join(".ralph/logs/debug.log");
+    let debug_log = dir.path().join(".cueloop/logs/debug.log");
     let contents = std::fs::read_to_string(&debug_log).expect("read log");
     let metadata_lines: Vec<&str> = contents
         .lines()
@@ -335,7 +335,7 @@ fn redacted_logger_writes_raw_log_to_debug_log() {
     use log::Log;
     wrapper.log(&record);
 
-    let debug_log = dir.path().join(".ralph/logs/debug.log");
+    let debug_log = dir.path().join(".cueloop/logs/debug.log");
     let contents = std::fs::read_to_string(&debug_log).expect("read log");
     assert!(contents.contains("API_KEY=secret123"), "log: {contents}");
     let metadata_lines: Vec<&str> = contents

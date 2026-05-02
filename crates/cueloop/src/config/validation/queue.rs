@@ -23,10 +23,10 @@ use crate::contracts::{QueueAgingThresholds, QueueConfig};
 use anyhow::{Result, bail};
 use std::path::Path;
 
-pub const ERR_EMPTY_QUEUE_ID_PREFIX: &str = "Empty queue.id_prefix: prefix is required if specified. Set a non-empty prefix (e.g., 'RQ') in .ralph/config.jsonc or via --id-prefix.";
-pub const ERR_INVALID_QUEUE_ID_WIDTH: &str = "Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .ralph/config.jsonc or via --id-width.";
-pub const ERR_EMPTY_QUEUE_FILE: &str = "Empty queue.file: path is required if specified. Specify a valid path (e.g., '.ralph/queue.jsonc') in .ralph/config.jsonc or via --queue-file.";
-pub const ERR_EMPTY_QUEUE_DONE_FILE: &str = "Empty queue.done_file: path is required if specified. Specify a valid path (e.g., '.ralph/done.jsonc') in .ralph/config.jsonc or via --done-file.";
+pub const ERR_EMPTY_QUEUE_ID_PREFIX: &str = "Empty queue.id_prefix: prefix is required if specified. Set a non-empty prefix (e.g., 'RQ') in .cueloop/config.jsonc or via --id-prefix.";
+pub const ERR_INVALID_QUEUE_ID_WIDTH: &str = "Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .cueloop/config.jsonc or via --id-width.";
+pub const ERR_EMPTY_QUEUE_FILE: &str = "Empty queue.file: path is required if specified. Specify a valid path (e.g., '.cueloop/queue.jsonc') in .cueloop/config.jsonc or via --queue-file.";
+pub const ERR_EMPTY_QUEUE_DONE_FILE: &str = "Empty queue.done_file: path is required if specified. Specify a valid path (e.g., '.cueloop/done.jsonc') in .cueloop/config.jsonc or via --done-file.";
 
 pub fn validate_queue_id_prefix_override(id_prefix: Option<&str>) -> Result<()> {
     if let Some(prefix) = id_prefix
@@ -78,7 +78,7 @@ pub fn validate_queue_thresholds(queue: &QueueConfig) -> Result<()> {
         && !(100..=10000).contains(&threshold)
     {
         bail!(
-            "Invalid queue.size_warning_threshold_kb: {}. Value must be between 100 and 10000 (inclusive). Update .ralph/config.jsonc.",
+            "Invalid queue.size_warning_threshold_kb: {}. Value must be between 100 and 10000 (inclusive). Update .cueloop/config.jsonc.",
             threshold
         );
     }
@@ -87,7 +87,7 @@ pub fn validate_queue_thresholds(queue: &QueueConfig) -> Result<()> {
         && !(50..=5000).contains(&threshold)
     {
         bail!(
-            "Invalid queue.task_count_warning_threshold: {}. Value must be between 50 and 5000 (inclusive). Update .ralph/config.jsonc.",
+            "Invalid queue.task_count_warning_threshold: {}. Value must be between 50 and 5000 (inclusive). Update .cueloop/config.jsonc.",
             threshold
         );
     }
@@ -96,7 +96,7 @@ pub fn validate_queue_thresholds(queue: &QueueConfig) -> Result<()> {
         && !(1..=100).contains(&depth)
     {
         bail!(
-            "Invalid queue.max_dependency_depth: {}. Value must be between 1 and 100 (inclusive). Update .ralph/config.jsonc.",
+            "Invalid queue.max_dependency_depth: {}. Value must be between 1 and 100 (inclusive). Update .cueloop/config.jsonc.",
             depth
         );
     }
@@ -105,7 +105,7 @@ pub fn validate_queue_thresholds(queue: &QueueConfig) -> Result<()> {
         && days > 3650
     {
         bail!(
-            "Invalid queue.auto_archive_terminal_after_days: {}. Value must be between 0 and 3650 (inclusive). Update .ralph/config.jsonc.",
+            "Invalid queue.auto_archive_terminal_after_days: {}. Value must be between 0 and 3650 (inclusive). Update .cueloop/config.jsonc.",
             days
         );
     }
@@ -147,7 +147,7 @@ fn format_aging_threshold_error(
     rotten: Option<u32>,
 ) -> String {
     format!(
-        "Invalid queue.aging_thresholds ordering: require warning_days < stale_days < rotten_days (got warning_days={}, stale_days={}, rotten_days={}). Update .ralph/config.jsonc.",
+        "Invalid queue.aging_thresholds ordering: require warning_days < stale_days < rotten_days (got warning_days={}, stale_days={}, rotten_days={}). Update .cueloop/config.jsonc.",
         warning
             .map(|value| value.to_string())
             .unwrap_or_else(|| "unset".to_string()),

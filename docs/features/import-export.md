@@ -26,7 +26,7 @@ The import/export system provides:
 
 ## Export
 
-Export tasks from the active queue (`.ralph/queue.jsonc`) and optionally the done archive (`.ralph/done.jsonc`).
+Export tasks from the active queue (`.cueloop/queue.jsonc`) and optionally the done archive (`.cueloop/done.jsonc`).
 
 ### Command
 
@@ -175,7 +175,7 @@ GitHub format produces Markdown optimized for issue bodies:
 - unit tests pass
 - integration tests pass
 
-<!-- ralph_task_id: RQ-0001 -->
+<!-- cueloop_task_id: RQ-0001 -->
 ```
 
 Multiple tasks are separated by horizontal rules (`---`).

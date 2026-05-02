@@ -193,7 +193,7 @@ mod tests {
         let resolved = resolved_for(&dir);
         let readme_path = runtime_readme_path(&resolved);
         std::fs::create_dir_all(readme_path.parent().expect("parent"))?;
-        std::fs::write(&readme_path, "<!-- RALPH_README_VERSION: 1 -->\n# Old")?;
+        std::fs::write(&readme_path, "<!-- CUELOOP_README_VERSION: 1 -->\n# Old")?;
 
         let fix = check_and_update_readme(&resolved)?;
         assert!(
@@ -239,7 +239,7 @@ mod tests {
         let resolved = resolved_for(&dir);
         let readme_path = runtime_readme_path(&resolved);
         std::fs::create_dir_all(readme_path.parent().expect("parent"))?;
-        let stale_content = "<!-- RALPH_README_VERSION: 1 -->\n# Old";
+        let stale_content = "<!-- CUELOOP_README_VERSION: 1 -->\n# Old";
         std::fs::write(&readme_path, stale_content)?;
 
         let warning = check_readme_without_update(&resolved)?;

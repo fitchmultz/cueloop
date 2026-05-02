@@ -1,7 +1,7 @@
 //! Purpose: Define canonical operator-facing blocked/waiting/stalled state contracts.
 //!
 //! Responsibilities:
-//! - Provide the stable wire model for why Ralph is not making progress.
+//! - Provide the stable wire model for why CueLoop is not making progress.
 //! - Centralize human-readable narration reused by CLI, machine, and app surfaces.
 //! - Keep coarse operator state distinct from per-task runnability details.
 //!
@@ -119,14 +119,14 @@ impl BlockingState {
 
     pub fn idle(include_draft: bool) -> Self {
         let message = if include_draft {
-            "Ralph is idle: no todo or draft tasks are available."
+            "CueLoop is idle: no todo or draft tasks are available."
         } else {
-            "Ralph is idle: no todo tasks are available."
+            "CueLoop is idle: no todo tasks are available."
         };
         let detail = if include_draft {
-            "The queue currently has no runnable todo or draft candidates; Ralph is waiting for new work."
+            "The queue currently has no runnable todo or draft candidates; CueLoop is waiting for new work."
         } else {
-            "The queue currently has no runnable todo candidates; Ralph is waiting for new work."
+            "The queue currently has no runnable todo candidates; CueLoop is waiting for new work."
         };
         Self::new(
             BlockingStatus::Waiting,
@@ -172,7 +172,7 @@ impl BlockingState {
             BlockingStatus::Blocked,
             BlockingReason::DependencyBlocked { blocked_tasks },
             None,
-            "Ralph is blocked by unfinished dependencies.",
+            "CueLoop is blocked by unfinished dependencies.",
             format!("{blocked_tasks} candidate task(s) are waiting on dependency completion."),
         )
     }
@@ -201,7 +201,7 @@ impl BlockingState {
                 seconds_until_next_runnable,
             },
             None,
-            "Ralph is waiting for scheduled work to become runnable.",
+            "CueLoop is waiting for scheduled work to become runnable.",
             detail,
         )
     }
@@ -219,7 +219,7 @@ impl BlockingState {
                 status_filtered,
             },
             None,
-            "Ralph is blocked by a mix of dependency and schedule gates.",
+            "CueLoop is blocked by a mix of dependency and schedule gates.",
             format!(
                 "candidate blockers: dependencies={dependency_blocked}, schedule={schedule_blocked}, status_or_flags={status_filtered}."
             ),
@@ -233,15 +233,15 @@ impl BlockingState {
     ) -> Self {
         let detail = match (&owner, owner_pid, &lock_path) {
             (Some(owner), Some(owner_pid), Some(lock_path)) => format!(
-                "Another Ralph process ({owner}, pid {owner_pid}) owns the queue lock at {lock_path}."
+                "Another CueLoop process ({owner}, pid {owner_pid}) owns the queue lock at {lock_path}."
             ),
             (Some(owner), Some(owner_pid), None) => {
-                format!("Another Ralph process ({owner}, pid {owner_pid}) owns the queue lock.")
+                format!("Another CueLoop process ({owner}, pid {owner_pid}) owns the queue lock.")
             }
             (_, _, Some(lock_path)) => {
-                format!("Another Ralph process owns the queue lock at {lock_path}.")
+                format!("Another CueLoop process owns the queue lock at {lock_path}.")
             }
-            _ => "Another Ralph process currently owns the queue lock.".to_string(),
+            _ => "Another CueLoop process currently owns the queue lock.".to_string(),
         };
         Self::new(
             BlockingStatus::Stalled,
@@ -251,7 +251,7 @@ impl BlockingState {
                 owner_pid,
             },
             None,
-            "Ralph is stalled on queue lock contention.",
+            "CueLoop is stalled on queue lock contention.",
             detail,
         )
     }
@@ -271,7 +271,7 @@ impl BlockingState {
             BlockingStatus::Stalled,
             BlockingReason::CiBlocked { exit_code, pattern },
             None,
-            "Ralph is stalled on CI gate failure.",
+            "CueLoop is stalled on CI gate failure.",
             detail,
         )
     }

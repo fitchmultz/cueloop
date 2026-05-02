@@ -291,7 +291,7 @@ pub(super) fn build_resume_preview(
 ) -> anyhow::Result<Option<MachineResumeDecision>> {
     let queue_file = crate::queue::load_queue(&resolved.queue_path)?;
     let resolution = crate::session::resolve_run_session_decision(
-        &resolved.repo_root.join(".ralph/cache"),
+        &resolved.repo_root.join(".cueloop/cache"),
         &queue_file,
         crate::session::RunSessionDecisionOptions {
             timeout_hours: resolved.config.agent.session_timeout_hours,
@@ -418,17 +418,17 @@ mod tests {
         Resolved {
             config,
             repo_root: repo_root.to_path_buf(),
-            queue_path: repo_root.join(".ralph/queue.jsonc"),
-            done_path: repo_root.join(".ralph/done.jsonc"),
+            queue_path: repo_root.join(".cueloop/queue.jsonc"),
+            done_path: repo_root.join(".cueloop/done.jsonc"),
             id_prefix: "RQ".to_string(),
             id_width: 4,
             global_config_path: None,
-            project_config_path: Some(repo_root.join(".ralph/config.jsonc")),
+            project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
         }
     }
 
     fn write_runner_plugin(repo_root: &std::path::Path, plugin_id: &str, name: &str) {
-        let plugin_dir = repo_root.join(".ralph/plugins").join(plugin_id);
+        let plugin_dir = repo_root.join(".cueloop/plugins").join(plugin_id);
         std::fs::create_dir_all(&plugin_dir).unwrap();
         std::fs::write(
             plugin_dir.join("plugin.json"),
@@ -449,10 +449,10 @@ mod tests {
     }
 
     fn trust_repo(repo_root: &std::path::Path) {
-        let ralph_dir = repo_root.join(".ralph");
-        std::fs::create_dir_all(&ralph_dir).unwrap();
+        let cueloop_dir = repo_root.join(".cueloop");
+        std::fs::create_dir_all(&cueloop_dir).unwrap();
         std::fs::write(
-            ralph_dir.join("trust.jsonc"),
+            cueloop_dir.join("trust.jsonc"),
             r#"{"allow_project_commands": true}"#,
         )
         .unwrap();
@@ -528,7 +528,7 @@ mod tests {
     fn execution_controls_fall_back_to_built_ins_when_plugin_discovery_fails() {
         let tmp = TempDir::new().unwrap();
         trust_repo(tmp.path());
-        let plugin_dir = tmp.path().join(".ralph/plugins/broken.runner");
+        let plugin_dir = tmp.path().join(".cueloop/plugins/broken.runner");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         std::fs::write(plugin_dir.join("plugin.json"), "{not valid json").unwrap();
         let resolved = resolved_for_repo(tmp.path(), Config::default());

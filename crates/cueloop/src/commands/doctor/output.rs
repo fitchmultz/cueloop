@@ -72,13 +72,13 @@ pub fn print_doctor_report_text(report: &DoctorReport) {
         (Some(blocking), true) => {
             let summary = match blocking.status {
                 BlockingStatus::Waiting => {
-                    "Doctor check passed. Ralph is healthy, but it is currently waiting."
+                    "Doctor check passed. CueLoop is healthy, but it is currently waiting."
                 }
                 BlockingStatus::Blocked => {
-                    "Doctor check passed. Ralph is healthy, but current work is blocked."
+                    "Doctor check passed. CueLoop is healthy, but current work is blocked."
                 }
                 BlockingStatus::Stalled => {
-                    "Doctor check passed, but Ralph is stalled and needs operator attention."
+                    "Doctor check passed, but CueLoop is stalled and needs operator attention."
                 }
             };
             match blocking.status {

@@ -14,10 +14,10 @@
 # - Verified snapshots live under `target/release-verifications/v<version>/`.
 # - VERIFY_STATE_FILE points at an env-style file owned by the verification snapshot.
 
-if [ -n "${RALPH_RELEASE_VERIFY_STATE_SOURCED:-}" ]; then
+if [ -n "${CUELOOP_RELEASE_VERIFY_STATE_SOURCED:-}" ]; then
     return 0
 fi
-RALPH_RELEASE_VERIFY_STATE_SOURCED=1
+CUELOOP_RELEASE_VERIFY_STATE_SOURCED=1
 set -euo pipefail
 
 release_verify_state_reset_vars() {

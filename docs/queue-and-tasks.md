@@ -10,7 +10,7 @@ Parent: [CueLoop Documentation](index.md)
 Purpose: Define the queue file format, task fields, and status lifecycle based on `schemas/queue.schema.json`.
 
 ## Queue File
-The queue file (`.ralph/queue.jsonc`) is the source of truth for active work. Completed tasks are moved to `.ralph/done.jsonc`, which must contain only `done` or `rejected` tasks.
+The queue file (`.cueloop/queue.jsonc`) is the source of truth for active work. Completed tasks are moved to `.cueloop/done.jsonc`, which must contain only `done` or `rejected` tasks.
 
 Minimum queue structure:
 ```json
@@ -49,7 +49,7 @@ Common optional fields:
 - `relates_to` (list of task IDs, defaults to empty): Tasks that this task relates to (loose coupling, no execution constraint).
 - `duplicates` (string or null): Task ID that this task duplicates.
 - `custom_fields` (map of strings, defaults to empty).
-  - **Note**: The queue loader accepts string/number/boolean values and coerces them to strings (in memory, and on subsequent saves). When manually editing `.ralph/queue.jsonc`, values should still be quoted strings for consistency.
+  - **Note**: The queue loader accepts string/number/boolean values and coerces them to strings (in memory, and on subsequent saves). When manually editing `.cueloop/queue.jsonc`, values should still be quoted strings for consistency.
   - **Reserved analytics keys**: CueLoop automatically writes the following keys to completed tasks:
     - `runner_used`: The runner actually used for execution (e.g., `codex`, `claude`, `opencode`).
     - `model_used`: The model actually used for execution (e.g., `gpt-5.3-codex`, `sonnet`).
@@ -107,10 +107,10 @@ Notes:
 ```
 
 ## Lifecycle Notes
-- Executable `work_item` tasks run in the file order from `.ralph/queue.jsonc`.
+- Executable `work_item` tasks run in the file order from `.cueloop/queue.jsonc`.
 - `kind: "group"` tasks remain visible in reads, lists, tree, graph, search, and app surfaces, but are skipped by `cueloop queue next`, `run one`, `run loop`, parallel workers, and machine runnability selection by default.
 - Existing tasks without `kind` load as `work_item`; CueLoop omits the default `work_item` field on save so normal task rewrites stay compatible with older strict readers. Explicit `kind: "group"` requires a CueLoop build that supports task kinds.
-- Completed tasks are removed from `.ralph/queue.jsonc` and appended to `.ralph/done.jsonc`.
+- Completed tasks are removed from `.cueloop/queue.jsonc` and appended to `.cueloop/done.jsonc`.
 - Dependencies: A task is blocked until all IDs in its `depends_on` list have status `done` or `rejected`.
 - Draft tasks (`status: draft`) are skipped by `run one` and `run loop` unless `--include-draft` is set.
 - Decomposed leaves written as `draft` are intentionally skipped until activated. Use `cueloop task ready <TASK_ID>` to promote a reviewed leaf to runnable `todo` work; `cueloop task decompose --write` prints the exact first-leaf command when all generated work remains draft.
@@ -124,7 +124,7 @@ Exploratory, audit, scan, and investigation tasks should grow the queue when the
 Default proposal path:
 
 ```text
-.ralph/cache/followups/<TASK_ID>.json
+.cueloop/cache/followups/<TASK_ID>.json
 ```
 
 Proposal shape:
@@ -291,7 +291,7 @@ These issues are reported but do not prevent queue operations:
 
 ### Configuration
 
-Set `queue.max_dependency_depth` in `.ralph/config.jsonc` to adjust the depth warning threshold:
+Set `queue.max_dependency_depth` in `.cueloop/config.jsonc` to adjust the depth warning threshold:
 
 ```json
 {
@@ -305,7 +305,7 @@ Validation warnings are logged during queue operations. Review them with `cueloo
 
 ## Task ID Validation
 
-CueLoop enforces unique task IDs across **both** `.ralph/queue.jsonc` **AND** `.ralph/done.jsonc`. Duplicate IDs will cause validation errors and block most queue operations.
+CueLoop enforces unique task IDs across **both** `.cueloop/queue.jsonc` **AND** `.cueloop/done.jsonc`. Duplicate IDs will cause validation errors and block most queue operations.
 
 > **Important:** Completed task IDs in `done.json` remain "claimed" and are included in uniqueness checks. Even though tasks are archived, their IDs cannot be reused for new tasks to prevent collisions with historical references.
 

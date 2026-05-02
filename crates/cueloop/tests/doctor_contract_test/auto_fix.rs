@@ -29,7 +29,7 @@ fn definitely_dead_pid() -> u32 {
 fn doctor_auto_fix_removes_confirmed_stale_queue_lock() -> Result<()> {
     let dir = setup_doctor_repo()?;
 
-    let lock_dir = dir.path().join(".ralph/lock");
+    let lock_dir = dir.path().join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     let owner_file = lock_dir.join("owner");
     std::fs::write(
@@ -45,7 +45,7 @@ fn doctor_auto_fix_removes_confirmed_stale_queue_lock() -> Result<()> {
         "lock directory should exist before doctor run"
     );
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--auto-fix"])
         .output()?;
 
@@ -71,7 +71,7 @@ fn doctor_auto_fix_removes_confirmed_stale_queue_lock() -> Result<()> {
 fn doctor_without_auto_fix_reports_but_does_not_remove_stale_queue_lock() -> Result<()> {
     let dir = setup_doctor_repo()?;
 
-    let lock_dir = dir.path().join(".ralph/lock");
+    let lock_dir = dir.path().join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     let owner_file = lock_dir.join("owner");
     std::fs::write(
@@ -82,7 +82,7 @@ fn doctor_without_auto_fix_reports_but_does_not_remove_stale_queue_lock() -> Res
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -108,7 +108,7 @@ fn doctor_without_auto_fix_reports_but_does_not_remove_stale_queue_lock() -> Res
 fn doctor_json_output_with_auto_fix() -> Result<()> {
     let dir = setup_doctor_repo()?;
 
-    let lock_dir = dir.path().join(".ralph/lock");
+    let lock_dir = dir.path().join(".cueloop/lock");
     std::fs::create_dir_all(&lock_dir)?;
     let owner_file = lock_dir.join("owner");
     std::fs::write(
@@ -119,7 +119,7 @@ fn doctor_json_output_with_auto_fix() -> Result<()> {
         ),
     )?;
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--format", "json", "--auto-fix"])
         .output()?;
 
@@ -170,9 +170,9 @@ fn doctor_auto_fix_repairs_invalid_queue() -> Result<()> {
     }
   ]
 }"#;
-    std::fs::write(dir.path().join(".ralph/queue.jsonc"), invalid_queue)?;
+    std::fs::write(dir.path().join(".cueloop/queue.jsonc"), invalid_queue)?;
 
-    let output = ralph_cmd_in_dir(dir.path()).arg("doctor").output()?;
+    let output = cueloop_cmd_in_dir(dir.path()).arg("doctor").output()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -188,7 +188,7 @@ fn doctor_auto_fix_repairs_invalid_queue() -> Result<()> {
         combined
     );
 
-    let output = ralph_cmd_in_dir(dir.path())
+    let output = cueloop_cmd_in_dir(dir.path())
         .args(["doctor", "--auto-fix"])
         .output()?;
 

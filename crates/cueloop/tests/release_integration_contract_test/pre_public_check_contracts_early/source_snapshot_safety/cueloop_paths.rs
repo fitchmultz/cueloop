@@ -1,7 +1,7 @@
 //! Source-snapshot runtime-state path contracts for `pre-public-check.sh`.
 //!
 //! Purpose:
-//! - Keep `--allow-no-git` `.cueloop`/`.ralph` path rejection coverage grouped together.
+//! - Keep `--allow-no-git` `.cueloop`/`.cueloop` path rejection coverage grouped together.
 //!
 //! Responsibilities:
 //! - Verify non-directory runtime roots, symlinked allowlisted files, and unallowlisted runtime paths remain rejected.
@@ -21,7 +21,7 @@ use super::super::super::support::{copy_pre_public_check_fixture, write_file};
 
 #[cfg(unix)]
 #[test]
-fn pre_public_check_allow_no_git_rejects_non_directory_ralph_roots() {
+fn pre_public_check_allow_no_git_rejects_non_directory_cueloop_roots() {
     use std::os::unix::fs::symlink;
 
     let temp_dir = tempfile::tempdir().expect("create temp dir");
@@ -39,18 +39,18 @@ fn pre_public_check_allow_no_git_rejects_non_directory_ralph_roots() {
         copy_pre_public_check_fixture(&repo_root);
 
         match case_name {
-            "broken-symlink" => symlink("DOES_NOT_EXIST", repo_root.join(".ralph"))
-                .expect("create broken .ralph symlink"),
+            "broken-symlink" => symlink("DOES_NOT_EXIST", repo_root.join(".cueloop"))
+                .expect("create broken .cueloop symlink"),
             "internal-symlink" => {
-                std::fs::create_dir_all(repo_root.join("internal-ralph"))
-                    .expect("create internal .ralph target");
-                symlink("internal-ralph", repo_root.join(".ralph"))
-                    .expect("create internal .ralph symlink");
+                std::fs::create_dir_all(repo_root.join("internal-cueloop"))
+                    .expect("create internal .cueloop target");
+                symlink("internal-cueloop", repo_root.join(".cueloop"))
+                    .expect("create internal .cueloop symlink");
             }
-            "external-symlink" => symlink(outside_dir.path(), repo_root.join(".ralph"))
-                .expect("create external .ralph symlink"),
+            "external-symlink" => symlink(outside_dir.path(), repo_root.join(".cueloop"))
+                .expect("create external .cueloop symlink"),
             "regular-file" => {
-                write_file(&repo_root.join(".ralph"), "not a directory\n");
+                write_file(&repo_root.join(".cueloop"), "not a directory\n");
             }
             _ => unreachable!("unexpected case"),
         }
@@ -69,14 +69,14 @@ fn pre_public_check_allow_no_git_rejects_non_directory_ralph_roots() {
 
         assert!(
             !output.status.success(),
-            "source-snapshot safety mode should reject {case_name} .ralph roots\nstdout:\n{}\nstderr:\n{}",
+            "source-snapshot safety mode should reject {case_name} .cueloop roots\nstdout:\n{}\nstderr:\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.contains("local/runtime artifacts") && stderr.contains(".ralph"),
-            "{case_name} .ralph root rejection should explain the offending path\nstderr:\n{}",
+            stderr.contains("local/runtime artifacts") && stderr.contains(".cueloop"),
+            "{case_name} .cueloop root rejection should explain the offending path\nstderr:\n{}",
             stderr
         );
     }
@@ -84,7 +84,7 @@ fn pre_public_check_allow_no_git_rejects_non_directory_ralph_roots() {
 
 #[cfg(unix)]
 #[test]
-fn pre_public_check_allow_no_git_rejects_symlinked_allowlisted_ralph_files() {
+fn pre_public_check_allow_no_git_rejects_symlinked_allowlisted_cueloop_files() {
     use std::os::unix::fs::symlink;
 
     let temp_dir = tempfile::tempdir().expect("create temp dir");
@@ -92,14 +92,14 @@ fn pre_public_check_allow_no_git_rejects_symlinked_allowlisted_ralph_files() {
     let repo_root = temp_dir.path();
 
     copy_pre_public_check_fixture(repo_root);
-    std::fs::create_dir_all(repo_root.join(".ralph")).expect("create .ralph dir");
+    std::fs::create_dir_all(repo_root.join(".cueloop")).expect("create .cueloop dir");
     std::fs::write(outside_dir.path().join("outside.md"), "outside\n")
         .expect("write outside markdown");
     symlink(
         outside_dir.path().join("outside.md"),
-        repo_root.join(".ralph/README.md"),
+        repo_root.join(".cueloop/README.md"),
     )
-    .expect("create symlinked allowlisted .ralph readme");
+    .expect("create symlinked allowlisted .cueloop readme");
 
     let output = Command::new("bash")
         .arg(repo_root.join("scripts/pre-public-check.sh"))
@@ -111,34 +111,34 @@ fn pre_public_check_allow_no_git_rejects_symlinked_allowlisted_ralph_files() {
         ])
         .current_dir(repo_root)
         .output()
-        .expect("run source-snapshot safety mode with symlinked allowlisted .ralph file");
+        .expect("run source-snapshot safety mode with symlinked allowlisted .cueloop file");
 
     assert!(
         !output.status.success(),
-        "source-snapshot safety mode should reject symlinked allowlisted .ralph files\nstdout:\n{}\nstderr:\n{}",
+        "source-snapshot safety mode should reject symlinked allowlisted .cueloop files\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("local/runtime artifacts") && stderr.contains(".ralph/README.md"),
-        "symlinked allowlisted .ralph file rejection should explain the offending path\nstderr:\n{}",
+        stderr.contains("local/runtime artifacts") && stderr.contains(".cueloop/README.md"),
+        "symlinked allowlisted .cueloop file rejection should explain the offending path\nstderr:\n{}",
         stderr
     );
 }
 
 #[test]
-fn pre_public_check_allow_no_git_rejects_unallowlisted_legacy_ralph_paths() {
+fn pre_public_check_allow_no_git_rejects_unallowlisted_legacy_cueloop_paths() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path();
 
     copy_pre_public_check_fixture(repo_root);
     write_file(
-        &repo_root.join(".ralph/plugins/test.plugin/plugin.json"),
+        &repo_root.join(".cueloop/plugins/test.plugin/plugin.json"),
         "{\"name\":\"test.plugin\"}\n",
     );
     write_file(
-        &repo_root.join(".ralph/trust.json"),
+        &repo_root.join(".cueloop/trust.json"),
         "{\"allow_project_commands\":true}\n",
     );
 
@@ -152,19 +152,19 @@ fn pre_public_check_allow_no_git_rejects_unallowlisted_legacy_ralph_paths() {
         ])
         .current_dir(repo_root)
         .output()
-        .expect("run source-snapshot safety mode with unallowlisted .ralph paths");
+        .expect("run source-snapshot safety mode with unallowlisted .cueloop paths");
 
     assert!(
         !output.status.success(),
-        "source-snapshot safety mode should reject unallowlisted .ralph paths\nstdout:\n{}\nstderr:\n{}",
+        "source-snapshot safety mode should reject unallowlisted .cueloop paths\nstdout:\n{}\nstderr:\n{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains(".ralph/plugins/test.plugin/plugin.json")
-            && stderr.contains(".ralph/trust.json"),
-        "unallowlisted .ralph rejection should enumerate the offending paths\nstderr:\n{}",
+        stderr.contains(".cueloop/plugins/test.plugin/plugin.json")
+            && stderr.contains(".cueloop/trust.json"),
+        "unallowlisted .cueloop rejection should enumerate the offending paths\nstderr:\n{}",
         stderr
     );
 }

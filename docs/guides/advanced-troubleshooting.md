@@ -11,13 +11,13 @@ Parent: [Advanced Usage Guide](advanced.md)
 **Problem:** Session resume fails
 ```bash
 # Check session state
-jq '.' .ralph/cache/session.jsonc
+jq '.' .cueloop/cache/session.jsonc
 
 # Force fresh start
 cueloop run loop --force
 
 # Or clear session manually
-rm .ralph/cache/session.jsonc
+rm .cueloop/cache/session.jsonc
 ```
 
 ### Parallel Run Issues
@@ -36,7 +36,7 @@ echo ".workspaces/" >> .git/info/exclude
 git branch --show-current
 
 # View state file target branch
-jq '.target_branch' .ralph/cache/parallel/state.json
+jq '.target_branch' .cueloop/cache/parallel/state.json
 
 # If no in-flight tasks, auto-heal by running
 # Otherwise, checkout original base branch
@@ -56,7 +56,7 @@ cueloop run parallel retry --task RQ-0001
 **Problem:** Stale queue lock
 ```bash
 # Check lock status
-ls -la .ralph/lock/
+ls -la .cueloop/lock/
 
 # Safe unlock (verifies PID not running)
 cueloop queue unlock
@@ -76,10 +76,10 @@ cueloop plugin list
 cueloop plugin validate --id my.plugin
 
 # Test runner directly
-echo "test" | ~/.config/ralph/plugins/my.plugin/runner.sh run --model test
+echo "test" | ~/.config/cueloop/plugins/my.plugin/runner.sh run --model test
 
 # Check environment
-env | grep RALPH_
+env | grep CUELOOP_
 ```
 
 ### Phase Violations
@@ -156,7 +156,7 @@ cueloop queue graph --task RQ-0001
 cueloop queue list --status doing
 
 # Check done.json for completed dependencies
-jq '.tasks[] | select(.id == "RQ-0000")' .ralph/done.jsonc
+jq '.tasks[] | select(.id == "RQ-0000")' .cueloop/done.jsonc
 ```
 
 ### Recovery Patterns
@@ -167,10 +167,10 @@ jq '.tasks[] | select(.id == "RQ-0000")' .ralph/done.jsonc
 cueloop daemon stop
 
 # 2. Clear all state
-rm -f .ralph/cache/session.jsonc
-rm -f .ralph/cache/parallel/state.json
-rm -f .ralph/cache/daemon.json
-rm -f .ralph/cache/stop_requested
+rm -f .cueloop/cache/session.jsonc
+rm -f .cueloop/cache/parallel/state.json
+rm -f .cueloop/cache/daemon.json
+rm -f .cueloop/cache/stop_requested
 
 # 3. Clear locks (if safe)
 cueloop queue unlock
@@ -188,11 +188,11 @@ cueloop daemon start
 cueloop --debug run one --id RQ-0001
 
 # View debug logs
-tail -f .ralph/logs/debug.log
+tail -f .cueloop/logs/debug.log
 
 # Clean up after
-cat .ralph/logs/debug.log  # Review for secrets
-rm -rf .ralph/logs/        # Secure deletion
+cat .cueloop/logs/debug.log  # Review for secrets
+rm -rf .cueloop/logs/        # Secure deletion
 ```
 
 ---
@@ -240,15 +240,15 @@ cueloop run loop --wait-when-blocked --wait-timeout-seconds 3600
 
 | File | Default Location |
 |------|------------------|
-| Queue | `.ralph/queue.jsonc` |
-| Done archive | `.ralph/done.jsonc` |
-| Project config | `.ralph/config.jsonc` |
-| Global config | `~/.config/ralph/config.jsonc` |
-| Session state | `.ralph/cache/session.jsonc` |
-| Parallel state | `.ralph/cache/parallel/state.json` |
-| Daemon logs | `.ralph/logs/daemon.log` |
-| Debug logs | `.ralph/logs/debug.log` |
-| Prompt overrides | `.ralph/prompts/*.md` |
-| Plugins (project) | `.ralph/plugins/<id>/` |
-| Plugins (global) | `~/.config/ralph/plugins/<id>/` |
+| Queue | `.cueloop/queue.jsonc` |
+| Done archive | `.cueloop/done.jsonc` |
+| Project config | `.cueloop/config.jsonc` |
+| Global config | `~/.config/cueloop/config.jsonc` |
+| Session state | `.cueloop/cache/session.jsonc` |
+| Parallel state | `.cueloop/cache/parallel/state.json` |
+| Daemon logs | `.cueloop/logs/daemon.log` |
+| Debug logs | `.cueloop/logs/debug.log` |
+| Prompt overrides | `.cueloop/prompts/*.md` |
+| Plugins (project) | `.cueloop/plugins/<id>/` |
+| Plugins (global) | `~/.config/cueloop/plugins/<id>/` |
 

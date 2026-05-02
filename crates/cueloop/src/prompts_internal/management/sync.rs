@@ -40,7 +40,7 @@ pub(crate) fn export_template(
     repo_root: &Path,
     id: PromptTemplateId,
     force: bool,
-    ralph_version: &str,
+    cueloop_version: &str,
 ) -> Result<bool> {
     let template = prompt_template(id);
     let file_name = template_file_name(id);
@@ -69,19 +69,19 @@ pub(crate) fn export_template(
          <!-- Digest: {} -->\n\
          <!-- Exported at: {} -->\n\
          <!-- WARNING: This file may be overwritten by 'cueloop prompt sync' unless you rename it -->\n\n",
-        file_name, ralph_version, digest, timestamp
+        file_name, cueloop_version, digest, timestamp
     );
     fs::write(&file_path, format!("{}{}", header, embedded_content))
         .with_context(|| format!("write prompt file {}", file_path.display()))?;
 
     let mut version_info = load_version_info(repo_root)?.unwrap_or_else(|| PromptVersionInfo {
         schema_version: PROMPT_VERSION_SCHEMA,
-        ralph_version: ralph_version.to_string(),
+        cueloop_version: cueloop_version.to_string(),
         exported_at: timestamp.clone(),
         templates: HashMap::new(),
     });
     version_info.schema_version = PROMPT_VERSION_SCHEMA;
-    version_info.ralph_version = ralph_version.to_string();
+    version_info.cueloop_version = cueloop_version.to_string();
     version_info.exported_at = timestamp.clone();
     version_info.templates.insert(
         file_name.to_string(),
@@ -129,23 +129,29 @@ pub(crate) fn sync_template(
     repo_root: &Path,
     id: PromptTemplateId,
     force: bool,
-    ralph_version: &str,
+    cueloop_version: &str,
 ) -> Result<(bool, SyncStatus)> {
     let status = check_sync_status(repo_root, id)?;
     match status {
         SyncStatus::UpToDate => Ok((false, status)),
         SyncStatus::Missing => Ok((
-            export_template(repo_root, id, force, ralph_version)?,
+            export_template(repo_root, id, force, cueloop_version)?,
             status,
         )),
-        SyncStatus::Outdated => Ok((export_template(repo_root, id, true, ralph_version)?, status)),
+        SyncStatus::Outdated => Ok((
+            export_template(repo_root, id, true, cueloop_version)?,
+            status,
+        )),
         SyncStatus::Unknown | SyncStatus::UserModified if force => {
             if let Some(file_path) = effective_override_path(repo_root, id) {
                 let backup_path = file_path.with_extension("md.backup");
                 fs::copy(&file_path, &backup_path)
                     .with_context(|| format!("create backup {}", backup_path.display()))?;
             }
-            Ok((export_template(repo_root, id, true, ralph_version)?, status))
+            Ok((
+                export_template(repo_root, id, true, cueloop_version)?,
+                status,
+            ))
         }
         SyncStatus::Unknown | SyncStatus::UserModified => Ok((false, status)),
     }
@@ -170,7 +176,7 @@ pub(crate) fn generate_diff(repo_root: &Path, id: PromptTemplateId) -> Result<Op
 fn extract_content_from_exported(file_content: &str) -> Option<&str> {
     let exported_header = file_content
         .starts_with("<!-- Exported from CueLoop embedded defaults -->")
-        || file_content.starts_with("<!-- Exported from Ralph embedded defaults -->");
+        || file_content.starts_with("<!-- Exported from CueLoop embedded defaults -->");
     if !exported_header {
         return Some(file_content);
     }

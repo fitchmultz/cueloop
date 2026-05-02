@@ -1,7 +1,7 @@
 //! Purpose: suite-local fixtures and helpers for `run_parallel_test` integration coverage.
 //!
 //! Responsibilities:
-//! - Create disposable git+`.ralph/` repos from the cached integration-test scaffold.
+//! - Create disposable git+`.cueloop/` repos from the cached integration-test scaffold.
 //! - Keep a bare `origin` remote alive for the full test so parallel direct-push runs are real.
 //! - Centralize repeated queue setup, noop-runner configuration, and parallel-run invocation.
 //!
@@ -14,8 +14,8 @@
 //! - Call `run_parallel()` to execute `cueloop run loop --parallel ...` under the suite lock.
 //!
 //! Invariants/Assumptions:
-//! - Helpers preserve end-to-end CLI coverage; they do not bypass the `ralph` binary.
-//! - The cached git+`.ralph/` template replaces repeated `git init` + `seed_ralph_dir()` setup.
+//! - Helpers preserve end-to-end CLI coverage; they do not bypass the `cueloop` binary.
+//! - The cached git+`.cueloop/` template replaces repeated `git init` + `seed_cueloop_dir()` setup.
 //! - The bare `origin` tempdir must stay owned by the fixture for the entire test lifetime.
 
 use anyhow::{Context, Result, ensure};
@@ -36,7 +36,7 @@ pub(super) struct RunParallelRepo {
 impl RunParallelRepo {
     pub(super) fn new() -> Result<Self> {
         let dir = super::test_support::temp_dir_outside_repo();
-        super::test_support::seed_git_repo_with_ralph(dir.path())?;
+        super::test_support::seed_git_repo_with_cueloop(dir.path())?;
 
         let origin = super::test_support::temp_dir_outside_repo();
         init_bare_remote(origin.path())?;
@@ -105,11 +105,11 @@ impl RunParallelRepo {
     }
 
     pub(super) fn state_path(&self) -> PathBuf {
-        self.path().join(".ralph/cache/parallel/state.json")
+        self.path().join(".cueloop/cache/parallel/state.json")
     }
 
     pub(super) fn workspaces_dir(&self) -> PathBuf {
-        self.path().join(".ralph/workspaces")
+        self.path().join(".cueloop/workspaces")
     }
 
     pub(super) fn workspace_dirs(&self) -> Result<Vec<PathBuf>> {

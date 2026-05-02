@@ -139,7 +139,7 @@ println!("Dump written to: {}", path.display());
 ```
 
 Redacted dumps are written to:
-- Location: System temp directory under `ralph/` (e.g., `/tmp/ralph/error_context_XXXXXX/`)
+- Location: System temp directory under `cueloop/` (e.g., `/tmp/cueloop/error_context_XXXXXX/`)
 - File: `output.txt`
 - Persistence: Survives process exit via `TempDir::keep()`
 
@@ -161,7 +161,7 @@ Programmatic usage:
 ```rust
 use cueloop::fsutil::safeguard_text_dump;
 
-// Requires CUELOOP_RAW_DUMP=1 (legacy RALPH_RAW_DUMP=1 is also accepted) or debug_mode=true
+// Requires CUELOOP_RAW_DUMP=1 (legacy CUELOOP_RAW_DUMP=1 is also accepted) or debug_mode=true
 let path = safeguard_text_dump("debug_context", &raw_content, is_debug_mode)?;
 ```
 
@@ -173,10 +173,10 @@ Redacted dumps persist via `TempDir::keep()`. Clean them up periodically:
 
 ```bash
 # List CueLoop temp directories
-ls -la /tmp/ralph/
+ls -la /tmp/cueloop/
 
 # Clean up old dumps
-rm -rf /tmp/ralph/error_context_*
+rm -rf /tmp/cueloop/error_context_*
 ```
 
 ---
@@ -192,12 +192,12 @@ Debug logging captures detailed runtime information for troubleshooting. It has 
 cueloop run one --debug
 
 # Or set environment variable
-export RALPH_DEBUG=1
+export CUELOOP_DEBUG=1
 ```
 
 ### What Gets Logged
 
-When `--debug` is enabled, `.ralph/logs/debug.log` contains:
+When `--debug` is enabled, `.cueloop/logs/debug.log` contains:
 
 1. **Log records** (raw, unredacted)
 2. **Runner stdout/stderr** (raw streams)
@@ -218,17 +218,17 @@ When `--debug` is enabled, `.ralph/logs/debug.log` contains:
 
 1. **Use sparingly**: Only enable `--debug` when necessary for troubleshooting
 
-2. **Treat as sensitive**: `.ralph/logs/debug.log` contains unredacted data
+2. **Treat as sensitive**: `.cueloop/logs/debug.log` contains unredacted data
 
 3. **Clean up after use**:
    ```bash
-   rm -rf .ralph/logs/
+   rm -rf .cueloop/logs/
    ```
 
-4. **Never commit**: Ensure `.ralph/logs/` is in `.gitignore`:
+4. **Never commit**: Ensure `.cueloop/logs/` is in `.gitignore`:
    ```gitignore
    # .gitignore
-   .ralph/logs/
+   .cueloop/logs/
    ```
 
 5. **Review before sharing**: If you must share debug logs, manually review and sanitize them first
@@ -317,22 +317,22 @@ require_clean_repo_ignoring_paths(
     repo_root,
     force,  // Bypass check if true
     &[
-        ".ralph/queue.jsonc",
-        ".ralph/queue.jsonc",
-        ".ralph/done.jsonc",
-        ".ralph/done.jsonc",
-        ".ralph/config.jsonc",
-        ".ralph/config.jsonc",
-        ".ralph/cache/",
+        ".cueloop/queue.jsonc",
+        ".cueloop/queue.jsonc",
+        ".cueloop/done.jsonc",
+        ".cueloop/done.jsonc",
+        ".cueloop/config.jsonc",
+        ".cueloop/config.jsonc",
+        ".cueloop/cache/",
     ],
 )?;
 ```
 
 Allowed dirty paths (CueLoop's own files):
-- `.ralph/queue.jsonc` / `.ralph/queue.jsonc` - Active task queue
-- `.ralph/done.jsonc` / `.ralph/done.jsonc` - Completed task archive
-- `.ralph/config.jsonc` / `.ralph/config.jsonc` - Project configuration
-- `.ralph/cache/` - Cache directory
+- `.cueloop/queue.jsonc` / `.cueloop/queue.jsonc` - Active task queue
+- `.cueloop/done.jsonc` / `.cueloop/done.jsonc` - Completed task archive
+- `.cueloop/config.jsonc` / `.cueloop/config.jsonc` - Project configuration
+- `.cueloop/cache/` - Cache directory
 
 ### Revert Modes
 
@@ -461,8 +461,8 @@ CueLoop supports plugins for extending functionality with custom runners and tas
 
 Plugins are discovered from:
 
-1. **Global plugins**: `~/.config/ralph/plugins/<plugin_id>/plugin.json`
-2. **Project plugins**: `.ralph/plugins/<plugin_id>/plugin.json`
+1. **Global plugins**: `~/.config/cueloop/plugins/<plugin_id>/plugin.json`
+2. **Project plugins**: `.cueloop/plugins/<plugin_id>/plugin.json`
 
 Project plugins override global plugins of the same ID.
 
@@ -655,7 +655,7 @@ def verify_webhook(payload_body: bytes, signature: str, secret: str) -> bool:
 | Header | Description |
 |--------|-------------|
 | `Content-Type` | `application/json` |
-| `User-Agent` | `ralph/X.Y.Z` |
+| `User-Agent` | `cueloop/X.Y.Z` |
 | `X-CueLoop-Signature` | `sha256=<hex>` (when secret configured) |
 
 ### Security Best Practices
@@ -766,8 +766,8 @@ Use `["*"]` to subscribe to all events.
 
 ### Regular Maintenance
 
-- [ ] Clean up `.ralph/logs/` directory periodically
-- [ ] Remove old safeguard dumps from `/tmp/ralph/`
+- [ ] Clean up `.cueloop/logs/` directory periodically
+- [ ] Remove old safeguard dumps from `/tmp/cueloop/`
 - [ ] Rotate webhook secrets
 - [ ] Review and update plugin trust decisions
 - [ ] Keep CueLoop updated: `cargo install cueloop-agent-loop --force`

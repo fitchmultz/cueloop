@@ -14,7 +14,7 @@
 //! - Compiled when supervision tests include the parallel-worker module.
 //!
 //! Invariants/assumptions:
-//! - Tests use temporary git repositories and synthetic `.ralph` fixtures.
+//! - Tests use temporary git repositories and synthetic `.cueloop` fixtures.
 //! - Helper behavior must remain deterministic across repeated restore attempts.
 
 use crate::contracts::Config;
@@ -78,7 +78,7 @@ fn write_ci_failure_marker_overwrites_existing_marker_contents() {
 #[test]
 fn write_ci_failure_marker_uses_fallback_when_primary_path_is_unusable() {
     let temp = tempfile::TempDir::new().unwrap();
-    let primary_parent = temp.path().join(".ralph");
+    let primary_parent = temp.path().join(".cueloop");
     std::fs::write(&primary_parent, "not-a-directory").unwrap();
 
     write_ci_failure_marker(temp.path(), "RQ-8888", "ci fallback");
@@ -100,14 +100,14 @@ fn restore_bookkeeping_restores_custom_resolved_queue_done_paths() {
     let repo_root = temp.path().join("workspace");
     std::fs::create_dir_all(repo_root.join("queue")).unwrap();
     std::fs::create_dir_all(repo_root.join("archive")).unwrap();
-    std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
+    std::fs::create_dir_all(repo_root.join(".cueloop/cache")).unwrap();
     git_test::init_repo(&repo_root).unwrap();
 
     let custom_queue = repo_root.join("queue/active.jsonc");
     let custom_done = repo_root.join("archive/done.jsonc");
-    let default_queue = repo_root.join(".ralph/queue.jsonc");
-    let default_done = repo_root.join(".ralph/done.jsonc");
-    let productivity = repo_root.join(".ralph/cache/productivity.json");
+    let default_queue = repo_root.join(".cueloop/queue.jsonc");
+    let default_done = repo_root.join(".cueloop/done.jsonc");
+    let productivity = repo_root.join(".cueloop/cache/productivity.json");
     std::fs::write(&custom_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
     std::fs::write(&custom_done, "{\"version\":1,\"tasks\":[]}").unwrap();
     std::fs::write(&default_queue, "{\"default\":true}").unwrap();
@@ -120,9 +120,9 @@ fn restore_bookkeeping_restores_custom_resolved_queue_done_paths() {
             "-f",
             "queue/active.jsonc",
             "archive/done.jsonc",
-            ".ralph/queue.jsonc",
-            ".ralph/done.jsonc",
-            ".ralph/cache/productivity.json",
+            ".cueloop/queue.jsonc",
+            ".cueloop/done.jsonc",
+            ".cueloop/cache/productivity.json",
         ],
     )
     .unwrap();
@@ -168,20 +168,20 @@ fn collect_bookkeeping_status_lines_matches_tracked_paths() {
     let repo_root = std::path::PathBuf::from("/repo");
     let resolved = resolved_for_bookkeeping(
         repo_root.clone(),
-        repo_root.join(".ralph/queue.jsonc"),
-        repo_root.join(".ralph/done.jsonc"),
+        repo_root.join(".cueloop/queue.jsonc"),
+        repo_root.join(".cueloop/done.jsonc"),
     );
     let status = "\
- M .ralph/queue.jsonc
+ M .cueloop/queue.jsonc
 M  src/lib.rs
- R .ralph/done.jsonc -> .ralph/done-old.jsonc
+ R .cueloop/done.jsonc -> .cueloop/done-old.jsonc
 ?? scratch.txt
 ";
 
     let matches = collect_bookkeeping_status_lines(&resolved, status);
     assert_eq!(matches.len(), 2);
-    assert!(matches[0].contains(".ralph/queue.jsonc"));
-    assert!(matches[1].contains(".ralph/done.jsonc"));
+    assert!(matches[0].contains(".cueloop/queue.jsonc"));
+    assert!(matches[1].contains(".cueloop/done.jsonc"));
 }
 
 #[test]
@@ -193,7 +193,7 @@ fn collect_bookkeeping_status_lines_matches_custom_resolved_queue_done_paths() {
         repo_root.join("archive/done.jsonc"),
     );
     let status = "\
- M queue/active.jsonc\0M  archive/done.jsonc\0 M .ralph/queue.jsonc\0M  src/lib.rs\0";
+ M queue/active.jsonc\0M  archive/done.jsonc\0 M .cueloop/queue.jsonc\0M  src/lib.rs\0";
 
     let matches = collect_bookkeeping_status_lines(&resolved, status);
     assert_eq!(matches.len(), 2);
@@ -206,8 +206,8 @@ fn collect_bookkeeping_status_lines_ignores_non_bookkeeping_changes() {
     let repo_root = std::path::PathBuf::from("/repo");
     let resolved = resolved_for_bookkeeping(
         repo_root.clone(),
-        repo_root.join(".ralph/queue.jsonc"),
-        repo_root.join(".ralph/done.jsonc"),
+        repo_root.join(".cueloop/queue.jsonc"),
+        repo_root.join(".cueloop/done.jsonc"),
     );
     let status = "\
 M  src/lib.rs
@@ -224,33 +224,33 @@ fn collect_bookkeeping_status_lines_matches_generated_cache_paths() {
     let repo_root = std::path::PathBuf::from("/repo");
     let resolved = resolved_for_bookkeeping(
         repo_root.clone(),
-        repo_root.join(".ralph/queue.jsonc"),
-        repo_root.join(".ralph/done.jsonc"),
+        repo_root.join(".cueloop/queue.jsonc"),
+        repo_root.join(".cueloop/done.jsonc"),
     );
     let status = "\
-?? .ralph/cache/plans/RQ-0001.md
-?? .ralph/cache/phase2_final/RQ-0001.md
-?? .ralph/logs/parallel-debug.log
+?? .cueloop/cache/plans/RQ-0001.md
+?? .cueloop/cache/phase2_final/RQ-0001.md
+?? .cueloop/logs/parallel-debug.log
 M  src/lib.rs
 ";
 
     let matches = collect_bookkeeping_status_lines(&resolved, status);
     assert_eq!(matches.len(), 3);
-    assert!(matches[0].contains(".ralph/cache/plans/RQ-0001.md"));
-    assert!(matches[1].contains(".ralph/cache/phase2_final/RQ-0001.md"));
-    assert!(matches[2].contains(".ralph/logs/parallel-debug.log"));
+    assert!(matches[0].contains(".cueloop/cache/plans/RQ-0001.md"));
+    assert!(matches[1].contains(".cueloop/cache/phase2_final/RQ-0001.md"));
+    assert!(matches[2].contains(".cueloop/logs/parallel-debug.log"));
 }
 
 #[test]
 fn restore_bookkeeping_removes_generated_worker_cache_artifacts() {
     let temp = tempfile::TempDir::new().unwrap();
     let repo_root = temp.path().join("workspace");
-    std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
+    std::fs::create_dir_all(repo_root.join(".cueloop/cache")).unwrap();
     git_test::init_repo(&repo_root).unwrap();
 
-    let workspace_queue = repo_root.join(".ralph/queue.jsonc");
-    let workspace_done = repo_root.join(".ralph/done.jsonc");
-    let productivity = repo_root.join(".ralph/cache/productivity.json");
+    let workspace_queue = repo_root.join(".cueloop/queue.jsonc");
+    let workspace_done = repo_root.join(".cueloop/done.jsonc");
+    let productivity = repo_root.join(".cueloop/cache/productivity.json");
     std::fs::write(&workspace_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
     std::fs::write(&workspace_done, "{\"version\":1,\"tasks\":[]}").unwrap();
     std::fs::write(&productivity, "{\"stats\":[]}").unwrap();
@@ -259,18 +259,18 @@ fn restore_bookkeeping_removes_generated_worker_cache_artifacts() {
         &[
             "add",
             "-f",
-            ".ralph/queue.jsonc",
-            ".ralph/done.jsonc",
-            ".ralph/cache/productivity.json",
+            ".cueloop/queue.jsonc",
+            ".cueloop/done.jsonc",
+            ".cueloop/cache/productivity.json",
         ],
     )
     .unwrap();
     git_test::commit_all(&repo_root, "init bookkeeping").unwrap();
 
-    let generated_plan = repo_root.join(".ralph/cache/plans/RQ-0001.md");
-    let generated_phase2 = repo_root.join(".ralph/cache/phase2_final/RQ-0001.md");
-    let generated_session = repo_root.join(".ralph/cache/session.jsonc");
-    let generated_logs = repo_root.join(".ralph/logs/parallel.log");
+    let generated_plan = repo_root.join(".cueloop/cache/plans/RQ-0001.md");
+    let generated_phase2 = repo_root.join(".cueloop/cache/phase2_final/RQ-0001.md");
+    let generated_session = repo_root.join(".cueloop/cache/session.jsonc");
+    let generated_logs = repo_root.join(".cueloop/logs/parallel.log");
     std::fs::create_dir_all(generated_plan.parent().unwrap()).unwrap();
     std::fs::create_dir_all(generated_phase2.parent().unwrap()).unwrap();
     std::fs::create_dir_all(generated_logs.parent().unwrap()).unwrap();
@@ -302,12 +302,12 @@ fn restore_bookkeeping_removes_generated_worker_cache_artifacts() {
 fn restore_bookkeeping_restores_tracked_plan_cache() {
     let temp = tempfile::TempDir::new().unwrap();
     let repo_root = temp.path().join("workspace");
-    std::fs::create_dir_all(repo_root.join(".ralph/cache")).unwrap();
+    std::fs::create_dir_all(repo_root.join(".cueloop/cache")).unwrap();
     git_test::init_repo(&repo_root).unwrap();
 
-    let workspace_queue = repo_root.join(".ralph/queue.jsonc");
-    let workspace_done = repo_root.join(".ralph/done.jsonc");
-    let productivity = repo_root.join(".ralph/cache/productivity.json");
+    let workspace_queue = repo_root.join(".cueloop/queue.jsonc");
+    let workspace_done = repo_root.join(".cueloop/done.jsonc");
+    let productivity = repo_root.join(".cueloop/cache/productivity.json");
     std::fs::write(&workspace_queue, "{\"version\":1,\"tasks\":[]}").unwrap();
     std::fs::write(&workspace_done, "{\"version\":1,\"tasks\":[]}").unwrap();
     std::fs::write(&productivity, "{\"stats\":[]}").unwrap();
@@ -316,18 +316,22 @@ fn restore_bookkeeping_restores_tracked_plan_cache() {
         &[
             "add",
             "-f",
-            ".ralph/queue.jsonc",
-            ".ralph/done.jsonc",
-            ".ralph/cache/productivity.json",
+            ".cueloop/queue.jsonc",
+            ".cueloop/done.jsonc",
+            ".cueloop/cache/productivity.json",
         ],
     )
     .unwrap();
     git_test::commit_all(&repo_root, "init bookkeeping").unwrap();
 
-    let plan_path = repo_root.join(".ralph/cache/plans/RQ-0001.md");
+    let plan_path = repo_root.join(".cueloop/cache/plans/RQ-0001.md");
     std::fs::create_dir_all(plan_path.parent().unwrap()).unwrap();
     std::fs::write(&plan_path, "initial plan").unwrap();
-    git_test::git_run(&repo_root, &["add", "-f", ".ralph/cache/plans/RQ-0001.md"]).unwrap();
+    git_test::git_run(
+        &repo_root,
+        &["add", "-f", ".cueloop/cache/plans/RQ-0001.md"],
+    )
+    .unwrap();
     git_test::commit_all(&repo_root, "track plan cache").unwrap();
 
     std::fs::write(&plan_path, "generated plan").unwrap();

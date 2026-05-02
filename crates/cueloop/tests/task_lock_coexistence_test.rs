@@ -50,8 +50,8 @@ fn get_task_owner_files(lock_dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 fn task_lock_can_be_acquired_when_supervisor_holds_lock() {
     let temp = TempDir::new().expect("create temp dir");
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
     let lock_dir = lock::queue_lock_dir(repo_root);
 
     // Supervisor acquires lock with label "run one"
@@ -91,8 +91,8 @@ fn task_lock_can_be_acquired_when_supervisor_holds_lock() {
 fn non_task_lock_still_fails_when_supervisor_holds_lock() {
     let temp = TempDir::new().expect("create temp dir");
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
     let lock_dir = lock::queue_lock_dir(repo_root);
 
     // Supervisor acquires lock with label "run one"
@@ -113,8 +113,8 @@ fn non_task_lock_still_fails_when_supervisor_holds_lock() {
 fn task_lock_cleans_up_directory_when_no_supervisor() {
     let temp = TempDir::new().expect("create temp dir");
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
     let lock_dir = lock::queue_lock_dir(repo_root);
 
     {
@@ -137,8 +137,8 @@ fn task_lock_cleans_up_directory_when_no_supervisor() {
 fn multiple_task_locks_in_same_process_have_unique_sidecars() {
     let temp = TempDir::new().expect("create temp dir");
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
     let lock_dir = lock::queue_lock_dir(repo_root);
 
     // Supervisor acquires lock first
@@ -205,8 +205,8 @@ fn multiple_task_locks_in_same_process_have_unique_sidecars() {
 fn concurrent_task_locks_release_independently() {
     let temp = TempDir::new().expect("create temp dir");
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
     let lock_dir = lock::queue_lock_dir(repo_root);
 
     // First, acquire a supervising lock.
@@ -255,8 +255,8 @@ fn concurrent_task_locks_release_independently() {
 fn task_lock_handles_supervisor_drop_before_task() {
     let temp = TempDir::new().expect("create temp dir");
     let repo_root = temp.path();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir).expect("create .cueloop dir");
     let lock_dir = lock::queue_lock_dir(repo_root);
 
     // Supervisor acquires lock

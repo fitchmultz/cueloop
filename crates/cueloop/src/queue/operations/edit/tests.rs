@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use super::super::{TaskEditKey, apply_task_edit, format_field_value, preview_task_edit};
 use crate::contracts::{QueueFile, Task, TaskAgent, TaskPriority, TaskStatus};
@@ -257,7 +257,7 @@ fn preview_task_edit_shows_custom_fields_change() {
         None,
         "RQ-0001",
         TaskEditKey::CustomFields,
-        "severity=high, owner=ralph",
+        "severity=high, owner=cueloop",
         &now,
         "RQ",
         4,
@@ -274,8 +274,8 @@ fn preview_task_edit_shows_custom_fields_change() {
         preview.new_value
     );
     assert!(
-        preview.new_value.contains("owner=ralph"),
-        "new_value should contain owner=ralph: {}",
+        preview.new_value.contains("owner=cueloop"),
+        "new_value should contain owner=cueloop: {}",
         preview.new_value
     );
 }

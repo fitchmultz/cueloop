@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use cueloop::config;
 use cueloop::contracts::{
@@ -37,13 +37,6 @@ fn setup_cueloop_dir(dir: &TempDir) -> PathBuf {
     cueloop_dir
 }
 
-// Helper to create a minimal legacy runtime directory.
-fn setup_ralph_dir(dir: &TempDir) -> PathBuf {
-    let ralph_dir = dir.path().join(".ralph");
-    fs::create_dir_all(&ralph_dir).expect("create .ralph dir");
-    ralph_dir
-}
-
 // Helper to create a queue.jsonc file in the current runtime directory.
 fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
     let cueloop_dir = setup_cueloop_dir(dir);
@@ -54,8 +47,8 @@ fn create_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
 
 // Helper to create a queue.jsonc file in the legacy runtime directory.
 fn create_legacy_queue_jsonc(dir: &TempDir, content: &str) -> PathBuf {
-    let ralph_dir = setup_ralph_dir(dir);
-    let queue_path = ralph_dir.join("queue.jsonc");
+    let cueloop_dir = setup_cueloop_dir(dir);
+    let queue_path = cueloop_dir.join("queue.jsonc");
     fs::write(&queue_path, content).expect("write legacy queue.jsonc");
     queue_path
 }
@@ -88,8 +81,8 @@ fn create_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
 
 // Helper to create a config.jsonc file in the legacy runtime directory.
 fn create_legacy_config_jsonc(dir: &TempDir, content: &str) -> PathBuf {
-    let ralph_dir = setup_ralph_dir(dir);
-    let config_path = ralph_dir.join("config.jsonc");
+    let cueloop_dir = setup_cueloop_dir(dir);
+    let config_path = cueloop_dir.join("config.jsonc");
     fs::write(&config_path, content).expect("write legacy config.jsonc");
     config_path
 }

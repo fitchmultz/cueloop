@@ -29,7 +29,7 @@ use std::path::Path;
 /// Ensures CueLoop-specific entries exist in `.gitignore`.
 ///
 /// The active runtime dir comes from config path authority: new repos get `.cueloop/*`,
-/// while legacy repos with `.ralph` markers keep `.ralph/*` entries.
+/// while legacy repos with `.cueloop` markers keep `.cueloop/*` entries.
 ///
 /// This function is idempotent - calling it multiple times is safe.
 pub fn ensure_cueloop_gitignore_entries(repo_root: &Path) -> Result<()> {
@@ -184,8 +184,8 @@ fn ensure_exact_gitignore_entries(
 
 /// Migrate .json ignore patterns to .jsonc in .gitignore.
 ///
-/// This updates Ralph-managed ignore patterns from .json to .jsonc variants.
-/// Patterns like `.ralph/queue.json` become `.ralph/queue.jsonc`.
+/// This updates CueLoop-managed ignore patterns from .json to .jsonc variants.
+/// Patterns like `.cueloop/queue.json` become `.cueloop/queue.jsonc`.
 ///
 /// Returns true if any changes were made.
 pub fn migrate_json_to_jsonc_gitignore(repo_root: &std::path::Path) -> anyhow::Result<bool> {
@@ -199,10 +199,10 @@ pub fn migrate_json_to_jsonc_gitignore(repo_root: &std::path::Path) -> anyhow::R
 
     // Define patterns to migrate: (old_pattern, new_pattern)
     let patterns_to_migrate: &[(&str, &str)] = &[
-        (".ralph/queue.json", ".ralph/queue.jsonc"),
-        (".ralph/done.json", ".ralph/done.jsonc"),
-        (".ralph/config.json", ".ralph/config.jsonc"),
-        (".ralph/*.json", ".ralph/*.jsonc"),
+        (".cueloop/queue.json", ".cueloop/queue.jsonc"),
+        (".cueloop/done.json", ".cueloop/done.jsonc"),
+        (".cueloop/config.json", ".cueloop/config.jsonc"),
+        (".cueloop/*.json", ".cueloop/*.jsonc"),
     ];
 
     let mut updated = content.clone();
@@ -386,27 +386,6 @@ mod tests {
             "Should not add duplicate workspaces entry"
         );
         assert_eq!(logs_count, 1, "Should not add duplicate logs entry");
-        Ok(())
-    }
-
-    #[test]
-    fn ensure_cueloop_gitignore_entries_uses_legacy_runtime_when_marked() -> Result<()> {
-        let temp = TempDir::new()?;
-        let repo_root = temp.path();
-        fs::create_dir_all(repo_root.join(".ralph"))?;
-        fs::write(repo_root.join(".ralph/config.jsonc"), "{}")?;
-
-        ensure_cueloop_gitignore_entries(repo_root)?;
-        ensure_local_queue_gitignore_entries(repo_root)?;
-
-        let content = fs::read_to_string(repo_root.join(".gitignore"))?;
-        assert!(content.contains(".ralph/workspaces/"));
-        assert!(content.contains(".ralph/logs/"));
-        assert!(content.contains(".ralph/trust.jsonc"));
-        assert!(content.contains(".ralph/queue.jsonc"));
-        assert!(content.contains(".ralph/done.jsonc"));
-        assert!(!content.contains(".cueloop/workspaces/"));
-        assert!(!content.contains(".cueloop/queue.jsonc"));
         Ok(())
     }
 

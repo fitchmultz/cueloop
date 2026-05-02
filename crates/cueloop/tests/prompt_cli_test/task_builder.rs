@@ -18,8 +18,14 @@ use super::*;
 
 #[test]
 fn prompt_task_builder_parses_request() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "task-builder", "--request", "Add tests"])
-        .expect("parse");
+    let cli = Cli::try_parse_from([
+        "cueloop",
+        "prompt",
+        "task-builder",
+        "--request",
+        "Add tests",
+    ])
+    .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::TaskBuilder(t) => {
@@ -33,7 +39,7 @@ fn prompt_task_builder_parses_request() {
 
 #[test]
 fn prompt_task_builder_parses_tags() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "task-builder", "--tags", "rust,tests"])
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "task-builder", "--tags", "rust,tests"])
         .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
@@ -49,7 +55,7 @@ fn prompt_task_builder_parses_tags() {
 #[test]
 fn prompt_task_builder_parses_scope() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "prompt",
         "task-builder",
         "--scope",
@@ -69,7 +75,7 @@ fn prompt_task_builder_parses_scope() {
 
 #[test]
 fn prompt_task_builder_parses_repo_prompt_plan() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "task-builder", "--repo-prompt", "plan"])
+    let cli = Cli::try_parse_from(["cueloop", "prompt", "task-builder", "--repo-prompt", "plan"])
         .expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
@@ -84,7 +90,8 @@ fn prompt_task_builder_parses_repo_prompt_plan() {
 
 #[test]
 fn prompt_task_builder_parses_explain() {
-    let cli = Cli::try_parse_from(["ralph", "prompt", "task-builder", "--explain"]).expect("parse");
+    let cli =
+        Cli::try_parse_from(["cueloop", "prompt", "task-builder", "--explain"]).expect("parse");
     match cli.command {
         Command::Prompt(args) => match args.command {
             PromptCommand::TaskBuilder(t) => {

@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Test queues use local temp directories and repo-scoped `.ralph/*.jsonc` files.
+//! - Test queues use local temp directories and repo-scoped `.cueloop/*.jsonc` files.
 //! - Preview/write flows remain deterministic for the same planned tree.
 
 use super::tree::normalize_response;
@@ -735,18 +735,18 @@ pub(super) fn planned_node_with_plan_and_scope(
 pub(super) fn test_resolved() -> Result<(TempDir, config::Resolved)> {
     let temp = TempDir::new()?;
     let repo_root = temp.path().to_path_buf();
-    let ralph_dir = repo_root.join(".ralph");
-    std::fs::create_dir_all(&ralph_dir)?;
+    let cueloop_dir = repo_root.join(".cueloop");
+    std::fs::create_dir_all(&cueloop_dir)?;
     let config = Config::default();
     let resolved = config::Resolved {
         config,
         repo_root: repo_root.clone(),
-        queue_path: ralph_dir.join("queue.jsonc"),
-        done_path: ralph_dir.join("done.jsonc"),
+        queue_path: cueloop_dir.join("queue.jsonc"),
+        done_path: cueloop_dir.join("done.jsonc"),
         id_prefix: "RQ".to_string(),
         id_width: 4,
         global_config_path: None,
-        project_config_path: Some(ralph_dir.join("config.jsonc")),
+        project_config_path: Some(cueloop_dir.join("config.jsonc")),
     };
     Ok((temp, resolved))
 }

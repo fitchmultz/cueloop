@@ -17,7 +17,7 @@
 //!
 //! Invariants/assumptions:
 //! - The CueLoop binary is available via CARGO_BIN_EXE_cueloop or adjacent to the test binary.
-//! - Repo root discovery works via a `.ralph/queue.jsonc` file in the current directory.
+//! - Repo root discovery works via a `.cueloop/queue.jsonc` file in the current directory.
 
 use std::collections::HashMap;
 use std::path::Path;

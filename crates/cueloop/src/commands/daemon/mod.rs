@@ -17,9 +17,9 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Daemon uses a dedicated lock at `.ralph/cache/daemon.lock`
-//! - Daemon state is stored at `.ralph/cache/daemon.json`
-//! - Startup serialization uses a separate `.ralph/cache/daemon.start.lock`
+//! - Daemon uses a dedicated lock at `.cueloop/cache/daemon.lock`
+//! - Daemon state is stored at `.cueloop/cache/daemon.json`
+//! - Startup serialization uses a separate `.cueloop/cache/daemon.start.lock`
 
 mod logs;
 mod serve;
@@ -44,9 +44,9 @@ pub use stop::stop;
 pub(super) const DAEMON_STATE_FILE: &str = "daemon.json";
 /// Daemon readiness file name.
 pub(super) const DAEMON_READY_FILE: &str = "daemon.ready";
-/// Daemon lock directory name (relative to .ralph/cache).
+/// Daemon lock directory name (relative to .cueloop/cache).
 pub(super) const DAEMON_LOCK_DIR: &str = "daemon.lock";
-/// Daemon startup lock directory name (relative to .ralph/cache).
+/// Daemon startup lock directory name (relative to .cueloop/cache).
 pub(super) const DAEMON_START_LOCK_DIR: &str = "daemon.start.lock";
 
 /// Re-export for use in submodules.
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn wait_for_daemon_ready_returns_true_when_marker_appears() {
         let temp = TempDir::new().expect("create temp dir");
-        let cache_dir = temp.path().join(".ralph/cache");
+        let cache_dir = temp.path().join(".cueloop/cache");
         fs::create_dir_all(&cache_dir).expect("create cache dir");
         let expected_pid = 424_242_u32;
 
@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn wait_for_daemon_ready_returns_false_when_child_exits() {
         let temp = TempDir::new().expect("create temp dir");
-        let cache_dir = temp.path().join(".ralph/cache");
+        let cache_dir = temp.path().join(".cueloop/cache");
         fs::create_dir_all(&cache_dir).expect("create cache dir");
 
         let mut child = Command::new("python3")
@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn wait_for_daemon_shutdown_returns_true_after_artifacts_clear() {
         let temp = TempDir::new().expect("create temp dir");
-        let cache_dir = temp.path().join(".ralph/cache");
+        let cache_dir = temp.path().join(".cueloop/cache");
         fs::create_dir_all(&cache_dir).expect("create cache dir");
         let pid = deterministic_non_running_pid();
 
@@ -360,7 +360,7 @@ mod tests {
     #[test]
     fn manual_cleanup_instructions_include_state_and_lock_paths() {
         let temp = TempDir::new().expect("create temp dir");
-        let cache_dir = temp.path().join(".ralph/cache");
+        let cache_dir = temp.path().join(".cueloop/cache");
         let instructions = manual_daemon_cleanup_instructions(&cache_dir);
 
         assert!(instructions.contains(&format!(
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn manual_cleanup_instructions_do_not_reference_force_flag() {
         let temp = TempDir::new().expect("create temp dir");
-        let cache_dir = temp.path().join(".ralph/cache");
+        let cache_dir = temp.path().join(".cueloop/cache");
         let instructions = manual_daemon_cleanup_instructions(&cache_dir);
 
         assert!(

@@ -1,9 +1,9 @@
-<!-- Purpose: JSON-only prompt for planning Ralph task decomposition. -->
+<!-- Purpose: JSON-only prompt for planning CueLoop task decomposition. -->
 # Role
-You are Ralph's task decomposition planner.
+You are CueLoop's task decomposition planner.
 
 # Goal
-Return a structured task tree for a Ralph queue without mutating files.
+Return a structured task tree for a CueLoop queue without mutating files.
 
 {{PROJECT_TYPE_GUIDANCE}}
 

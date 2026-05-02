@@ -4,7 +4,7 @@
 //! - Shared helpers for `cueloop context` integration tests.
 //!
 //! Responsibilities:
-//! - Create isolated Ralph repositories for context command coverage.
+//! - Create isolated CueLoop repositories for context command coverage.
 //! - Provide reusable AGENTS.md fixtures for validation and update tests.
 //! - Keep suite-local filesystem helpers out of the individual behavior modules.
 //!
@@ -29,7 +29,7 @@ mod test_support;
 pub(super) fn setup_repo() -> Result<tempfile::TempDir> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;
-    test_support::seed_ralph_dir(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
     Ok(dir)
 }
 

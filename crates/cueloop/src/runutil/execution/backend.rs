@@ -332,7 +332,7 @@ pub(super) fn wrap_output_handler_with_capture(
 
 pub(super) fn emit_operation(handler: &Option<runner::OutputHandler>, msg: &str) {
     if let Some(handler) = handler.as_ref() {
-        (handler)(&format!("RALPH_OPERATION: {}\n", msg));
+        (handler)(&format!("CUELOOP_OPERATION: {}\n", msg));
     }
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Purpose: Enforce Ralph file-size policy for human-authored repository files.
+Purpose: Enforce CueLoop file-size policy for human-authored repository files.
 Responsibilities:
 - Discover tracked and untracked non-ignored files when git metadata is present.
 - Fall back to deterministic repository walking when git metadata is unavailable.
@@ -50,13 +50,13 @@ DEFAULT_EXCLUDE_GLOBS = (
     ".cueloop/workspaces/**",
     ".cueloop/lock/**",
     ".cueloop/logs/**",
-    ".ralph/done.jsonc",
-    ".ralph/queue.jsonc",
-    ".ralph/config.jsonc",
-    ".ralph/cache/**",
-    ".ralph/workspaces/**",
-    ".ralph/lock/**",
-    ".ralph/logs/**",
+    ".cueloop/done.jsonc",
+    ".cueloop/queue.jsonc",
+    ".cueloop/config.jsonc",
+    ".cueloop/cache/**",
+    ".cueloop/workspaces/**",
+    ".cueloop/lock/**",
+    ".cueloop/logs/**",
     ".venv/**",
     ".pytest_cache/**",
     ".ty_cache/**",
@@ -64,7 +64,7 @@ DEFAULT_EXCLUDE_GLOBS = (
     "schemas/*.json",
     "apps/**/*.xcodeproj/project.pbxproj",
 )
-EXTRA_EXCLUDE_ENV_VAR = "RALPH_FILE_SIZE_EXCLUDE_GLOBS"
+EXTRA_EXCLUDE_ENV_VAR = "CUELOOP_FILE_SIZE_EXCLUDE_GLOBS"
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class Offender:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Enforce Ralph file-size limits for human-authored repository files.",
+        description="Enforce CueLoop file-size limits for human-authored repository files.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Exit codes:\n"

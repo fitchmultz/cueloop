@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Purpose: Verify Ralph's pinned Rust source-build baseline and rustup drift state.
+# Purpose: Verify CueLoop's pinned Rust source-build baseline and rustup drift state.
 # Responsibilities:
 # - Read the repo-local Rust channel from rust-toolchain.toml.
 # - Verify the CLI crate rust-version matches the pinned channel's major.minor baseline.
@@ -27,7 +27,7 @@ FAIL_ON_GLOBAL_STABLE_DRIFT=0
 
 usage() {
     cat <<'EOF'
-Verify Ralph's Rust source-build toolchain baseline.
+Verify CueLoop's Rust source-build toolchain baseline.
 
 Usage:
   scripts/check-rust-toolchain.sh [OPTIONS]
@@ -113,7 +113,7 @@ cargo_version_number() {
 require_command() {
     local command_name="$1"
     if ! command -v "$command_name" >/dev/null 2>&1; then
-        cueloop_log_error "$command_name is required to verify Ralph's Rust toolchain"
+        cueloop_log_error "$command_name is required to verify CueLoop's Rust toolchain"
         return 1
     fi
 }
@@ -131,7 +131,7 @@ require_rustup_component() {
 compare_global_stable() {
     local pinned_channel="$1"
     local temp_dir
-    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/ralph-rust-toolchain.XXXXXX")"
+    temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/cueloop-rust-toolchain.XXXXXX")"
 
     local stable_rustc_output
     stable_rustc_output="$(cd "$temp_dir" && rustup run stable rustc --version 2>/dev/null || true)"

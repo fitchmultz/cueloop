@@ -1,8 +1,8 @@
 //! Purpose: suite-local helpers for `task_lifecycle_test` integration coverage.
 //!
 //! Responsibilities:
-//! - Create isolated repos from the cached git+`.ralph/` test scaffold.
-//! - Centralize queue IO and `ralph` CLI execution boilerplate.
+//! - Create isolated repos from the cached git+`.cueloop/` test scaffold.
+//! - Centralize queue IO and `cueloop` CLI execution boilerplate.
 //! - Centralize repeated fake-runner and CI bootstrap for lifecycle run tests.
 //!
 //! Scope:
@@ -14,7 +14,7 @@
 //! - Use `setup_runner_with_passing_ci()` after writing the queue fixture for runner-based tests.
 //!
 //! Invariants/assumptions callers must respect:
-//! - Helpers preserve real end-to-end CLI coverage; they do not bypass `ralph` commands.
+//! - Helpers preserve real end-to-end CLI coverage; they do not bypass `cueloop` commands.
 //! - `setup_runner_with_passing_ci()` rewrites repo config, writes a minimal `Makefile`, and commits fixture state.
 //! - Repos are disposable temp dirs seeded from cached fixtures, so callers may freely mutate them.
 
@@ -36,7 +36,7 @@ pub(super) struct LifecycleRepo {
 impl LifecycleRepo {
     pub(super) fn new() -> Result<Self> {
         let dir = super::test_support::temp_dir_outside_repo();
-        super::test_support::seed_git_repo_with_ralph(dir.path())?;
+        super::test_support::seed_git_repo_with_cueloop(dir.path())?;
         Ok(Self { dir })
     }
 
@@ -64,7 +64,7 @@ impl LifecycleRepo {
         let (status, stdout, stderr) = self.run(args);
         ensure!(
             status.success(),
-            "ralph {} failed\nstdout:\n{stdout}\nstderr:\n{stderr}",
+            "cueloop {} failed\nstdout:\n{stdout}\nstderr:\n{stderr}",
             args.join(" ")
         );
         Ok(())

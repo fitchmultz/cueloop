@@ -98,7 +98,7 @@ where
 pub(super) fn custom_fields_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
     schemars::json_schema!({
         "type": "object",
-        "description": "Custom user-defined fields. Values may be written as string/number/boolean; Ralph coerces them to strings when loading the queue.",
+        "description": "Custom user-defined fields. Values may be written as string/number/boolean; CueLoop coerces them to strings when loading the queue.",
         "additionalProperties": {
             "anyOf": [
                 {"type": "string"},

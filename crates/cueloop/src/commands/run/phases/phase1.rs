@@ -15,7 +15,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Phase 1 may only mutate files under `.ralph/`.
+//! - Phase 1 may only mutate files under `.cueloop/`.
 
 use super::shared::execute_runner_pass;
 use super::{PhaseInvocation, PhaseType, phase_session_id_for_runner};
@@ -29,8 +29,8 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
 
     logging::with_scope(&label, || {
         // ENFORCEMENT: Phase 1 must not implement.
-        // It may only edit files under `.ralph/`.
-        let allowed_paths = [".ralph/"];
+        // It may only edit files under `.cueloop/`.
+        let allowed_paths = [".cueloop/"];
         let baseline_paths = if ctx.allow_dirty_repo {
             git::status_paths(&ctx.resolved.repo_root)?
         } else {
@@ -121,7 +121,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
                     Ok(())
                 } else {
                     Err(GitError::DirtyRepo {
-                        details: "\n\nFollow-up Phase 1 violation: planning introduced dirty paths outside baseline and allowed .ralph paths."
+                        details: "\n\nFollow-up Phase 1 violation: planning introduced dirty paths outside baseline and allowed .cueloop paths."
                             .to_string(),
                     })
                 }
@@ -178,7 +178,7 @@ pub fn execute_phase1_planning(ctx: &PhaseInvocation<'_>, total_phases: u8) -> R
                             bail!(
                                 "{} Error: {:#}",
                                 runutil::format_revert_failure_message(
-                                    "Phase 1 violated plan-only contract: it modified files outside allowed .ralph paths, including baseline dirty paths.",
+                                    "Phase 1 violated plan-only contract: it modified files outside allowed .cueloop paths, including baseline dirty paths.",
                                     outcome,
                                 ),
                                 err

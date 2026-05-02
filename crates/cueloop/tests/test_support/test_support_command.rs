@@ -10,14 +10,14 @@
 //! - Test-only process, git, and fixture bootstrap helpers used by Rust integration suites.
 //!
 //! Usage:
-//! - Prefer `seed_ralph_dir()` when a test needs legacy `.ralph/` runtime fixtures.
-//! - Prefer `seed_git_repo_with_ralph()` when a suite repeatedly needs the same initialized git repo.
+//! - Prefer `seed_cueloop_dir()` when a test needs legacy `.cueloop/` runtime fixtures.
+//! - Prefer `seed_git_repo_with_cueloop()` when a suite repeatedly needs the same initialized git repo.
 //! - Use `run_in_dir()`/`cueloop_command()` for CLI execution and `create_fake_runner()` for fake runner binaries.
 //!
 //! Invariants/assumptions callers must respect:
 //! - Callers that need cross-test PATH isolation must hold `env_lock()` while using `with_prepend_path`.
 //! - Executable fixture helpers mark scripts executable only on Unix hosts.
-//! - `cueloop_init()` invokes the real CLI and may overwrite queue files; tests that need pre-seeded fixtures should call `seed_ralph_dir()` or `seed_git_repo_with_ralph()` instead.
+//! - `cueloop_init()` invokes the real CLI and may overwrite queue files; tests that need pre-seeded fixtures should call `seed_cueloop_dir()` or `seed_git_repo_with_cueloop()` instead.
 
 use anyhow::{Context, Result};
 use cueloop::config::project_runtime_dir;
@@ -31,7 +31,7 @@ const TEST_GIT_USER_EMAIL: &str = "cueloop-tests@example.invalid";
 static CUELOOP_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
 static EMPTY_GIT_CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 static CUELOOP_INIT_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
-static SEEDED_GIT_RALPH_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
+static SEEDED_GIT_CUELOOP_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn resolve_cli_bin(bin_name: &str) -> PathBuf {
     let env_key = format!("CARGO_BIN_EXE_{bin_name}");
@@ -152,15 +152,15 @@ fn cueloop_init_template_dir() -> &'static PathBuf {
     })
 }
 
-fn seeded_git_ralph_template_dir() -> &'static PathBuf {
-    SEEDED_GIT_RALPH_TEMPLATE_DIR.get_or_init(|| {
+fn seeded_git_cueloop_template_dir() -> &'static PathBuf {
+    SEEDED_GIT_CUELOOP_TEMPLATE_DIR.get_or_init(|| {
         let template_dir = tempfile::Builder::new()
-            .prefix("ralph-git-runtime-template.")
+            .prefix("cueloop-git-runtime-template.")
             .tempdir()
             .expect("create cached git + runtime template dir");
         let template_path = template_dir.keep();
         git_init(&template_path).expect("initialize cached git repo");
-        seed_ralph_dir(&template_path).expect("seed cached runtime fixture");
+        seed_cueloop_dir(&template_path).expect("seed cached runtime fixture");
         template_path
     })
 }
@@ -204,7 +204,7 @@ pub fn git_init(dir: &Path) -> Result<()> {
     let gitignore_path = dir.join(".gitignore");
     std::fs::write(
         &gitignore_path,
-        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.ralph/lock\n.ralph/cache/\n.ralph/logs/\n",
+        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n",
     )
     .context("write .gitignore")?;
 
@@ -287,9 +287,9 @@ pub fn cueloop_init_cli(dir: &Path) -> Result<()> {
     run_cueloop_init_cli(dir)
 }
 
-/// Seed legacy `.ralph/` from a cached template while preserving files already written by the test.
-pub fn seed_ralph_dir(dir: &Path) -> Result<()> {
-    let target = dir.join(".ralph");
+/// Seed legacy `.cueloop/` from a cached template while preserving files already written by the test.
+pub fn seed_cueloop_dir(dir: &Path) -> Result<()> {
+    let target = dir.join(".cueloop");
     let template = cueloop_init_template_dir().join(".cueloop");
     copy_dir_recursive_missing_only(&template, &target)
 }
@@ -297,8 +297,8 @@ pub fn seed_ralph_dir(dir: &Path) -> Result<()> {
 /// Seed an empty disposable directory from a cached git repo plus cached legacy runtime scaffold.
 ///
 /// This avoids repeated `git init` subprocesses in command-heavy integration suites.
-pub fn seed_git_repo_with_ralph(dir: &Path) -> Result<()> {
-    copy_dir_recursive_missing_only(seeded_git_ralph_template_dir(), dir)
+pub fn seed_git_repo_with_cueloop(dir: &Path) -> Result<()> {
+    copy_dir_recursive_missing_only(seeded_git_cueloop_template_dir(), dir)
 }
 
 /// Run a closure with a prepended path segment.

@@ -4,7 +4,7 @@
 //! - Automatic startup health checks with auto-fix and migration prompts.
 //!
 //! Responsibilities:
-//! - Run lightweight health checks on Ralph startup for key commands.
+//! - Run lightweight health checks on CueLoop startup for key commands.
 //! - Auto-update README.md when embedded template is newer (no prompt).
 //! - Detect and prompt for config migrations (deprecated keys, unknown keys).
 //! - Support --auto-fix flag to auto-approve all migrations without prompting.
@@ -45,7 +45,7 @@ pub(crate) use migrations::check_and_handle_migrations;
 pub(crate) use readme::check_and_update_readme;
 pub(crate) use unknown_keys::check_unknown_keys;
 
-/// Whether a command should refresh `.ralph/README.md` before execution.
+/// Whether a command should refresh `.cueloop/README.md` before execution.
 ///
 /// This is intentionally broader than full sanity checks so agent-facing commands
 /// always get current project guidance even when migration checks are not run.
@@ -62,7 +62,7 @@ pub fn should_refresh_readme_for_command(command: &crate::cli::Command) -> bool 
     )
 }
 
-/// Refresh `.ralph/README.md` if missing/outdated.
+/// Refresh `.cueloop/README.md` if missing/outdated.
 ///
 /// Returns a user-facing status message when a change was applied.
 pub fn refresh_readme_if_needed(resolved: &Resolved) -> Result<Option<String>> {
@@ -166,7 +166,7 @@ pub fn run_sanity_checks(resolved: &Resolved, options: &SanityOptions) -> Result
                 log::debug!("README is current");
             }
             Err(e) => {
-                return Err(e).context("check/update .ralph/README.md");
+                return Err(e).context("check/update .cueloop/README.md");
             }
         }
     } else {
@@ -182,7 +182,7 @@ pub fn run_sanity_checks(resolved: &Resolved, options: &SanityOptions) -> Result
                 log::debug!("README is current");
             }
             Err(e) => {
-                return Err(e).context("check/read-only .ralph/README.md");
+                return Err(e).context("check/read-only .cueloop/README.md");
             }
         }
     }
@@ -370,44 +370,44 @@ mod tests {
 
     #[test]
     fn should_refresh_readme_for_agent_facing_commands() {
-        let cli = crate::cli::Cli::parse_from(["ralph", "task", "build", "x"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "task", "build", "x"]);
         assert!(should_refresh_readme_for_command(&cli.command));
 
-        let cli = crate::cli::Cli::parse_from(["ralph", "scan", "--focus", "x"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "scan", "--focus", "x"]);
         assert!(should_refresh_readme_for_command(&cli.command));
 
-        let cli = crate::cli::Cli::parse_from(["ralph", "run", "one", "--id", "RQ-0001"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]);
         assert!(should_refresh_readme_for_command(&cli.command));
 
         let cli =
-            crate::cli::Cli::parse_from(["ralph", "prompt", "task-builder", "--request", "x"]);
+            crate::cli::Cli::parse_from(["cueloop", "prompt", "task-builder", "--request", "x"]);
         assert!(should_refresh_readme_for_command(&cli.command));
     }
 
     #[test]
     fn should_not_refresh_readme_for_non_agent_commands() {
-        let cli = crate::cli::Cli::parse_from(["ralph", "queue", "list"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "queue", "list"]);
         assert!(!should_refresh_readme_for_command(&cli.command));
 
-        let cli = crate::cli::Cli::parse_from(["ralph", "version"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "version"]);
         assert!(!should_refresh_readme_for_command(&cli.command));
 
-        let cli = crate::cli::Cli::parse_from(["ralph", "completions", "bash"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "completions", "bash"]);
         assert!(!should_refresh_readme_for_command(&cli.command));
     }
 
     #[test]
     fn startup_sanity_mode_classifies_commands() {
-        let cli = crate::cli::Cli::parse_from(["ralph", "run", "one", "--id", "RQ-0001"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]);
         assert_eq!(
             startup_sanity_mode(&cli.command),
             StartupSanityMode::Mutating
         );
 
-        let cli = crate::cli::Cli::parse_from(["ralph", "queue", "validate"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "queue", "validate"]);
         assert_eq!(startup_sanity_mode(&cli.command), StartupSanityMode::None);
 
-        let cli = crate::cli::Cli::parse_from(["ralph", "queue", "list"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "queue", "list"]);
         assert_eq!(startup_sanity_mode(&cli.command), StartupSanityMode::None);
     }
 }

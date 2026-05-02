@@ -45,7 +45,7 @@ pub(crate) struct RunnerPlugin {
     /// Path to runner executable, relative to the plugin directory.
     pub bin: String,
 
-    /// If false or omitted, `resume` will be rejected by Ralph for this runner.
+    /// If false or omitted, `resume` will be rejected by CueLoop for this runner.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_resume: Option<bool>,
 

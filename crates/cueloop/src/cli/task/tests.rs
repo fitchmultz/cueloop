@@ -14,7 +14,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/Assumptions:
-//! - Keep behavior aligned with Ralph's canonical CLI, machine-contract, and queue semantics.
+//! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use clap::{CommandFactory, Parser};
 
@@ -53,8 +53,10 @@ fn task_show_help_mentions_examples() {
 
 #[test]
 fn task_details_alias_parses() {
-    let cli = Cli::try_parse_from(["ralph", "task", "details", "RQ-0001", "--format", "compact"])
-        .expect("parse");
+    let cli = Cli::try_parse_from([
+        "cueloop", "task", "details", "RQ-0001", "--format", "compact",
+    ])
+    .expect("parse");
 
     match cli.command {
         crate::cli::Command::Task(args) => match args.command {
@@ -71,7 +73,7 @@ fn task_details_alias_parses() {
 #[test]
 fn task_build_parses_repo_prompt_and_runner_cli_overrides() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "build",
         "--repo-prompt",
@@ -103,7 +105,7 @@ fn task_build_parses_repo_prompt_and_runner_cli_overrides() {
 #[test]
 fn task_decompose_parses_preview_runner_overrides_and_limits() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "decompose",
         "--preview",
@@ -175,7 +177,7 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
 #[test]
 fn task_decompose_parses_from_file_with_existing_flags() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "decompose",
         "--from-file",
@@ -209,7 +211,7 @@ fn task_decompose_parses_from_file_with_existing_flags() {
 #[test]
 fn machine_task_decompose_parses_from_file_and_write() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "machine",
         "task",
         "decompose",
@@ -264,7 +266,7 @@ fn task_decompose_help_mentions_write_and_attach_examples() {
 #[test]
 fn task_followups_apply_parses_source_input_dry_run_and_format() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "followups",
         "apply",
@@ -300,7 +302,7 @@ fn task_followups_apply_parses_source_input_dry_run_and_format() {
 #[test]
 fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "update",
         "--dry-run",
@@ -331,7 +333,7 @@ fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
     }
 
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "edit",
         "--dry-run",
@@ -357,7 +359,7 @@ fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
 
 #[test]
 fn task_refactor_aliases_parse() {
-    let cli = Cli::try_parse_from(["ralph", "task", "ref", "--threshold", "800"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "ref", "--threshold", "800"]).expect("parse");
     match cli.command {
         crate::cli::Command::Task(args) => match args.command {
             Some(crate::cli::task::TaskCommand::Refactor(args)) => assert_eq!(args.threshold, 800),
@@ -366,7 +368,7 @@ fn task_refactor_aliases_parse() {
         _ => panic!("expected task command"),
     }
 
-    let cli = Cli::try_parse_from(["ralph", "task", "build-refactor", "--threshold", "700"])
+    let cli = Cli::try_parse_from(["cueloop", "task", "build-refactor", "--threshold", "700"])
         .expect("parse");
     match cli.command {
         crate::cli::Command::Task(args) => match args.command {
@@ -382,7 +384,7 @@ fn task_refactor_aliases_parse() {
 #[test]
 fn task_clone_parses_flags_and_help_examples() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "clone",
         "--status",
@@ -421,7 +423,7 @@ fn task_clone_parses_flags_and_help_examples() {
 #[test]
 fn task_batch_parses_status_and_edit_modes() {
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "batch",
         "--continue-on-error",
@@ -449,7 +451,7 @@ fn task_batch_parses_status_and_edit_modes() {
     }
 
     let cli = Cli::try_parse_from([
-        "ralph",
+        "cueloop",
         "task",
         "batch",
         "--dry-run",

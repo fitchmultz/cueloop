@@ -20,7 +20,7 @@ Task status is already `doing`; leave it unchanged.
 - Implement the plan, adapting only where repo reality requires it.
 - Resolve follow-ups, inconsistencies, missing tests, and suspicious leads in Phase 2 when they are in scope.
 - Leave the working tree ready for Phase 3 review.
-- If independent follow-up work remains, write or mention `.ralph/cache/followups/{{TASK_ID}}.json` for Phase 3/coordinator handling.
+- If independent follow-up work remains, write or mention `.cueloop/cache/followups/{{TASK_ID}}.json` for Phase 3/coordinator handling.
 
 # Handoff Output Contract
 End with a concise handoff summary:
