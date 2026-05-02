@@ -157,3 +157,7 @@ include mk/repo-safety.mk
 include mk/ci.mk
 include mk/macos.mk
 include mk/coverage.mk
+
+.PHONY: cutover-check
+cutover-check:
+	@scripts/check-cueloop-cutover.sh --enforce
