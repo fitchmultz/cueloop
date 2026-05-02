@@ -27,6 +27,6 @@ import SwiftUI
 enum SettingsWindowIdentity {
     static let sceneID = "settings"
     static let windowIdentifier = "com.mitchfultz.cueloop.settings-window"
-    static let legacyWindowIdentifier = "com_apple_SwiftUI_Settings_window"
+    static let swiftUISettingsWindowIdentifier = "com_apple_SwiftUI_Settings_window"
     static let title = "Settings"
 }

@@ -115,32 +115,6 @@ public extension WorkspaceManager {
         workspaceBootstrapRevisions[workspaceID] = (workspaceBootstrapRevisions[workspaceID] ?? 0) &+ 1
     }
 
-    func migrateLegacyStateIfNeeded() {
-        let defaults = CueLoopAppDefaults.userDefaults
-        let migratedKey = "com.mitchfultz.cueloop.legacyMigrated"
-
-        guard !defaults.bool(forKey: migratedKey) else { return }
-
-        if let legacyPath = defaults.string(forKey: "com.mitchfultz.cueloop.workingDirectoryPath") {
-            let url = URL(fileURLWithPath: legacyPath, isDirectory: true)
-            if FileManager.default.fileExists(atPath: url.path) {
-                let workspace = createWorkspace(workingDirectory: url)
-
-                if let legacyRecents = defaults.array(forKey: "com.mitchfultz.cueloop.recentWorkingDirectoryPaths") as? [String] {
-                    let recents = legacyRecents
-                        .map { URL(fileURLWithPath: $0, isDirectory: true) }
-                        .filter { url in
-                            var isDir: ObjCBool = false
-                            return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) && isDir.boolValue
-                        }
-                    workspace.identityState.recentWorkingDirectories = recents
-                }
-            }
-
-            defaults.set(true, forKey: migratedKey)
-        }
-    }
-
     func cleanWorkspaceDefaults(_ workspaceID: UUID) {
         let prefix = "com.mitchfultz.cueloop.workspace.\(workspaceID.uuidString)."
         let defaults = CueLoopAppDefaults.userDefaults

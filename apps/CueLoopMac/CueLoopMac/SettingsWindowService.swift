@@ -66,7 +66,7 @@ final class SettingsWindowService: NSObject, NSWindowDelegate {
     func isSettingsWindow(_ window: NSWindow) -> Bool {
         guard let rawIdentifier = window.identifier?.rawValue else { return false }
         return rawIdentifier == SettingsWindowIdentity.windowIdentifier
-            || rawIdentifier == SettingsWindowIdentity.legacyWindowIdentifier
+            || rawIdentifier == SettingsWindowIdentity.swiftUISettingsWindowIdentifier
     }
 
     func windowWillClose(_ notification: Notification) {

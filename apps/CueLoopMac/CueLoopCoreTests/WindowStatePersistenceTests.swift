@@ -142,7 +142,7 @@ final class WindowStatePersistenceTests: WindowStateTestCase {
         let data = """
             {
               "name": "Legacy",
-              "workingDirectoryURL": "file:///tmp/cueloop-legacy/",
+              "workingDirectoryURL": "file:///tmp/cueloop-old/",
               "recentWorkingDirectories": []
             }
             """.data(using: .utf8)!
@@ -150,7 +150,7 @@ final class WindowStatePersistenceTests: WindowStateTestCase {
         let snapshot = try JSONDecoder().decode(CueLoopWorkspaceDefaultsSnapshot.self, from: data)
 
         XCTAssertEqual(snapshot.name, "Legacy")
-        XCTAssertEqual(snapshot.workingDirectoryURL.path, "/tmp/cueloop-legacy")
+        XCTAssertEqual(snapshot.workingDirectoryURL.path, "/tmp/cueloop-old")
         XCTAssertNil(snapshot.workingDirectoryBookmarkData)
         XCTAssertNil(snapshot.recentWorkingDirectoryBookmarks)
     }

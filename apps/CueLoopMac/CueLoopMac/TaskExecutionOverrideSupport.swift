@@ -29,8 +29,8 @@ enum TaskExecutionOverrideSupport {
         var id: String { value }
     }
 
-    private static let legacyRunnerOptions = ["codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi"]
-    private static let legacyEffortOptions = ["low", "medium", "high", "xhigh"]
+    private static let builtInRunnerOptions = ["codex", "opencode", "gemini", "claude", "cursor", "kimi", "pi"]
+    private static let builtInEffortOptions = ["low", "medium", "high", "xhigh"]
 
     static func normalizedRunnerName(_ value: String?) -> String? {
         guard let value else { return nil }
@@ -54,7 +54,7 @@ enum TaskExecutionOverrideSupport {
                 title: runnerMenuTitle(for: runner),
                 isConfiguredFallback: false
             )
-        } ?? legacyRunnerOptions.map {
+        } ?? builtInRunnerOptions.map {
             ExecutionMenuOption(value: $0, title: $0, isConfiguredFallback: false)
         }
 
@@ -71,7 +71,7 @@ enum TaskExecutionOverrideSupport {
     ) -> [ExecutionMenuOption] {
         let options = controls?.reasoningEfforts.map {
             ExecutionMenuOption(value: $0, title: $0, isConfiguredFallback: false)
-        } ?? legacyEffortOptions.map {
+        } ?? builtInEffortOptions.map {
             ExecutionMenuOption(value: $0, title: $0, isConfiguredFallback: false)
         }
 

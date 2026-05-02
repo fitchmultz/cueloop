@@ -2,10 +2,10 @@
  CueLoopMacApp+URLRouting
 
  Purpose:
- - Handle incoming `cueloop://open` and legacy `cueloop://open` URLs and route or create workspaces.
+ - Handle incoming `cueloop://open` URLs and route or create workspaces.
 
  Responsibilities:
- - Handle incoming `cueloop://open` and legacy `cueloop://open` URLs and route or create workspaces.
+ - Handle incoming `cueloop://open` URLs and route or create workspaces.
  - Reuse bootstrap workspaces when the app launches into a placeholder workspace.
 
  Does not handle:
@@ -16,7 +16,7 @@
  - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - `cueloop://open?workspace=...` is the primary URL form; `cueloop://open?...` remains supported as a legacy alias.
+ - `cueloop://open?workspace=...` is the URL form.
  - URL-provided CLI overrides are always rejected.
  */
 
@@ -64,7 +64,7 @@ enum CueLoopURLRouter {
     }
 
     private static func isSupportedScheme(_ scheme: String?) -> Bool {
-        scheme == "cueloop" || scheme == "cueloop"
+        scheme == "cueloop"
     }
 
     static func openWorkspace(at rawWorkspaceURL: URL) {
