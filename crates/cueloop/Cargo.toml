@@ -21,10 +21,6 @@ path = "src/lib.rs"
 name = "cueloop"
 path = "src/bin/cueloop.rs"
 
-[[bin]]
-name = "ralph"
-path = "src/bin/ralph.rs"
-
 [dependencies]
 anyhow = "1.0.102"
 clap = { version = "4.6.1", features = ["derive"] }

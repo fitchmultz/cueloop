@@ -49,7 +49,7 @@ fn config_paths_ignores_repo_root_override_env() -> Result<()> {
     let workspace = test_support::temp_dir_outside_repo();
     test_support::git_init(workspace.path())?;
 
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(workspace.path())
         .env_remove("RUST_LOG")
         .env("RALPH_REPO_ROOT_OVERRIDE", parent.path())
@@ -83,7 +83,7 @@ fn config_paths_ignores_queue_and_done_override_env() -> Result<()> {
     let workspace = test_support::temp_dir_outside_repo();
     test_support::git_init(workspace.path())?;
 
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(workspace.path())
         .env_remove("RUST_LOG")
         .env(
@@ -131,7 +131,7 @@ fn queue_stop_writes_stop_signal_in_cwd_repo_even_with_override_env() -> Result<
     let workspace = test_support::temp_dir_outside_repo();
     test_support::git_init(workspace.path())?;
 
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(workspace.path())
         .env_remove("RUST_LOG")
         .env("RALPH_REPO_ROOT_OVERRIDE", parent.path())

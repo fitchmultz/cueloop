@@ -15,8 +15,8 @@
 //! Invariants/Assumptions:
 //! - Test grouping must preserve the existing exact-path rejection assertions.
 
-#[path = "pre_public_check_contracts_tracked_paths/ralph_exact_paths.rs"]
-mod ralph_exact_paths;
+#[path = "pre_public_check_contracts_tracked_paths/cueloop_exact_paths.rs"]
+mod cueloop_exact_paths;
 
 #[path = "pre_public_check_contracts_tracked_paths/runtime_exact_paths.rs"]
 mod runtime_exact_paths;

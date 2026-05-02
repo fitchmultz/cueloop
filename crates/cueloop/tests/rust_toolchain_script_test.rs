@@ -105,7 +105,7 @@ fn rust_toolchain_script_fails_when_crate_rust_version_drifts() {
     let fixture = temp_repo.path();
 
     copy_repo_file(&repo_root, fixture, "scripts/check-rust-toolchain.sh");
-    copy_repo_file(&repo_root, fixture, "scripts/lib/ralph-shell.sh");
+    copy_repo_file(&repo_root, fixture, "scripts/lib/cueloop-shell.sh");
     write_file(
         &fixture.join("rust-toolchain.toml"),
         "[toolchain]\nchannel = \"1.95.0\"\ncomponents = [\"rustfmt\", \"clippy\"]\nprofile = \"minimal\"\n",

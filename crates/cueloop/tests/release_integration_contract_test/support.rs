@@ -21,7 +21,7 @@ use std::process::{Command, Output};
 
 const PRE_PUBLIC_CHECK_FIXTURE_FILES: &[&str] = &[
     "scripts/pre-public-check.sh",
-    "scripts/lib/ralph-shell.sh",
+    "scripts/lib/cueloop-shell.sh",
     "scripts/lib/release_policy.sh",
     "scripts/lib/public_readiness_scan.sh",
     "scripts/lib/public_readiness_scan.py",
@@ -69,7 +69,7 @@ pub(crate) fn copy_public_readiness_scan_fixture(destination_root: &Path) {
             "scripts/lib/public_readiness_scan.sh",
             "scripts/lib/public_readiness_scan.py",
             "scripts/lib/release_policy.sh",
-            "scripts/lib/ralph-shell.sh",
+            "scripts/lib/cueloop-shell.sh",
         ],
     );
 }

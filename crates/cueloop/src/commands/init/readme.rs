@@ -50,7 +50,7 @@ pub enum ReadmeVersionError {
 
 const DEFAULT_RALPH_README: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/assets/ralph_readme.md"
+    "/assets/cueloop_readme.md"
 ));
 
 const RUNTIME_DIR_PLACEHOLDER: &str = "{{RUNTIME_DIR}}";

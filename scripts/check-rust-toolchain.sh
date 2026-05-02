@@ -19,8 +19,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=scripts/lib/ralph-shell.sh
-source "$SCRIPT_DIR/lib/ralph-shell.sh"
+# shellcheck source=scripts/lib/cueloop-shell.sh
+source "$SCRIPT_DIR/lib/cueloop-shell.sh"
 REPO_ROOT="$(cueloop_repo_root)"
 
 FAIL_ON_GLOBAL_STABLE_DRIFT=0

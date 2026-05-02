@@ -74,7 +74,7 @@ fn agent_ci_succeeds_outside_git_via_source_snapshot_safety_mode() {
             "scripts/cueloop-cli-bundle.sh",
             "scripts/pre-public-check.sh",
             "scripts/check-rust-toolchain.sh",
-            "scripts/lib/ralph-shell.sh",
+            "scripts/lib/cueloop-shell.sh",
             "scripts/lib/release_policy.sh",
             "scripts/lib/public_readiness_scan.sh",
             "scripts/lib/public_readiness_scan.py",

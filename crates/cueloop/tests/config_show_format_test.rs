@@ -60,7 +60,7 @@ fn config_show_default_outputs_yaml() {
     let xdg_config_home = dir.path().join(".xdg_config");
     std::fs::create_dir_all(&xdg_config_home).expect("create xdg config dir");
 
-    let output = std::process::Command::new(test_support::ralph_bin())
+    let output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)
@@ -95,7 +95,7 @@ fn config_show_format_json_outputs_valid_json() {
     let xdg_config_home = dir.path().join(".xdg_config");
     std::fs::create_dir_all(&xdg_config_home).expect("create xdg config dir");
 
-    let output = std::process::Command::new(test_support::ralph_bin())
+    let output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)
@@ -128,7 +128,7 @@ fn config_show_format_yaml_outputs_valid_yaml() {
     let xdg_config_home = dir.path().join(".xdg_config");
     std::fs::create_dir_all(&xdg_config_home).expect("create xdg config dir");
 
-    let output = std::process::Command::new(test_support::ralph_bin())
+    let output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)
@@ -162,7 +162,7 @@ fn config_show_yaml_and_json_have_same_top_level_keys() {
     std::fs::create_dir_all(&xdg_config_home).expect("create xdg config dir");
 
     // Get YAML output
-    let yaml_output = std::process::Command::new(test_support::ralph_bin())
+    let yaml_output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)
@@ -179,7 +179,7 @@ fn config_show_yaml_and_json_have_same_top_level_keys() {
     let yaml_v: JsonValue = serde_yaml::from_str(&yaml_stdout).expect("yaml output should parse");
 
     // Get JSON output
-    let json_output = std::process::Command::new(test_support::ralph_bin())
+    let json_output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)
@@ -221,7 +221,7 @@ fn config_show_invalid_format_fails_with_error() {
     let xdg_config_home = dir.path().join(".xdg_config");
     std::fs::create_dir_all(&xdg_config_home).expect("create xdg config dir");
 
-    let output = std::process::Command::new(test_support::ralph_bin())
+    let output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)
@@ -258,7 +258,7 @@ fn config_show_text_alias_works_for_yaml() {
     std::fs::create_dir_all(&xdg_config_home).expect("create xdg config dir");
 
     // Test "text" alias for yaml (for backward compatibility)
-    let output = std::process::Command::new(test_support::ralph_bin())
+    let output = std::process::Command::new(test_support::cueloop_bin())
         .current_dir(&dir)
         .env_remove("RUST_LOG")
         .env("XDG_CONFIG_HOME", &xdg_config_home)

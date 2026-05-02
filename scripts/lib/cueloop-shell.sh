@@ -8,7 +8,7 @@
 # Scope:
 # - Common shell behavior only; release/public-readiness policy lives elsewhere.
 # Usage:
-# - source "$(dirname "$0")/lib/ralph-shell.sh"
+# - source "$(dirname "$0")/lib/cueloop-shell.sh"
 # Invariants/assumptions:
 # - Caller defines SCRIPT_DIR before sourcing this file.
 # - Scripts source this helper from within the CueLoop/Ralph repository.

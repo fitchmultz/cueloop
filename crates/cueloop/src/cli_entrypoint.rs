@@ -1,7 +1,7 @@
 //! Shared CueLoop CLI entrypoint and command routing.
 //!
 //! Purpose:
-//! - Shared entrypoint and command routing for the primary `cueloop` binary and legacy `ralph` alias.
+//! - Shared entrypoint and command routing for the `cueloop` binary.
 //!
 //! Responsibilities:
 //! - Load environment defaults, parse CLI args, and dispatch to command handlers.

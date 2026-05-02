@@ -16,7 +16,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/ralph-shell.sh"
+source "$SCRIPT_DIR/lib/cueloop-shell.sh"
 REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/versioning.sh"
 
@@ -58,7 +58,7 @@ build_native_release_artifact() {
     local tarball_name="cueloop-${version}-${platform_name}.tar.gz"
 
     mkdir -p "$RELEASE_ARTIFACTS_DIR"
-    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
+    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop
     (
         cd "$RELEASE_ARTIFACTS_DIR"
         cueloop_sha256_file "$tarball_name" > "$tarball_name.sha256"
@@ -78,7 +78,7 @@ build_cross_target() {
     else
         binary_path=$("$SCRIPT_DIR/cueloop-cli-bundle.sh" --configuration Release --target "$target" --print-path)
     fi
-    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
+    tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop
     (
         cd "$RELEASE_ARTIFACTS_DIR"
         cueloop_sha256_file "$tarball_name" > "$tarball_name.sha256"

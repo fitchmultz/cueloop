@@ -31,7 +31,7 @@ fn no_warning_when_env_file_missing() {
     test_support::seed_ralph_dir(temp_dir.path()).expect("init should succeed");
 
     // Run ralph --help from the temp dir (no .env file exists)
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(temp_dir.path())
         .args(["--help"])
         .output()
@@ -64,7 +64,7 @@ VALID_KEY=valid_value
     std::fs::write(temp_dir.path().join(".env"), env_content).expect("write invalid .env file");
 
     // Run ralph --help from the temp dir (invalid .env file exists)
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(temp_dir.path())
         .args(["--help"])
         .output()
@@ -97,7 +97,7 @@ fn no_warning_when_env_file_empty() {
     std::fs::write(temp_dir.path().join(".env"), "").expect("write empty .env file");
 
     // Run ralph --help from the temp dir
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(temp_dir.path())
         .args(["--help"])
         .output()
@@ -132,7 +132,7 @@ ANOTHER_VAR=another_value
     std::fs::write(temp_dir.path().join(".env"), env_content).expect("write valid .env file");
 
     // Run ralph --help from the temp dir
-    let output = Command::new(test_support::ralph_bin())
+    let output = Command::new(test_support::cueloop_bin())
         .current_dir(temp_dir.path())
         .args(["--help"])
         .output()

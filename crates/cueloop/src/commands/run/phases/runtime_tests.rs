@@ -244,11 +244,11 @@ fn trust_repo(repo_root: &Path) -> Result<()> {
 
 #[path = "runtime_tests/ci_gate.rs"]
 mod ci_gate;
+#[path = "runtime_tests/phase1_cueloop_paths.rs"]
+mod phase1_cueloop_paths;
 #[path = "runtime_tests/phase1_followup.rs"]
 mod phase1_followup;
 #[path = "runtime_tests/phase1_guardrails.rs"]
 mod phase1_guardrails;
-#[path = "runtime_tests/phase1_ralph_paths.rs"]
-mod phase1_ralph_paths;
 #[path = "runtime_tests/phase3.rs"]
 mod phase3;

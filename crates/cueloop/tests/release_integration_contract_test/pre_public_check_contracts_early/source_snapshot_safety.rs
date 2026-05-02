@@ -18,5 +18,5 @@
 #[path = "source_snapshot_safety/runtime_artifacts.rs"]
 mod runtime_artifacts;
 
-#[path = "source_snapshot_safety/ralph_paths.rs"]
-mod ralph_paths;
+#[path = "source_snapshot_safety/cueloop_paths.rs"]
+mod cueloop_paths;

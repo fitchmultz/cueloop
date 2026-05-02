@@ -26,7 +26,7 @@ fn pre_public_check_rejects_dirty_allowlisted_ralph_readme() {
 
     for relative_path in [
         "scripts/pre-public-check.sh",
-        "scripts/lib/ralph-shell.sh",
+        "scripts/lib/cueloop-shell.sh",
         "scripts/lib/release_policy.sh",
         "scripts/lib/public_readiness_scan.sh",
         "scripts/lib/public_readiness_scan.py",
@@ -107,7 +107,7 @@ fn pre_public_check_rejects_trust_file_siblings_in_cleanliness_checks() {
 
     for relative_path in [
         "scripts/pre-public-check.sh",
-        "scripts/lib/ralph-shell.sh",
+        "scripts/lib/cueloop-shell.sh",
         "scripts/lib/release_policy.sh",
         "scripts/lib/public_readiness_scan.sh",
         "scripts/lib/public_readiness_scan.py",
@@ -200,7 +200,7 @@ fn pre_public_check_rejects_symlinked_allowlisted_ralph_files() {
 
     for relative_path in [
         "scripts/pre-public-check.sh",
-        "scripts/lib/ralph-shell.sh",
+        "scripts/lib/cueloop-shell.sh",
         "scripts/lib/release_policy.sh",
         "scripts/lib/public_readiness_scan.sh",
         "scripts/lib/public_readiness_scan.py",

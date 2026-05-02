@@ -23,7 +23,7 @@ set -euo pipefail
 
 LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_DIR="$(cd "$LIB_DIR/.." && pwd)"
-source "$SCRIPT_DIR/lib/ralph-shell.sh"
+source "$SCRIPT_DIR/lib/cueloop-shell.sh"
 REPO_ROOT="$(cueloop_repo_root)"
 source "$SCRIPT_DIR/lib/release_policy.sh"
 

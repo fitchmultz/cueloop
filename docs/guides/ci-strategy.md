@@ -52,8 +52,8 @@ Optional environment (see `make help`):
 ### Release build stamp and bundling
 
 - The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, `scripts/cueloop-cli-bundle.sh`, or tracked Rust sources under `crates/**` are newer than the stamp (no unconditional `FORCE` rebuild).
-- `install` copies from `target/release/ralph` after the stamp recipe runs, avoiding a second `ralph-cli-bundle.sh` invocation in the same gate.
-- Xcode’s “Build and Bundle ralph” phase copies `target/release/ralph` into the app bundle for **Release** when that binary already exists; otherwise it falls back to `ralph-cli-bundle.sh` (for example Debug builds or cold Xcode-only builds).
+- `install` copies from `target/release/cueloop` after the stamp recipe runs, avoiding a second `cueloop-cli-bundle.sh` invocation in the same gate.
+- Xcode’s “Build and Bundle CueLoop” phase copies `target/release/cueloop` into the app bundle for **Release** when that binary already exists; otherwise it falls back to `cueloop-cli-bundle.sh` (for example Debug builds or cold Xcode-only builds).
 
 ### Cleaning `target/tmp`
 
