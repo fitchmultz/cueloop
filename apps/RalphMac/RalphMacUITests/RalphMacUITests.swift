@@ -74,6 +74,7 @@ class RalphMacUITestCase: XCTestCase {
 
     enum LaunchEnvironment {
         static let uiTestWorkspacePath = "RALPH_UI_TEST_WORKSPACE_PATH"
+        static let cueloopBinPath = "CUELOOP_BIN_PATH"
         static let ralphBinPath = "RALPH_BIN_PATH"
     }
 

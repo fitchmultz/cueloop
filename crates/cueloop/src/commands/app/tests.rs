@@ -26,7 +26,7 @@ use super::launch_plan::{
     env_assignment_for_path, installed_app_candidates_for_home, plan_open_command,
     plan_open_command_with_installed_path,
 };
-use super::model::{DEFAULT_APP_NAME, GUI_CLI_BIN_ENV, OpenCommandSpec};
+use super::model::{DEFAULT_APP_NAME, GUI_CLI_BIN_ENV, LEGACY_GUI_CLI_BIN_ENV, OpenCommandSpec};
 use super::runtime::execute_launch_command;
 use super::url_plan::{
     percent_encode, percent_encode_path, plan_url_command_with_installed_path,
@@ -243,11 +243,16 @@ fn plan_open_command_includes_cli_env_when_provided() -> anyhow::Result<()> {
 
     let spec = plan_open_command(true, &args, Some(&cli))?;
     assert_eq!(spec.program, OsString::from("open"));
-    assert!(spec.args.len() >= 4);
+    assert!(spec.args.len() >= 6);
     assert_eq!(spec.args[0], OsString::from("--env"));
-    assert_eq!(spec.args[1], env_assignment_for_path(&cli));
+    assert_eq!(spec.args[1], env_assignment_for_path(GUI_CLI_BIN_ENV, &cli));
+    assert_eq!(spec.args[2], OsString::from("--env"));
+    assert_eq!(
+        spec.args[3],
+        env_assignment_for_path(LEGACY_GUI_CLI_BIN_ENV, &cli)
+    );
     assert!(
-        spec.args[2] == "-a" || spec.args[2] == "-b",
+        spec.args[4] == "-a" || spec.args[4] == "-b",
         "unexpected launch args: {:?}",
         spec.args
     );
@@ -343,11 +348,16 @@ fn plan_url_command_includes_cli_env_when_provided() -> anyhow::Result<()> {
 
     assert_eq!(spec.program, OsString::from("open"));
     assert_eq!(spec.args[0], OsString::from("--env"));
-    assert_eq!(spec.args[1], env_assignment_for_path(&cli));
-    assert_eq!(spec.args[2], OsString::from("-b"));
-    assert_eq!(spec.args[3], OsString::from("com.example.override"));
+    assert_eq!(spec.args[1], env_assignment_for_path(GUI_CLI_BIN_ENV, &cli));
+    assert_eq!(spec.args[2], OsString::from("--env"));
+    assert_eq!(
+        spec.args[3],
+        env_assignment_for_path(LEGACY_GUI_CLI_BIN_ENV, &cli)
+    );
+    assert_eq!(spec.args[4], OsString::from("-b"));
+    assert_eq!(spec.args[5], OsString::from("com.example.override"));
     assert!(
-        spec.args[4]
+        spec.args[6]
             .to_string_lossy()
             .starts_with("cueloop://open?workspace=")
     );
@@ -357,7 +367,7 @@ fn plan_url_command_includes_cli_env_when_provided() -> anyhow::Result<()> {
 #[test]
 fn env_assignment_prefixes_variable_name() {
     let cli = crate::testsupport::path::portable_abs_path("ralph");
-    let assignment = env_assignment_for_path(&cli);
+    let assignment = env_assignment_for_path(GUI_CLI_BIN_ENV, &cli);
     let text = assignment.to_string_lossy();
     assert!(text.starts_with(&format!("{GUI_CLI_BIN_ENV}=")));
     assert!(text.ends_with(&*cli.to_string_lossy()));

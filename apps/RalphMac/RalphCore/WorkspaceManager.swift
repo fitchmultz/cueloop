@@ -43,7 +43,8 @@ struct PendingWorkspaceReveal {
 @MainActor
 public final class WorkspaceManager: ObservableObject {
     public static let shared = WorkspaceManager()
-    public static let cliBinaryOverrideEnvKey = "RALPH_BIN_PATH"
+    public static let cliBinaryOverrideEnvKey = "CUELOOP_BIN_PATH"
+    public static let legacyCLIBinaryOverrideEnvKey = "RALPH_BIN_PATH"
 
     @Published public internal(set) var workspaces: [Workspace] = []
     @Published public var errorMessage: String?

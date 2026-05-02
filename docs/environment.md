@@ -18,19 +18,19 @@ Purpose: List environment variables recognized by CueLoop and how they affect be
 
 ## Variables
 
-- `RALPH_RAW_DUMP`: `1` or `true`. Opt-in to raw (non-redacted) safeguard dumps when set to `1` or `true`.
+- `CUELOOP_RAW_DUMP`: `1` or `true`. Opt-in to raw (non-redacted) safeguard dumps when set to `1` or `true`. Legacy `RALPH_RAW_DUMP` remains accepted.
 
   **Security Warning**: Raw dumps may contain secrets (API keys, tokens, credentials). Only enable when necessary for debugging. Prefer redacted dumps (the default) for sharing error reports.
 
   Example:
 
   ```bash
-  RALPH_RAW_DUMP=1 cueloop run one
+  CUELOOP_RAW_DUMP=1 cueloop run one
   ```
 
 ## Examples
 
 ```bash
 # Enable raw safeguard dumps (use with caution)
-RALPH_RAW_DUMP=1
+CUELOOP_RAW_DUMP=1
 ```

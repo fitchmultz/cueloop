@@ -15,7 +15,7 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - A deterministic `cueloop` binary is available via `RALPH_BIN_PATH` or the bundled app binary.
+ - A deterministic `cueloop` binary is available via `CUELOOP_BIN_PATH`, legacy `RALPH_BIN_PATH`, or the bundled app binary.
  */
 
 import Foundation
@@ -66,15 +66,17 @@ enum WorkspaceTaskCreationTestSupport {
         try FileManager.default.removeItem(at: url)
     }
 
+    private static let binaryPathEnvKey = "CUELOOP_BIN_PATH"
+    private static let legacyBinaryPathEnvKey = "RALPH_BIN_PATH"
+
     static func resolveRalphBinaryURL() throws -> URL {
-        if let override = ProcessInfo.processInfo.environment["RALPH_BIN_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
+        if let override = binaryPathOverride(from: ProcessInfo.processInfo.environment), !override.isEmpty {
             let overrideURL = URL(fileURLWithPath: override)
             guard FileManager.default.isExecutableFile(atPath: overrideURL.path) else {
                 throw NSError(
                     domain: "WorkspaceTaskCreationTests",
                     code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "RALPH_BIN_PATH points to a non-executable path: \(overrideURL.path)"]
+                    userInfo: [NSLocalizedDescriptionKey: "CUELOOP_BIN_PATH points to a non-executable path: \(overrideURL.path)"]
                 )
             }
             return overrideURL
@@ -97,6 +99,13 @@ enum WorkspaceTaskCreationTestSupport {
             code: 2,
             userInfo: [NSLocalizedDescriptionKey: "Failed to locate a usable cueloop binary for WorkspaceTaskCreationTests"]
         )
+    }
+
+    private static func binaryPathOverride(from environment: [String: String]) -> String? {
+        if let override = environment[binaryPathEnvKey]?.trimmingCharacters(in: .whitespacesAndNewlines), !override.isEmpty {
+            return override
+        }
+        return environment[legacyBinaryPathEnvKey]?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func makeTempDir(prefix: String) throws -> URL {

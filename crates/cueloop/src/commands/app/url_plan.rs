@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 use crate::cli::app::AppOpenArgs;
 
 use super::launch_plan::{
-    append_open_launch_target_args, default_installed_app_path, env_assignment_for_path,
+    append_cli_env_args, append_open_launch_target_args, default_installed_app_path,
     resolve_launch_target,
 };
 use super::model::OpenCommandSpec;
@@ -56,10 +56,7 @@ pub(super) fn plan_url_command_with_installed_path(
     let launch_target = resolve_launch_target(args, installed_app_path)?;
 
     let mut args_out: Vec<OsString> = Vec::new();
-    if let Some(cli_executable) = cli_executable {
-        args_out.push(OsString::from("--env"));
-        args_out.push(env_assignment_for_path(cli_executable));
-    }
+    append_cli_env_args(&mut args_out, cli_executable);
     append_open_launch_target_args(&mut args_out, &launch_target);
     args_out.push(OsString::from(url));
 

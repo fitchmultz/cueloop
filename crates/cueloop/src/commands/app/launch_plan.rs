@@ -25,7 +25,8 @@ use std::path::{Path, PathBuf};
 use crate::cli::app::AppOpenArgs;
 
 use super::model::{
-    DEFAULT_APP_NAME, DEFAULT_BUNDLE_ID, GUI_CLI_BIN_ENV, LaunchTarget, OpenCommandSpec,
+    DEFAULT_APP_NAME, DEFAULT_BUNDLE_ID, GUI_CLI_BIN_ENV, LEGACY_GUI_CLI_BIN_ENV, LaunchTarget,
+    OpenCommandSpec,
 };
 
 pub(super) fn plan_open_command(
@@ -56,10 +57,7 @@ pub(super) fn plan_open_command_with_installed_path(
     }
 
     let mut args_out: Vec<OsString> = Vec::new();
-    if let Some(cli_executable) = cli_executable {
-        args_out.push(OsString::from("--env"));
-        args_out.push(env_assignment_for_path(cli_executable));
-    }
+    append_cli_env_args(&mut args_out, cli_executable);
 
     let launch_target = resolve_launch_target(args, installed_app_path)?;
     append_open_launch_target_args(&mut args_out, &launch_target);
@@ -135,18 +133,28 @@ pub(super) fn current_executable_for_gui() -> Option<PathBuf> {
     if exe.exists() { Some(exe) } else { None }
 }
 
+pub(super) fn append_cli_env_args(args_out: &mut Vec<OsString>, cli_executable: Option<&Path>) {
+    let Some(cli_executable) = cli_executable else {
+        return;
+    };
+    for key in [GUI_CLI_BIN_ENV, LEGACY_GUI_CLI_BIN_ENV] {
+        args_out.push(OsString::from("--env"));
+        args_out.push(env_assignment_for_path(key, cli_executable));
+    }
+}
+
 #[cfg(unix)]
-pub(super) fn env_assignment_for_path(path: &Path) -> OsString {
+pub(super) fn env_assignment_for_path(key: &str, path: &Path) -> OsString {
     use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
-    let mut bytes = Vec::from(format!("{GUI_CLI_BIN_ENV}=").as_bytes());
+    let mut bytes = Vec::from(format!("{key}=").as_bytes());
     bytes.extend_from_slice(path.as_os_str().as_bytes());
     OsString::from_vec(bytes)
 }
 
 #[cfg(not(unix))]
-pub(super) fn env_assignment_for_path(path: &Path) -> OsString {
-    OsString::from(format!("{GUI_CLI_BIN_ENV}={}", path.to_string_lossy()))
+pub(super) fn env_assignment_for_path(key: &str, path: &Path) -> OsString {
+    OsString::from(format!("{key}={}", path.to_string_lossy()))
 }
 
 fn ensure_exists(path: &Path) -> Result<()> {
