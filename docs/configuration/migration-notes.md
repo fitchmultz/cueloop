@@ -18,16 +18,16 @@ Use `cueloop migrate` without `--apply` first when you want a preview.
 
 ## CueLoop runtime directory migration
 
-New repositories default to `.cueloop/`. Legacy `.cueloop/` runtime directories remain supported, including project config, queue/done files, plugins, prompts, caches, and trust files.
+New repositories default to `.cueloop/`. If an older checkout still has `.ralph/` runtime artifacts, migration is explicit and best effort.
 
-The runtime directory move is explicit and separate from normal config migrations:
+The runtime directory move is separate from normal config migrations:
 
 ```bash
 cueloop migrate runtime-dir --check
 cueloop migrate runtime-dir --apply
 ```
 
-Use `--check` before `--apply`. The migration moves `.cueloop/` to `.cueloop/` when safe and refuses to auto-merge when both directories exist. Do not rename runtime directories manually.
+Use `--check` before `--apply`. The migration moves `.ralph/` to `.cueloop/` when safe and refuses to auto-merge when both directories exist. If migration is blocked, inspect the reported paths and manually move or discard old state.
 
 ## Version 0.3 config changes
 

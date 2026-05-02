@@ -1,7 +1,7 @@
 //! Explicit repo-local runtime directory migration.
 //!
 //! Purpose:
-//! - Move a legacy `.cueloop/` project runtime directory to the current `.cueloop/` path.
+//! - Move an old `.ralph/` project runtime directory to the current `.cueloop/` path.
 //!
 //! Responsibilities:
 //! - Classify runtime-dir migration state without mutating files.
@@ -11,7 +11,7 @@
 //! - Record migration history under the active `.cueloop/cache/migrations.jsonc` path.
 //!
 //! Scope:
-//! - Handles only the explicit `.cueloop` -> `.cueloop` runtime directory cutover.
+//! - Handles only the explicit `.ralph` -> `.cueloop` runtime directory cutover.
 //! - Does not run as part of the registry-backed `cueloop migrate --apply` flow.
 //! - Does not merge two populated runtime directories or rename binaries/packages/apps.
 //!
@@ -26,7 +26,7 @@
 //!   `.cueloop/cache/migrations.jsonc`.
 
 use crate::commands::init::readme;
-use crate::constants::identity::{LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR};
+use crate::constants::identity::PROJECT_RUNTIME_DIR;
 use crate::migration::history::{self, AppliedMigration};
 use anyhow::{Context, Result, bail};
 use chrono::Utc;
@@ -34,40 +34,42 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Stable migration history ID for the explicit runtime-dir migration.
-pub const RUNTIME_DIR_MIGRATION_ID: &str = "runtime_dir_rename_cueloop_to_cueloop_2026_05";
+pub const RUNTIME_DIR_MIGRATION_ID: &str = "runtime_dir_rename_to_cueloop_2026_05";
+
+const OLD_PROJECT_RUNTIME_DIR: &str = ".ralph";
 
 const CONFIG_PATH_REWRITES: &[(&str, &str)] = &[
-    (".cueloop/queue.jsonc", ".cueloop/queue.jsonc"),
-    (".cueloop/done.jsonc", ".cueloop/done.jsonc"),
-    (".cueloop/config.jsonc", ".cueloop/config.jsonc"),
-    (".cueloop/queue.json", ".cueloop/queue.json"),
-    (".cueloop/done.json", ".cueloop/done.json"),
-    (".cueloop/config.json", ".cueloop/config.json"),
+    (".ralph/queue.jsonc", ".cueloop/queue.jsonc"),
+    (".ralph/done.jsonc", ".cueloop/done.jsonc"),
+    (".ralph/config.jsonc", ".cueloop/config.jsonc"),
+    (".ralph/queue.json", ".cueloop/queue.json"),
+    (".ralph/done.json", ".cueloop/done.json"),
+    (".ralph/config.json", ".cueloop/config.json"),
 ];
 
 const KNOWN_GITIGNORE_RUNTIME_ENTRIES: &[&str] = &[
-    ".cueloop/queue.jsonc",
-    ".cueloop/done.jsonc",
-    ".cueloop/config.jsonc",
-    ".cueloop/queue.json",
-    ".cueloop/done.json",
-    ".cueloop/config.json",
-    ".cueloop/*.jsonc",
-    ".cueloop/*.json",
-    ".cueloop/logs/",
-    ".cueloop/logs",
-    ".cueloop/workspaces/",
-    ".cueloop/workspaces",
-    ".cueloop/trust.jsonc",
-    ".cueloop/trust.json",
-    ".cueloop/cache/",
-    ".cueloop/cache",
-    ".cueloop/undo/",
-    ".cueloop/undo",
-    ".cueloop/webhooks/",
-    ".cueloop/webhooks",
-    ".cueloop/lock/",
-    ".cueloop/lock",
+    ".ralph/queue.jsonc",
+    ".ralph/done.jsonc",
+    ".ralph/config.jsonc",
+    ".ralph/queue.json",
+    ".ralph/done.json",
+    ".ralph/config.json",
+    ".ralph/*.jsonc",
+    ".ralph/*.json",
+    ".ralph/logs/",
+    ".ralph/logs",
+    ".ralph/workspaces/",
+    ".ralph/workspaces",
+    ".ralph/trust.jsonc",
+    ".ralph/trust.json",
+    ".ralph/cache/",
+    ".ralph/cache",
+    ".ralph/undo/",
+    ".ralph/undo",
+    ".ralph/webhooks/",
+    ".ralph/webhooks",
+    ".ralph/lock/",
+    ".ralph/lock",
 ];
 
 /// Non-mutating state for the runtime-dir migration.
@@ -78,9 +80,9 @@ pub enum RuntimeDirMigrationState {
         legacy_path: PathBuf,
         current_path: PathBuf,
     },
-    /// Current `.cueloop/` is already present and legacy `.cueloop/` is absent.
+    /// Current `.cueloop/` is already present and old `.ralph/` is absent.
     AlreadyCurrent { current_path: PathBuf },
-    /// Legacy `.cueloop/` exists and can be renamed to `.cueloop/`.
+    /// Old `.ralph/` exists and can be renamed to `.cueloop/`.
     NeedsMigration {
         legacy_path: PathBuf,
         current_path: PathBuf,
@@ -166,7 +168,7 @@ pub struct RuntimeDirApplyReport {
 
 /// Inspect runtime-dir migration state without mutating the filesystem.
 pub fn check_runtime_dir_migration(repo_root: &Path) -> RuntimeDirMigrationState {
-    let legacy_path = repo_root.join(LEGACY_PROJECT_RUNTIME_DIR);
+    let legacy_path = repo_root.join(OLD_PROJECT_RUNTIME_DIR);
     let current_path = repo_root.join(PROJECT_RUNTIME_DIR);
     let legacy_is_dir = legacy_path.is_dir();
     let current_is_dir = current_path.is_dir();
@@ -180,7 +182,7 @@ pub fn check_runtime_dir_migration(repo_root: &Path) -> RuntimeDirMigrationState
         (true, true, _, _) => RuntimeDirMigrationState::Collision {
             legacy_path,
             current_path,
-            reason: "both .cueloop and .cueloop exist as directories".to_string(),
+            reason: "both .ralph and .cueloop exist as directories".to_string(),
         },
         (true, false, _, true) => RuntimeDirMigrationState::Collision {
             legacy_path,
@@ -194,13 +196,13 @@ pub fn check_runtime_dir_migration(repo_root: &Path) -> RuntimeDirMigrationState
         (false, true, true, _) => RuntimeDirMigrationState::Collision {
             legacy_path,
             current_path,
-            reason: ".cueloop exists and is not a directory while .cueloop is active".to_string(),
+            reason: ".ralph exists and is not a directory while .cueloop is active".to_string(),
         },
         (false, true, false, _) => RuntimeDirMigrationState::AlreadyCurrent { current_path },
         (false, false, true, _) => RuntimeDirMigrationState::Collision {
             legacy_path,
             current_path,
-            reason: ".cueloop exists and is not a directory".to_string(),
+            reason: ".ralph exists and is not a directory".to_string(),
         },
         (false, false, false, true) => RuntimeDirMigrationState::Collision {
             legacy_path,
@@ -237,18 +239,6 @@ pub fn apply_runtime_dir_migration(repo_root: &Path) -> Result<RuntimeDirApplyRe
             legacy_path,
             current_path,
         } => {
-            let legacy_json_files = legacy_json_runtime_files(legacy_path);
-            if !legacy_json_files.is_empty() {
-                let rendered = legacy_json_files
-                    .iter()
-                    .map(|path| path.display().to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                bail!(
-                    "runtime-dir migration is blocked because legacy JSON runtime files still exist: {rendered}. Run `cueloop migrate --apply` first to convert legacy .json files to .jsonc, then rerun `cueloop migrate runtime-dir --apply`. No changes were made."
-                );
-            }
-
             fs::rename(legacy_path, current_path).with_context(|| {
                 format!(
                     "move runtime directory {} to {}",
@@ -367,17 +357,9 @@ fn convert_gitignore_line(line: &str) -> Option<String> {
     let trailing_len = line.len() - line.trim_end().len();
     let leading = &line[..leading_len];
     let trailing = &line[line.len() - trailing_len..];
-    let converted = runtime_entry.replacen(LEGACY_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR, 1);
+    let converted = runtime_entry.replacen(OLD_PROJECT_RUNTIME_DIR, PROJECT_RUNTIME_DIR, 1);
     let negation = if negated { "!" } else { "" };
     Some(format!("{leading}{negation}{converted}{trailing}"))
-}
-
-fn legacy_json_runtime_files(legacy_path: &Path) -> Vec<PathBuf> {
-    ["queue.json", "done.json", "config.json"]
-        .into_iter()
-        .map(|name| legacy_path.join(name))
-        .filter(|path| path.exists())
-        .collect()
 }
 
 fn update_config_runtime_dir_references(repo_root: &Path) -> Result<usize> {
@@ -448,3 +430,6 @@ fn record_runtime_dir_migration_history(repo_root: &Path) -> Result<bool> {
     history::save_migration_history(repo_root, &migration_history)?;
     Ok(!already_recorded)
 }
+
+#[cfg(test)]
+mod tests;

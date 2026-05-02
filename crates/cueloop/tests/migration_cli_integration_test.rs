@@ -45,6 +45,18 @@ fn write_legacy_project_config(dir: &std::path::Path, git_commit_push_enabled: b
     Ok(())
 }
 
+fn seed_old_runtime_dir(dir: &std::path::Path) -> Result<()> {
+    let runtime = dir.join(".ralph");
+    fs::create_dir_all(&runtime)?;
+    fs::write(runtime.join("queue.jsonc"), r#"{"version":1,"tasks":[]}"#)?;
+    fs::write(runtime.join("done.jsonc"), r#"{"version":1,"tasks":[]}"#)?;
+    fs::write(
+        runtime.join("config.jsonc"),
+        r#"{"version":2,"queue":{"file":".ralph/queue.jsonc","done_file":".ralph/done.jsonc"}}"#,
+    )?;
+    Ok(())
+}
+
 #[test]
 fn migrate_list_shows_all_migrations() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
@@ -269,6 +281,77 @@ fn migrate_apply_upgrades_legacy_config_with_push_enabled_false() -> Result<()> 
         "expected off mapping, got:\n{migrated}"
     );
 
+    Ok(())
+}
+
+#[test]
+fn migrate_runtime_dir_check_detects_old_runtime_dir() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    seed_old_runtime_dir(dir.path())?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["migrate", "runtime-dir", "--check"]);
+
+    anyhow::ensure!(
+        !status.success(),
+        "check should fail when migration is needed"
+    );
+    anyhow::ensure!(
+        stdout.contains("needs-migration")
+            && stdout.contains(".ralph")
+            && stdout.contains(".cueloop"),
+        "expected runtime-dir guidance, got:\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    Ok(())
+}
+
+#[test]
+fn migrate_runtime_dir_apply_moves_old_runtime_dir() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    seed_old_runtime_dir(dir.path())?;
+    fs::write(dir.path().join(".gitignore"), ".ralph/logs/\n")?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["migrate", "runtime-dir", "--apply"]);
+
+    anyhow::ensure!(
+        status.success(),
+        "runtime-dir apply failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    anyhow::ensure!(
+        stdout.contains("from .ralph to .cueloop"),
+        "unexpected stdout:\n{stdout}"
+    );
+    anyhow::ensure!(
+        !dir.path().join(".ralph").exists(),
+        "old runtime dir should be moved"
+    );
+    anyhow::ensure!(
+        dir.path().join(".cueloop").is_dir(),
+        "current runtime dir should exist"
+    );
+
+    let config = fs::read_to_string(dir.path().join(".cueloop/config.jsonc"))?;
+    anyhow::ensure!(
+        config.contains(".cueloop/queue.jsonc"),
+        "config not rewritten:\n{config}"
+    );
+    anyhow::ensure!(
+        !config.contains(".ralph/queue.jsonc"),
+        "old config ref remained:\n{config}"
+    );
+
+    let gitignore = fs::read_to_string(dir.path().join(".gitignore"))?;
+    anyhow::ensure!(
+        gitignore.contains(".cueloop/logs/"),
+        "gitignore not rewritten:\n{gitignore}"
+    );
+    anyhow::ensure!(
+        !gitignore.contains(".ralph/logs/"),
+        "old gitignore ref remained:\n{gitignore}"
+    );
     Ok(())
 }
 
