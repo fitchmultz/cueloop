@@ -149,7 +149,7 @@ Raw dumps write unredacted content and require explicit opt-in:
 
 ```bash
 # Enable via environment variable
-export RALPH_RAW_DUMP=1
+export CUELOOP_RAW_DUMP=1
 cueloop run one
 
 # Or use --debug flag (implies raw dumps)
@@ -161,7 +161,7 @@ Programmatic usage:
 ```rust
 use cueloop::fsutil::safeguard_text_dump;
 
-// Requires RALPH_RAW_DUMP=1 or debug_mode=true
+// Requires CUELOOP_RAW_DUMP=1 (legacy RALPH_RAW_DUMP=1 is also accepted) or debug_mode=true
 let path = safeguard_text_dump("debug_context", &raw_content, is_debug_mode)?;
 ```
 

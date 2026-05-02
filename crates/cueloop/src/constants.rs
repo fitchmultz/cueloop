@@ -314,16 +314,25 @@ pub mod paths {
     /// Current task builder prompt override path.
     pub const TASK_BUILDER_OVERRIDE_PATH: &str = ".cueloop/prompts/task_builder.md";
 
-    /// Environment variable for raw dump mode.
-    pub const ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
+    /// Primary environment variable for raw dump mode.
+    pub const ENV_RAW_DUMP: &str = "CUELOOP_RAW_DUMP";
 
-    /// Environment variable for the runner actually used (set by Ralph when spawning runners).
-    /// Used for analytics tracking in task custom fields.
-    pub const ENV_RUNNER_USED: &str = "RALPH_RUNNER_USED";
+    /// Legacy environment variable for raw dump mode.
+    pub const LEGACY_ENV_RAW_DUMP: &str = "RALPH_RAW_DUMP";
 
-    /// Environment variable for the model actually used (set by Ralph when spawning runners).
+    /// Primary environment variable for the runner actually used (set by CueLoop when spawning runners).
     /// Used for analytics tracking in task custom fields.
-    pub const ENV_MODEL_USED: &str = "RALPH_MODEL_USED";
+    pub const ENV_RUNNER_USED: &str = "CUELOOP_RUNNER_USED";
+
+    /// Legacy environment variable for the runner actually used.
+    pub const LEGACY_ENV_RUNNER_USED: &str = "RALPH_RUNNER_USED";
+
+    /// Primary environment variable for the model actually used (set by CueLoop when spawning runners).
+    /// Used for analytics tracking in task custom fields.
+    pub const ENV_MODEL_USED: &str = "CUELOOP_MODEL_USED";
+
+    /// Legacy environment variable for the model actually used.
+    pub const LEGACY_ENV_MODEL_USED: &str = "RALPH_MODEL_USED";
 }
 
 /// Version constants for schemas and templates.

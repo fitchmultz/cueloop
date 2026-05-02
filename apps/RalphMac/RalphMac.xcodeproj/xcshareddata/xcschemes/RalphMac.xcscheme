@@ -98,7 +98,7 @@
       </MacroExpansion>
       <EnvironmentVariables>
          <EnvironmentVariable
-            key = "RALPH_BIN_PATH"
+            key = "CUELOOP_BIN_PATH"
             value = "$(BUILT_PRODUCTS_DIR)/RalphMac.app/Contents/MacOS/cueloop"
             isEnabled = "YES">
          </EnvironmentVariable>

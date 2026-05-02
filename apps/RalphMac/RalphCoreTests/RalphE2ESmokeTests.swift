@@ -19,7 +19,7 @@
 
  Invariants/assumptions callers must respect:
  - A deterministic `cueloop` binary must be available via either:
-   - `RALPH_BIN_PATH`, or
+   - `CUELOOP_BIN_PATH` (or legacy `RALPH_BIN_PATH`), or
    - the bundled app binary at `RalphMac.app/Contents/MacOS/cueloop`.
  - A Rust toolchain is available if `RALPH_E2E_ALLOW_CARGO_BUILD=1` enables fallback cargo builds.
  - Tests must not rely on network access.
@@ -32,7 +32,8 @@ import XCTest
 
 final class RalphE2ESmokeTests: RalphCoreTestCase {
     private static let allowCargoBuildEnvKey = "RALPH_E2E_ALLOW_CARGO_BUILD"
-    private static let binaryPathEnvKey = "RALPH_BIN_PATH"
+    private static let binaryPathEnvKey = "CUELOOP_BIN_PATH"
+    private static let legacyBinaryPathEnvKey = "RALPH_BIN_PATH"
     private static let commandTimeoutSeconds: TimeInterval = 30
 
     func test_e2e_smoke_version_init_and_machineQueueRead_json() async throws {
@@ -130,7 +131,24 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
             environment: [Self.binaryPathEnvKey: binaryURL.path],
             repoRoot: tempDir,
             bundledBinaryURL: nil,
-            cargoBuilder: { _ in XCTFail("cargoBuilder should not run when RALPH_BIN_PATH is set") }
+            cargoBuilder: { _ in XCTFail("cargoBuilder should not run when CUELOOP_BIN_PATH is set") }
+        )
+
+        XCTAssertEqual(resolved.path, binaryURL.path)
+    }
+
+    func test_resolveRalphBinaryURL_legacyEnvOverride_success() throws {
+        let tempDir = try Self.makeTempDir(prefix: "ralph-resolver-legacy-env-")
+        defer { RalphCoreTestSupport.assertRemoved(tempDir) }
+
+        let binaryURL = tempDir.appendingPathComponent("cueloop", isDirectory: false)
+        try Self.writeExecutableScript(at: binaryURL)
+
+        let resolved = try Self.resolveRalphBinaryURL(
+            environment: [Self.legacyBinaryPathEnvKey: binaryURL.path],
+            repoRoot: tempDir,
+            bundledBinaryURL: nil,
+            cargoBuilder: { _ in XCTFail("cargoBuilder should not run when legacy RALPH_BIN_PATH is set") }
         )
 
         XCTAssertEqual(resolved.path, binaryURL.path)
@@ -169,7 +187,7 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
         ) { error in
             let message = String(describing: error)
             XCTAssertTrue(message.contains(Self.binaryPathEnvKey))
-            XCTAssertTrue(message.contains("make build") || message.contains("RALPH_BIN_PATH"))
+            XCTAssertTrue(message.contains("make build") || message.contains(Self.binaryPathEnvKey))
         }
     }
 
@@ -273,7 +291,7 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
         bundledBinaryURL: URL? = bundledRalphBinaryURL(),
         cargoBuilder: ((URL) throws -> Void)? = nil
     ) throws -> URL {
-        if let override = environment[binaryPathEnvKey]?.trimmingCharacters(in: .whitespacesAndNewlines), !override.isEmpty {
+        if let override = binaryPathOverride(from: environment), !override.isEmpty {
             let overrideURL = URL(fileURLWithPath: override)
             guard FileManager.default.isExecutableFile(atPath: overrideURL.path) else {
                 throw resolverError(
@@ -306,6 +324,13 @@ final class RalphE2ESmokeTests: RalphCoreTestCase {
             "Missing cueloop binary at \(candidate.path). " +
             "Run 'make build' before tests, or set \(binaryPathEnvKey) to a valid binary."
         )
+    }
+
+    private static func binaryPathOverride(from environment: [String: String]) -> String? {
+        if let override = environment[binaryPathEnvKey]?.trimmingCharacters(in: .whitespacesAndNewlines), !override.isEmpty {
+            return override
+        }
+        return environment[legacyBinaryPathEnvKey]?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func resolverError(_ message: String) -> NSError {

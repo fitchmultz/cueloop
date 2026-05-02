@@ -26,6 +26,9 @@ use anyhow::{Result, bail};
 use crate::cli::task::args::{TaskDoneArgs, TaskReadyArgs, TaskRejectArgs, TaskStatusArgs};
 use crate::config;
 use crate::constants::custom_fields::{MODEL_USED, RUNNER_USED};
+use crate::constants::paths::{
+    ENV_MODEL_USED, ENV_RUNNER_USED, LEGACY_ENV_MODEL_USED, LEGACY_ENV_RUNNER_USED,
+};
 use crate::contracts::TaskStatus;
 use crate::queue;
 use crate::queue::operations::{batch_set_status, print_batch_results, resolve_task_ids};
@@ -341,21 +344,77 @@ fn read_env_trimmed(key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
+/// Read a primary environment variable with a legacy fallback.
+fn read_env_trimmed_with_legacy(primary_key: &str, legacy_key: &str) -> Option<String> {
+    read_env_trimmed(primary_key).or_else(|| read_env_trimmed(legacy_key))
+}
+
 /// Build custom fields patch from environment variables for observational analytics.
 fn build_custom_fields_patch_from_env() -> Option<HashMap<String, String>> {
     // These environment variables are set by the runner or external tools
     // and provide observational analytics about what was actually used.
-    let runner_key = "RALPH_RUNNER_USED";
-    let model_key = "RALPH_MODEL_USED";
-
     let mut patch = HashMap::new();
 
-    if let Some(runner) = read_env_trimmed(runner_key) {
+    if let Some(runner) = read_env_trimmed_with_legacy(ENV_RUNNER_USED, LEGACY_ENV_RUNNER_USED) {
         patch.insert(RUNNER_USED.to_string(), runner.to_ascii_lowercase());
     }
-    if let Some(model) = read_env_trimmed(model_key) {
+    if let Some(model) = read_env_trimmed_with_legacy(ENV_MODEL_USED, LEGACY_ENV_MODEL_USED) {
         patch.insert(MODEL_USED.to_string(), model.to_string());
     }
 
     if patch.is_empty() { None } else { Some(patch) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Mutex, OnceLock};
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn clear_analytics_env() {
+        unsafe {
+            std::env::remove_var(ENV_RUNNER_USED);
+            std::env::remove_var(ENV_MODEL_USED);
+            std::env::remove_var(LEGACY_ENV_RUNNER_USED);
+            std::env::remove_var(LEGACY_ENV_MODEL_USED);
+        }
+    }
+
+    #[test]
+    fn build_custom_fields_patch_prefers_cueloop_env_keys() {
+        let _guard = env_lock().lock().expect("env lock");
+        clear_analytics_env();
+        unsafe {
+            std::env::set_var(ENV_RUNNER_USED, "Codex");
+            std::env::set_var(ENV_MODEL_USED, "gpt-5.4");
+            std::env::set_var(LEGACY_ENV_RUNNER_USED, "legacy");
+            std::env::set_var(LEGACY_ENV_MODEL_USED, "legacy-model");
+        }
+
+        let patch = build_custom_fields_patch_from_env().expect("analytics patch");
+
+        assert_eq!(patch.get(RUNNER_USED), Some(&"codex".to_string()));
+        assert_eq!(patch.get(MODEL_USED), Some(&"gpt-5.4".to_string()));
+        clear_analytics_env();
+    }
+
+    #[test]
+    fn build_custom_fields_patch_accepts_legacy_env_keys() {
+        let _guard = env_lock().lock().expect("env lock");
+        clear_analytics_env();
+        unsafe {
+            std::env::set_var(LEGACY_ENV_RUNNER_USED, "Pi");
+            std::env::set_var(LEGACY_ENV_MODEL_USED, "sonnet");
+        }
+
+        let patch = build_custom_fields_patch_from_env().expect("analytics patch");
+
+        assert_eq!(patch.get(RUNNER_USED), Some(&"pi".to_string()));
+        assert_eq!(patch.get(MODEL_USED), Some(&"sonnet".to_string()));
+        clear_analytics_env();
+    }
 }

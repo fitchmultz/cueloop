@@ -266,7 +266,7 @@ public extension WorkspaceManager {
     @discardableResult
     func configureInitialClient() -> Bool {
         let environment = ProcessInfo.processInfo.environment
-        if let overridePath = environment[Self.cliBinaryOverrideEnvKey],
+        if let overridePath = cliBinaryOverridePath(from: environment),
            !overridePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let overrideURL = URL(fileURLWithPath: overridePath, isDirectory: false)
                 .standardizedFileURL
@@ -295,6 +295,14 @@ public extension WorkspaceManager {
             errorMessage = "Failed to locate bundled cueloop executable: \(error)"
             return false
         }
+    }
+
+    private func cliBinaryOverridePath(from environment: [String: String]) -> String? {
+        if let overridePath = environment[Self.cliBinaryOverrideEnvKey],
+           !overridePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return overridePath
+        }
+        return environment[Self.legacyCLIBinaryOverrideEnvKey]
     }
 
     /// Reject CLI executable paths provided by URL/launcher context.

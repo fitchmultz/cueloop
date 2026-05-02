@@ -258,7 +258,7 @@ anyhow::ensure!(status.success(), "...\nstdout:\n{stdout}\nstderr:\n{stderr}");
 
 - **Redaction**: Built-in redaction masks API keys, tokens, AWS keys, SSH keys
 - **Debug Mode**: `--debug` flag writes raw (unredacted) output to `.ralph/logs/debug.log`
-- **Safeguard Dumps**: Use redacted dumps by default; raw dumps require `RALPH_RAW_DUMP=1` or `--debug`
+- **Safeguard Dumps**: Use redacted dumps by default; raw dumps require `CUELOOP_RAW_DUMP=1` (legacy `RALPH_RAW_DUMP=1` still accepted) or `--debug`
 
 ### What to Never Commit
 

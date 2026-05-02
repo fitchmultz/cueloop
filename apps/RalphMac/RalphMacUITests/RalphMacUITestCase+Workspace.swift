@@ -134,9 +134,7 @@ extension RalphMacUITestCase {
     func resolveRalphExecutableURL(
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> URL {
-        if let override = environment[LaunchEnvironment.ralphBinPath]?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty {
+        if let override = ralphExecutableOverride(from: environment), !override.isEmpty {
             let overrideURL = URL(fileURLWithPath: override, isDirectory: false)
                 .standardizedFileURL
                 .resolvingSymlinksInPath()
@@ -145,7 +143,7 @@ extension RalphMacUITestCase {
                     domain: "RalphMacUITests",
                     code: 2,
                     userInfo: [
-                        NSLocalizedDescriptionKey: "RALPH_BIN_PATH points to a non-executable path: \(overrideURL.path)"
+                        NSLocalizedDescriptionKey: "CUELOOP_BIN_PATH points to a non-executable path: \(overrideURL.path)"
                     ]
                 )
             }
@@ -172,9 +170,16 @@ extension RalphMacUITestCase {
             domain: "RalphMacUITests",
             code: 2,
             userInfo: [
-                NSLocalizedDescriptionKey: "Failed to locate a bundled cueloop executable for UI tests at \(primaryURL.path). Build the app bundle or set RALPH_BIN_PATH explicitly."
+                NSLocalizedDescriptionKey: "Failed to locate a bundled cueloop executable for UI tests at \(primaryURL.path). Build the app bundle or set CUELOOP_BIN_PATH explicitly."
             ]
         )
+    }
+
+    private func ralphExecutableOverride(from environment: [String: String]) -> String? {
+        if let override = environment[LaunchEnvironment.cueloopBinPath]?.trimmingCharacters(in: .whitespacesAndNewlines), !override.isEmpty {
+            return override
+        }
+        return environment[LaunchEnvironment.ralphBinPath]?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func waitForAppToTerminate(_ application: XCUIApplication, timeout: TimeInterval = 10) -> Bool {

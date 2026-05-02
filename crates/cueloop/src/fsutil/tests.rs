@@ -16,13 +16,20 @@
 //! - Environment-mutating tests serialize on a local mutex to avoid cross-test races.
 
 use super::*;
-use crate::constants::paths::ENV_RAW_DUMP;
+use crate::constants::paths::{ENV_RAW_DUMP, LEGACY_ENV_RAW_DUMP};
 use std::fs;
 use std::sync::{Mutex, OnceLock};
 
 fn env_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
+}
+
+fn clear_raw_dump_env() {
+    unsafe {
+        std::env::remove_var(ENV_RAW_DUMP);
+        std::env::remove_var(LEGACY_ENV_RAW_DUMP);
+    }
 }
 
 #[test]
@@ -56,8 +63,7 @@ fn safeguard_text_dump_redacted_masks_secrets() {
 fn safeguard_text_dump_requires_opt_in_without_debug() {
     let _guard = env_lock().lock().expect("env lock");
 
-    // Ensure env var is not set
-    unsafe { std::env::remove_var(ENV_RAW_DUMP) }
+    clear_raw_dump_env();
 
     let content = "sensitive data";
     let result = safeguard_text_dump("test_raw", content, false);
@@ -65,8 +71,8 @@ fn safeguard_text_dump_requires_opt_in_without_debug() {
     assert!(result.is_err(), "Raw dump should fail without opt-in");
     let err_msg = result.unwrap_err().to_string();
     assert!(
-        err_msg.contains("RALPH_RAW_DUMP"),
-        "Error should mention env var"
+        err_msg.contains("CUELOOP_RAW_DUMP") && err_msg.contains("RALPH_RAW_DUMP"),
+        "Error should mention primary and legacy env vars"
     );
 }
 
@@ -74,6 +80,7 @@ fn safeguard_text_dump_requires_opt_in_without_debug() {
 fn safeguard_text_dump_allows_raw_with_env_var() {
     let _guard = env_lock().lock().expect("env lock");
 
+    clear_raw_dump_env();
     unsafe { std::env::set_var(ENV_RAW_DUMP, "1") };
 
     let content = "raw secret data";
@@ -83,7 +90,27 @@ fn safeguard_text_dump_allows_raw_with_env_var() {
     assert_eq!(written, content, "Raw content should be written unchanged");
 
     // Cleanup
-    unsafe { std::env::remove_var(ENV_RAW_DUMP) }
+    clear_raw_dump_env();
+    let _ = fs::remove_file(&path);
+    if let Some(parent) = path.parent() {
+        let _ = fs::remove_dir(parent);
+    }
+}
+
+#[test]
+fn safeguard_text_dump_allows_raw_with_legacy_env_var() {
+    let _guard = env_lock().lock().expect("env lock");
+
+    clear_raw_dump_env();
+    unsafe { std::env::set_var(LEGACY_ENV_RAW_DUMP, "1") };
+
+    let content = "legacy raw secret data";
+    let path = safeguard_text_dump("test_raw_legacy_env", content, false).unwrap();
+
+    let written = fs::read_to_string(&path).unwrap();
+    assert_eq!(written, content, "Raw content should be written unchanged");
+
+    clear_raw_dump_env();
     let _ = fs::remove_file(&path);
     if let Some(parent) = path.parent() {
         let _ = fs::remove_dir(parent);
@@ -94,8 +121,7 @@ fn safeguard_text_dump_allows_raw_with_env_var() {
 fn safeguard_text_dump_allows_raw_with_debug_mode() {
     let _guard = env_lock().lock().expect("env lock");
 
-    // Ensure env var is not set
-    unsafe { std::env::remove_var(ENV_RAW_DUMP) }
+    clear_raw_dump_env();
 
     let content = "debug mode secret";
     let path = safeguard_text_dump("test_raw_debug", content, true).unwrap();
@@ -107,6 +133,7 @@ fn safeguard_text_dump_allows_raw_with_debug_mode() {
     );
 
     // Cleanup
+    clear_raw_dump_env();
     let _ = fs::remove_file(&path);
     if let Some(parent) = path.parent() {
         let _ = fs::remove_dir(parent);
