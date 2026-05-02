@@ -134,15 +134,15 @@ fn release_artifact_builder_cleans_release_artifacts_directory() {
 }
 
 #[test]
-fn release_artifact_builder_packages_primary_and_legacy_binaries() {
+fn release_artifact_builder_packages_primary_binary() {
     let script = read_repo_file("scripts/build-release-artifacts.sh");
     assert!(
         script.contains("cueloop-${version}-${platform_name}.tar.gz"),
         "artifact tarballs should use the primary cueloop name"
     );
     assert!(
-        script.contains("tar -czf \"$RELEASE_ARTIFACTS_DIR/$tarball_name\" -C \"$(dirname \"$binary_path\")\" cueloop ralph"),
-        "artifact tarballs should include both the primary cueloop binary and legacy ralph alias"
+        script.contains("tar -czf \"$RELEASE_ARTIFACTS_DIR/$tarball_name\" -C \"$(dirname \"$binary_path\")\" cueloop"),
+        "artifact tarballs should include the primary cueloop binary"
     );
 
     let publish_pipeline = read_repo_file("scripts/lib/release_publish_pipeline.sh");

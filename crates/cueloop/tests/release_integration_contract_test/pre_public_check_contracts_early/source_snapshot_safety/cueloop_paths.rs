@@ -128,7 +128,7 @@ fn pre_public_check_allow_no_git_rejects_symlinked_allowlisted_ralph_files() {
 }
 
 #[test]
-fn pre_public_check_allow_no_git_rejects_unallowlisted_ralph_paths() {
+fn pre_public_check_allow_no_git_rejects_unallowlisted_legacy_ralph_paths() {
     let temp_dir = tempfile::tempdir().expect("create temp dir");
     let repo_root = temp_dir.path();
 

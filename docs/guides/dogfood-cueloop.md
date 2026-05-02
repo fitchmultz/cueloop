@@ -11,7 +11,7 @@ Purpose: provide a repeatable end-to-end fixture project that exercises CueLoop 
 From the CueLoop repo root:
 
 ```bash
-scripts/dogfood-ralph.sh
+scripts/dogfood-cueloop.sh
 ```
 
 The default run uses:
@@ -20,8 +20,8 @@ The default run uses:
 - requested model: `zai-glm-5.1`
 - effective pi model id: `zai/glm-5.1`
 - phases: `3`
-- fixture location: `target/dogfood-ralph/<timestamp>/ralph-dogfood-fixture`
-- report: `target/dogfood-ralph/<timestamp>/report.md`
+- fixture location: `target/dogfood-cueloop/<timestamp>/ralph-dogfood-fixture`
+- report: `target/dogfood-cueloop/<timestamp>/report.md`
 
 Use `--skip-real-agent` for a fast non-runner check of fixture creation, `cueloop init`, config/doctor/prompt preview, queue/task surfaces, machine queue read, and run dry-run.
 
@@ -53,7 +53,7 @@ This is not a replacement for unit/integration tests. It is an operator-level do
 A full default run passed on 2026-04-28 with 94 command/probe passes and no probe failures. Artifacts:
 
 ```text
-target/dogfood-ralph/20260428T021541Z/report.md
+target/dogfood-cueloop/20260428T021541Z/report.md
 ```
 
 One operator-facing friction point was found before the successful run: the requested model string `zai-glm-5.1` is not accepted by the current pi CLI; `pi --list-models` exposes `zai/glm-5.1`. The harness normalizes that known local alias so the default command remains repeatable while the report records both requested and effective model ids.

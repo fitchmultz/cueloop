@@ -1,7 +1,7 @@
 //! Purpose: shared command and repo helpers for integration tests.
 //!
 //! Responsibilities:
-//! - Resolve the built `cueloop`/`ralph` binaries and run isolated subprocesses for tests.
+//! - Resolve the built `cueloop` binary and run isolated subprocesses for tests.
 //! - Initialize disposable git repos and executable fixtures.
 //! - Seed reusable runtime scaffolding and cached git+runtime repo templates.
 //! - Provide scoped PATH mutation utilities for fake toolchains.
@@ -28,7 +28,6 @@ use std::sync::OnceLock;
 const TEST_GIT_USER_NAME: &str = "CueLoop Test";
 const TEST_GIT_USER_EMAIL: &str = "cueloop-tests@example.invalid";
 
-static RALPH_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
 static CUELOOP_BIN_PATH: OnceLock<PathBuf> = OnceLock::new();
 static EMPTY_GIT_CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 static CUELOOP_INIT_TEMPLATE_DIR: OnceLock<PathBuf> = OnceLock::new();
@@ -68,16 +67,8 @@ fn resolve_cli_bin(bin_name: &str) -> PathBuf {
     );
 }
 
-fn resolve_ralph_bin() -> PathBuf {
-    resolve_cli_bin("ralph")
-}
-
 fn resolve_cueloop_bin() -> PathBuf {
     resolve_cli_bin("cueloop")
-}
-
-pub fn ralph_bin() -> PathBuf {
-    RALPH_BIN_PATH.get_or_init(resolve_ralph_bin).clone()
 }
 
 pub fn cueloop_bin() -> PathBuf {

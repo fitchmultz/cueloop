@@ -55,7 +55,7 @@ fn pre_public_check_requires_git_worktree() {
     let repo_root = temp_dir.path();
 
     copy_repo_file("scripts/pre-public-check.sh", repo_root);
-    copy_repo_file("scripts/lib/ralph-shell.sh", repo_root);
+    copy_repo_file("scripts/lib/cueloop-shell.sh", repo_root);
     copy_repo_file("scripts/lib/release_policy.sh", repo_root);
 
     let output = Command::new("bash")

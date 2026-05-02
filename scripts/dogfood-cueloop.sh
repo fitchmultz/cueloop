@@ -2,14 +2,14 @@
 # Purpose: Repeatably dogfood CueLoop against a disposable git project.
 # Responsibilities: Create an isolated fixture repo, exercise CueLoop setup/task/queue surfaces, and run one real three-phase agent task.
 # Scope: Local dogfood automation only; it does not mutate the Ralph source repo except for writing ignored artifacts under target/.
-# Usage: Run from the Ralph repo with `scripts/dogfood-ralph.sh`; use `--help` for options and examples.
+# Usage: Run from the Ralph repo with `scripts/dogfood-cueloop.sh`; use `--help` for options and examples.
 # Invariants/Assumptions: Requires git, python3, and a CueLoop/Ralph binary; full Phase 3 requires the configured runner/model to be available.
 
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RALPH_BIN="${RALPH_BIN:-$ROOT_DIR/target/debug/cueloop}"
-OUT_ROOT="$ROOT_DIR/target/dogfood-ralph"
+OUT_ROOT="$ROOT_DIR/target/dogfood-cueloop"
 RUNNER="pi"
 MODEL="zai-glm-5.1"
 MODEL_NOTE=""
@@ -24,11 +24,11 @@ usage() {
 Repeatably dogfood CueLoop against a disposable test project.
 
 Usage:
-  scripts/dogfood-ralph.sh [options]
+  scripts/dogfood-cueloop.sh [options]
 
 Options:
   --ralph-bin PATH       CueLoop/Ralph binary to test (default: target/debug/cueloop or $RALPH_BIN)
-  --out-root DIR         Artifact root (default: target/dogfood-ralph)
+  --out-root DIR         Artifact root (default: target/dogfood-cueloop)
   --runner NAME          Runner for Phase 3 real execution (default: pi)
   --model ID             Model for Phase 3 real execution (default: zai-glm-5.1;
                          normalized to zai/glm-5.1 for the pi CLI on this machine)
@@ -38,9 +38,9 @@ Options:
   --project-name NAME    Fixture project/repo name (default: ralph-dogfood-fixture)
   -h, --help             Show this help
 Examples:
-  scripts/dogfood-ralph.sh
-  scripts/dogfood-ralph.sh --skip-real-agent
-  RALPH_BIN=target/release/cueloop scripts/dogfood-ralph.sh --github-private
+  scripts/dogfood-cueloop.sh
+  scripts/dogfood-cueloop.sh --skip-real-agent
+  RALPH_BIN=target/release/cueloop scripts/dogfood-cueloop.sh --github-private
 
 Exit codes: 0 success; 1 dogfood failure; 2 invalid usage.
 USAGE
@@ -489,7 +489,7 @@ cat >>"$REPORT" <<EOF_DONE
 
 ## Repeat Command
 
-\`scripts/dogfood-ralph.sh --runner '$RUNNER' --model '$REQUESTED_MODEL' --phases '$PHASES'\`
+\`scripts/dogfood-cueloop.sh --runner '$RUNNER' --model '$REQUESTED_MODEL' --phases '$PHASES'\`
 EOF_DONE
 
 CURRENT_STEP="complete"

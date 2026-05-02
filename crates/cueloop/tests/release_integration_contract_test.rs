@@ -30,8 +30,8 @@ mod pre_public_check_contracts_mid;
 #[path = "release_integration_contract_test/pre_public_check_contracts_tracked_paths.rs"]
 mod pre_public_check_contracts_tracked_paths;
 
-#[path = "release_integration_contract_test/pre_public_check_contracts_ralph_cleanliness.rs"]
-mod pre_public_check_contracts_ralph_cleanliness;
+#[path = "release_integration_contract_test/pre_public_check_contracts_cueloop_cleanliness.rs"]
+mod pre_public_check_contracts_cueloop_cleanliness;
 
 #[path = "release_integration_contract_test/release_policy_contracts.rs"]
 mod release_policy_contracts;

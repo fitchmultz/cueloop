@@ -1,7 +1,7 @@
 //! CLI help output contract tests for CueLoop CLI binaries.
 //!
 //! Purpose:
-//! - CLI help output contract tests for the primary `cueloop` binary and legacy `ralph` alias.
+//! - CLI help output contract tests for the primary `cueloop` binary.
 //!
 //! Responsibilities:
 //! - Assert key help text snippets remain present for core commands.
@@ -16,25 +16,13 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - The CueLoop and legacy Ralph binaries are built and discoverable by the test harness.
+//! - The CueLoop binary is built and discoverable by the test harness.
 
 use std::process::{Command, ExitStatus};
 
 mod test_support;
 
 fn run(args: &[&str]) -> (ExitStatus, String, String) {
-    let output = Command::new(test_support::ralph_bin())
-        .args(args)
-        .output()
-        .expect("failed to execute ralph binary");
-    (
-        output.status,
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        String::from_utf8_lossy(&output.stderr).to_string(),
-    )
-}
-
-fn run_cueloop(args: &[&str]) -> (ExitStatus, String, String) {
     let output = Command::new(test_support::cueloop_bin())
         .args(args)
         .output()
@@ -69,24 +57,15 @@ fn assert_occurs_once(haystack: &str, needle: &str) {
 }
 
 #[test]
-fn primary_and_legacy_binaries_report_invoked_name_in_root_help() {
-    let (primary_status, primary_stdout, primary_stderr) = run_cueloop(&["--help"]);
+fn primary_binary_reports_invoked_name_in_root_help() {
+    let (primary_status, primary_stdout, primary_stderr) = run(&["--help"]);
     assert!(
         primary_status.success(),
         "expected `cueloop --help` to succeed\nstdout:\n{primary_stdout}\nstderr:\n{primary_stderr}"
     );
     let primary_combined = format!("{primary_stdout}\n{primary_stderr}");
     assert_contains(&primary_combined, "Usage: cueloop");
-    assert_contains(&primary_combined, "CueLoop CLI (legacy alias: ralph)");
-
-    let (legacy_status, legacy_stdout, legacy_stderr) = run(&["--help"]);
-    assert!(
-        legacy_status.success(),
-        "expected `ralph --help` to succeed\nstdout:\n{legacy_stdout}\nstderr:\n{legacy_stderr}"
-    );
-    let legacy_combined = format!("{legacy_stdout}\n{legacy_stderr}");
-    assert_contains(&legacy_combined, "Usage: ralph");
-    assert_contains(&legacy_combined, "CueLoop CLI (legacy alias: ralph)");
+    assert_contains(&primary_combined, "CueLoop CLI");
 }
 
 #[test]
@@ -356,7 +335,7 @@ fn daemon_help_mentions_subcommands() {
     let (status, stdout, stderr) = run(&["daemon", "--help"]);
     assert!(
         status.success(),
-        "expected `ralph daemon --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected `cueloop daemon --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     let combined = format!("{stdout}\n{stderr}");

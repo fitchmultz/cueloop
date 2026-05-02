@@ -44,7 +44,7 @@ fn release_policy_rejects_git_status_collection_failures() {
         "SCRIPT_DIR={script_dir:?}\nREPO_ROOT={root:?}\nsource {shell_path:?}\nsource {policy_path:?}\nrelease_collect_dirty_lines \"$REPO_ROOT\"\n",
         script_dir = repo_root.join("scripts"),
         root = repo_root,
-        shell_path = repo_root.join("scripts/lib/ralph-shell.sh"),
+        shell_path = repo_root.join("scripts/lib/cueloop-shell.sh"),
         policy_path = repo_root.join("scripts/lib/release_policy.sh"),
     );
     let output = Command::new("bash")
@@ -83,7 +83,7 @@ fn release_policy_rejects_path_validator_failures() {
         "SCRIPT_DIR={script_dir:?}\nREPO_ROOT={root:?}\nsource {shell_path:?}\nsource {policy_path:?}\nrelease_path_has_control_characters() {{ return 7; }}\nrelease_require_safe_publication_path 'Fixture' 'safe-path.txt'\n",
         script_dir = repo_root.join("scripts"),
         root = repo_root,
-        shell_path = repo_root.join("scripts/lib/ralph-shell.sh"),
+        shell_path = repo_root.join("scripts/lib/cueloop-shell.sh"),
         policy_path = repo_root.join("scripts/lib/release_policy.sh"),
     );
     let output = Command::new("bash")
@@ -117,7 +117,7 @@ fn release_policy_rejects_rename_from_disallowed_path_to_release_metadata() {
     let repo_root = temp_dir.path();
 
     for relative_path in [
-        "scripts/lib/ralph-shell.sh",
+        "scripts/lib/cueloop-shell.sh",
         "scripts/lib/release_policy.sh",
         "scripts/pre-public-check.sh",
         "CHANGELOG.md",
@@ -161,7 +161,7 @@ fn release_policy_rejects_rename_from_disallowed_path_to_release_metadata() {
     let shell = format!(
         "REPO_ROOT={root:?}\nsource {shell_path:?}\nsource {policy_path:?}\ndirty=$(release_collect_dirty_lines {root:?})\nrelease_assert_dirty_paths_allowed \"$dirty\"\n",
         root = repo_root,
-        shell_path = repo_root.join("scripts/lib/ralph-shell.sh"),
+        shell_path = repo_root.join("scripts/lib/cueloop-shell.sh"),
         policy_path = repo_root.join("scripts/lib/release_policy.sh"),
     );
     let output = Command::new("bash")
@@ -195,7 +195,7 @@ fn release_policy_keeps_rename_into_ignored_dirty_paths_visible() {
     let repo_root = temp_dir.path();
 
     for relative_path in [
-        "scripts/lib/ralph-shell.sh",
+        "scripts/lib/cueloop-shell.sh",
         "scripts/lib/release_policy.sh",
         "scripts/pre-public-check.sh",
     ] {
@@ -238,7 +238,7 @@ fn release_policy_keeps_rename_into_ignored_dirty_paths_visible() {
     let shell = format!(
         "REPO_ROOT={root:?}\nsource {shell_path:?}\nsource {policy_path:?}\ndirty=$(release_collect_dirty_lines {root:?})\nrelease_filter_dirty_lines \"$dirty\"\n",
         root = repo_root,
-        shell_path = repo_root.join("scripts/lib/ralph-shell.sh"),
+        shell_path = repo_root.join("scripts/lib/cueloop-shell.sh"),
         policy_path = repo_root.join("scripts/lib/release_policy.sh"),
     );
     let output = Command::new("bash")
@@ -263,7 +263,7 @@ fn release_policy_keeps_rename_into_ignored_dirty_paths_visible() {
 }
 
 #[test]
-fn release_scripts_do_not_blanket_ignore_all_ralph_paths_in_cleanliness_checks() {
+fn release_scripts_do_not_blanket_ignore_all_cueloop_paths_in_cleanliness_checks() {
     let verify_pipeline = read_repo_file("scripts/lib/release_verify_pipeline.sh");
     let release_pipeline = read_repo_file("scripts/lib/release_pipeline.sh");
 

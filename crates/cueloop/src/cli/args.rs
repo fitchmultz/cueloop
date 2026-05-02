@@ -1,7 +1,7 @@
 //! Top-level Clap argument definitions for CueLoop CLI binaries.
 //!
 //! Purpose:
-//! - Top-level Clap argument definitions for `cueloop` and the legacy `ralph` alias.
+//! - Top-level Clap argument definitions for the `cueloop` command.
 //!
 //! Responsibilities:
 //! - Define the root `Cli` parser and the top-level command enum.
@@ -31,7 +31,7 @@ use super::{
 
 #[derive(Parser)]
 #[command(name = "cueloop")]
-#[command(about = "CueLoop CLI (legacy alias: ralph)")]
+#[command(about = "CueLoop CLI")]
 #[command(version)]
 #[command(after_long_help = r#"Runner selection:
   - CLI flags override project config, which overrides global config, which overrides built-in defaults.

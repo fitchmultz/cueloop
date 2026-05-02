@@ -239,7 +239,7 @@ fn release_publish_crate_rechecks_remote_state_before_skipping() {
     let scripts_dir = repo_root.join("scripts");
     let release_state_path = repo_root.join("scripts/lib/release_state.sh");
     let release_publish_path = repo_root.join("scripts/lib/release_publish_pipeline.sh");
-    let shell_path = repo_root.join("scripts/lib/ralph-shell.sh");
+    let shell_path = repo_root.join("scripts/lib/cueloop-shell.sh");
     let scratch_dir = temp_dir.path().join("scratch");
     fs::create_dir(&scratch_dir).expect("create scratch dir");
     let state_file = scratch_dir.join("state.env");
@@ -321,7 +321,7 @@ fn release_publish_github_release_restores_completed_status_when_already_public(
     let scripts_dir = repo_root.join("scripts");
     let release_state_path = repo_root.join("scripts/lib/release_state.sh");
     let release_publish_path = repo_root.join("scripts/lib/release_publish_pipeline.sh");
-    let shell_path = repo_root.join("scripts/lib/ralph-shell.sh");
+    let shell_path = repo_root.join("scripts/lib/cueloop-shell.sh");
     let scratch_dir = temp_dir.path().join("scratch");
     fs::create_dir(&scratch_dir).expect("create scratch dir");
     let state_file = scratch_dir.join("state.env");

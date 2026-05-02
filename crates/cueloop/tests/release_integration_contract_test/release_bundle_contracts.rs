@@ -51,15 +51,11 @@ fn xcode_build_phase_uses_shared_cli_bundle_entrypoint() {
         "Xcode project should call the shared CLI bundling script"
     );
     assert!(
-        !project.contains("cargo ${BUILD_ARGS}")
-            && !project.contains("target/debug/ralph")
-            && !project.contains("target/debug/cueloop"),
+        !project.contains("cargo ${BUILD_ARGS}") && !project.contains("target/debug/cueloop"),
         "Xcode project should not embed its own Cargo invocation policy or debug hardcoded CLI paths"
     );
     assert!(
-        project.contains("cueloop-cli-bundle.sh")
-            && !project.contains("target/release/ralph")
-            && !project.contains("target/release/cueloop"),
+        project.contains("cueloop-cli-bundle.sh") && !project.contains("target/release/cueloop"),
         "Release should always route through cueloop-cli-bundle.sh instead of copying a possibly stale target/release CLI"
     );
     assert!(

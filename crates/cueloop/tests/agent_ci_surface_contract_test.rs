@@ -86,7 +86,7 @@ fn init_temp_repo() -> TempDir {
     let repo_path = temp_repo.path();
 
     copy_script(&repo_root, repo_path, "scripts/agent-ci-surface.sh");
-    copy_script(&repo_root, repo_path, "scripts/lib/ralph-shell.sh");
+    copy_script(&repo_root, repo_path, "scripts/lib/cueloop-shell.sh");
     copy_script(&repo_root, repo_path, "scripts/lib/release_policy.sh");
 
     write_file(&repo_path.join("README.md"), "# Temp repo\n");

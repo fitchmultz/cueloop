@@ -23,10 +23,10 @@ mod test_support;
 /// Test that --wait-when-empty flag parses correctly.
 #[test]
 fn run_loop_wait_when_empty_flag_parses() {
-    let ralph = test_support::ralph_bin();
+    let cueloop = test_support::cueloop_bin();
 
     // Test that the flag is recognized (will fail for other reasons, not unknown flag)
-    let output = Command::new(&ralph)
+    let output = Command::new(&cueloop)
         .arg("run")
         .arg("loop")
         .arg("--wait-when-empty")
@@ -55,10 +55,10 @@ fn run_loop_wait_when_empty_flag_parses() {
 /// Test that --continuous alias parses correctly.
 #[test]
 fn run_loop_continuous_alias_parses() {
-    let ralph = test_support::ralph_bin();
+    let cueloop = test_support::cueloop_bin();
 
     // Test that the alias is recognized
-    let output = Command::new(&ralph)
+    let output = Command::new(&cueloop)
         .arg("run")
         .arg("loop")
         .arg("--continuous")
@@ -81,10 +81,10 @@ fn run_loop_continuous_alias_parses() {
 /// Test that --empty-poll-ms flag parses correctly.
 #[test]
 fn run_loop_empty_poll_ms_flag_parses() {
-    let ralph = test_support::ralph_bin();
+    let cueloop = test_support::cueloop_bin();
 
     // Test that the flag is recognized
-    let output = Command::new(&ralph)
+    let output = Command::new(&cueloop)
         .arg("run")
         .arg("loop")
         .arg("--empty-poll-ms")
@@ -114,9 +114,9 @@ fn run_loop_empty_poll_ms_flag_parses() {
 /// Test that --wait-when-empty conflicts with --parallel.
 #[test]
 fn run_loop_wait_when_empty_conflicts_with_parallel() {
-    let ralph = test_support::ralph_bin();
+    let cueloop = test_support::cueloop_bin();
 
-    let output = Command::new(&ralph)
+    let output = Command::new(&cueloop)
         .arg("run")
         .arg("loop")
         .arg("--wait-when-empty")

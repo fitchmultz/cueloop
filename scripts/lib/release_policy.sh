@@ -10,7 +10,7 @@
 # Usage:
 # - source "$(dirname "$0")/lib/release_policy.sh"
 # Invariants/assumptions:
-# - Caller has already defined REPO_ROOT and sourced ralph-shell helpers.
+# - Caller has already defined REPO_ROOT and sourced cueloop-shell helpers.
 
 if [ -n "${RALPH_RELEASE_POLICY_SOURCED:-}" ]; then
     return 0

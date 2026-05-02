@@ -251,7 +251,7 @@ Parent: [Ralph Documentation](../index.md)
 
 🟠 **[Missing Strict Mode] 8 of 21 shell scripts lack `set -euo pipefail`**
 - **Files:**
-  - `scripts/lib/ralph-shell.sh`
+  - `scripts/lib/cueloop-shell.sh`
   - `scripts/lib/release_changelog.sh`
   - `scripts/lib/release_pipeline.sh`
   - `scripts/lib/release_policy.sh`

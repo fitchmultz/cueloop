@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - The Ralph binary is available via CARGO_BIN_EXE_ralph or adjacent to the test binary.
+//! - The CueLoop binary is available via CARGO_BIN_EXE_cueloop or adjacent to the test binary.
 //! - Repo root discovery works via a `.ralph/queue.jsonc` file in the current directory.
 
 use std::collections::HashMap;

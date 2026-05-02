@@ -79,8 +79,8 @@ mod unix_tests {
         args: &[&str],
         current_dir: &Path,
     ) -> (std::process::ExitStatus, String, String) {
-        let ralph = test_support::ralph_bin();
-        let output = Command::new(&ralph)
+        let cueloop = test_support::cueloop_bin();
+        let output = Command::new(&cueloop)
             .args(args)
             .current_dir(current_dir)
             .output()
@@ -96,9 +96,9 @@ mod unix_tests {
     /// Test that daemon --help works.
     #[test]
     fn daemon_help_works() {
-        let ralph = test_support::ralph_bin();
+        let cueloop = test_support::cueloop_bin();
 
-        let help = Command::new(&ralph)
+        let help = Command::new(&cueloop)
             .arg("daemon")
             .arg("--help")
             .output()
@@ -258,8 +258,8 @@ mod unix_tests {
         write_log_file(dir_path, &["2026-02-10T10:00:00Z INFO initial line"]);
 
         let log_path = dir_path.join(".ralph/logs/daemon.log");
-        let ralph = test_support::ralph_bin();
-        let mut child = Command::new(&ralph)
+        let cueloop = test_support::cueloop_bin();
+        let mut child = Command::new(&cueloop)
             .arg("daemon")
             .arg("logs")
             .arg("--follow")
@@ -314,9 +314,9 @@ mod unix_tests {
     /// Test that daemon start --help works.
     #[test]
     fn daemon_start_help_works() {
-        let ralph = test_support::ralph_bin();
+        let cueloop = test_support::cueloop_bin();
 
-        let help = Command::new(&ralph)
+        let help = Command::new(&cueloop)
             .arg("daemon")
             .arg("start")
             .arg("--help")
@@ -335,11 +335,11 @@ mod unix_tests {
     fn daemon_start_and_stop_round_trip() {
         let dir = test_support::temp_dir_outside_repo();
         let dir_path = dir.path();
-        let ralph = test_support::ralph_bin();
+        let cueloop = test_support::cueloop_bin();
 
         test_support::git_init(dir_path).expect("git init");
 
-        let init = Command::new(&ralph)
+        let init = Command::new(&cueloop)
             .arg("init")
             .arg("--force")
             .arg("--non-interactive")
@@ -348,7 +348,7 @@ mod unix_tests {
             .expect("run cueloop init");
         assert!(init.status.success(), "init failed: {:?}", init);
 
-        let mut stop_guard = DaemonStopGuard::new(ralph.clone(), dir_path.to_path_buf());
+        let mut stop_guard = DaemonStopGuard::new(cueloop.clone(), dir_path.to_path_buf());
 
         let (start_status, start_stdout, start_stderr) =
             command_output(&["daemon", "start"], dir_path);
@@ -431,14 +431,14 @@ mod unix_tests {
     #[test]
     fn daemon_status_handles_stale_state() {
         let dir = test_support::temp_dir_outside_repo();
-        let ralph = test_support::ralph_bin();
+        let cueloop = test_support::cueloop_bin();
         let dir_path = dir.path();
 
         // Initialize git repo
         test_support::git_init(dir_path).expect("git init");
 
         // Initialize ralph
-        let init = Command::new(&ralph)
+        let init = Command::new(&cueloop)
             .arg("init")
             .arg("--force")
             .arg("--non-interactive")
@@ -464,7 +464,7 @@ mod unix_tests {
         .expect("write fake state");
 
         // Check status - should detect stale state
-        let status = Command::new(&ralph)
+        let status = Command::new(&cueloop)
             .arg("daemon")
             .arg("status")
             .current_dir(dir_path)
