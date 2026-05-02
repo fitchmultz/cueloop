@@ -42,7 +42,7 @@ impl ProcessorExecutor<'_> {
         content: &str,
         context_label: &str,
     ) -> Result<TempPath> {
-        let mut temp_file = crate::fsutil::create_ralph_temp_file(label)
+        let mut temp_file = crate::fsutil::create_cueloop_temp_file(label)
             .with_context(|| format!("create temp file for {context_label}"))?;
         temp_file
             .write_all(content.as_bytes())

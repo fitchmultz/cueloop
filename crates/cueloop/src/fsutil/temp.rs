@@ -1,8 +1,8 @@
-//! Purpose: Ralph temp-root, temp-file, and stale-cleanup helpers.
+//! Purpose: CueLoop temp-root, temp-file, and stale-cleanup helpers.
 //!
 //! Responsibilities:
-//! - Resolve Ralph's temp root directory.
-//! - Create Ralph-scoped temp directories and files.
+//! - Resolve CueLoop's temp root directory.
+//! - Create CueLoop-scoped temp directories and files.
 //! - Remove stale temp entries by prefix and retention window.
 //!
 //! Scope:
@@ -12,18 +12,20 @@
 //! - Used by cleanup flows, runner prompts, plugin IO, issue publishing, and safeguard dump persistence.
 //!
 //! Invariants/Assumptions:
-//! - Ralph temp artifacts live under `std::env::temp_dir()/ralph`.
+//! - CueLoop temp artifacts currently live under the legacy-compatible
+//!   `std::env::temp_dir()/ralph` namespace.
 //! - Cleanup is prefix-based and best-effort on per-entry metadata or deletion failures.
-//! - Ralph-created temp files use the `ralph_` prefix so cleanup can discover them.
+//! - CueLoop-created temp files currently use the legacy-compatible `ralph_` prefix so
+//!   cleanup can discover them.
 
-use crate::constants::paths::{LEGACY_PROMPT_PREFIX, RALPH_TEMP_DIR_NAME, RALPH_TEMP_PREFIX};
+use crate::constants::paths::{CUELOOP_TEMP_DIR_NAME, CUELOOP_TEMP_PREFIX, LEGACY_PROMPT_PREFIX};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-pub fn ralph_temp_root() -> PathBuf {
-    std::env::temp_dir().join(RALPH_TEMP_DIR_NAME)
+pub fn cueloop_temp_root() -> PathBuf {
+    std::env::temp_dir().join(CUELOOP_TEMP_DIR_NAME)
 }
 
 pub fn cleanup_stale_temp_entries(
@@ -98,23 +100,23 @@ pub fn cleanup_stale_temp_entries(
 }
 
 pub fn cleanup_stale_temp_dirs(base: &Path, retention: Duration) -> Result<usize> {
-    cleanup_stale_temp_entries(base, &[RALPH_TEMP_PREFIX], retention)
+    cleanup_stale_temp_entries(base, &[CUELOOP_TEMP_PREFIX], retention)
 }
 
 pub fn cleanup_default_temp_dirs(retention: Duration) -> Result<usize> {
     let mut removed = 0usize;
-    removed += cleanup_stale_temp_dirs(&ralph_temp_root(), retention)?;
+    removed += cleanup_stale_temp_dirs(&cueloop_temp_root(), retention)?;
     removed +=
         cleanup_stale_temp_entries(&std::env::temp_dir(), &[LEGACY_PROMPT_PREFIX], retention)?;
     Ok(removed)
 }
 
-pub fn create_ralph_temp_dir(label: &str) -> Result<tempfile::TempDir> {
-    let base = ralph_temp_root();
+pub fn create_cueloop_temp_dir(label: &str) -> Result<tempfile::TempDir> {
+    let base = cueloop_temp_root();
     fs::create_dir_all(&base).with_context(|| format!("create temp dir {}", base.display()))?;
     let prefix = format!(
         "{prefix}{label}_",
-        prefix = RALPH_TEMP_PREFIX,
+        prefix = CUELOOP_TEMP_PREFIX,
         label = label.trim()
     );
     let dir = tempfile::Builder::new()
@@ -124,14 +126,14 @@ pub fn create_ralph_temp_dir(label: &str) -> Result<tempfile::TempDir> {
     Ok(dir)
 }
 
-/// Creates a NamedTempFile in the ralph temp directory with the ralph_ prefix.
+/// Creates a NamedTempFile in the CueLoop temp directory with the managed cleanup prefix.
 /// This ensures the file will be caught by cleanup_default_temp_dirs().
-pub fn create_ralph_temp_file(label: &str) -> Result<tempfile::NamedTempFile> {
-    let base = ralph_temp_root();
+pub fn create_cueloop_temp_file(label: &str) -> Result<tempfile::NamedTempFile> {
+    let base = cueloop_temp_root();
     fs::create_dir_all(&base).with_context(|| format!("create temp dir {}", base.display()))?;
     let prefix = format!(
         "{prefix}{label}_",
-        prefix = RALPH_TEMP_PREFIX,
+        prefix = CUELOOP_TEMP_PREFIX,
         label = label.trim()
     );
     tempfile::Builder::new()

@@ -137,7 +137,7 @@ impl RunnerCommandBuilder {
             log::warn!("temp cleanup failed: {:#}", err);
         }
 
-        let temp_dir = fsutil::create_ralph_temp_dir("prompt")
+        let temp_dir = fsutil::create_cueloop_temp_dir("prompt")
             .map_err(|e| temp_prompt_file_error(&self.bin, "create_temp_dir", e))?;
 
         let mut tmp = tempfile::Builder::new()

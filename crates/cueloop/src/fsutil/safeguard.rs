@@ -21,7 +21,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::PathBuf;
 
-use super::temp::create_ralph_temp_dir;
+use super::temp::create_cueloop_temp_dir;
 
 /// Writes a safeguard dump with redaction applied to sensitive content.
 ///
@@ -69,7 +69,7 @@ pub fn safeguard_text_dump(label: &str, content: &str, is_debug_mode: bool) -> R
 }
 
 fn safeguard_text_dump_internal(label: &str, content: &str, _is_redacted: bool) -> Result<PathBuf> {
-    let temp_dir = create_ralph_temp_dir(label)?;
+    let temp_dir = create_cueloop_temp_dir(label)?;
     let output_path = temp_dir.path().join("output.txt");
     fs::write(&output_path, content)
         .with_context(|| format!("write safeguard dump to {}", output_path.display()))?;

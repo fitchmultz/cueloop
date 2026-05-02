@@ -1,9 +1,9 @@
 //! Purpose: temp-root and stale-cleanup integration coverage for `cueloop::fsutil`.
 //!
 //! Responsibilities:
-//! - Verify Ralph temp roots are used for Ralph-scoped temp directories.
+//! - Verify CueLoop temp roots are used for CueLoop-scoped temp directories.
 //! - Verify stale cleanup removes only matching prefixed entries.
-//! - Verify prefix-list cleanup handles legacy and Ralph prefixes together.
+//! - Verify prefix-list cleanup handles legacy and current prefixes together.
 //!
 //! Scope:
 //! - Temp cleanup and temp-dir creation only; atomic writes and tilde expansion live elsewhere.
@@ -22,10 +22,10 @@ fn test_cleanup_stale_temp_dirs_removes_prefixed_entries_only() {
     let base = TempDir::new().expect("create temp dir");
     let stale_dir = base
         .path()
-        .join(format!("{}old-dir", fsutil::RALPH_TEMP_PREFIX));
+        .join(format!("{}old-dir", fsutil::CUELOOP_TEMP_PREFIX));
     let stale_file = base
         .path()
-        .join(format!("{}old-file.txt", fsutil::RALPH_TEMP_PREFIX));
+        .join(format!("{}old-file.txt", fsutil::CUELOOP_TEMP_PREFIX));
     let keep_dir = base.path().join("keep-dir");
 
     fs::create_dir_all(&stale_dir).expect("create stale dir");
@@ -41,33 +41,33 @@ fn test_cleanup_stale_temp_dirs_removes_prefixed_entries_only() {
 }
 
 #[test]
-fn test_create_ralph_temp_dir_uses_temp_root() {
-    let temp_dir = fsutil::create_ralph_temp_dir("unit").expect("create ralph temp dir");
+fn test_create_cueloop_temp_dir_uses_temp_root() {
+    let temp_dir = fsutil::create_cueloop_temp_dir("unit").expect("create cueloop temp dir");
     let path = temp_dir.path().to_path_buf();
-    let root = fsutil::ralph_temp_root();
+    let root = fsutil::cueloop_temp_root();
     assert!(path.starts_with(&root));
     let name = path.file_name().expect("temp dir name").to_string_lossy();
-    assert!(name.starts_with(fsutil::RALPH_TEMP_PREFIX));
+    assert!(name.starts_with(fsutil::CUELOOP_TEMP_PREFIX));
 }
 
 #[test]
 fn test_cleanup_stale_temp_entries_honors_prefix_list() {
     let base = TempDir::new().expect("create temp dir");
     let legacy_dir = base.path().join("legacy-temp");
-    let ralph_dir = base
+    let cueloop_dir = base
         .path()
-        .join(format!("{}new-temp", fsutil::RALPH_TEMP_PREFIX));
+        .join(format!("{}new-temp", fsutil::CUELOOP_TEMP_PREFIX));
     fs::create_dir_all(&legacy_dir).expect("create legacy dir");
-    fs::create_dir_all(&ralph_dir).expect("create ralph dir");
+    fs::create_dir_all(&cueloop_dir).expect("create cueloop dir");
 
     let removed = fsutil::cleanup_stale_temp_entries(
         base.path(),
-        &["legacy", fsutil::RALPH_TEMP_PREFIX],
+        &["legacy", fsutil::CUELOOP_TEMP_PREFIX],
         Duration::from_secs(0),
     )
     .expect("cleanup temp entries");
 
     assert_eq!(removed, 2);
     assert!(!legacy_dir.exists());
-    assert!(!ralph_dir.exists());
+    assert!(!cueloop_dir.exists());
 }
