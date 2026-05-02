@@ -2,10 +2,10 @@
  RalphMacApp+URLRouting
 
  Purpose:
- - Handle incoming `ralph://open` URLs and route or create workspaces.
+ - Handle incoming `cueloop://open` and legacy `ralph://open` URLs and route or create workspaces.
 
  Responsibilities:
- - Handle incoming `ralph://open` URLs and route or create workspaces.
+ - Handle incoming `cueloop://open` and legacy `ralph://open` URLs and route or create workspaces.
  - Reuse bootstrap workspaces when the app launches into a placeholder workspace.
 
  Does not handle:
@@ -16,7 +16,7 @@
  - Used by the RalphMac app or RalphCore tests through its owning feature surface.
 
  Invariants/assumptions callers must respect:
- - Only `ralph://open?workspace=...` URLs are supported.
+ - `cueloop://open?workspace=...` is the primary URL form; `ralph://open?...` remains supported as a legacy alias.
  - URL-provided CLI overrides are always rejected.
  */
 
@@ -27,19 +27,20 @@ import RalphCore
 @MainActor
 enum RalphURLRouter {
     static func handle(_ url: URL) {
-        guard url.scheme == "ralph" else {
+        guard isSupportedScheme(url.scheme) else {
             RalphLogger.shared.info("Received URL with unexpected scheme: \(url.scheme ?? "nil")", category: .lifecycle)
             return
         }
 
+        let scheme = url.scheme ?? "cueloop"
         if url.host == "settings" {
             SettingsService.showSettingsWindow(source: .urlScheme)
-            RalphLogger.shared.info("Opened settings via ralph://settings", category: .lifecycle)
+            RalphLogger.shared.info("Opened settings via \(scheme)://settings", category: .lifecycle)
             return
         }
 
         guard url.host == "open" else {
-            RalphLogger.shared.info("Received ralph:// URL with unexpected host: \(url.host ?? "nil")", category: .lifecycle)
+            RalphLogger.shared.info("Received \(scheme):// URL with unexpected host: \(url.host ?? "nil")", category: .lifecycle)
             return
         }
 
@@ -48,7 +49,7 @@ enum RalphURLRouter {
               let workspaceItem = queryItems.first(where: { $0.name == "workspace" }),
               let encodedPath = workspaceItem.value,
               let path = encodedPath.removingPercentEncoding else {
-            RalphLogger.shared.info("Received ralph://open URL without valid workspace parameter", category: .lifecycle)
+            RalphLogger.shared.info("Received \(scheme)://open URL without valid workspace parameter", category: .lifecycle)
             return
         }
 
@@ -60,6 +61,10 @@ enum RalphURLRouter {
         }
 
         openWorkspace(at: URL(fileURLWithPath: path, isDirectory: true))
+    }
+
+    private static func isSupportedScheme(_ scheme: String?) -> Bool {
+        scheme == "cueloop" || scheme == "ralph"
     }
 
     static func openWorkspace(at rawWorkspaceURL: URL) {

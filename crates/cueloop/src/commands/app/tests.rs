@@ -163,7 +163,7 @@ fn plan_url_command_encodes_workspace() -> anyhow::Result<()> {
     assert_eq!(spec.args[0], OsString::from("-a"));
 
     let url = spec.args[2].to_str().unwrap();
-    assert!(url.starts_with("ralph://open?workspace="));
+    assert!(url.starts_with("cueloop://open?workspace="));
     assert!(
         url.contains("my%20project"),
         "space should be percent-encoded"
@@ -269,7 +269,7 @@ fn plan_url_command_never_includes_cli_param() -> anyhow::Result<()> {
     )?;
 
     let url = spec.args.last().unwrap().to_string_lossy();
-    assert!(url.starts_with("ralph://open?workspace="));
+    assert!(url.starts_with("cueloop://open?workspace="));
     assert!(!url.contains("&cli="));
     Ok(())
 }
@@ -296,7 +296,7 @@ fn plan_url_command_prefers_installed_app_path_over_bundle_lookup() -> anyhow::R
     assert!(
         spec.args[2]
             .to_string_lossy()
-            .starts_with("ralph://open?workspace=")
+            .starts_with("cueloop://open?workspace=")
     );
     Ok(())
 }
@@ -321,7 +321,7 @@ fn plan_url_command_bundle_id_uses_open_launcher() -> anyhow::Result<()> {
     assert!(
         spec.args[2]
             .to_string_lossy()
-            .starts_with("ralph://open?workspace=")
+            .starts_with("cueloop://open?workspace=")
     );
     Ok(())
 }
@@ -349,7 +349,7 @@ fn plan_url_command_includes_cli_env_when_provided() -> anyhow::Result<()> {
     assert!(
         spec.args[4]
             .to_string_lossy()
-            .starts_with("ralph://open?workspace=")
+            .starts_with("cueloop://open?workspace=")
     );
     Ok(())
 }
