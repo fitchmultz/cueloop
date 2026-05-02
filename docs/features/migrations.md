@@ -611,7 +611,7 @@ Migration functionality includes comprehensive tests:
 
 Run tests:
 ```bash
-cargo test -p cueloop-agent-loop migration
+cargo test -p cueloop migration
 ```
 
 ### Safety Features

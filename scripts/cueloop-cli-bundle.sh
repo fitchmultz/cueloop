@@ -119,7 +119,7 @@ fi
 cueloop_activate_pinned_rust_toolchain
 
 profile_dir="debug"
-build_args=(-p cueloop-agent-loop --locked --bin "$PRIMARY_BIN_NAME")
+build_args=(-p cueloop --locked --bin "$PRIMARY_BIN_NAME")
 case "$CONFIGURATION" in
     Release)
         profile_dir="dist"

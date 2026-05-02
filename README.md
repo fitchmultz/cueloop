@@ -1,12 +1,12 @@
 # CueLoop
 
-[![crates.io](https://img.shields.io/crates/v/cueloop-agent-loop.svg)](https://crates.io/crates/cueloop-agent-loop)
-[![docs.rs](https://img.shields.io/docsrs/cueloop-agent-loop)](https://docs.rs/cueloop-agent-loop)
+[![crates.io](https://img.shields.io/crates/v/cueloop.svg)](https://crates.io/crates/cueloop)
+[![docs.rs](https://img.shields.io/docsrs/cueloop)](https://docs.rs/cueloop)
 [![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/cueloop)](https://github.com/fitchmultz/cueloop/releases)
 
 CueLoop is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
 
-The primary executable and package are `cueloop` and `cueloop-agent-loop`. Repositories use `.cueloop/` for runtime state.
+The primary executable and Cargo package are both `cueloop`. Repositories use `.cueloop/` for runtime state.
 
 Teams use CueLoop when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
 
@@ -67,7 +67,7 @@ flowchart LR
 From crates.io:
 
 ```bash
-cargo install cueloop-agent-loop
+cargo install cueloop
 ```
 
 This installs the `cueloop` executable.
@@ -122,7 +122,7 @@ Here is a concrete repo workflow for a team using Codex or Claude Code in a norm
 
 ```bash
 # install CueLoop in your application repo
-cargo install cueloop-agent-loop
+cargo install cueloop
 cd your-service
 cueloop init
 
@@ -190,7 +190,7 @@ Security references:
 
 ## Versioning & Compatibility
 
-CueLoop follows semantic versioning for the product and the `cueloop-agent-loop` crate/package.
+CueLoop follows semantic versioning for the product and the `cueloop` crate/package.
 
 - Minor/patch releases preserve existing behavior unless explicitly documented
 - Breaking CLI/config behavior changes are called out in changelog and migration notes

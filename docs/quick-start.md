@@ -10,7 +10,7 @@ Get CueLoop running in a repository in a few minutes.
 ## 1) Install
 
 ```bash
-cargo install cueloop-agent-loop
+cargo install cueloop
 ```
 
 This installs the `cueloop` executable.

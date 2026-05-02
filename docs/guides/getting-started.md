@@ -35,7 +35,7 @@ Think of CueLoop as your AI conductor—managing tasks, tracking progress, and e
 The easiest way to install CueLoop is via Cargo:
 
 ```bash
-cargo install cueloop-agent-loop
+cargo install cueloop
 ```
 
 This installs the latest published version from crates.io and provides the `cueloop` executable at `~/.cargo/bin/cueloop`.
@@ -772,7 +772,7 @@ cueloop prd create requirements.md
 ┌────────────────────────────────────────────────────────────────┐
 │ CUELOOP QUICK REFERENCE                                          │
 ├────────────────────────────────────────────────────────────────┤
-│ INSTALL    cargo install cueloop-agent-loop                      │
+│ INSTALL    cargo install cueloop                      │
 │ INIT       cueloop init                                          │
 │ APP (macOS) cueloop app open                                     │
 │ RUN        cueloop run one        # next task                    │

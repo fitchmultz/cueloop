@@ -137,7 +137,7 @@ import sys
 expected_version, lockfile_path = sys.argv[1:3]
 text = Path(lockfile_path).read_text(encoding="utf-8")
 match = re.search(
-    r'\[\[package\]\]\nname = "cueloop-agent-loop"\nversion = "([0-9]+\.[0-9]+\.[0-9]+)"',
+    r'\[\[package\]\]\nname = "cueloop"\nversion = "([0-9]+\.[0-9]+\.[0-9]+)"',
     text,
     re.MULTILINE,
 )

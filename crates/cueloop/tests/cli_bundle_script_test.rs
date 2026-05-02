@@ -161,7 +161,7 @@ fn bundle_script_rebuilds_even_when_binary_already_exists() {
 
     let cargo_invocations = std::fs::read_to_string(&cargo_log).expect("read fake cargo log");
     assert!(
-        cargo_invocations.contains("build -p cueloop-agent-loop --locked --bin cueloop --target"),
+        cargo_invocations.contains("build -p cueloop --locked --bin cueloop --target"),
         "expected fake cargo to receive a build invocation\nstdout:\n{stdout}\nstderr:\n{stderr}\nlog:\n{cargo_invocations}"
     );
     assert!(

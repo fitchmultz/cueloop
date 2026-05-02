@@ -100,7 +100,7 @@ rm -rf .cueloop/logs/
 Security updates are provided for the latest released version of CueLoop. Users should keep their installation up to date:
 
 ```bash
-cargo install cueloop-agent-loop --force
+cargo install cueloop --force
 ```
 
 ## Security Best Practices

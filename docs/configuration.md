@@ -10,7 +10,7 @@ Purpose: Document CueLoop's JSON configuration layout, defaults, override preced
 
 ## Overview
 
-CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. The executable is `cueloop`, and the package is `cueloop-agent-loop`.
+CueLoop reads JSONC configuration from two locations, with project config taking precedence over global config only after repo trust rules are applied where required. The executable is `cueloop`, and the package is `cueloop`.
 
 - Global: `~/.config/cueloop/config.jsonc`
 - Project: `.cueloop/config.jsonc`

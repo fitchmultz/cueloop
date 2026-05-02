@@ -9,7 +9,7 @@
 //! - Regression tests only; ETA implementation lives in sibling modules.
 //!
 //! Usage:
-//! - Run via `cargo test -p cueloop-agent-loop eta_calculator` or the broader CI
+//! - Run via `cargo test -p cueloop eta_calculator` or the broader CI
 //!   gates.
 //!
 //! Invariants/Assumptions:

@@ -9,7 +9,7 @@
 //! - Regression tests only; undo implementation lives in sibling modules.
 //!
 //! Usage:
-//! - Run via `cargo test -p cueloop-agent-loop undo` or the broader CI gates.
+//! - Run via `cargo test -p cueloop undo` or the broader CI gates.
 //!
 //! Invariants/Assumptions:
 //! - Test snapshots use isolated temp directories.

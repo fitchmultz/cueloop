@@ -7,7 +7,7 @@ Repository: https://github.com/fitchmultz/cueloop
 ## Install
 
 ```bash
-cargo install cueloop-agent-loop
+cargo install cueloop
 ```
 
 This installs the `cueloop` executable.

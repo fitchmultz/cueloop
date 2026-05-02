@@ -219,7 +219,7 @@
         "crates/cueloop/src/contracts/config/webhook.rs",
         "crates/cueloop/src/config/validation/",
         "crates/cueloop/src/webhook/tests/",
-        "cargo test -p cueloop-agent-loop webhook"
+        "cargo test -p cueloop webhook"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
@@ -264,8 +264,8 @@
         "crates/cueloop/src/commands/task/decompose/",
         "crates/cueloop/src/queue/operations/followups.rs",
         "crates/cueloop/src/queue/operations/",
-        "cargo test -p cueloop-agent-loop task",
-        "cargo test -p cueloop-agent-loop queue"
+        "cargo test -p cueloop task",
+        "cargo test -p cueloop queue"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
@@ -315,9 +315,9 @@
         "crates/cueloop/src/webhook/worker/delivery.rs",
         "crates/cueloop/src/session/tests.rs",
         "crates/cueloop/tests/doctor_contract_test/",
-        "cargo test -p cueloop-agent-loop parallel",
-        "cargo test -p cueloop-agent-loop session",
-        "cargo test -p cueloop-agent-loop doctor"
+        "cargo test -p cueloop parallel",
+        "cargo test -p cueloop session",
+        "cargo test -p cueloop doctor"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
@@ -363,8 +363,8 @@
         "crates/cueloop/tests/release_integration_contract_test.rs",
         "crates/cueloop/tests/release_integration_contract_test/",
         "crates/cueloop/tests/test_support/",
-        "cargo test -p cueloop-agent-loop machine_contract_test",
-        "cargo test -p cueloop-agent-loop release_integration_contract_test"
+        "cargo test -p cueloop machine_contract_test",
+        "cargo test -p cueloop release_integration_contract_test"
       ],
       "evidence": [
         "User request: \"use the comprehensive codebase audit skill and build tasks stemming from your findings\"",
@@ -2023,7 +2023,7 @@
       "id": "RQ-0044",
       "status": "done",
       "title": "Stop webhook shutdown from flushing delayed retries immediately",
-      "description": "Principles violated: F (fail fast appropriately), G (least astonishment), H (operational hygiene). The webhook retry scheduler currently drains every pending retry into the ready queue when shutdown starts, which bypasses the configured backoff and can block teardown on a bounded send. Why it matters: a retry scheduled far into the future can fire immediately during dispatcher rebuilds or process shutdown, creating surprising retry bursts and slower exits exactly when CueLoop is trying to stop cleanly. Minimal fix: treat shutdown as cancellation for pending retries, or persist/reclassify them without re-enqueueing them immediately; do not block scheduler teardown on bounded ready-queue sends. Acceptance criteria: shutdown no longer causes delayed retries to execute early, dispatcher teardown remains bounded, focused scheduler tests cover shutdown cancellation behavior, and `cargo test -p cueloop-agent-loop webhook` passes.",
+      "description": "Principles violated: F (fail fast appropriately), G (least astonishment), H (operational hygiene). The webhook retry scheduler currently drains every pending retry into the ready queue when shutdown starts, which bypasses the configured backoff and can block teardown on a bounded send. Why it matters: a retry scheduled far into the future can fire immediately during dispatcher rebuilds or process shutdown, creating surprising retry bursts and slower exits exactly when CueLoop is trying to stop cleanly. Minimal fix: treat shutdown as cancellation for pending retries, or persist/reclassify them without re-enqueueing them immediately; do not block scheduler teardown on bounded ready-queue sends. Acceptance criteria: shutdown no longer causes delayed retries to execute early, dispatcher teardown remains bounded, focused scheduler tests cover shutdown cancellation behavior, and `cargo test -p cueloop webhook` passes.",
       "priority": "high",
       "tags": [
         "maintenance",
@@ -2033,18 +2033,18 @@
       "scope": [
         "crates/cueloop/src/webhook/worker/runtime/scheduler.rs",
         "crates/cueloop/src/webhook/worker/runtime/dispatcher.rs",
-        "cargo test -p cueloop-agent-loop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact"
+        "cargo test -p cueloop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact"
       ],
       "evidence": [
         "path: crates/cueloop/src/webhook/worker/runtime/scheduler.rs:63-90 and 141-181 :: retry_scheduler_loop calls flush_pending_retries on shutdown/disconnect and flush_pending_retries does blocking ready_sender.send(...) for every pending retry",
         "path: crates/cueloop/src/webhook/worker/runtime/dispatcher.rs:191-220 :: WebhookDispatcher::drop joins the scheduler before dropping the ready queue, so teardown waits for the retry drain path",
-        "workflow: cargo test -p cueloop-agent-loop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact :: current passing test proves a retry scheduled 60 seconds out is delivered immediately once shutdown begins"
+        "workflow: cargo test -p cueloop webhook::worker::runtime::scheduler::tests::scheduler_drains_pending_retries_when_shutdown_begins -- --exact :: current passing test proves a retry scheduled 60 seconds out is delivered immediately once shutdown begins"
       ],
       "plan": [
         "Replace shutdown-time retry draining with explicit cancellation, persistence, or safe failure accounting that does not enqueue delayed retries early.",
         "Ensure scheduler teardown cannot block indefinitely on bounded ready-queue sends while shutdown is in progress.",
         "Update scheduler tests to assert that pending retries are cancelled or recorded safely rather than executed early during shutdown.",
-        "Verify by running `cargo test -p cueloop-agent-loop webhook` and confirming delayed retries are not re-enqueued immediately when dispatcher shutdown starts."
+        "Verify by running `cargo test -p cueloop webhook` and confirming delayed retries are not re-enqueued immediately when dispatcher shutdown starts."
       ],
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
@@ -2072,18 +2072,18 @@
       "scope": [
         "crates/cueloop/src/commands/run/supervision/parallel_worker/bookkeeping.rs",
         "crates/cueloop/src/commands/run/supervision/parallel_worker/tests.rs",
-        "cargo test -p cueloop-agent-loop parallel"
+        "cargo test -p cueloop parallel"
       ],
       "evidence": [
         "path: crates/cueloop/src/commands/run/supervision/parallel_worker/bookkeeping.rs:25-50 and 74-80 :: RESTORED_BOOKKEEPING_FILES and PARALLEL_BOOKKEEPING_PATHS hardcode default .cueloop queue/done paths instead of resolved queue_path/done_path",
         "path: crates/cueloop/src/commands/run/supervision/parallel_worker/tests.rs:81-154 :: restore_bookkeeping_uses_workspace_paths_when_coordinator_paths_are_overridden only changes coordinator paths while the workspace restore still targets hardcoded .cueloop/queue.jsonc and .cueloop/done.jsonc",
-        "workflow: cargo test -p cueloop-agent-loop parallel :: current suite passes without a regression that exercises custom workspace bookkeeping paths during post-run supervision cleanup"
+        "workflow: cargo test -p cueloop parallel :: current suite passes without a regression that exercises custom workspace bookkeeping paths during post-run supervision cleanup"
       ],
       "plan": [
         "Replace the hardcoded restore and bookkeeping-dirtiness path lists with resolved queue and done paths mapped into the worker workspace.",
         "Keep generated cache cleanup separate from resolved bookkeeping restoration so custom queue/done paths remain the single source of truth.",
         "Add a targeted supervision regression that uses custom queue and done paths and asserts the real bookkeeping files are restored cleanly.",
-        "Verify by running `cargo test -p cueloop-agent-loop parallel` and confirming custom queue/done supervision no longer leaves bookkeeping dirtiness behind."
+        "Verify by running `cargo test -p cueloop parallel` and confirming custom queue/done supervision no longer leaves bookkeeping dirtiness behind."
       ],
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
@@ -2101,7 +2101,7 @@
       "id": "RQ-0043",
       "status": "done",
       "title": "Redact secret-bearing webhook payload fields before persisting failures",
-      "description": "Principles violated: I (security baseline), J (consistency/integrity), H (operational hygiene). Persisted webhook failure records sanitize `destination` and `error` but still clone `msg.payload` verbatim, so operator-supplied notes and other payload text leak into `.cueloop/cache/webhooks/failures.json`. Why it matters: rejected-task notes and other webhook payload text can contain tokens, customer data, or raw error material, and the failure store keeps that content on disk for replay and local inspection. Minimal fix: sanitize or omit secret-bearing payload fields before writing `WebhookFailureRecord`, while keeping enough safe metadata for diagnostics and replay selection. Acceptance criteria: a failing-webhook regression proves persisted failure records no longer contain raw secret-bearing `payload.note` or equivalent unsanitized payload text, replay remains functional with the retained safe payload shape, and `cargo test -p cueloop-agent-loop webhook` passes.",
+      "description": "Principles violated: I (security baseline), J (consistency/integrity), H (operational hygiene). Persisted webhook failure records sanitize `destination` and `error` but still clone `msg.payload` verbatim, so operator-supplied notes and other payload text leak into `.cueloop/cache/webhooks/failures.json`. Why it matters: rejected-task notes and other webhook payload text can contain tokens, customer data, or raw error material, and the failure store keeps that content on disk for replay and local inspection. Minimal fix: sanitize or omit secret-bearing payload fields before writing `WebhookFailureRecord`, while keeping enough safe metadata for diagnostics and replay selection. Acceptance criteria: a failing-webhook regression proves persisted failure records no longer contain raw secret-bearing `payload.note` or equivalent unsanitized payload text, replay remains functional with the retained safe payload shape, and `cargo test -p cueloop webhook` passes.",
       "priority": "high",
       "tags": [
         "maintenance",
@@ -2111,7 +2111,7 @@
       "scope": [
         "crates/cueloop/src/webhook/diagnostics/failure_store.rs",
         "crates/cueloop/src/cli/task/status.rs",
-        "cargo test -p cueloop-agent-loop webhook"
+        "cargo test -p cueloop webhook"
       ],
       "evidence": [
         "path: crates/cueloop/src/webhook/diagnostics/failure_store.rs:98-112 :: persist_failed_delivery_at_path stores payload: msg.payload.clone() after only sanitizing destination and error",
@@ -2122,7 +2122,7 @@
         "Sanitize or drop secret-bearing payload fields before persisting WebhookFailureRecord entries instead of cloning the raw payload verbatim.",
         "Preserve only the safe payload metadata needed for replay selection and operator triage, or introduce a separately sanitized persisted payload shape.",
         "Add focused tests covering reject notes and other payload text that contain secret-like substrings.",
-        "Verify by running `cargo test -p cueloop-agent-loop webhook` and confirming persisted failure-store records no longer contain raw secret-bearing payload text."
+        "Verify by running `cargo test -p cueloop webhook` and confirming persisted failure-store records no longer contain raw secret-bearing payload text."
       ],
       "notes": [],
       "request": "scan: parallel run bookkeeping, worker workspace sync, git push/rebase races, and webhook delivery retries/redaction",
@@ -2156,7 +2156,7 @@
         "path: crates/cueloop/src/commands/run/parallel/orchestration/preflight.rs:135-149 :: parallel preflight always calls init_worker_for_parallel before any webhook event is emitted",
         "path: crates/cueloop/src/webhook/worker/runtime/state.rs:78-115 :: dispatcher_for_config_with_factory builds a dispatcher from settings without checking enabled/url first",
         "path: crates/cueloop/src/webhook/worker/runtime/tests.rs:120-127 :: thread_spawn_failure_is_recoverable_on_later_attempt uses WebhookConfig::default() and still expects 5 spawned threads on recovery",
-        "workflow: cargo test -p cueloop-agent-loop webhook::worker::runtime::tests::thread_spawn_failure_is_recoverable_on_later_attempt -- --exact :: current passing test proves default webhook config still drives dispatcher startup"
+        "workflow: cargo test -p cueloop webhook::worker::runtime::tests::thread_spawn_failure_is_recoverable_on_later_attempt -- --exact :: current passing test proves default webhook config still drives dispatcher startup"
       ],
       "plan": [
         "Add an explicit resolved-config gate so disabled or URL-less webhook configs do not start the dispatcher in parallel preflight or runtime lookup paths.",
@@ -2270,7 +2270,7 @@
       "scope": [
         "crates/cueloop/src/git/commit/rebase_push.rs",
         "crates/cueloop/src/git/commit/tests.rs",
-        "cargo test -p cueloop-agent-loop git"
+        "cargo test -p cueloop git"
       ],
       "evidence": [
         "path: crates/cueloop/src/git/commit/rebase_push.rs:42-60 :: the no-upstream path computes ahead against fallback_upstream and returns Ok(()) when HEAD is not ahead, even before checking whether the branch is behind remote",
@@ -3026,8 +3026,8 @@
         "crates/cueloop/src/git/status/tests.rs",
         "crates/cueloop/src/commands/run/parallel/sync/gitignored.rs",
         "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
-        "cargo test -p cueloop-agent-loop git::status::tests::ignored_paths",
-        "cargo test -p cueloop-agent-loop commands::run::parallel::sync::tests::gitignored",
+        "cargo test -p cueloop git::status::tests::ignored_paths",
+        "cargo test -p cueloop commands::run::parallel::sync::tests::gitignored",
         "make agent-ci"
       ],
       "evidence": [
@@ -3044,7 +3044,7 @@
         "Preserve the existing safety policy in `gitignored.rs`: do not allow allowlist entries ending in `/`, keep denied-prefix filtering, keep workspace-root exclusion, and continue copying only `source.is_file()` entries. The implementation must not recursively mirror an ignored directory just because its parent directory is ignored.",
         "Add regression tests in `commands/run/parallel/sync/tests/gitignored.rs` for an ignored directory root (`config/`) plus an explicit allowlist entry (`config/local.json`) covering both successful preflight and `sync_cueloop_state` copying, while confirming an unallowlisted sibling remains absent from the workspace.",
         "Add a second regression for a narrow glob beneath an ignored directory root, such as `.gitignore` = `config/` and allowlist = `config/local-*.json`, proving only matching files copy and nonmatching files under the ignored directory do not copy.",
-        "Run targeted tests first (`cargo test -p cueloop-agent-loop git::status::tests::ignored_paths` and `cargo test -p cueloop-agent-loop commands::run::parallel::sync::tests::gitignored`), then run `make agent-ci` before claiming completion."
+        "Run targeted tests first (`cargo test -p cueloop git::status::tests::ignored_paths` and `cargo test -p cueloop commands::run::parallel::sync::tests::gitignored`), then run `make agent-ci` before claiming completion."
       ],
       "notes": [
         "Phase 1 planning inspected the relevant implementation and tests only; no source changes or test commands were run in planning mode.",
@@ -3052,7 +3052,7 @@
         "Reviewed Phase 2 diff for RQ-0061; no Phase 3 code refinements required.",
         "Verified git::ignored_paths now enumerates concrete ignored files without --directory.",
         "Confirmed nested explicit and glob allowlist tests cover preflight plus sync and preserve sibling exclusion.",
-        "Targeted tests passed: cargo test -p cueloop-agent-loop git::status::tests::ignored_paths; cargo test -p cueloop-agent-loop commands::run::parallel::sync::tests::gitignored."
+        "Targeted tests passed: cargo test -p cueloop git::status::tests::ignored_paths; cargo test -p cueloop commands::run::parallel::sync::tests::gitignored."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T00:48:35Z",
@@ -3087,7 +3087,7 @@
         "crates/cueloop/src/commands/run/parallel/sync/mod.rs",
         "crates/cueloop/src/commands/run/parallel/sync/tests/gitignored.rs",
         "crates/cueloop/src/commands/run/parallel/sync/tests/mod.rs",
-        "cargo test -p cueloop-agent-loop sync::tests::gitignored",
+        "cargo test -p cueloop sync::tests::gitignored",
         "make agent-ci"
       ],
       "evidence": [
@@ -3111,7 +3111,7 @@
         "Blocked ignored-file sync from copying symlinks resolving outside the repo root.",
         "Phase 3 tightened review finding: resolved symlink targets must also avoid denied runtime/build trees and workspace roots.",
         "Added Unix regressions for external symlinks, safe in-repo symlinks, denied-tree targets, workspace-root targets, and default .env symlink escape.",
-        "Verified with cargo test -p cueloop-agent-loop sync::tests::gitignored and make agent-ci."
+        "Verified with cargo test -p cueloop sync::tests::gitignored and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T00:48:35Z",
@@ -3375,7 +3375,7 @@
         "Classified malformed, unreadable, and uninspectable session caches as recoverable corrupt-cache validation states.",
         "Execute-mode recovery quarantines corrupt session cache files and resumes fresh only when auto-resume is explicitly allowed.",
         "Runner-recovery blocking is emitted only for refusing-to-resume corrupt-cache decisions; fresh fallback no longer surfaces as blocked.",
-        "Validated with cargo test -p cueloop-agent-loop session:: and make agent-ci."
+        "Validated with cargo test -p cueloop session:: and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T03:24:54Z",
@@ -3438,7 +3438,7 @@
         "Implemented retry diagnostic accumulation and debug-only in-flight retry/recovery logs.",
         "Preserved accumulated diagnostics on terminal helper failures, including revert failure paths.",
         "Added regression coverage for retry-admission diagnostics, failed auto-revert debug logging, and terminal diagnostic preservation.",
-        "Verified with cargo test -p cueloop-agent-loop runutil::execution and make agent-ci."
+        "Verified with cargo test -p cueloop runutil::execution and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T03:24:54Z",
@@ -3501,7 +3501,7 @@
         "Rust semantic reference lookup degraded because rust-analyzer failed to initialize during planning; use local file evidence and rg results as the implementation baseline.",
         "Classified missing CLI/spawn failures as cli_unavailable in Rust machine errors and CueLoopMac fallback recovery.",
         "Scoped ENOENT matching to spawn/executable phrases so missing queue/config files keep their existing categories.",
-        "Verified cargo test -p cueloop-agent-loop cli::machine::error and make agent-ci."
+        "Verified cargo test -p cueloop cli::machine::error and make agent-ci."
       ],
       "request": "scan finding",
       "created_at": "2026-04-29T03:24:54Z",

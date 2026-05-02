@@ -11,7 +11,7 @@
 //!   modules.
 //!
 //! Usage:
-//! - Run via `cargo test -p cueloop-agent-loop contracts::task` or the broader
+//! - Run via `cargo test -p cueloop contracts::task` or the broader
 //!   CI gates.
 //!
 //! Invariants/Assumptions:

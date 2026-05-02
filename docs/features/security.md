@@ -770,7 +770,7 @@ Use `["*"]` to subscribe to all events.
 - [ ] Remove old safeguard dumps from `/tmp/cueloop/`
 - [ ] Rotate webhook secrets
 - [ ] Review and update plugin trust decisions
-- [ ] Keep CueLoop updated: `cargo install cueloop-agent-loop --force`
+- [ ] Keep CueLoop updated: `cargo install cueloop --force`
 
 ---
 

@@ -112,7 +112,7 @@ fn rust_toolchain_script_fails_when_crate_rust_version_drifts() {
     );
     write_file(
         &fixture.join("crates/cueloop/Cargo.toml"),
-        "[package]\nname = \"cueloop-agent-loop\"\nrust-version = \"1.94\"\n",
+        "[package]\nname = \"cueloop\"\nrust-version = \"1.94\"\n",
     );
 
     let output = Command::new("bash")
