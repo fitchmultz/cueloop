@@ -374,7 +374,7 @@ make macos-ci
 
 Key locations to know:
 
-- `apps/RalphMac/`: macOS SwiftUI app (thin client that shells out to the bundled `ralph` CLI)
+- `apps/CueLoopMac/`: macOS SwiftUI app (thin client that shells out to the bundled `cueloop` CLI)
 - `crates/cueloop/`: Primary Rust CLI crate
   - `src/`: CLI commands, runner integration, queue management
   - `assets/prompts/`: Embedded prompt templates

@@ -22,8 +22,8 @@ RELEASE_METADATA_PATHS=(
     "VERSION"
     "Cargo.lock"
     "crates/cueloop/Cargo.toml"
-    "apps/RalphMac/RalphMac.xcodeproj/project.pbxproj"
-    "apps/RalphMac/RalphCore/VersionValidator.swift"
+    "apps/CueLoopMac/CueLoopMac.xcodeproj/project.pbxproj"
+    "apps/CueLoopMac/CueLoopCore/VersionValidator.swift"
     "CHANGELOG.md"
     "schemas/config.schema.json"
     "schemas/queue.schema.json"
@@ -77,8 +77,8 @@ PUBLIC_SCAN_EXCLUDES=(
     ".ralph/undo/"
     ".ralph/webhooks/"
     ".ralph/workspaces/"
-    "apps/RalphMac/build/"
-    "apps/RalphMac/target/"
+    "apps/CueLoopMac/build/"
+    "apps/CueLoopMac/target/"
     ".venv/"
     ".ruff_cache/"
     ".pytest_cache/"
@@ -99,8 +99,8 @@ PUBLIC_LOCAL_ONLY_BASENAME_PREFIXES=(
 
 PUBLIC_SOURCE_SNAPSHOT_DISALLOWED_PATHS=(
     "target"
-    "apps/RalphMac/build"
-    "apps/RalphMac/target"
+    "apps/CueLoopMac/build"
+    "apps/CueLoopMac/target"
     ".venv"
     ".ruff_cache"
     ".pytest_cache"
@@ -109,8 +109,8 @@ PUBLIC_SOURCE_SNAPSHOT_DISALLOWED_PATHS=(
 
 PUBLIC_TRACKED_RUNTIME_BUILD_PREFIXES=(
     "target/"
-    "apps/RalphMac/build/"
-    "apps/RalphMac/target/"
+    "apps/CueLoopMac/build/"
+    "apps/CueLoopMac/target/"
     ".venv/"
     ".ruff_cache/"
     ".pytest_cache/"
@@ -468,7 +468,7 @@ public_is_docs_only_path() {
 public_requires_macos_ship_gate_for_path() {
     local path="$1"
     case "$path" in
-        apps/RalphMac/*|apps/AGENTS.md|schemas/*|VERSION|Cargo.toml|Cargo.lock|rust-toolchain.toml|.cargo/*)
+        apps/CueLoopMac/*|apps/AGENTS.md|schemas/*|VERSION|Cargo.toml|Cargo.lock|rust-toolchain.toml|.cargo/*)
             return 0
             ;;
     esac
@@ -479,7 +479,7 @@ public_requires_macos_ship_gate_for_path() {
 public_requires_macos_ship_gate_for_script_path() {
     local path="$1"
     case "$path" in
-        scripts/ralph-cli-bundle.sh|scripts/macos-*|scripts/lib/xcodebuild-lock.sh)
+        scripts/cueloop-cli-bundle.sh|scripts/macos-*|scripts/lib/xcodebuild-lock.sh)
             return 0
             ;;
     esac

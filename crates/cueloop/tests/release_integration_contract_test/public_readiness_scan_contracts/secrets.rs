@@ -31,7 +31,7 @@ fn public_readiness_scan_excludes_macos_target_build_artifacts() {
     copy_public_readiness_scan_fixture(repo_root);
     write_file(&repo_root.join("README.md"), "ok\n");
     write_file(
-        &repo_root.join("apps/RalphMac/target/tmp/generated.txt"),
+        &repo_root.join("apps/CueLoopMac/target/tmp/generated.txt"),
         &format!("{secret_token}\n"),
     );
 

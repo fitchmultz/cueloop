@@ -21,7 +21,7 @@ That delegates to:
 scripts/pre-public-check.sh --skip-ci --skip-links --skip-clean --allow-no-git
 ```
 
-In source-snapshot mode, the check still rejects local/runtime artifacts such as `target/`, unallowlisted `.ralph/*` content (for example `.ralph/cache/`, `.ralph/plugins/`, `.ralph/trust.json`, `.ralph/trust.jsonc`), repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes like `.scratchpad.md` / `.FIX_TRACKING.md`, and `apps/RalphMac/build/`.
+In source-snapshot mode, the check still rejects local/runtime artifacts such as `target/`, unallowlisted `.cueloop/*` content (for example `.cueloop/cache/`, `.cueloop/plugins/`, `.cueloop/trust.json`, `.cueloop/trust.jsonc`), repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes like `.scratchpad.md` / `.FIX_TRACKING.md`, and `apps/CueLoopMac/build/`.
 
 ## Full Public-Readiness Audit
 

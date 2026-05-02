@@ -47,9 +47,9 @@ build_native_release_artifact() {
     local version="$1"
     local binary_path
     if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
-        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --jobs "$JOBS" --print-path)
+        binary_path=$("$SCRIPT_DIR/cueloop-cli-bundle.sh" --configuration Release --jobs "$JOBS" --print-path)
     else
-        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --print-path)
+        binary_path=$("$SCRIPT_DIR/cueloop-cli-bundle.sh" --configuration Release --print-path)
     fi
     local target_triple
     target_triple=$(cueloop_get_rust_host_target)
@@ -74,9 +74,9 @@ build_cross_target() {
     local tarball_name="cueloop-${version}-${platform_name}.tar.gz"
 
     if [ -n "$JOBS" ] && [ "$JOBS" != "0" ]; then
-        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --target "$target" --jobs "$JOBS" --print-path)
+        binary_path=$("$SCRIPT_DIR/cueloop-cli-bundle.sh" --configuration Release --target "$target" --jobs "$JOBS" --print-path)
     else
-        binary_path=$("$SCRIPT_DIR/ralph-cli-bundle.sh" --configuration Release --target "$target" --print-path)
+        binary_path=$("$SCRIPT_DIR/cueloop-cli-bundle.sh" --configuration Release --target "$target" --print-path)
     fi
     tar -czf "$RELEASE_ARTIFACTS_DIR/$tarball_name" -C "$(dirname "$binary_path")" cueloop ralph
     (

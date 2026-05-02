@@ -11,7 +11,7 @@
 //! - Keep run-surface assertions isolated from queue, recovery, and parallel suites.
 //!
 //! Non-scope:
-//! - Runner output formatting details beyond the machine contract markers needed by RalphMac.
+//! - Runner output formatting details beyond the machine contract markers needed by CueLoopMac.
 //! - Parallel worker lifecycle contracts unrelated to terminal machine summaries.
 //!
 //! Usage:

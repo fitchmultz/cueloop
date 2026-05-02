@@ -4,7 +4,7 @@
 //! - Keep targeted stale documentation snippet coverage grouped with the public-readiness scan seam.
 //!
 //! Responsibilities:
-//! - Verify docs mode rejects stale RalphMac decomposition guidance and stale session-management contract examples.
+//! - Verify docs mode rejects stale CueLoopMac decomposition guidance and stale session-management contract examples.
 //!
 //! Scope:
 //! - Limited to path-specific stale-doc snippets that should never return once corrected.
@@ -45,7 +45,7 @@ fn public_readiness_scan_docs_mode_rejects_stale_app_decompose_command() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
         stdout.contains(
-            "docs/features/app.md: use `cueloop machine task decompose` for RalphMac decomposition docs"
+            "docs/features/app.md: use `cueloop machine task decompose` for CueLoopMac decomposition docs"
         ),
         "docs scan should explain the stale app command failure\nstdout:\n{}",
         stdout

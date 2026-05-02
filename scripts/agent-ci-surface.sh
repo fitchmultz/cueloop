@@ -122,7 +122,7 @@ makefile_diff_requires_macos_ship_gate() {
     local diff
     diff="$(combined_local_diff_for_path "Makefile")"
     case "$diff" in
-        *"macos-preflight:"*|*"macos-build:"*|*"macos-install-app:"*|*"macos-test:"*|*"macos-test-contracts:"*|*"macos-test-settings-smoke:"*|*"macos-test-workspace-routing-contract:"*|*"XCODE_"*|*"RALPH_XCODE_"*|*"MACOS_APP_INSTALL_DIR"*|*"scripts/ralph-cli-bundle.sh"*|*"xcodebuild"*)
+        *"macos-preflight:"*|*"macos-build:"*|*"macos-install-app:"*|*"macos-test:"*|*"macos-test-contracts:"*|*"macos-test-settings-smoke:"*|*"macos-test-workspace-routing-contract:"*|*"XCODE_"*|*"RALPH_XCODE_"*|*"MACOS_APP_INSTALL_DIR"*|*"scripts/cueloop-cli-bundle.sh"*|*"xcodebuild"*)
             return 0
             ;;
     esac
@@ -133,7 +133,7 @@ makefile_diff_requires_rust_release_gate() {
     local diff
     diff="$(combined_local_diff_for_path "Makefile")"
     case "$diff" in
-        *"build:"*|*"generate:"*|*"install:"*|*"RALPH_RELEASE_BUILD_STAMP"*|*"RALPH_STAMP_DIR"*|*"RALPH_CLI_BUILD_JOBS_ARG"*|*"BIN_NAME"*|*"BIN_DIR"*|*"PREFIX"*|*"release-gate:"*|*"profile-ship-gate:"*|*"scripts/ralph-cli-bundle.sh"*)
+        *"build:"*|*"generate:"*|*"install:"*|*"RALPH_RELEASE_BUILD_STAMP"*|*"RALPH_STAMP_DIR"*|*"RALPH_CLI_BUILD_JOBS_ARG"*|*"BIN_NAME"*|*"BIN_DIR"*|*"PREFIX"*|*"release-gate:"*|*"profile-ship-gate:"*|*"scripts/cueloop-cli-bundle.sh"*)
             return 0
             ;;
     esac

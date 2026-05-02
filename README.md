@@ -87,7 +87,7 @@ make install
 
 - Supported OS: macOS and Linux
 - Rust toolchain: pinned by `rust-toolchain.toml` (for deterministic fmt/clippy/test behavior)
-- SwiftUI app: macOS only (`apps/RalphMac/`)
+- SwiftUI app: macOS only (`apps/CueLoopMac/`)
 
 ## Quick Start
 

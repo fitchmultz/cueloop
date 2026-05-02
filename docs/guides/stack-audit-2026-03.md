@@ -10,7 +10,7 @@ Purpose: record the March 2026 language/toolchain/dependency baseline, note the 
 ## Scope
 
 - Rust CLI workspace under `crates/cueloop/`
-- macOS SwiftUI app under `apps/RalphMac/`
+- macOS SwiftUI app under `apps/CueLoopMac/`
 - Local build/test entrypoints in `Makefile`
 
 ## Current Versions

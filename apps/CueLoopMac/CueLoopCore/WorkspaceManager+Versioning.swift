@@ -1,0 +1,205 @@
+/**
+ WorkspaceManager+Versioning
+
+ Purpose:
+ - Probe the bundled CLI version and validate compatibility with the app.
+
+ Responsibilities:
+ - Probe the bundled CLI version and validate compatibility with the app.
+ - Cache successful version checks to reduce startup subprocess churn.
+ - Record persistence issues tied to version-cache IO.
+
+ Does not handle:
+ - Workspace lifecycle or restoration.
+ - Scene routing.
+
+ Usage:
+ - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
+
+ Invariants/assumptions callers must respect:
+ - Only compatible version checks are cached.
+ - Version checks use `cueloop machine system info`.
+ */
+
+import Foundation
+
+private struct CachedVersionResult: Codable {
+    let timestamp: Date
+    let isCompatible: Bool
+    let versionString: String
+}
+
+public extension WorkspaceManager {
+    func scheduleVersionCheck() {
+        versionCheckTask?.cancel()
+        versionCheckRevision &+= 1
+        let revision = versionCheckRevision
+
+        versionCheckTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.performVersionCheck()
+            guard self.versionCheckRevision == revision else { return }
+            self.versionCheckTask = nil
+        }
+    }
+
+    @MainActor
+    func performVersionCheck() async {
+        if let cached = checkCachedVersionResult(), cached.isCompatible {
+            CueLoopLogger.shared.debug("Using cached CLI version check result", category: .cli)
+            versionCheckResult = cached
+            return
+        }
+
+        let result = await executeVersionCheck()
+        if let result {
+            versionCheckResult = result
+
+            if result.isCompatible {
+                cacheVersionResult(result)
+                CueLoopLogger.shared.info("CLI version compatible: \(result.rawVersion)", category: .cli)
+            } else {
+                var message = result.errorMessage ?? "Unknown version error"
+                if let guidance = result.guidanceMessage {
+                    message += "\n\n" + guidance
+                }
+                errorMessage = message
+                CueLoopLogger.shared.error("CLI version incompatible: \(message)", category: .cli)
+            }
+        }
+    }
+
+    @MainActor
+    func executeVersionCheck() async -> VersionValidator.VersionCheckResult? {
+        guard let client else {
+            errorMessage = "Cannot check CLI version: client not initialized"
+            return nil
+        }
+
+        do {
+            let output = try await client.runAndCollect(arguments: ["--no-color", "machine", "system", "info"])
+
+            guard output.status.code == 0 else {
+                let message = "CLI version check failed with exit code \(output.status.code)"
+                errorMessage = message
+                CueLoopLogger.shared.error("CLI version check failed: \(message)", category: .cli)
+                return nil
+            }
+
+            let document = try CueLoopMachineContract.decode(
+                MachineSystemInfoDocument.self,
+                from: Data(output.stdout.utf8),
+                operation: "check CLI version"
+            )
+            let versionString = document.cliVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+            let validator = VersionValidator()
+            return validator.validate(versionString)
+        } catch let recovery as RecoveryError {
+            let message = recovery.message
+            let guidance = recovery.suggestions.first
+            errorMessage = guidance.map { "\(message)\n\n\($0)" } ?? message
+            CueLoopLogger.shared.error("Failed to check CLI version: \(message)", category: .cli)
+            return nil
+        } catch {
+            let message = "Failed to check CLI version: \(error.localizedDescription)"
+            errorMessage = message
+            CueLoopLogger.shared.error("Failed to check CLI version: \(message)", category: .cli)
+            return nil
+        }
+    }
+
+    func checkCachedVersionResult() -> VersionValidator.VersionCheckResult? {
+        guard let data = CueLoopAppDefaults.userDefaults.data(forKey: versionCheckCacheKey) else {
+            return nil
+        }
+        let cached: CachedVersionResult
+        do {
+            cached = try JSONDecoder().decode(CachedVersionResult.self, from: data)
+            clearPersistenceIssue(domain: .versionCache)
+        } catch {
+            recordPersistenceIssue(
+                PersistenceIssue(
+                    domain: .versionCache,
+                    operation: .load,
+                    context: versionCheckCacheKey,
+                    error: error
+                )
+            )
+            CueLoopAppDefaults.userDefaults.removeObject(forKey: versionCheckCacheKey)
+            return nil
+        }
+
+        let age = Date().timeIntervalSince(cached.timestamp)
+        guard age < VersionCompatibility.cacheDuration else {
+            CueLoopAppDefaults.userDefaults.removeObject(forKey: versionCheckCacheKey)
+            return nil
+        }
+
+        if cached.isCompatible {
+            return VersionValidator.VersionCheckResult(status: .compatible, rawVersion: cached.versionString)
+        }
+
+        return nil
+    }
+
+    func cacheVersionResult(_ result: VersionValidator.VersionCheckResult) {
+        guard result.isCompatible else { return }
+
+        let cached = CachedVersionResult(
+            timestamp: Date(),
+            isCompatible: true,
+            versionString: result.rawVersion
+        )
+
+        do {
+            let data = try JSONEncoder().encode(cached)
+            CueLoopAppDefaults.userDefaults.set(data, forKey: versionCheckCacheKey)
+            clearPersistenceIssue(domain: .versionCache)
+        } catch {
+            recordPersistenceIssue(
+                PersistenceIssue(
+                    domain: .versionCache,
+                    operation: .save,
+                    context: versionCheckCacheKey,
+                    error: error
+                )
+            )
+        }
+    }
+
+    @MainActor
+    func checkForCLIUpdates() async -> VersionValidator.VersionCheckResult? {
+        CueLoopAppDefaults.userDefaults.removeObject(forKey: versionCheckCacheKey)
+
+        guard let result = await executeVersionCheck() else {
+            return nil
+        }
+
+        versionCheckResult = result
+
+        if result.isCompatible {
+            cacheVersionResult(result)
+        } else {
+            var message = result.errorMessage ?? "Unknown version error"
+            if let guidance = result.guidanceMessage {
+                message += "\n\n" + guidance
+            }
+            errorMessage = message
+        }
+
+        return result
+    }
+
+    func recordPersistenceIssue(_ issue: PersistenceIssue) {
+        persistenceIssue = issue
+        CueLoopLogger.shared.error(
+            "WorkspaceManager persistence \(issue.domain.rawValue) \(issue.operation.rawValue) failed for \(issue.context): \(issue.message)",
+            category: .workspace
+        )
+    }
+
+    func clearPersistenceIssue(domain: PersistenceIssue.Domain) {
+        guard persistenceIssue?.domain == domain else { return }
+        persistenceIssue = nil
+    }
+}

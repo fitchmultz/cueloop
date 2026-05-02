@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- RalphMac and machine integrations now cover more of the CLI contract, including workspace overview, parallel run-control support, machine error documents, and fail-fast version checks.
+- CueLoopMac and machine integrations now cover more of the CLI contract, including workspace overview, parallel run-control support, machine error documents, and fail-fast version checks.
 - Webhook delivery gained configurable retry backoff, retry counts in app/config surfaces, safer diagnostics, replay hardening, and reloadable runtime behavior.
 - Watch mode can emit desktop notifications, with matching CLI, configuration, app, and documentation support.
 - Repository trust setup is easier to bootstrap with CLI-supported `.ralph/trust.jsonc` flows and clearer built-in profile safety summaries.
@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Parallel worker integration now lets Ralph rebuild queue/done bookkeeping from the latest target branch, archive the finished task, retry push races, and refresh the coordinator branch after worker success.
-- Run, doctor, queue repair, task mutation, and recovery surfaces now share clearer blocking/resume-state narration across CLI, machine output, and RalphMac.
+- Run, doctor, queue repair, task mutation, and recovery surfaces now share clearer blocking/resume-state narration across CLI, machine output, and CueLoopMac.
 - Managed subprocess, wait, runner invocation, queue repair, webhook runtime, release, and macOS test code paths were split into smaller focused modules for more predictable behavior and maintenance.
 - Release verification now preserves curated `Unreleased` changelog notes when they are already present, while still auto-generating entries for blank release notes.
 
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Sequential run loops fail fast instead of drifting after terminal runner/session states, and run-one keeps its queue lock alive through execution.
 - Runner stream handling is more robust for Cursor/Gemini-style assistant deltas, Pi stream detail visibility, invalid resume fallbacks, and UTF-8 chunks split across fixed reads.
-- RalphMac startup, workspace launch, permission prompts, run-control lock recovery, config persistence, and settings/window routing were hardened.
+- CueLoopMac startup, workspace launch, permission prompts, run-control lock recovery, config persistence, and settings/window routing were hardened.
 - Webhook failure storage avoids cross-process lost updates, and retry scheduling no longer blocks hot delivery workers.
 - macOS CI and release bundling are faster and more deterministic.
 
@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Shared machine-contract coverage for queue, run, doctor, and task recovery flows, plus the generated `machine.schema.json`, so app and automation clients can integrate against one versioned JSON surface.
-- Explicit operator blocking/resume-state modeling across CLI, machine output, and RalphMac so stalled, waiting, and recovery states are narrated consistently.
+- Explicit operator blocking/resume-state modeling across CLI, machine output, and CueLoopMac so stalled, waiting, and recovery states are narrated consistently.
 - Durable watch-task identity metadata, atomic task mutation JSON flows, and safer queue repair/undo paths for structured recovery work.
 
 ### Changed
@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config, queue, and done workflows now center on the JSONC/runtime-cutover model, with clearer validation/migration messaging and no legacy JSON fallback guidance.
 - `make release-verify` now prepares and records a publish-ready local snapshot under `target/release-verifications/`, and `make release` publishes only if that exact snapshot still matches `HEAD`, release metadata, release notes, and artifacts.
 - Public-readiness scans, release artifact packaging, and CLI/app bundling now run through one hardened local release pipeline.
-- RalphMac queue refresh, window routing, settings smoke coverage, and run-control status handling were tightened so the shipped app behavior stays aligned with the CLI/machine contract.
+- CueLoopMac queue refresh, window routing, settings smoke coverage, and run-control status handling were tightened so the shipped app behavior stays aligned with the CLI/machine contract.
 
 ### Security
 
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Release automation now uses an explicit transaction workflow with `scripts/release.sh verify`, `execute`, and `reconcile`, transaction state under `target/release-transactions/`, and local-finalization-before-publication semantics.
 - Public-readiness checks now scan the whole repository for markdown-link breakage, tracked runtime artifacts, tracked env files, and obvious secret material instead of relying on a hardcoded document subset.
-- Agent CI routing now follows dependency surface changes instead of `apps/RalphMac/` path prefixes, escalating shared CLI/build/runtime contract changes to `macos-ci`.
+- Agent CI routing now follows dependency surface changes instead of `apps/CueLoopMac/` path prefixes, escalating shared CLI/build/runtime contract changes to `macos-ci`.
 - The macOS app, Makefile, and release artifact builder now share one CLI bundling/build entrypoint to keep app-bundled and shipped binaries on the same toolchain contract.
 - Queue loading, managed subprocess execution, runner/runtime modules, and macOS app window/task presentation flows were refactored into smaller focused components for more predictable behavior and recovery.
 
@@ -88,8 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- macOS SwiftUI app (`apps/RalphMac/`) that drives Ralph by executing the bundled `ralph` CLI.
-- `ralph app open` (macOS-only) to launch the installed app (bundle id: `com.mitchfultz.ralph`).
+- macOS SwiftUI app (`apps/CueLoopMac/`) that drives CueLoop by executing the bundled `cueloop` CLI.
+- `cueloop app open` (macOS-only) to launch the installed app (bundle id: `com.mitchfultz.cueloop`).
 - Hidden GUI/tooling contract: `ralph __cli-spec --format json` (emitted from clap's command model).
 - `ralph task decompose` to recursively plan task trees from a freeform goal or an existing queue task, preview the hierarchy, and write durable child tasks back into the queue.
 - Dedicated decomposition prompt plumbing, queue-safe subtree materialization, optional sibling dependency inference, attach/replace child policies, and machine-readable preview/write output for automation.

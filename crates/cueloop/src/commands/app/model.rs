@@ -23,10 +23,9 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub(super) const DEFAULT_BUNDLE_ID: &str = "com.mitchfultz.ralph";
-pub(super) const DEFAULT_APP_NAME: &str = "RalphMac.app";
+pub(super) const DEFAULT_BUNDLE_ID: &str = "com.mitchfultz.cueloop";
+pub(super) const DEFAULT_APP_NAME: &str = "CueLoopMac.app";
 pub(super) const GUI_CLI_BIN_ENV: &str = "CUELOOP_BIN_PATH";
-pub(super) const LEGACY_GUI_CLI_BIN_ENV: &str = "RALPH_BIN_PATH";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct OpenCommandSpec {

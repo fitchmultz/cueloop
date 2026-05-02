@@ -2,14 +2,14 @@
 #
 # Purpose: Deterministically smoke-test macOS Settings presentation paths without hijacking the desktop.
 # Responsibilities:
-# - Launch the built RalphMac app in noninteractive contract mode with disposable workspaces.
+# - Launch the built CueLoopMac app in noninteractive contract mode with disposable workspaces.
 # - Exercise command-surface, app-menu, and URL-routed Settings entry paths in-process.
 # - Fail if Settings reintroduces helper windows, placeholder-retarget drift, or config-loading regressions.
 # Scope:
 # - Local macOS smoke verification only; it does not build the app by itself.
 # Usage:
 # - scripts/macos-settings-smoke.sh
-# - scripts/macos-settings-smoke.sh --app-bundle target/tmp/xcode-deriveddata/build/Build/Products/Release/RalphMac.app
+# - scripts/macos-settings-smoke.sh --app-bundle target/tmp/xcode-deriveddata/build/Build/Products/Release/CueLoopMac.app
 # Invariants/assumptions:
 # - Requires macOS with `python3` available.
 # - The app bundle contains the companion `cueloop` CLI at `Contents/MacOS/cueloop`.
@@ -17,8 +17,8 @@
 
 set -euo pipefail
 
-APP_BUNDLE="target/tmp/xcode-deriveddata/build/Build/Products/Release/RalphMac.app"
-APP_NAME="RalphMac"
+APP_BUNDLE="target/tmp/xcode-deriveddata/build/Build/Products/Release/CueLoopMac.app"
+APP_NAME="CueLoopMac"
 TIMEOUT_SECONDS="90"
 
 usage() {
@@ -27,7 +27,7 @@ Usage:
   scripts/macos-settings-smoke.sh [--app-bundle <path>] [--timeout <seconds>]
 
 Options:
-  --app-bundle <path>   RalphMac.app bundle to launch
+  --app-bundle <path>   CueLoopMac.app bundle to launch
   --timeout <seconds>   Timeout for the in-app contract run (default: 90)
   -h, --help            Show this help text
 EOF
@@ -89,7 +89,7 @@ if [ ! -x "$APP_CLI" ]; then
     exit 2
 fi
 
-TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/ralph-settings-smoke.XXXXXX")"
+TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/cueloop-settings-smoke.XXXXXX")"
 WORKSPACE_A="$TEMP_ROOT/workspace-a"
 WORKSPACE_B="$TEMP_ROOT/workspace-b"
 REPORT_PATH="$TEMP_ROOT/settings-contract-report.json"
@@ -130,8 +130,8 @@ PY
 }
 
 write_workspace_b_config() {
-    mkdir -p "$WORKSPACE_B/.ralph"
-    cat > "$WORKSPACE_B/.ralph/config.jsonc" <<'EOF'
+    mkdir -p "$WORKSPACE_B/.cueloop"
+    cat > "$WORKSPACE_B/.cueloop/config.jsonc" <<'EOF'
 {
   "agent": {
     "runner": "gemini",
@@ -154,9 +154,9 @@ write_workspace_b_config
 
 rm -f "$REPORT_PATH" "$APP_LOG"
 
-RALPH_SETTINGS_SMOKE_WORKSPACE_A="$WORKSPACE_A" \
-RALPH_SETTINGS_SMOKE_WORKSPACE_B="$WORKSPACE_B" \
-RALPH_SETTINGS_SMOKE_REPORT_PATH="$REPORT_PATH" \
+CUELOOP_SETTINGS_SMOKE_WORKSPACE_A="$WORKSPACE_A" \
+CUELOOP_SETTINGS_SMOKE_WORKSPACE_B="$WORKSPACE_B" \
+CUELOOP_SETTINGS_SMOKE_REPORT_PATH="$REPORT_PATH" \
 "$APP_EXECUTABLE" --settings-smoke-contract >"$APP_LOG" 2>&1 &
 APP_PID="$!"
 

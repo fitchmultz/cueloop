@@ -1,0 +1,134 @@
+/**
+ CueLoopJSONValue
+
+ Purpose:
+ - Provide a forward-compatible JSON value model for CLI payloads and opaque task settings.
+
+ Responsibilities:
+ - Provide a forward-compatible JSON value model for CLI payloads and opaque task settings.
+ - Preserve unknown JSON shapes during decode/encode round trips.
+
+ Does not handle:
+ - CLI schema validation.
+ - Task-specific business rules.
+
+ Usage:
+ - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
+
+ Invariants/assumptions callers must respect:
+ - Unsupported decoder payloads should fail fast with a type mismatch.
+ - The enum remains value-semantic and sendable.
+ */
+
+import Foundation
+
+/// A JSON value that preserves unknown shapes for forward compatibility.
+public enum CueLoopJSONValue: Codable, Equatable, Sendable {
+    case null
+    case bool(Bool)
+    case number(Double)
+    case string(String)
+    case array([CueLoopJSONValue])
+    case object([String: CueLoopJSONValue])
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if container.decodeNil() {
+            self = .null
+            return
+        }
+        if let b = try? container.decode(Bool.self) {
+            self = .bool(b)
+            return
+        }
+        if let d = try? container.decode(Double.self) {
+            self = .number(d)
+            return
+        }
+        if let s = try? container.decode(String.self) {
+            self = .string(s)
+            return
+        }
+        if let arr = try? container.decode([CueLoopJSONValue].self) {
+            self = .array(arr)
+            return
+        }
+        if let obj = try? container.decode([String: CueLoopJSONValue].self) {
+            self = .object(obj)
+            return
+        }
+
+        throw DecodingError.typeMismatch(
+            CueLoopJSONValue.self,
+            DecodingError.Context(
+                codingPath: container.codingPath,
+                debugDescription: "Unsupported JSON value"
+            )
+        )
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        switch self {
+        case .null:
+            try container.encodeNil()
+        case .bool(let b):
+            try container.encode(b)
+        case .number(let d):
+            try container.encode(d)
+        case .string(let s):
+            try container.encode(s)
+        case .array(let a):
+            try container.encode(a)
+        case .object(let o):
+            try container.encode(o)
+        }
+    }
+
+    public var objectValue: [String: CueLoopJSONValue]? {
+        guard case .object(let obj) = self else { return nil }
+        return obj
+    }
+
+    public var arrayValue: [CueLoopJSONValue]? {
+        guard case .array(let arr) = self else { return nil }
+        return arr
+    }
+
+    public var stringValue: String? {
+        guard case .string(let s) = self else { return nil }
+        return s
+    }
+
+    public var boolValue: Bool? {
+        guard case .bool(let b) = self else { return nil }
+        return b
+    }
+
+    public var numberValue: Double? {
+        guard case .number(let d) = self else { return nil }
+        return d
+    }
+
+    public func value(at path: [String]) -> CueLoopJSONValue? {
+        var current: CueLoopJSONValue? = self
+        for component in path {
+            current = current?.objectValue?[component]
+        }
+        return current
+    }
+
+    public func decode<T: Decodable>(_ type: T.Type) -> T? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? JSONEncoder().encode(self) else { return nil }
+        return try? decoder.decode(type, from: data)
+    }
+
+    public func decode<T: Decodable>(_ type: T.Type, at path: [String]) -> T? {
+        guard let value = value(at: path) else { return nil }
+        return value.decode(type)
+    }
+}

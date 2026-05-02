@@ -36,7 +36,7 @@ Symptom: tracked `.ralph/...` runtime paths or build outputs detected.
 Fix:
 
 ```bash
-git rm --cached -r apps/RalphMac/build .ralph/cache .ralph/logs .ralph/lock .ralph/workspaces .ralph/undo .ralph/webhooks
+git rm --cached -r apps/CueLoopMac/build .cueloop/cache .cueloop/logs .cueloop/lock .cueloop/workspaces .cueloop/undo .cueloop/webhooks
 ```
 
 Then rerun:
@@ -79,4 +79,4 @@ For gate choice, shared-workstation caps, and preserved UI evidence capture, use
 
 Symptom: UI run appears noisy/flaky but tests still pass, and you need inspectable visuals.
 
-Use `make macos-test-ui-artifacts` for preserved `.xcresult` output, or use `RALPH_UI_ONLY_TESTING=... make macos-ui-retest` for focused reruns. Keep the full workflow in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
+Use `make macos-test-ui-artifacts` for preserved `.xcresult` output, or use `CUELOOP_UI_ONLY_TESTING=... make macos-ui-retest` for focused reruns. Keep the full workflow in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).

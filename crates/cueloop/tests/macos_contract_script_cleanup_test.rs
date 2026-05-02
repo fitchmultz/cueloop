@@ -1,7 +1,7 @@
 //! Purpose: guard macOS contract scripts against teardown regressions.
 //!
 //! Responsibilities:
-//! - Verify noninteractive RalphMac contract scripts clean up launched app processes.
+//! - Verify noninteractive CueLoopMac contract scripts clean up launched app processes.
 //! - Verify those scripts remove disposable temp roots and fail loudly on lingering apps.
 //!
 //! Scope:
@@ -46,7 +46,7 @@ fn test_macos_contract_scripts_enforce_app_cleanup() -> Result<()> {
         );
         assert!(
             script.contains("pkill -TERM -f \"$APP_EXECUTABLE\""),
-            "{relative_path} should terminate lingering RalphMac contract processes"
+            "{relative_path} should terminate lingering CueLoopMac contract processes"
         );
         assert!(
             script.contains("lingering app process"),

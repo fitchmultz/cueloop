@@ -151,7 +151,7 @@ fn queue_search_with_scope_filter() -> Result<()> {
     t1.scope = vec!["crates/cueloop".to_string()];
 
     let mut t2 = test_support::make_test_task("RQ-0002", "Fix bug", TaskStatus::Todo);
-    t2.scope = vec!["apps/RalphMac".to_string()];
+    t2.scope = vec!["apps/CueLoopMac".to_string()];
 
     repo.write_queue(&[t1, t2])?;
 

@@ -71,7 +71,7 @@ fn agent_ci_succeeds_outside_git_via_source_snapshot_safety_mode() {
             "Cargo.lock",
             "VERSION",
             "rust-toolchain.toml",
-            "scripts/ralph-cli-bundle.sh",
+            "scripts/cueloop-cli-bundle.sh",
             "scripts/pre-public-check.sh",
             "scripts/check-rust-toolchain.sh",
             "scripts/lib/ralph-shell.sh",

@@ -19,7 +19,7 @@ CueLoop is a Rust CLI for running AI agent loops against a structured JSON task 
 - [Decisions](decisions.md): project-level decision log
 - [Roadmap](roadmap.md): canonical near-term execution order for active follow-up work
 - [Configuration](configuration.md): hub for config schema, precedence, trust, runners, queues, webhooks, plugins, and profiles
-- [PRD Specs](prd/ralph-task-decompose.md): feature-level product requirements
+- [PRD Specs](prd/cueloop-task-decompose.md): feature-level product requirements
 - [Queue and Tasks](queue-and-tasks.md): task model and queue semantics
 - [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path
 - [CueLoop Dogfood Harness](guides/dogfood-ralph.md): repeatable end-to-end fixture project with real three-phase runner execution

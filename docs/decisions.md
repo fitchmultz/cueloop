@@ -134,11 +134,11 @@ Follow-up actions: Track and split current soft-limit offenders over time.
 
 Review date, if any: None.
 
-## 2026-04-26: Track RalphMac parity by scenario-level proof
+## 2026-04-26: Track CueLoopMac parity by scenario-level proof
 
 Decision: Treat scenario-level proof entries in
 [crates/cueloop/src/cli/app_parity.rs](../crates/cueloop/src/cli/app_parity.rs) as
-the authoritative RalphMac parity signal, while keeping root-command coverage
+the authoritative CueLoopMac parity signal, while keeping root-command coverage
 only as a secondary structural guard.
 
 Date: 2026-04-26
@@ -153,7 +153,7 @@ continuation next-step mapping.
 
 Chosen option: Store parity as explicit scenario entries that each name the
 machine contract anchors, app-doc anchors, native surface, Rust proof tests,
-and RalphMac proof tests for the scenario.
+and CueLoopMac proof tests for the scenario.
 
 Rejected options: Continue using broad command-family parity as the
 authoritative tracker; rely on freeform prose or roadmap notes instead of proof
@@ -161,7 +161,7 @@ anchors; treat Advanced Runner support as parity completion.
 
 Reason: Scenario-level proof makes parity drift actionable and reviewable. It
 lets maintainers see exactly which user-visible behavior is covered and which
-Rust plus RalphMac tests prove that alignment.
+Rust plus CueLoopMac tests prove that alignment.
 
 Expected consequences: Parity changes now require updating the scenario
 registry, keeping machine/app docs aligned, and adding proof tests when a new

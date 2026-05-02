@@ -1,0 +1,449 @@
+/**
+ DependencyGraphCanvasView
+
+ Purpose:
+ - Render the visual dependency graph canvas, overlays, and viewport controls.
+
+ Responsibilities:
+ - Render the visual dependency graph canvas, overlays, and viewport controls.
+ - Manage canvas-local pan and zoom state for graph navigation.
+
+ Does not handle:
+ - Graph layout simulation or presentation assembly.
+ - Accessibility list rendering.
+
+ Usage:
+ - Used by the CueLoopMac app or CueLoopCore tests through its owning feature surface.
+
+ Invariants/assumptions:
+ - Node positions are supplied by `DependencyGraphViewModel`.
+ - Canvas coordinates are centered within the available geometry.
+ */
+
+import SwiftUI
+import CueLoopCore
+
+private enum DependencyGraphMetrics {
+    static let nodeWidth: CGFloat = 140
+    static let nodeHeight: CGFloat = 60
+    static let viewportPadding: CGFloat = 48
+    static let minimumAutoFitScale: CGFloat = 0.05
+}
+
+private struct DependencyGraphCanvasTransform {
+    let center: CGPoint
+    let graphCenter: CGPoint
+    let scale: CGFloat
+}
+
+@MainActor
+struct DependencyGraphCanvasView: View {
+    @ObservedObject var viewModel: DependencyGraphViewModel
+    @Binding var selectedTaskID: String?
+
+    @State private var viewport = GraphViewportState()
+    @State private var isMagnifying = false
+    @State private var lastDragLocation: CGPoint?
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.clear
+
+                TimelineView(.animation) { timeline in
+                    Canvas { context, size in
+                        drawGraph(
+                            in: &context,
+                            size: size,
+                            pulsePhase: timeline.date.timeIntervalSinceReferenceDate
+                        )
+                    }
+                }
+                .gesture(canvasDragGesture)
+                .gesture(canvasMagnificationGesture)
+                .onTapGesture { location in
+                    let transform = canvasTransform(for: geometry.size)
+                    selectedTaskID = viewModel.selectNode(
+                        at: location,
+                        canvasSize: geometry.size,
+                        scale: transform.scale,
+                        offset: viewport.offset,
+                        graphCenter: transform.graphCenter,
+                        nodeSize: CGSize(
+                            width: DependencyGraphMetrics.nodeWidth,
+                            height: DependencyGraphMetrics.nodeHeight
+                        )
+                    )
+                }
+
+                if isEmptyRelationshipGraph {
+                    DependencyGraphEmptyState()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    if viewModel.cycleResult.hasCycle {
+                        DependencyGraphCycleBanner(cycleResult: viewModel.cycleResult)
+                            .position(x: geometry.size.width / 2, y: 40)
+                    }
+
+                    VStack {
+                        HStack {
+                            Spacer()
+                            zoomControls
+                        }
+                        Spacer()
+                        DependencyGraphLegendView(hasCycle: viewModel.cycleResult.hasCycle)
+                    }
+                    .padding()
+                }
+            }
+        }
+    }
+
+    private var isEmptyRelationshipGraph: Bool {
+        viewModel.nodes.isEmpty || viewModel.edges.isEmpty
+    }
+
+    private func canvasTransform(for size: CGSize) -> DependencyGraphCanvasTransform {
+        let center = CGPoint(
+            x: size.width / 2 + viewport.offset.width,
+            y: size.height / 2 + viewport.offset.height
+        )
+
+        guard let bounds = graphBounds else {
+            return DependencyGraphCanvasTransform(
+                center: center,
+                graphCenter: .zero,
+                scale: viewport.scale
+            )
+        }
+
+        let availableWidth = max(size.width - DependencyGraphMetrics.viewportPadding, 1)
+        let availableHeight = max(size.height - DependencyGraphMetrics.viewportPadding, 1)
+        let fitScale = min(availableWidth / max(bounds.width, 1), availableHeight / max(bounds.height, 1), 1)
+        let autoFitScale = max(DependencyGraphMetrics.minimumAutoFitScale, fitScale)
+
+        return DependencyGraphCanvasTransform(
+            center: center,
+            graphCenter: CGPoint(x: bounds.midX, y: bounds.midY),
+            scale: viewport.scale * autoFitScale
+        )
+    }
+
+    private var graphBounds: CGRect? {
+        guard let firstNode = viewModel.nodes.first else { return nil }
+
+        var bounds = CGRect(
+            x: firstNode.position.x - DependencyGraphMetrics.nodeWidth / 2,
+            y: firstNode.position.y - DependencyGraphMetrics.nodeHeight / 2,
+            width: DependencyGraphMetrics.nodeWidth,
+            height: DependencyGraphMetrics.nodeHeight
+        )
+
+        for node in viewModel.nodes.dropFirst() {
+            let nodeRect = CGRect(
+                x: node.position.x - DependencyGraphMetrics.nodeWidth / 2,
+                y: node.position.y - DependencyGraphMetrics.nodeHeight / 2,
+                width: DependencyGraphMetrics.nodeWidth,
+                height: DependencyGraphMetrics.nodeHeight
+            )
+            bounds = bounds.union(nodeRect)
+        }
+
+        return bounds
+    }
+
+    private var canvasDragGesture: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                if let last = lastDragLocation {
+                    let delta = CGSize(
+                        width: value.location.x - last.x,
+                        height: value.location.y - last.y
+                    )
+                    viewport.offset.width += delta.width
+                    viewport.offset.height += delta.height
+                }
+                lastDragLocation = value.location
+            }
+            .onEnded { _ in
+                lastDragLocation = nil
+            }
+    }
+
+    private var canvasMagnificationGesture: some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                if !isMagnifying {
+                    viewport.beginMagnificationGesture()
+                    isMagnifying = true
+                }
+                viewport.updateMagnification(value)
+            }
+            .onEnded { _ in
+                viewport.endMagnificationGesture()
+                isMagnifying = false
+            }
+    }
+
+    private var zoomControls: some View {
+        VStack(spacing: 8) {
+            Button(action: { viewport.zoomIn() }) {
+                Image(systemName: "plus.magnifyingglass")
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Zoom in")
+
+            Button(action: { viewport.reset() }) {
+                Image(systemName: "arrow.counterclockwise")
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Reset zoom")
+
+            Button(action: { viewport.zoomOut() }) {
+                Image(systemName: "minus.magnifyingglass")
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityLabel("Zoom out")
+        }
+    }
+
+    private func drawGraph(in context: inout GraphicsContext, size: CGSize, pulsePhase: TimeInterval) {
+        let transform = canvasTransform(for: size)
+
+        for edge in viewModel.edges {
+            drawEdge(edge, in: &context, transform: transform, pulsePhase: pulsePhase)
+        }
+
+        for node in viewModel.nodes {
+            drawNode(node, in: &context, transform: transform)
+        }
+    }
+
+    private func drawEdge(
+        _ edge: GraphEdge,
+        in context: inout GraphicsContext,
+        transform: DependencyGraphCanvasTransform,
+        pulsePhase: TimeInterval
+    ) {
+        guard let fromNode = viewModel.nodes.first(where: { $0.id == edge.from }),
+              let toNode = viewModel.nodes.first(where: { $0.id == edge.to }) else { return }
+
+        let fromPoint = CGPoint(
+            x: transform.center.x + (fromNode.position.x - transform.graphCenter.x) * transform.scale,
+            y: transform.center.y + (fromNode.position.y - transform.graphCenter.y) * transform.scale
+        )
+        let toPoint = CGPoint(
+            x: transform.center.x + (toNode.position.x - transform.graphCenter.x) * transform.scale,
+            y: transform.center.y + (toNode.position.y - transform.graphCenter.y) * transform.scale
+        )
+
+        var path = Path()
+        path.move(to: fromPoint)
+        path.addLine(to: toPoint)
+
+        let isInCycle = viewModel.edgesInCycles.contains(edge.id)
+        var strokeStyle = StrokeStyle(lineWidth: 2 * transform.scale)
+        let color: Color
+
+        switch edge.type {
+        case .dependency:
+            if isInCycle {
+                color = .red
+                strokeStyle = StrokeStyle(lineWidth: 3 * transform.scale)
+            } else {
+                color = fromNode.task.isCritical && toNode.task.isCritical ? .red : .gray
+            }
+        case .blocks:
+            if isInCycle {
+                color = .red
+                strokeStyle = StrokeStyle(lineWidth: 3 * transform.scale, dash: [5, 5])
+            } else {
+                color = .orange
+                strokeStyle = StrokeStyle(lineWidth: 2 * transform.scale, dash: [5, 5])
+            }
+        case .relatesTo:
+            color = .blue.opacity(0.5)
+            strokeStyle = StrokeStyle(lineWidth: 1 * transform.scale, dash: [3, 3])
+        }
+
+        if isInCycle {
+            let opacity = 0.5 + 0.5 * sin(pulsePhase * 4)
+            context.stroke(path, with: .color(color.opacity(opacity)), style: strokeStyle)
+        } else {
+            context.stroke(path, with: .color(color), style: strokeStyle)
+        }
+
+        if edge.type == .dependency {
+            let arrowColor = isInCycle ? Color.red.opacity(0.5 + 0.5 * sin(pulsePhase * 4)) : color
+            drawArrowHead(from: fromPoint, to: toPoint, in: &context, color: arrowColor, scale: transform.scale)
+        }
+    }
+
+    private func drawArrowHead(from: CGPoint, to: CGPoint, in context: inout GraphicsContext, color: Color, scale: CGFloat) {
+        let arrowLength: CGFloat = 10 * scale
+        let arrowAngle: CGFloat = .pi / 6
+
+        let angle = atan2(to.y - from.y, to.x - from.x)
+        let tipX = to.x - cos(angle) * (DependencyGraphMetrics.nodeWidth / 2 * scale)
+        let tipY = to.y - sin(angle) * (DependencyGraphMetrics.nodeHeight / 2 * scale)
+
+        var path = Path()
+        path.move(to: CGPoint(x: tipX, y: tipY))
+        path.addLine(to: CGPoint(
+            x: tipX - arrowLength * cos(angle - arrowAngle),
+            y: tipY - arrowLength * sin(angle - arrowAngle)
+        ))
+        path.move(to: CGPoint(x: tipX, y: tipY))
+        path.addLine(to: CGPoint(
+            x: tipX - arrowLength * cos(angle + arrowAngle),
+            y: tipY - arrowLength * sin(angle + arrowAngle)
+        ))
+
+        context.stroke(path, with: .color(color), lineWidth: 2 * scale)
+    }
+
+    private func drawNode(_ node: PositionedNode, in context: inout GraphicsContext, transform: DependencyGraphCanvasTransform) {
+        let rect = CGRect(
+            x: transform.center.x + (node.position.x - transform.graphCenter.x) * transform.scale - DependencyGraphMetrics.nodeWidth * transform.scale / 2,
+            y: transform.center.y + (node.position.y - transform.graphCenter.y) * transform.scale - DependencyGraphMetrics.nodeHeight * transform.scale / 2,
+            width: DependencyGraphMetrics.nodeWidth * transform.scale,
+            height: DependencyGraphMetrics.nodeHeight * transform.scale
+        )
+
+        let backgroundColor = node.isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor)
+        let borderColor = node.task.isCritical ? Color.red : (node.isSelected ? Color.accentColor : Color.gray.opacity(0.3))
+        let borderWidth: CGFloat = node.task.isCritical ? 3 : (node.isSelected ? 2 : 1)
+
+        let rectPath = Path(roundedRect: rect, cornerRadius: 8 * transform.scale)
+        context.fill(rectPath, with: .color(backgroundColor))
+        context.stroke(rectPath, with: .color(borderColor), lineWidth: borderWidth)
+
+        let dotRect = CGRect(
+            x: rect.minX + 8 * transform.scale,
+            y: rect.minY + 8 * transform.scale,
+            width: 8 * transform.scale,
+            height: 8 * transform.scale
+        )
+        context.fill(Path(ellipseIn: dotRect), with: .color(statusColor(node.task.statusEnum)))
+
+        let idText = context.resolve(Text(node.id).font(.system(size: 9 * transform.scale)).monospaced())
+        let idSize = idText.measure(in: rect.size)
+        context.draw(idText, at: CGPoint(
+            x: rect.maxX - idSize.width / 2 - 8 * transform.scale,
+            y: rect.minY + idSize.height / 2 + 4 * transform.scale
+        ))
+
+        let title = node.task.title.count > 25
+            ? String(node.task.title.prefix(25)) + "..."
+            : node.task.title
+        let titleText = context.resolve(Text(title).font(.system(size: 11 * transform.scale)))
+        context.draw(titleText, at: CGPoint(
+            x: rect.midX,
+            y: rect.midY + 4 * transform.scale
+        ))
+    }
+
+    private func statusColor(_ status: CueLoopTaskStatus?) -> Color {
+        guard let status else { return .gray }
+        switch status {
+        case .draft: return .gray
+        case .todo: return .blue
+        case .doing: return .orange
+        case .done: return .green
+        case .rejected: return .red
+        }
+    }
+}
+
+private struct DependencyGraphEmptyState: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "point.3.connected.trianglepath.dotted")
+                .font(.system(size: 36, weight: .regular))
+                .foregroundStyle(.secondary)
+
+            Text("No Tasks to Graph")
+                .font(.headline)
+
+            Text("Tasks with dependencies, blockers, or related links will appear here.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(24)
+        .frame(maxWidth: 360)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct DependencyGraphLegendView: View {
+    let hasCycle: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Dependency", systemImage: "arrow.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Label("Blocks", systemImage: "line.diagonal")
+                .font(.caption)
+                .foregroundStyle(.orange)
+            Label("Relates To", systemImage: "line.diagonal")
+                .font(.caption)
+                .foregroundStyle(.blue.opacity(0.5))
+            Label("Critical Path", systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.red)
+            if hasCycle {
+                Label("Cycle Edge", systemImage: "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(8)
+        .background(.ultraThinMaterial)
+        .cornerRadius(8)
+    }
+}
+
+private struct DependencyGraphCycleBanner: View {
+    let cycleResult: CycleDetectionResult
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.white)
+                Text("Circular Dependencies Detected")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white)
+            }
+
+            ForEach(Array(cycleResult.cycles.prefix(3).enumerated()), id: \.offset) { _, cycle in
+                if cycle.count == 1 {
+                    Text("\(cycle[0]) → \(cycle[0])")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .monospaced()
+                } else {
+                    Text(cycle.joined(separator: " → ") + " → " + cycle[0])
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .monospaced()
+                }
+            }
+
+            if cycleResult.cycles.count > 3 {
+                Text("... and \(cycleResult.cycles.count - 3) more")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+        .padding()
+        .background(Color.red.opacity(0.9))
+        .cornerRadius(8)
+        .shadow(radius: 4)
+        .accessibilityLabel("Warning: Circular dependencies detected")
+        .accessibilityHint("The dependency graph contains cycles that should be resolved")
+    }
+}
