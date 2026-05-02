@@ -32,13 +32,8 @@ use std::path::Path;
 
 /// Paths that are allowed to be dirty during CLI runs.
 ///
-/// These are CueLoop's current runtime files plus legacy CueLoop runtime files that
-/// may change during normal operation.
+/// These are CueLoop runtime files that may change during normal operation.
 pub const CUELOOP_RUN_CLEAN_ALLOWED_PATHS: &[&str] = &[
-    ".cueloop/queue.jsonc",
-    ".cueloop/done.jsonc",
-    ".cueloop/config.jsonc",
-    ".cueloop/cache/",
     ".cueloop/queue.jsonc",
     ".cueloop/done.jsonc",
     ".cueloop/config.jsonc",
@@ -217,12 +212,8 @@ mod clean_repo_tests {
     use tempfile::TempDir;
 
     #[test]
-    fn run_clean_allowed_paths_include_current_and_legacy_jsonc_runtime_paths() {
+    fn run_clean_allowed_paths_include_current_jsonc_runtime_paths() {
         for required in [
-            ".cueloop/queue.jsonc",
-            ".cueloop/done.jsonc",
-            ".cueloop/config.jsonc",
-            ".cueloop/cache/",
             ".cueloop/queue.jsonc",
             ".cueloop/done.jsonc",
             ".cueloop/config.jsonc",

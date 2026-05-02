@@ -13,7 +13,7 @@ CueLoop includes a macOS app for interactive queue and run supervision workflows
 
 The app is intended for:
 - Browsing and editing the workspace's configured queue and done files
-  (`.cueloop/queue.jsonc` and `.cueloop/done.jsonc` by default; legacy `.cueloop/` repos remain supported)
+  (`.cueloop/queue.jsonc` and `.cueloop/done.jsonc` by default)
 - Triage and prioritization with a richer visual layout than terminal output
 - Triggering common run operations while keeping CLI-compatible behavior
 - Multi-window workflows across repositories and workstreams
@@ -105,7 +105,7 @@ Behavioral notes:
 
 ## How the App Integrates with the CLI
 
-The app is a thin client that shells out to the primary `cueloop` binary via `CueLoopCLIClient` (`cueloop` remains a fallback alias during migration).
+The app is a thin client that shells out to the primary `cueloop` binary via `CueLoopCLIClient`.
 
 Practical implications:
 - Native workflows should use versioned `cueloop machine ...` JSON contracts,

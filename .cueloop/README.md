@@ -14,7 +14,7 @@ This repo is using CueLoop. The command is `cueloop`. This project stores runtim
 - `.cueloop/logs/` — debug logs; should stay gitignored.
 - `.cueloop/trust.jsonc` — machine-local trust decision; should stay gitignored.
 
-Legacy `.cueloop/` runtime directories are read in place. Do not rename `.cueloop/` manually; use `cueloop migrate runtime-dir --check` to preview and `cueloop migrate runtime-dir --apply` to move project state to `.cueloop/` when ready.
+Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --check` to preview runtime migration status and `cueloop migrate runtime-dir --apply` to move supported old project state when safe.
 
 ## Core commands
 
@@ -212,7 +212,7 @@ Security notes:
 
 - Never commit safeguard dumps.
 - Debug mode writes raw runner output to `.cueloop/logs/debug.log`.
-- Temp directories use the `/tmp/cueloop/` root and `cueloop_` prefixes.
+- Temporary safeguard dumps use CueLoop-owned temp paths; inspect the reported path when troubleshooting.
 
 ## Common flags
 

@@ -1,7 +1,7 @@
 <!-- CUELOOP_README_VERSION: 9 -->
 # CueLoop runtime files
 
-This repo is using CueLoop. The `cueloop` executable is the primary command name; `cueloop` remains a legacy alias for this phase. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`; legacy repos that already use `.cueloop/` remain supported.
+This repo is using CueLoop. The `cueloop` executable is the primary command name. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`.
 
 > This file is generated and owned by CueLoop. `cueloop init` and agent-facing write-enabled commands may refresh it when CueLoop ships a newer template. Avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
@@ -14,7 +14,7 @@ This repo is using CueLoop. The `cueloop` executable is the primary command name
 - `{{RUNTIME_DIR}}/logs/` — debug logs; should stay gitignored.
 - `{{RUNTIME_DIR}}/trust.jsonc` — machine-local trust decision; should stay gitignored.
 
-Legacy `.cueloop/` runtime directories are read in place. Do not rename `.cueloop/` manually; use `cueloop migrate runtime-dir --check` to preview and `cueloop migrate runtime-dir --apply` to move project state to `.cueloop/` when ready.
+Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --check` to preview runtime migration status and `cueloop migrate runtime-dir --apply` to move supported old project state when safe.
 
 ## Core commands
 
@@ -142,7 +142,7 @@ Standard placeholders like `{{USER_REQUEST}}` are still processed after variable
 
 ## Prompt overrides
 
-Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `{{RUNTIME_DIR}}/prompts/`; when both exist, `.cueloop/prompts/` takes precedence over legacy `.cueloop/prompts/`.
+Default prompts are embedded in the `cueloop` binary. Custom prompt files should live in `{{RUNTIME_DIR}}/prompts/`.
 
 Useful commands:
 
@@ -212,7 +212,7 @@ Security notes:
 
 - Never commit safeguard dumps.
 - Debug mode writes raw runner output to `{{RUNTIME_DIR}}/logs/debug.log`.
-- Temp directories still use the legacy `/tmp/cueloop/` root and `cueloop_` prefixes until a later compatibility slice.
+- Temporary safeguard dumps use CueLoop-owned temp paths; inspect the reported path when troubleshooting.
 
 ## Common flags
 

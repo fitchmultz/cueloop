@@ -224,7 +224,7 @@ Policies:
 ## Repository Runtime State
 
 This repository may keep small sanitized runtime state for reproducible examples and documentation.
-In most consumer repositories, `.cueloop/` is project-local runtime state managed by `cueloop init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Legacy `.cueloop/` state is still supported; use `cueloop migrate runtime-dir --apply` when ready to move it.
+In most consumer repositories, `.cueloop/` is project-local runtime state managed by `cueloop init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Use `cueloop migrate runtime-dir --check` before applying supported runtime-state migrations.
 
 ## Development
 

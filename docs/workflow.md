@@ -170,7 +170,7 @@ When operations fail (runner errors, scan validation failures), CueLoop writes s
 - Sensitive environment variable values
 
 **Raw dumps** are only written when explicitly opted in via:
-- `CUELOOP_RAW_DUMP=1` or `CUELOOP_RAW_DUMP=true` environment variable (legacy `CUELOOP_RAW_DUMP` remains accepted)
+- `CUELOOP_RAW_DUMP=1` or `CUELOOP_RAW_DUMP=true` environment variable
 - `--debug` flag (implies verbose output desired; also enables raw debug logs)
 
 **Never commit safeguard dumps** to version control, even when redacted.

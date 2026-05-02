@@ -324,7 +324,7 @@ Two-phase mode includes planning and implementation without separate review:
 
 ### Setting Default Phases
 
-Configure the default number of phases in `.cueloop/config.jsonc` (legacy `.cueloop/config.jsonc` remains supported):
+Configure the default number of phases in `.cueloop/config.jsonc`:
 
 ```json
 {

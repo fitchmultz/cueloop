@@ -53,21 +53,21 @@ fn test_create_cueloop_temp_dir_uses_temp_root() {
 #[test]
 fn test_cleanup_stale_temp_entries_honors_prefix_list() {
     let base = TempDir::new().expect("create temp dir");
-    let legacy_dir = base.path().join("legacy-temp");
+    let old_prefix_dir = base.path().join("old-temp");
     let cueloop_dir = base
         .path()
         .join(format!("{}new-temp", fsutil::CUELOOP_TEMP_PREFIX));
-    fs::create_dir_all(&legacy_dir).expect("create legacy dir");
+    fs::create_dir_all(&old_prefix_dir).expect("create old prefix dir");
     fs::create_dir_all(&cueloop_dir).expect("create cueloop dir");
 
     let removed = fsutil::cleanup_stale_temp_entries(
         base.path(),
-        &["legacy", fsutil::CUELOOP_TEMP_PREFIX],
+        &["old", fsutil::CUELOOP_TEMP_PREFIX],
         Duration::from_secs(0),
     )
     .expect("cleanup temp entries");
 
     assert_eq!(removed, 2);
-    assert!(!legacy_dir.exists());
+    assert!(!old_prefix_dir.exists());
     assert!(!cueloop_dir.exists());
 }
