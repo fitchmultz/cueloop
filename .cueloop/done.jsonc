@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4",
         "task_kind": "queue_shaping",
-        "runner_used": "codex"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
+        "source_report": "/tmp/cueloop-report.md"
       }
     },
     {
@@ -539,10 +539,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "source_report": "/tmp/cueloop-report.md",
-        "runner_used": "codex"
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "codex",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/cueloop-report.md"
+        "source_report": "/tmp/cueloop-report.md",
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
@@ -687,9 +687,9 @@
       "relates_to": [],
       "custom_fields": {
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "source_report": "/tmp/cueloop-report.md",
-        "model_used": "gpt-5.4"
+        "source_report": "/tmp/cueloop-report.md"
       }
     },
     {
@@ -762,8 +762,8 @@
       "custom_fields": {
         "source_report": "/tmp/cueloop-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
+        "runner_used": "codex"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
+        "audit_finding": "LOW: app docs contain stale cross-surface statements",
         "runner_used": "codex",
-        "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "LOW: app docs contain stale cross-surface statements"
+        "model_used": "gpt-5.4",
+        "source_report": "/tmp/cueloop-report.md"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
+        "runner_used": "pi",
+        "severity_reason": "parallel-mode task state/data integrity loss",
         "reported_command": "cueloop run loop --parallel 2",
         "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
-        "severity_reason": "parallel-mode task state/data integrity loss",
-        "model_used": "openai-codex/gpt-5.5",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -2529,8 +2529,8 @@
         "RQ-0056"
       ],
       "custom_fields": {
-        "current_default": "Only .env and .env.* basenames are synced from ignored non-.cueloop paths.",
-        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers."
+        "recommended_direction": "Keep default .env* sync only; add explicit trusted repo-relative allowlist for additional ignored files needed by parallel workers.",
+        "current_default": "Only .env and .env.* basenames are synced from ignored non-.cueloop paths."
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "cueloop init creates or updates .cueloop/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "cueloop init creates or updates .cueloop/trust.jsonc by default; --check remains read-only."
       }
     },
     {
@@ -3064,8 +3064,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi"
       }
     },
     {
@@ -3123,8 +3123,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "pi"
       }
     },
     {
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "pi"
       }
     },
     {
@@ -3249,9 +3249,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "runner_used": "pi"
       }
     },
     {
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3450,8 +3450,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3945,8 +3945,8 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general",
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -3995,9 +3995,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -4062,9 +4062,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi",
-        "source_feedback": "warden_task_decompose_feedback"
+        "source_feedback": "warden_task_decompose_feedback",
+        "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
     {
@@ -4121,8 +4121,8 @@
         "RQ-0077"
       ],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi",
         "source_feedback": "warden_task_decompose_feedback"
       }
     },
@@ -4262,8 +4262,8 @@
       ],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "runner_used": "pi",
-        "source_feedback": "warden_task_decompose_feedback"
+        "source_feedback": "warden_task_decompose_feedback",
+        "runner_used": "pi"
       }
     },
     {
@@ -4474,6 +4474,57 @@
       "created_at": "2026-05-03T17:51:11Z",
       "updated_at": "2026-05-03T21:11:26.131051000Z",
       "completed_at": "2026-05-03T21:11:26.131051000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
+    },
+    {
+      "id": "RQ-0083",
+      "status": "done",
+      "title": "Trim top-level help to a BLUF command map",
+      "description": "The root `cueloop --help` surface currently mixes command discovery, runner precedence, a full config snippet, a long model catalog, and many runner-specific examples. That makes the first help screen harder for agents and new users to scan. Reshape root help into a short BLUF command map with a few canonical next actions, then move detailed runner/model examples to `task`, `scan`, `run`, config docs, or `help-all` where users ask for that detail.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "cli-help",
+        "docs",
+        "ux",
+        "brevity"
+      ],
+      "scope": [
+        "crates/cueloop/src/cli/args.rs",
+        "crates/cueloop/src/cli/*/help.rs",
+        "crates/cueloop/tests/",
+        "docs/cli.md",
+        "cueloop --help",
+        "cueloop help-all",
+        "cueloop scan --help",
+        "cueloop task --help",
+        "cueloop queue validate"
+      ],
+      "evidence": [
+        "path: crates/cueloop/src/cli/args.rs:36-60 :: top-level after-long-help embeds runner precedence, a JSON config example, allowed runners, and a full allowed-models catalog before examples.",
+        "path: crates/cueloop/src/cli/args.rs:62-78 :: top-level help includes 16 example commands, with 7 runner/model-specific scan/task examples plus both capped and uncapped run-loop examples.",
+        "workflow: cueloop --help :: rendered root help prints the same config snippet, long model list, and runner-specific examples before the More help section.",
+        "path: crates/cueloop/src/cli/run/help.rs:153-181 :: detailed run help already owns run-loop limits and runner override examples, so root help duplicates detail that can live in subcommand help.",
+        "path: docs/cli.md:17-38 :: CLI Reference already provides a command map, giving a better home for detailed command discovery than the first root help screen."
+      ],
+      "plan": [
+        "Define a short root-help information architecture: one-line purpose, core command map, 4-6 starter examples, and pointers to `help-all`, `config`, `task`, `scan`, and `run` help for details.",
+        "Move or deduplicate runner/model catalog and config-example detail out of root help into subcommand help or docs that already own those concepts.",
+        "Keep the allowed-runner/model source of truth testable so removing the root catalog does not reduce discoverability for users who ask for detailed help.",
+        "Update help snapshot/parse tests to assert root help stays concise and that detailed runner examples remain reachable from the owning subcommands.",
+        "Cross-check `docs/cli.md` so it links to the right detailed surfaces and does not duplicate stale root-help text.",
+        "Verify with `cueloop --help`, `cueloop help-all`, representative subcommand help commands, focused Rust tests, and `cueloop queue validate`."
+      ],
+      "notes": [],
+      "request": "scan: documentation and AI-agent guidance",
+      "created_at": "2026-05-03T14:17:28Z",
+      "updated_at": "2026-05-03T21:24:58.299429000Z",
+      "completed_at": "2026-05-03T21:24:58.299429000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],

@@ -55,56 +55,6 @@
       }
     },
     {
-      "id": "RQ-0083",
-      "status": "todo",
-      "title": "Trim top-level help to a BLUF command map",
-      "description": "The root `cueloop --help` surface currently mixes command discovery, runner precedence, a full config snippet, a long model catalog, and many runner-specific examples. That makes the first help screen harder for agents and new users to scan. Reshape root help into a short BLUF command map with a few canonical next actions, then move detailed runner/model examples to `task`, `scan`, `run`, config docs, or `help-all` where users ask for that detail.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "cli-help",
-        "docs",
-        "ux",
-        "brevity"
-      ],
-      "scope": [
-        "crates/cueloop/src/cli/args.rs",
-        "crates/cueloop/src/cli/*/help.rs",
-        "crates/cueloop/tests/",
-        "docs/cli.md",
-        "cueloop --help",
-        "cueloop help-all",
-        "cueloop scan --help",
-        "cueloop task --help",
-        "cueloop queue validate"
-      ],
-      "evidence": [
-        "path: crates/cueloop/src/cli/args.rs:36-60 :: top-level after-long-help embeds runner precedence, a JSON config example, allowed runners, and a full allowed-models catalog before examples.",
-        "path: crates/cueloop/src/cli/args.rs:62-78 :: top-level help includes 16 example commands, with 7 runner/model-specific scan/task examples plus both capped and uncapped run-loop examples.",
-        "workflow: cueloop --help :: rendered root help prints the same config snippet, long model list, and runner-specific examples before the More help section.",
-        "path: crates/cueloop/src/cli/run/help.rs:153-181 :: detailed run help already owns run-loop limits and runner override examples, so root help duplicates detail that can live in subcommand help.",
-        "path: docs/cli.md:17-38 :: CLI Reference already provides a command map, giving a better home for detailed command discovery than the first root help screen."
-      ],
-      "plan": [
-        "Define a short root-help information architecture: one-line purpose, core command map, 4-6 starter examples, and pointers to `help-all`, `config`, `task`, `scan`, and `run` help for details.",
-        "Move or deduplicate runner/model catalog and config-example detail out of root help into subcommand help or docs that already own those concepts.",
-        "Keep the allowed-runner/model source of truth testable so removing the root catalog does not reduce discoverability for users who ask for detailed help.",
-        "Update help snapshot/parse tests to assert root help stays concise and that detailed runner examples remain reachable from the owning subcommands.",
-        "Cross-check `docs/cli.md` so it links to the right detailed surfaces and does not duplicate stale root-help text.",
-        "Verify with `cueloop --help`, `cueloop help-all`, representative subcommand help commands, focused Rust tests, and `cueloop queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: documentation and AI-agent guidance",
-      "created_at": "2026-05-03T14:17:28Z",
-      "updated_at": "2026-05-03T14:17:28Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0084",
       "status": "todo",
       "title": "Make generated AGENTS.md templates repo-evidence based",
