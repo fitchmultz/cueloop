@@ -45,6 +45,12 @@ pub enum QueueLockMode {
     AcquireAllowUpstream,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ResumeExecutionProgress {
+    pub iterations_completed: u8,
+    pub current_phase: u8,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct RunOneResumeOptions {
     pub auto_resume: bool,

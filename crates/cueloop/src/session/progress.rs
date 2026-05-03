@@ -24,6 +24,36 @@ use anyhow::Result;
 
 use super::persistence::{load_session, save_session};
 
+/// Persist the current phase for the interrupted/resumable task session.
+pub fn set_session_phase(cache_dir: &Path, phase: u8) -> Result<()> {
+    let mut session = match load_session(cache_dir)? {
+        Some(session) => session,
+        None => {
+            log::debug!("No session to update phase for");
+            return Ok(());
+        }
+    };
+
+    let now = crate::timeutil::now_utc_rfc3339_or_fallback();
+    session.set_phase(phase, now);
+    save_session(cache_dir, &session)
+}
+
+/// Increment the session's iterations_completed counter and persist.
+pub fn mark_session_iteration_complete(cache_dir: &Path) -> Result<()> {
+    let mut session = match load_session(cache_dir)? {
+        Some(session) => session,
+        None => {
+            log::debug!("No session to mark iteration complete for");
+            return Ok(());
+        }
+    };
+
+    let now = crate::timeutil::now_utc_rfc3339_or_fallback();
+    session.mark_iteration_complete(now);
+    save_session(cache_dir, &session)
+}
+
 /// Increment the session's tasks_completed_in_loop counter and persist.
 pub fn increment_session_progress(cache_dir: &Path) -> Result<()> {
     let mut session = match load_session(cache_dir)? {

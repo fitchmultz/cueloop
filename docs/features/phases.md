@@ -515,7 +515,7 @@ Sessions older than `session_timeout_hours` (default: 24) are considered stale:
 }
 ```
 
-Valid resume sessions allow the interrupted task's dirty worktree as the resume baseline. Stale sessions still require explicit operator confirmation before continuing.
+Valid resume sessions allow the interrupted task's dirty worktree as the resume baseline and restart at the saved phase. Stale sessions still require explicit operator confirmation before continuing.
 
 ## Phase Transitions
 

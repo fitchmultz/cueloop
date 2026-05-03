@@ -47,6 +47,7 @@ pub(crate) fn setup_task_execution<'a>(
     post_run_mode: PostRunMode,
     force: bool,
     allow_resume_dirty_baseline: bool,
+    preserve_resume_session: bool,
 ) -> Result<TaskExecutionSetup<'a>> {
     let phases = resolve_task_phase_count(agent_overrides, task, &resolved.config.agent)?;
 
@@ -145,15 +146,22 @@ pub(crate) fn setup_task_execution<'a>(
     }
 
     let cache_dir = crate::config::project_runtime_dir(&resolved.repo_root).join("cache");
-    let session = create_session_for_task(
-        &task.id,
-        resolved,
-        agent_overrides,
-        iteration_settings.count,
-        Some(&phase_matrix),
-    );
-    if let Err(e) = session::save_session(&cache_dir, &session) {
-        log::warn!("Failed to save session state: {}", e);
+    if preserve_resume_session {
+        log::info!(
+            "Task {}: preserving interrupted session state for phase-aware resume",
+            task.id.trim()
+        );
+    } else {
+        let session = create_session_for_task(
+            &task.id,
+            resolved,
+            agent_overrides,
+            iteration_settings.count,
+            Some(&phase_matrix),
+        );
+        if let Err(e) = session::save_session(&cache_dir, &session) {
+            log::warn!("Failed to save session state: {}", e);
+        }
     }
 
     let bins = runner::resolve_binaries(&resolved.config.agent);

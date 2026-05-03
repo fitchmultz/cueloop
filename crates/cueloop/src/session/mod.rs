@@ -36,7 +36,9 @@ pub use persistence::{
     get_git_head_commit, load_session, load_session_checked, quarantine_session_cache,
     save_session, session_exists, session_path,
 };
-pub use progress::increment_session_progress;
+pub use progress::{
+    increment_session_progress, mark_session_iteration_complete, set_session_phase,
+};
 pub use recovery::{prompt_session_recovery, prompt_session_recovery_timeout};
 pub use validation::{
     SessionValidationResult, check_session, validate_session, validate_session_with_now,

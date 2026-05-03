@@ -36,7 +36,7 @@ use crate::runutil::RevertPromptHandler;
 use crate::{prompts, runner};
 use anyhow::{Result, bail};
 
-use super::orchestration::TaskExecutionSetup;
+use super::{ResumeExecutionProgress, orchestration::TaskExecutionSetup};
 
 /// Execute iteration phases based on phase count.
 #[allow(clippy::too_many_arguments)]
@@ -47,6 +47,7 @@ pub(crate) fn execute_iteration_phases(
     task: &Task,
     task_id: &str,
     setup: &TaskExecutionSetup,
+    resume_progress: Option<ResumeExecutionProgress>,
     base_prompt: &str,
     policy: &promptflow::PromptPolicy,
     output_handler: Option<runner::OutputHandler>,
@@ -68,6 +69,7 @@ pub(crate) fn execute_iteration_phases(
         task,
         task_id,
         setup,
+        resume_progress,
         base_prompt,
         policy,
         output_handler,
@@ -94,6 +96,7 @@ struct PhaseExecutionContext<'a> {
     task: &'a Task,
     task_id: &'a str,
     setup: &'a TaskExecutionSetup<'a>,
+    resume_progress: Option<ResumeExecutionProgress>,
     base_prompt: &'a str,
     policy: &'a promptflow::PromptPolicy,
     output_handler: Option<runner::OutputHandler>,
@@ -109,6 +112,34 @@ struct PhaseExecutionContext<'a> {
     plugins: &'a PluginRegistry,
     ci_gate_enabled: bool,
     webhook_config: &'a crate::contracts::WebhookConfig,
+}
+
+fn resume_start_iteration(
+    resume_progress: Option<ResumeExecutionProgress>,
+    iteration_count: u8,
+) -> u8 {
+    let Some(progress) = resume_progress else {
+        return 1;
+    };
+    progress
+        .iterations_completed
+        .saturating_add(1)
+        .clamp(1, iteration_count)
+}
+
+fn resume_start_phase_for_iteration(
+    resume_progress: Option<ResumeExecutionProgress>,
+    resume_start_iteration: u8,
+    iteration_index: u8,
+    phase_count: u8,
+) -> u8 {
+    let Some(progress) = resume_progress else {
+        return 1;
+    };
+    if iteration_index != resume_start_iteration {
+        return 1;
+    }
+    progress.current_phase.clamp(1, phase_count.max(1))
 }
 
 struct IterationExecution<'a> {
@@ -134,15 +165,35 @@ impl<'a> PhaseExecutionContext<'a> {
         }
     }
 
+    fn persist_session_phase(&self, phase: u8) {
+        let cache_dir = crate::config::project_runtime_dir(&self.resolved.repo_root).join("cache");
+        if let Err(err) = crate::session::set_session_phase(&cache_dir, phase) {
+            log::warn!("Failed to persist session phase {}: {}", phase, err);
+        }
+    }
+
+    fn mark_iteration_complete(&self, iteration_index: u8) {
+        let cache_dir = crate::config::project_runtime_dir(&self.resolved.repo_root).join("cache");
+        if let Err(err) = crate::session::mark_session_iteration_complete(&cache_dir) {
+            log::warn!(
+                "Failed to persist completion for iteration {}: {}",
+                iteration_index,
+                err
+            );
+        }
+    }
+
     fn execute(&self) -> Result<()> {
-        for iteration_index in 1..=self.setup.iteration_settings.count {
+        let start_iteration = self.resume_start_iteration();
+        for iteration_index in start_iteration..=self.setup.iteration_settings.count {
             self.log_iteration(iteration_index);
             let iteration = self.build_iteration(iteration_index);
+            let start_phase = self.resume_start_phase_for_iteration(iteration_index);
 
             match self.setup.phases {
                 1 => self.execute_single_phase_iteration(&iteration)?,
-                2 => self.execute_planned_iteration(&iteration, false)?,
-                3 => self.execute_planned_iteration(&iteration, true)?,
+                2 => self.execute_planned_iteration(&iteration, false, start_phase)?,
+                3 => self.execute_planned_iteration(&iteration, true, start_phase)?,
                 _ => {
                     bail!(
                         "Invalid phases value: {} (expected 1, 2, or 3). \
@@ -151,9 +202,23 @@ impl<'a> PhaseExecutionContext<'a> {
                     );
                 }
             }
+            self.mark_iteration_complete(iteration_index);
         }
 
         Ok(())
+    }
+
+    fn resume_start_iteration(&self) -> u8 {
+        resume_start_iteration(self.resume_progress, self.setup.iteration_settings.count)
+    }
+
+    fn resume_start_phase_for_iteration(&self, iteration_index: u8) -> u8 {
+        resume_start_phase_for_iteration(
+            self.resume_progress,
+            self.resume_start_iteration(),
+            iteration_index,
+            self.setup.phases,
+        )
     }
 
     fn log_iteration(&self, iteration_index: u8) {
@@ -211,11 +276,32 @@ impl<'a> PhaseExecutionContext<'a> {
         &self,
         iteration: &IterationExecution<'_>,
         include_review: bool,
+        start_phase: u8,
     ) -> Result<()> {
-        let phase1_settings = self.setup.phase_matrix.phase1.to_agent_settings();
-        let plan_text = self.execute_phase1(iteration, &phase1_settings)?;
+        let plan_text = if start_phase <= 2 {
+            Some(if start_phase <= 1 {
+                let phase1_settings = self.setup.phase_matrix.phase1.to_agent_settings();
+                self.execute_phase1(iteration, &phase1_settings)?
+            } else {
+                log::info!(
+                    "Task {}: resume skipping Phase 1; loading cached plan",
+                    self.task_id
+                );
+                promptflow::read_plan_cache(&self.resolved.repo_root, self.task_id)?
+            })
+        } else {
+            None
+        };
 
-        self.execute_phase2(iteration, &iteration.phase2_settings, &plan_text)?;
+        if start_phase <= 2 {
+            self.execute_phase2(
+                iteration,
+                &iteration.phase2_settings,
+                plan_text.as_deref().unwrap_or_default(),
+            )?;
+        } else {
+            log::info!("Task {}: resume skipping Phase 2", self.task_id);
+        }
 
         if include_review {
             let phase3_settings = self.setup.phase_matrix.phase3.to_agent_settings();
@@ -227,6 +313,7 @@ impl<'a> PhaseExecutionContext<'a> {
 
     fn execute_single_phase_iteration(&self, iteration: &IterationExecution<'_>) -> Result<()> {
         let invocation = self.build_phase_invocation(iteration, &iteration.phase2_settings);
+        self.persist_session_phase(2);
         self.emit_phase_entered(crate::progress::ExecutionPhase::Implementation);
 
         let result = super::webhooks::execute_impl_phase_with_webhooks(
@@ -253,6 +340,7 @@ impl<'a> PhaseExecutionContext<'a> {
         settings: &runner::AgentSettings,
     ) -> Result<String> {
         let invocation = self.build_phase_invocation(iteration, settings);
+        self.persist_session_phase(1);
         self.emit_phase_entered(crate::progress::ExecutionPhase::Planning);
         let result = super::webhooks::execute_phase1_with_webhooks(
             self.setup.phases,
@@ -277,6 +365,7 @@ impl<'a> PhaseExecutionContext<'a> {
         plan_text: &str,
     ) -> Result<()> {
         let invocation = self.build_phase_invocation(iteration, settings);
+        self.persist_session_phase(2);
         self.emit_phase_entered(crate::progress::ExecutionPhase::Implementation);
 
         let result = super::webhooks::execute_impl_phase_with_webhooks(
@@ -309,6 +398,7 @@ impl<'a> PhaseExecutionContext<'a> {
         settings: &runner::AgentSettings,
     ) -> Result<()> {
         let invocation = self.build_phase_invocation(iteration, settings);
+        self.persist_session_phase(3);
         self.emit_phase_entered(crate::progress::ExecutionPhase::Review);
 
         let result = super::webhooks::execute_impl_phase_with_webhooks(
@@ -366,5 +456,66 @@ impl<'a> PhaseExecutionContext<'a> {
             execution_timings: self.setup.execution_timings.as_ref(),
             plugins: Some(self.plugins),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resume_phase_plan_starts_at_saved_phase_for_first_resumed_iteration() {
+        let progress = Some(ResumeExecutionProgress {
+            iterations_completed: 0,
+            current_phase: 3,
+        });
+
+        let start_iteration = resume_start_iteration(progress, 2);
+
+        assert_eq!(start_iteration, 1);
+        assert_eq!(
+            resume_start_phase_for_iteration(progress, start_iteration, 1, 3),
+            3
+        );
+        assert_eq!(
+            resume_start_phase_for_iteration(progress, start_iteration, 2, 3),
+            1
+        );
+    }
+
+    #[test]
+    fn resume_phase_plan_starts_after_completed_iterations() {
+        let progress = Some(ResumeExecutionProgress {
+            iterations_completed: 1,
+            current_phase: 2,
+        });
+
+        let start_iteration = resume_start_iteration(progress, 3);
+
+        assert_eq!(start_iteration, 2);
+        assert_eq!(
+            resume_start_phase_for_iteration(progress, start_iteration, 2, 3),
+            2
+        );
+        assert_eq!(
+            resume_start_phase_for_iteration(progress, start_iteration, 3, 3),
+            1
+        );
+    }
+
+    #[test]
+    fn resume_phase_plan_clamps_out_of_range_progress() {
+        let progress = Some(ResumeExecutionProgress {
+            iterations_completed: 99,
+            current_phase: 99,
+        });
+
+        let start_iteration = resume_start_iteration(progress, 3);
+
+        assert_eq!(start_iteration, 3);
+        assert_eq!(
+            resume_start_phase_for_iteration(progress, start_iteration, 3, 2),
+            2
+        );
     }
 }

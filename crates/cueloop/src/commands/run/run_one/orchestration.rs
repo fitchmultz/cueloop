@@ -27,7 +27,7 @@
 //! - Resume decisions are emitted before task selection so operators can see why CueLoop chose a path.
 
 use crate::agent::AgentOverrides;
-use crate::commands::run::run_one::RunOneResumeOptions;
+use crate::commands::run::run_one::{ResumeExecutionProgress, RunOneResumeOptions};
 use crate::commands::run::{
     RunOutcome, context::task_context_for_prompt, emit_blocked_state_changed, emit_resume_decision,
     phases::PostRunMode,
@@ -91,6 +91,52 @@ pub(crate) enum SelectTaskResult {
         /// Operator-facing blocking state.
         state: Box<crate::contracts::BlockingState>,
     },
+}
+
+fn nonempty_file_exists(path: &std::path::Path) -> bool {
+    std::fs::metadata(path).is_ok_and(|metadata| metadata.is_file() && metadata.len() > 0)
+}
+
+fn infer_resume_phase_from_caches(repo_root: &std::path::Path, task_id: &str) -> u8 {
+    if nonempty_file_exists(&crate::promptflow::phase2_final_response_cache_path(
+        repo_root, task_id,
+    )) {
+        return 3;
+    }
+    if nonempty_file_exists(&crate::promptflow::plan_cache_path(repo_root, task_id)) {
+        return 2;
+    }
+    1
+}
+
+fn load_resume_progress(
+    resolved: &config::Resolved,
+    task_id: &str,
+) -> Result<Option<ResumeExecutionProgress>> {
+    let cache_dir = crate::config::project_runtime_dir(&resolved.repo_root).join("cache");
+    let Some(session) = crate::session::load_session(&cache_dir)? else {
+        return Ok(None);
+    };
+
+    if session.task_id.trim() != task_id {
+        return Ok(None);
+    }
+
+    let inferred_phase = infer_resume_phase_from_caches(&resolved.repo_root, task_id);
+    let current_phase = session.current_phase.max(inferred_phase);
+    if current_phase != session.current_phase {
+        log::info!(
+            "Task {}: inferred resume phase {} from cached phase artifacts (session recorded phase {})",
+            task_id,
+            current_phase,
+            session.current_phase
+        );
+    }
+
+    Ok(Some(ResumeExecutionProgress {
+        iterations_completed: session.iterations_completed,
+        current_phase,
+    }))
 }
 
 /// Build the base prompt for task execution.
@@ -192,8 +238,14 @@ pub fn run_one_impl(
         SelectTaskResult::Selected { task } => *task,
     };
     let task_id = task.id.trim().to_string();
+    let is_selected_resume_task = resolved_resume_task_id.as_deref() == Some(task_id.as_str());
     let allow_selected_resume_dirty_baseline =
-        allow_resume_dirty_baseline && resolved_resume_task_id.as_deref() == Some(task_id.as_str());
+        allow_resume_dirty_baseline && is_selected_resume_task;
+    let resume_progress = if is_selected_resume_task {
+        load_resume_progress(resolved, &task_id)?
+    } else {
+        None
+    };
     if let Some(handler) = &run_event_handler {
         handler(RunEvent::TaskSelected {
             task_id: task_id.clone(),
@@ -209,6 +261,7 @@ pub fn run_one_impl(
         ctx.post_run_mode,
         force,
         allow_selected_resume_dirty_baseline,
+        resume_progress.is_some(),
     )?;
 
     // 4. Build prompt
@@ -228,6 +281,7 @@ pub fn run_one_impl(
         &task,
         &task_id,
         &setup,
+        resume_progress,
         &base_prompt,
         &ctx.policy,
         output_handler.clone(),
@@ -257,4 +311,36 @@ pub fn run_one_impl(
         setup.execution_timings,
         agent_overrides,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn infer_resume_phase_prefers_phase2_final_response_cache() -> Result<()> {
+        let temp = tempfile::TempDir::new()?;
+        crate::promptflow::write_plan_cache(temp.path(), "RQ-0001", "plan")?;
+        crate::promptflow::write_phase2_final_response_cache(temp.path(), "RQ-0001", "done")?;
+
+        assert_eq!(infer_resume_phase_from_caches(temp.path(), "RQ-0001"), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn infer_resume_phase_uses_plan_cache_when_phase2_cache_missing() -> Result<()> {
+        let temp = tempfile::TempDir::new()?;
+        crate::promptflow::write_plan_cache(temp.path(), "RQ-0001", "plan")?;
+
+        assert_eq!(infer_resume_phase_from_caches(temp.path(), "RQ-0001"), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn infer_resume_phase_defaults_to_phase1_without_caches() -> Result<()> {
+        let temp = tempfile::TempDir::new()?;
+
+        assert_eq!(infer_resume_phase_from_caches(temp.path(), "RQ-0001"), 1);
+        Ok(())
+    }
 }
