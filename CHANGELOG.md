@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-03
+
 ### Added
 
 - Added atomic task insertion across CLI and machine contracts, including `cueloop task insert`, queue insertion operations, schema coverage, prompt guidance, and end-to-end tests.
@@ -184,7 +186,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/fitchmultz/cueloop/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/fitchmultz/cueloop/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/fitchmultz/cueloop/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/fitchmultz/cueloop/compare/v0.3.0...v0.3.1
