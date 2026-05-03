@@ -210,8 +210,11 @@ fn init_overwrites_when_forced() -> anyhow::Result<()> {
     );
     assert_eq!(cfg.queue.id_prefix, Some("RQ".to_string()));
     assert_eq!(cfg.queue.id_width, Some(4));
-    assert_eq!(cfg.agent.runner, Some(crate::contracts::Runner::Codex));
-    assert_eq!(cfg.agent.model, Some(crate::contracts::Model::Gpt54));
+    assert_eq!(cfg.agent.runner, Some(crate::contracts::Runner::Pi));
+    assert_eq!(
+        cfg.agent.model,
+        Some(crate::contracts::Model::OpenAiCodexGpt54)
+    );
     assert_eq!(
         cfg.agent.reasoning_effort,
         Some(crate::contracts::ReasoningEffort::Medium)

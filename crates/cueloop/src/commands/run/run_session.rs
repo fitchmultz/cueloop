@@ -74,7 +74,7 @@ pub(crate) fn create_session_for_task(
                 .as_ref()
                 .map(|m| m.as_str().to_string())
         })
-        .unwrap_or_else(|| "gpt-5.4".to_string());
+        .unwrap_or_else(|| "openai-codex/gpt-5.4".to_string());
 
     // Generate a simple session ID using timestamp and task ID
     let session_id = format!("{}-{}", now.replace([':', '.', '-'], ""), task_id);

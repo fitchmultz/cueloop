@@ -37,8 +37,8 @@ fn test_config_default() {
     );
     assert_eq!(config.queue.id_prefix, Some("RQ".to_string()));
     assert_eq!(config.queue.id_width, Some(4));
-    assert_eq!(config.agent.runner, Some(Runner::Codex));
-    assert_eq!(config.agent.model, Some(Model::Gpt54));
+    assert_eq!(config.agent.runner, Some(Runner::Pi));
+    assert_eq!(config.agent.model, Some(Model::OpenAiCodexGpt54));
     assert_eq!(config.agent.reasoning_effort, Some(ReasoningEffort::Medium));
     assert_eq!(config.agent.codex_bin, Some("codex".to_string()));
     assert_eq!(config.agent.opencode_bin, Some("opencode".to_string()));
@@ -60,5 +60,30 @@ fn test_config_default() {
     assert_eq!(config.agent.repoprompt_plan_required, Some(false));
     assert_eq!(config.agent.repoprompt_tool_injection, Some(false));
     assert_eq!(config.agent.phases, Some(3));
+    let phase_overrides = config.agent.phase_overrides.as_ref().unwrap();
+    assert_eq!(
+        phase_overrides.phase1.as_ref().unwrap().model,
+        Some(Model::OpenAiCodexGpt55)
+    );
+    assert_eq!(
+        phase_overrides.phase2.as_ref().unwrap().model,
+        Some(Model::OpenAiCodexGpt54)
+    );
+    assert_eq!(
+        phase_overrides.phase3.as_ref().unwrap().model,
+        Some(Model::OpenAiCodexGpt55)
+    );
+    assert_eq!(
+        phase_overrides.phase1.as_ref().unwrap().reasoning_effort,
+        Some(ReasoningEffort::Medium)
+    );
+    assert_eq!(
+        phase_overrides.phase2.as_ref().unwrap().reasoning_effort,
+        Some(ReasoningEffort::Medium)
+    );
+    assert_eq!(
+        phase_overrides.phase3.as_ref().unwrap().reasoning_effort,
+        Some(ReasoningEffort::Medium)
+    );
     assert!(config.profiles.is_none());
 }

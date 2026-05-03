@@ -55,9 +55,24 @@ Detailed trust and profile rules live in [Trust and precedence](configuration/tr
 {
   "version": 2,
   "agent": {
-    "runner": "codex",
-    "model": "gpt-5.4",
-    "phases": 3
+    "runner": "pi",
+    "model": "openai-codex/gpt-5.4",
+    "reasoning_effort": "medium",
+    "phases": 3,
+    "phase_overrides": {
+      "phase1": {
+        "model": "openai-codex/gpt-5.5",
+        "reasoning_effort": "medium"
+      },
+      "phase2": {
+        "model": "openai-codex/gpt-5.4",
+        "reasoning_effort": "medium"
+      },
+      "phase3": {
+        "model": "openai-codex/gpt-5.5",
+        "reasoning_effort": "medium"
+      }
+    }
   },
   "queue": {
     "file": ".cueloop/queue.jsonc",

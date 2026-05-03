@@ -58,8 +58,9 @@ When writing files, CueLoop always outputs standard JSON format (comments are no
     /* Runner configuration.
        Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi.
        Plugin runner IDs are also supported as non-empty strings. */
-    "runner": "codex",
-    "model": "gpt-5.4",
+    "runner": "pi",
+    "model": "openai-codex/gpt-5.4",
+    "reasoning_effort": "medium",
     "phases": 3, // 1 = single-pass, 2 = plan+implement, 3 = plan+implement+review
   }
 }

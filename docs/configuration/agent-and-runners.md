@@ -44,6 +44,7 @@ Supported fields:
   ```
 
 Notes:
+- Broad default quota policy: CueLoop defaults to Pi with `openai-codex/gpt-5.4` at `medium` effort, plus phase overrides that use `openai-codex/gpt-5.5` at `medium` effort for Phase 1 planning and Phase 3 review while keeping Phase 2 implementation on `openai-codex/gpt-5.4` at `medium` effort. This spends premium tokens on deciding and catching mistakes while using the cheaper strong model for the bulk implementation loop.
 - Multi-phase runs (`phases >= 2`) always refresh task fields (`scope,evidence,plan,notes,tags,depends_on`) at the start of Phase 1, then generate the plan in that same Phase 1 runner session. This behavior is built in and not configurable.
 - `followup_reasoning_effort` is used by Codex and Pi runners and ignored by runners without reasoning-effort support.
 - Migration-related breaking changes for `reasoning_effort`, `agent.git_publish_mode`, and older config files live in [Migration notes](migration-notes.md).
@@ -80,11 +81,11 @@ Example:
 {
   "version": 2,
   "agent": {
-    "runner": "codex",
-    "model": "gpt-5.4",
+    "runner": "pi",
+    "model": "openai-codex/gpt-5.4",
     "phases": 3,
     "iterations": 2,
-    "reasoning_effort": "high",
+    "reasoning_effort": "medium",
     "followup_reasoning_effort": "low",
     "repoprompt_plan_required": false,
     "repoprompt_tool_injection": false,
@@ -190,23 +191,21 @@ Each phase config can specify:
 ```json
 {
   "agent": {
-    "runner": "codex",
-    "model": "gpt-5.4",
+    "runner": "pi",
+    "model": "openai-codex/gpt-5.4",
     "reasoning_effort": "medium",
     "phase_overrides": {
       "phase1": {
-        "model": "gpt-5.3",
-        "reasoning_effort": "high"
+        "model": "openai-codex/gpt-5.5",
+        "reasoning_effort": "medium"
       },
       "phase2": {
-        "runner": "codex",
-        "model": "gpt-5.4",
+        "model": "openai-codex/gpt-5.4",
         "reasoning_effort": "medium"
       },
       "phase3": {
-        "runner": "codex",
-        "model": "gpt-5.4",
-        "reasoning_effort": "high"
+        "model": "openai-codex/gpt-5.5",
+        "reasoning_effort": "medium"
       }
     }
   }

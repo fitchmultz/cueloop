@@ -248,7 +248,15 @@ fn select_model(runner: &Runner) -> Result<String> {
             ("custom", "Other model (specify)"),
         ],
         Runner::Pi => vec![
-            ("gpt-5.3", "GPT-5.3 model (recommended)"),
+            (
+                "openai-codex/gpt-5.4",
+                "Strong Codex model for implementation-heavy workflows (recommended)",
+            ),
+            (
+                "openai-codex/gpt-5.5",
+                "Premium Codex model for planning/review",
+            ),
+            ("gpt-5.4", "General GPT-5.4"),
             ("custom", "Other model (specify)"),
         ],
         Runner::Cursor => vec![

@@ -120,8 +120,8 @@ impl Default for Config {
                 }),
             },
             agent: AgentConfig {
-                runner: Some(Runner::Codex),
-                model: Some(Model::Gpt54),
+                runner: Some(Runner::Pi),
+                model: Some(Model::OpenAiCodexGpt54),
                 reasoning_effort: Some(ReasoningEffort::Medium),
                 iterations: Some(1),
                 followup_reasoning_effort: None,
@@ -134,6 +134,23 @@ impl Default for Config {
                 kimi_bin: Some("kimi".to_string()),
                 pi_bin: Some("pi".to_string()),
                 phases: Some(3),
+                phase_overrides: Some(PhaseOverrides {
+                    phase1: Some(PhaseOverrideConfig {
+                        model: Some(Model::OpenAiCodexGpt55),
+                        reasoning_effort: Some(ReasoningEffort::Medium),
+                        ..PhaseOverrideConfig::default()
+                    }),
+                    phase2: Some(PhaseOverrideConfig {
+                        model: Some(Model::OpenAiCodexGpt54),
+                        reasoning_effort: Some(ReasoningEffort::Medium),
+                        ..PhaseOverrideConfig::default()
+                    }),
+                    phase3: Some(PhaseOverrideConfig {
+                        model: Some(Model::OpenAiCodexGpt55),
+                        reasoning_effort: Some(ReasoningEffort::Medium),
+                        ..PhaseOverrideConfig::default()
+                    }),
+                }),
                 claude_permission_mode: Some(ClaudePermissionMode::AcceptEdits),
                 runner_cli: Some(RunnerCliConfigRoot {
                     defaults: RunnerCliOptionsPatch {
@@ -161,7 +178,6 @@ impl Default for Config {
                         ),
                     ]),
                 }),
-                phase_overrides: None,
                 instruction_files: None,
                 repoprompt_plan_required: Some(false),
                 repoprompt_tool_injection: Some(false),

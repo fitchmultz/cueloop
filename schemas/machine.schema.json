@@ -579,7 +579,7 @@
               "instruction_files": null,
               "iterations": 1,
               "kimi_bin": "kimi",
-              "model": "gpt-5.4",
+              "model": "openai-codex/gpt-5.4",
               "notification": {
                 "enabled": true,
                 "notify_on_complete": true,
@@ -592,13 +592,26 @@
                 "timeout_ms": 8000
               },
               "opencode_bin": "opencode",
-              "phase_overrides": null,
+              "phase_overrides": {
+                "phase1": {
+                  "model": "openai-codex/gpt-5.5",
+                  "reasoning_effort": "medium"
+                },
+                "phase2": {
+                  "model": "openai-codex/gpt-5.4",
+                  "reasoning_effort": "medium"
+                },
+                "phase3": {
+                  "model": "openai-codex/gpt-5.5",
+                  "reasoning_effort": "medium"
+                }
+              },
               "phases": 3,
               "pi_bin": "pi",
               "reasoning_effort": "medium",
               "repoprompt_plan_required": false,
               "repoprompt_tool_injection": false,
-              "runner": "codex",
+              "runner": "pi",
               "runner_cli": {
                 "defaults": {
                   "approval_mode": "default",
@@ -1099,8 +1112,18 @@
       "Model": {
         "oneOf": [
           {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
             "const": "gpt-5.4",
-            "description": "OpenAI GPT-5.4 (default Codex model)",
+            "description": "OpenAI GPT-5.4",
             "type": "string"
           },
           {
@@ -3199,8 +3222,18 @@
       "Model": {
         "oneOf": [
           {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
             "const": "gpt-5.4",
-            "description": "OpenAI GPT-5.4 (default Codex model)",
+            "description": "OpenAI GPT-5.4",
             "type": "string"
           },
           {
@@ -6065,8 +6098,18 @@
       "Model": {
         "oneOf": [
           {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
             "const": "gpt-5.4",
-            "description": "OpenAI GPT-5.4 (default Codex model)",
+            "description": "OpenAI GPT-5.4",
             "type": "string"
           },
           {
@@ -6768,8 +6811,18 @@
       "Model": {
         "oneOf": [
           {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
             "const": "gpt-5.4",
-            "description": "OpenAI GPT-5.4 (default Codex model)",
+            "description": "OpenAI GPT-5.4",
             "type": "string"
           },
           {
@@ -8138,7 +8191,7 @@
               "instruction_files": null,
               "iterations": 1,
               "kimi_bin": "kimi",
-              "model": "gpt-5.4",
+              "model": "openai-codex/gpt-5.4",
               "notification": {
                 "enabled": true,
                 "notify_on_complete": true,
@@ -8151,13 +8204,26 @@
                 "timeout_ms": 8000
               },
               "opencode_bin": "opencode",
-              "phase_overrides": null,
+              "phase_overrides": {
+                "phase1": {
+                  "model": "openai-codex/gpt-5.5",
+                  "reasoning_effort": "medium"
+                },
+                "phase2": {
+                  "model": "openai-codex/gpt-5.4",
+                  "reasoning_effort": "medium"
+                },
+                "phase3": {
+                  "model": "openai-codex/gpt-5.5",
+                  "reasoning_effort": "medium"
+                }
+              },
               "phases": 3,
               "pi_bin": "pi",
               "reasoning_effort": "medium",
               "repoprompt_plan_required": false,
               "repoprompt_tool_injection": false,
-              "runner": "codex",
+              "runner": "pi",
               "runner_cli": {
                 "defaults": {
                   "approval_mode": "default",
@@ -8732,8 +8798,18 @@
       "Model": {
         "oneOf": [
           {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
             "const": "gpt-5.4",
-            "description": "OpenAI GPT-5.4 (default Codex model)",
+            "description": "OpenAI GPT-5.4",
             "type": "string"
           },
           {

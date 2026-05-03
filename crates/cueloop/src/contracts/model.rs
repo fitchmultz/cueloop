@@ -23,6 +23,8 @@ use std::borrow::Cow;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Model {
+    OpenAiCodexGpt55,
+    OpenAiCodexGpt54,
     Gpt54,
     #[default]
     Gpt53Codex,
@@ -54,6 +56,8 @@ impl<'de> Deserialize<'de> for Model {
 impl Model {
     pub fn as_str(&self) -> &str {
         match self {
+            Model::OpenAiCodexGpt55 => "openai-codex/gpt-5.5",
+            Model::OpenAiCodexGpt54 => "openai-codex/gpt-5.4",
             Model::Gpt54 => "gpt-5.4",
             Model::Gpt53Codex => "gpt-5.3-codex",
             Model::Gpt53CodexSpark => "gpt-5.3-codex-spark",
@@ -73,6 +77,8 @@ impl std::str::FromStr for Model {
             return Err("model cannot be empty");
         }
         Ok(match trimmed {
+            "openai-codex/gpt-5.5" => Model::OpenAiCodexGpt55,
+            "openai-codex/gpt-5.4" => Model::OpenAiCodexGpt54,
             "gpt-5.4" => Model::Gpt54,
             "gpt-5.3-codex" => Model::Gpt53Codex,
             "gpt-5.3-codex-spark" => Model::Gpt53CodexSpark,
@@ -94,8 +100,18 @@ impl schemars::JsonSchema for Model {
             "oneOf": [
                 {
                     "type": "string",
+                    "const": "openai-codex/gpt-5.5",
+                    "description": "OpenAI Codex GPT-5.5"
+                },
+                {
+                    "type": "string",
+                    "const": "openai-codex/gpt-5.4",
+                    "description": "OpenAI Codex GPT-5.4 (default implementation model)"
+                },
+                {
+                    "type": "string",
                     "const": "gpt-5.4",
-                    "description": "OpenAI GPT-5.4 (default Codex model)"
+                    "description": "OpenAI GPT-5.4"
                 },
                 {
                     "type": "string",
@@ -170,6 +186,14 @@ mod tests {
 
     #[test]
     fn model_parses_known_variants() {
+        assert_eq!(
+            "openai-codex/gpt-5.5".parse::<Model>().unwrap(),
+            Model::OpenAiCodexGpt55
+        );
+        assert_eq!(
+            "openai-codex/gpt-5.4".parse::<Model>().unwrap(),
+            Model::OpenAiCodexGpt54
+        );
         assert_eq!("gpt-5.4".parse::<Model>().unwrap(), Model::Gpt54);
         assert_eq!("gpt-5.3-codex".parse::<Model>().unwrap(), Model::Gpt53Codex);
         assert_eq!(
@@ -259,6 +283,14 @@ mod tests {
         let schema_json = serde_json::to_string(&schema).unwrap();
 
         // Verify known models are in schema
+        assert!(
+            schema_json.contains("openai-codex/gpt-5.5"),
+            "schema should list openai-codex/gpt-5.5"
+        );
+        assert!(
+            schema_json.contains("openai-codex/gpt-5.4"),
+            "schema should list openai-codex/gpt-5.4"
+        );
         assert!(
             schema_json.contains("gpt-5.4"),
             "schema should list gpt-5.4"

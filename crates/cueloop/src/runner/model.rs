@@ -18,8 +18,8 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants:
-//! - Codex runner only supports `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`,
-//!   and `gpt-5.3`.
+//! - Codex runner only supports `openai-codex/gpt-5.5`, `openai-codex/gpt-5.4`,
+//!   `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, and `gpt-5.3`.
 //! - Non-Codex runners must never "inherit" Codex-only defaults.
 
 use anyhow::{Result, anyhow, bail};
@@ -31,14 +31,14 @@ use crate::contracts::{Model, ReasoningEffort, Runner};
 
 pub(crate) fn default_model_for_runner(runner: &Runner) -> Model {
     match runner {
-        Runner::Codex => Model::Gpt54,
+        Runner::Codex => Model::OpenAiCodexGpt54,
         Runner::Opencode => Model::Glm47,
         Runner::Gemini => Model::Custom(DEFAULT_GEMINI_MODEL.to_string()),
         Runner::Cursor => Model::Custom(DEFAULT_CURSOR_MODEL.to_string()),
         Runner::Claude => Model::Custom(DEFAULT_CLAUDE_MODEL.to_string()),
         Runner::Kimi => Model::Custom("kimi-for-coding".to_string()),
-        Runner::Pi => Model::Custom("gpt-5.3".to_string()),
-        Runner::Plugin(_) => Model::Custom("gpt-5.3".to_string()),
+        Runner::Pi => Model::OpenAiCodexGpt54,
+        Runner::Plugin(_) => Model::OpenAiCodexGpt54,
     }
 }
 
@@ -106,10 +106,23 @@ pub(super) fn resolve_model_for_phase(
 fn normalize_model_for_runner(runner: &Runner, model: Model) -> Model {
     if runner == &Runner::Codex {
         match model {
-            Model::Gpt54 | Model::Gpt53Codex | Model::Gpt53CodexSpark | Model::Gpt53 => model,
+            Model::OpenAiCodexGpt55
+            | Model::OpenAiCodexGpt54
+            | Model::Gpt54
+            | Model::Gpt53Codex
+            | Model::Gpt53CodexSpark
+            | Model::Gpt53 => model,
             _ => default_model_for_runner(runner),
         }
-    } else if matches!(model, Model::Gpt53Codex | Model::Gpt53CodexSpark) {
+    } else if runner != &Runner::Pi
+        && matches!(
+            model,
+            Model::OpenAiCodexGpt55
+                | Model::OpenAiCodexGpt54
+                | Model::Gpt53Codex
+                | Model::Gpt53CodexSpark
+        )
+    {
         default_model_for_runner(runner)
     } else {
         model
@@ -119,12 +132,17 @@ fn normalize_model_for_runner(runner: &Runner, model: Model) -> Model {
 pub(crate) fn validate_model_for_runner(runner: &Runner, model: &Model) -> Result<()> {
     if runner == &Runner::Codex {
         match model {
-            Model::Gpt54 | Model::Gpt53Codex | Model::Gpt53CodexSpark | Model::Gpt53 => {}
+            Model::OpenAiCodexGpt55
+            | Model::OpenAiCodexGpt54
+            | Model::Gpt54
+            | Model::Gpt53Codex
+            | Model::Gpt53CodexSpark
+            | Model::Gpt53 => {}
             Model::Glm47 => {
                 bail!("model zai-coding-plan/glm-4.7 is not supported for codex runner")
             }
             Model::Custom(name) => bail!(
-                "model {} is not supported for codex runner (allowed: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3)",
+                "model {} is not supported for codex runner (allowed: openai-codex/gpt-5.5, openai-codex/gpt-5.4, gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3)",
                 name
             ),
         }
@@ -186,6 +204,18 @@ mod tests {
     }
 
     #[test]
+    fn resolve_model_for_runner_replaces_openai_codex_default_for_gemini() {
+        let model = resolve_model_for_runner(
+            &Runner::Gemini,
+            None,
+            None,
+            Some(Model::OpenAiCodexGpt54),
+            false,
+        );
+        assert_eq!(model.as_str(), DEFAULT_GEMINI_MODEL);
+    }
+
+    #[test]
     fn resolve_model_for_runner_replaces_codex_spark_default_for_gemini() {
         let model = resolve_model_for_runner(
             &Runner::Gemini,
@@ -206,7 +236,7 @@ mod tests {
             Some(Model::Custom("sonnet".to_string())),
             false,
         );
-        assert_eq!(model, Model::Gpt54);
+        assert_eq!(model, Model::OpenAiCodexGpt54);
     }
 
     #[test]
@@ -218,7 +248,7 @@ mod tests {
             None,
             false,
         );
-        assert_eq!(model, Model::Gpt54);
+        assert_eq!(model, Model::OpenAiCodexGpt54);
     }
 
     #[test]
@@ -254,7 +284,7 @@ mod tests {
     #[test]
     fn resolve_model_for_runner_defaults_for_pi() {
         let model = resolve_model_for_runner(&Runner::Pi, None, None, None, false);
-        assert_eq!(model.as_str(), "gpt-5.3");
+        assert_eq!(model.as_str(), "openai-codex/gpt-5.4");
     }
 
     #[test]
@@ -304,7 +334,7 @@ mod tests {
     #[test]
     fn resolve_model_for_runner_defaults_for_codex() {
         let model = resolve_model_for_runner(&Runner::Codex, None, None, None, false);
-        assert_eq!(model, Model::Gpt54);
+        assert_eq!(model, Model::OpenAiCodexGpt54);
     }
 
     #[test]
@@ -320,7 +350,9 @@ mod tests {
     }
 
     #[test]
-    fn validate_model_for_runner_accepts_gpt53_for_codex() {
+    fn validate_model_for_runner_accepts_codex_models_for_codex() {
+        assert!(validate_model_for_runner(&Runner::Codex, &Model::OpenAiCodexGpt55).is_ok());
+        assert!(validate_model_for_runner(&Runner::Codex, &Model::OpenAiCodexGpt54).is_ok());
         assert!(validate_model_for_runner(&Runner::Codex, &Model::Gpt53Codex).is_ok());
         assert!(validate_model_for_runner(&Runner::Codex, &Model::Gpt53CodexSpark).is_ok());
         assert!(validate_model_for_runner(&Runner::Codex, &Model::Gpt53).is_ok());

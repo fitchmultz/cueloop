@@ -78,16 +78,21 @@ Define custom profiles in your config file under the `profiles` key:
   "version": 2,
   "profiles": {
     "fast-local": {
-      "runner": "codex",
-      "model": "gpt-5.4",
+      "runner": "pi",
+      "model": "openai-codex/gpt-5.4",
       "phases": 1,
-      "reasoning_effort": "low"
+      "reasoning_effort": "medium"
     },
     "deep-review": {
-      "runner": "codex",
-      "model": "gpt-5.4",
+      "runner": "pi",
+      "model": "openai-codex/gpt-5.4",
       "phases": 3,
-      "reasoning_effort": "high"
+      "reasoning_effort": "medium",
+      "phase_overrides": {
+        "phase1": { "model": "openai-codex/gpt-5.5", "reasoning_effort": "medium" },
+        "phase2": { "model": "openai-codex/gpt-5.4", "reasoning_effort": "medium" },
+        "phase3": { "model": "openai-codex/gpt-5.5", "reasoning_effort": "medium" }
+      }
     }
   }
 }
@@ -156,16 +161,21 @@ The above profile only changes `phases`, leaving all other `agent` settings at t
 {
   "profiles": {
     "quick": {
-      "runner": "codex",
-      "model": "gpt-5.4",
+      "runner": "pi",
+      "model": "openai-codex/gpt-5.4",
       "phases": 1,
-      "reasoning_effort": "low"
+      "reasoning_effort": "medium"
     },
     "thorough": {
-      "runner": "codex",
-      "model": "gpt-5.4",
+      "runner": "pi",
+      "model": "openai-codex/gpt-5.4",
       "phases": 3,
-      "reasoning_effort": "high"
+      "reasoning_effort": "medium",
+      "phase_overrides": {
+        "phase1": { "model": "openai-codex/gpt-5.5", "reasoning_effort": "medium" },
+        "phase2": { "model": "openai-codex/gpt-5.4", "reasoning_effort": "medium" },
+        "phase3": { "model": "openai-codex/gpt-5.5", "reasoning_effort": "medium" }
+      }
     }
   }
 }
