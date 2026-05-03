@@ -97,6 +97,7 @@ Examples:\n\
 
 pub(super) const RESUME_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - If the saved session is still valid, CueLoop resumes the same interrupted task.\n\
+ - Resume treats the current dirty tree as the interrupted task baseline; `--force` is only for bypassing other safety checks.\n\
  - If the saved session is stale or no longer safe, CueLoop says so and starts fresh.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of guessing.\n\
 \n\
@@ -114,6 +115,7 @@ pub(super) const RUN_ONE_AFTER_LONG_HELP: &str = "Runner selection (precedence):
 Resume behavior:\n\
  - `cueloop run one` inspects interrupted-session state before selecting work.\n\
  - `cueloop run one --resume` auto-resumes the interrupted session when CueLoop can do so safely.\n\
+ - A valid resume treats the current dirty tree as the interrupted task baseline.\n\
  - Explicit `--id <TASK_ID>` beats an unrelated interrupted session, and CueLoop says so.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\
@@ -152,6 +154,7 @@ Examples:\n\
 
 pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - `cueloop run loop --resume` auto-resumes the interrupted session when safe.\n\
+ - A valid resume treats the current dirty tree as the interrupted task baseline.\n\
  - Without `--resume`, CueLoop still narrates stale/fresh/refusal cases instead of hiding them.\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\

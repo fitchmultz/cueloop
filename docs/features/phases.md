@@ -515,7 +515,7 @@ Sessions older than `session_timeout_hours` (default: 24) are considered stale:
 }
 ```
 
-Stale sessions require explicit `--force` to resume.
+Valid resume sessions allow the interrupted task's dirty worktree as the resume baseline. Stale sessions still require explicit operator confirmation before continuing.
 
 ## Phase Transitions
 
@@ -701,13 +701,14 @@ Phase 3 incomplete: task RQ-0001 is not archived with a terminal status
 
 ### Session Mismatch
 
-If resuming fails with session errors:
+If resuming fails with session errors, inspect the reported session state before forcing recovery:
 
 ```
+cueloop doctor
 cueloop run resume --force
 ```
 
-The `--force` flag bypasses stale session checks.
+The `--force` flag bypasses stale-session safety checks; it is not required for ordinary dirty-worktree recovery from a valid interrupted session.
 
 ### CI Gate Failures
 

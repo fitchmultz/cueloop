@@ -134,7 +134,7 @@ pub fn run_one_impl(
         parallel_target_branch,
     )?;
 
-    let resolved_resume_task_id = if resume_options.detect_session {
+    let (resolved_resume_task_id, allow_resume_dirty_baseline) = if resume_options.detect_session {
         let resolution = crate::session::resolve_run_session_decision(
             &crate::config::project_runtime_dir(&resolved.repo_root).join("cache"),
             &ctx.queue_file,
@@ -162,9 +162,13 @@ pub fn run_one_impl(
             }
         }
 
-        resolution.resume_task_id
+        let allow_resume_dirty_baseline = resolution.resume_task_id.is_some();
+        (resolution.resume_task_id, allow_resume_dirty_baseline)
     } else {
-        resume_options.resume_task_id.clone()
+        (
+            resume_options.resume_task_id.clone(),
+            resume_options.allow_resume_dirty_baseline,
+        )
     };
 
     // 2. Select task
@@ -188,6 +192,8 @@ pub fn run_one_impl(
         SelectTaskResult::Selected { task } => *task,
     };
     let task_id = task.id.trim().to_string();
+    let allow_selected_resume_dirty_baseline =
+        allow_resume_dirty_baseline && resolved_resume_task_id.as_deref() == Some(task_id.as_str());
     if let Some(handler) = &run_event_handler {
         handler(RunEvent::TaskSelected {
             task_id: task_id.clone(),
@@ -196,7 +202,14 @@ pub fn run_one_impl(
     }
 
     // 3. Setup execution
-    let setup = setup_task_execution(resolved, agent_overrides, &task, ctx.post_run_mode, force)?;
+    let setup = setup_task_execution(
+        resolved,
+        agent_overrides,
+        &task,
+        ctx.post_run_mode,
+        force,
+        allow_selected_resume_dirty_baseline,
+    )?;
 
     // 4. Build prompt
     let base_prompt = build_base_prompt(resolved, &task, &task_id)?;

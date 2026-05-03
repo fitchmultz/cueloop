@@ -18,7 +18,7 @@
 //!
 //! Invariants/assumptions:
 //! - Task has already been selected before calling setup.
-//! - Repo must be clean (or force flag used) before proceeding.
+//! - Repo must be clean (or force/resume-baseline allowance used) before proceeding.
 
 use std::cell::RefCell;
 
@@ -46,6 +46,7 @@ pub(crate) fn setup_task_execution<'a>(
     task: &Task,
     post_run_mode: PostRunMode,
     force: bool,
+    allow_resume_dirty_baseline: bool,
 ) -> Result<TaskExecutionSetup<'a>> {
     let phases = resolve_task_phase_count(agent_overrides, task, &resolved.config.agent)?;
 
@@ -104,15 +105,23 @@ pub(crate) fn setup_task_execution<'a>(
         );
     }
 
-    let preexisting_dirty_allowed = git::repo_dirty_only_allowed_paths(
-        &resolved.repo_root,
-        git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
-    )?;
+    let preexisting_dirty_allowed = allow_resume_dirty_baseline
+        || git::repo_dirty_only_allowed_paths(
+            &resolved.repo_root,
+            git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
+        )?;
     git::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
-        force,
+        force || allow_resume_dirty_baseline,
         git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
     )?;
+
+    if allow_resume_dirty_baseline {
+        log::info!(
+            "Task {}: resume mode allows the current dirty tree as the interrupted task baseline",
+            task.id.trim()
+        );
+    }
 
     let plugin_registry = PluginRegistry::load(&resolved.repo_root, &resolved.config)
         .context("load plugin registry")?;

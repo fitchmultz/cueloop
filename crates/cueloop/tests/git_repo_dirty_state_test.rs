@@ -18,6 +18,8 @@
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::{Context, Result};
+use cueloop::contracts::{Runner, SessionState, TaskPriority, TaskStatus};
+use cueloop::session::save_session;
 mod test_support;
 
 #[test]
@@ -91,6 +93,117 @@ fn run_one_succeeds_when_repo_is_dirty_and_force_is_used() -> Result<()> {
     anyhow::ensure!(
         status.success(),
         "run one failed with --force on dirty repo\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn run_loop_resume_allows_dirty_tree_from_interrupted_task_without_force() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let runner_path = test_support::create_fake_runner(
+        dir.path(),
+        "codex",
+        "#!/bin/sh\ncat >/dev/null\nexit 0\n",
+    )?;
+    test_support::configure_runner(dir.path(), "codex", "gpt-5.3-codex", Some(&runner_path))?;
+    test_support::configure_ci_gate(dir.path(), None, Some(false))?;
+
+    let task = test_support::TaskBuilder::new(
+        "RQ-0001",
+        "Resume interrupted dirty task",
+        TaskStatus::Doing,
+        TaskPriority::High,
+    )
+    .request("resume interrupted work")
+    .created_at("2026-01-18T00:00:00Z")
+    .updated_at("2026-01-18T00:00:00Z")
+    .build();
+    test_support::write_queue(dir.path(), &[task])?;
+    test_support::write_done(dir.path(), &[])?;
+
+    let cache_dir = dir.path().join(".cueloop/cache");
+    let session = SessionState::new(
+        "session-RQ-0001".to_string(),
+        "RQ-0001".to_string(),
+        cueloop::timeutil::now_utc_rfc3339_or_fallback(),
+        1,
+        Runner::Codex,
+        "gpt-5.3-codex".to_string(),
+        0,
+        None,
+        None,
+    );
+    save_session(&cache_dir, &session)?;
+
+    std::fs::write(dir.path().join("interrupted-output.txt"), "phase 2 output")
+        .context("write interrupted output")?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["run", "loop", "--resume", "--max-tasks", "1"]);
+    anyhow::ensure!(
+        status.success(),
+        "resume should allow interrupted dirty tree without --force\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    anyhow::ensure!(
+        !stderr.to_lowercase().contains("repo is dirty"),
+        "resume should not emit the generic dirty-repo failure\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn run_loop_resume_does_not_allow_dirty_tree_after_invalid_resume_falls_back() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["init", "--force", "--non-interactive"]);
+    anyhow::ensure!(
+        status.success(),
+        "cueloop init failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    test_support::write_valid_single_todo_queue(dir.path())?;
+
+    let cache_dir = dir.path().join(".cueloop/cache");
+    let session = SessionState::new(
+        "session-RQ-9999".to_string(),
+        "RQ-9999".to_string(),
+        cueloop::timeutil::now_utc_rfc3339_or_fallback(),
+        1,
+        Runner::Codex,
+        "gpt-5.3-codex".to_string(),
+        0,
+        None,
+        None,
+    );
+    save_session(&cache_dir, &session)?;
+
+    std::fs::write(
+        dir.path().join("unrelated-dirty.txt"),
+        "not interrupted task output",
+    )
+    .context("write unrelated dirty file")?;
+
+    let (status, stdout, stderr) =
+        test_support::run_in_dir(dir.path(), &["run", "loop", "--resume", "--max-tasks", "1"]);
+    anyhow::ensure!(
+        !status.success(),
+        "invalid resume should not allow dirty fresh work\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    anyhow::ensure!(
+        stderr.to_lowercase().contains("repo is dirty"),
+        "expected dirty-repo guard after invalid resume fallback\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 
     Ok(())

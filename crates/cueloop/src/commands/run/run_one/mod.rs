@@ -51,6 +51,7 @@ pub struct RunOneResumeOptions {
     pub non_interactive: bool,
     pub resume_task_id: Option<String>,
     pub detect_session: bool,
+    pub allow_resume_dirty_baseline: bool,
 }
 
 impl RunOneResumeOptions {
@@ -60,15 +61,18 @@ impl RunOneResumeOptions {
             non_interactive,
             resume_task_id: None,
             detect_session: true,
+            allow_resume_dirty_baseline: false,
         }
     }
 
     pub fn resolved(resume_task_id: Option<String>) -> Self {
+        let allow_resume_dirty_baseline = resume_task_id.is_some();
         Self {
             auto_resume: false,
             non_interactive: false,
             resume_task_id,
             detect_session: false,
+            allow_resume_dirty_baseline,
         }
     }
 
