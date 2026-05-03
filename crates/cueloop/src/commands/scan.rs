@@ -106,7 +106,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     git::require_clean_repo_ignoring_paths(
         &resolved.repo_root,
         opts.force,
-        git::CUELOOP_RUN_CLEAN_ALLOWED_PATHS,
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
     )?;
 
     let _queue_lock = match opts.lock_mode {
@@ -176,6 +176,11 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
     prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_tool_injection);
     prompt = prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
+    let baseline = git::capture_dirty_path_baseline_ignoring_paths(
+        &resolved.repo_root,
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+    )?;
+
     let settings = resolve_scan_runner_settings(resolved, &opts)?;
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for scan (only generates findings, should not implement)
@@ -232,6 +237,15 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
                 )
             },
         },
+    )?;
+
+    runutil::handle_queue_only_unexpected_mutations(
+        &resolved.repo_root,
+        "Scan queue-only mutation boundary",
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+        &baseline,
+        opts.git_revert_mode,
+        opts.revert_prompt.as_ref(),
     )?;
 
     let mut after = match queue::load_queue(&resolved.queue_path)

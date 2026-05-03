@@ -20,9 +20,12 @@
 //! - Restore-on-failure logic must preserve the pre-update queue snapshot.
 
 use super::state::{load_validate_and_save_queue_after_update, restore_queue_from_backup};
+use super::update_task;
 use crate::config::Resolved;
 use crate::contracts::{Config, QueueFile, Task, TaskStatus};
 use crate::queue;
+use crate::testsupport::git as git_test;
+use crate::testsupport::runner::create_fake_runner;
 use anyhow::Result;
 use std::collections::HashMap;
 use tempfile::TempDir;
@@ -184,6 +187,104 @@ fn load_validate_and_save_queue_restores_on_validation_failure() -> Result<()> {
     let restored: QueueFile = serde_json::from_str(&restored_content)?;
     assert_eq!(restored.tasks.len(), 1);
     assert_eq!(restored.tasks[0].id, "RQ-0001");
+    Ok(())
+}
+
+#[test]
+fn update_task_rejects_stray_non_queue_mutations() -> Result<()> {
+    let temp = TempDir::new()?;
+    let mut resolved = create_test_resolved(&temp)?;
+    git_test::init_repo(&resolved.repo_root)?;
+    std::fs::write(resolved.repo_root.join("README.md"), "# task update test\n")?;
+
+    let initial = QueueFile {
+        version: 1,
+        tasks: vec![task_with_timestamps(
+            "RQ-0001",
+            TaskStatus::Todo,
+            Some("2026-01-18T00:00:00Z"),
+            Some("2026-01-18T00:00:00Z"),
+        )],
+    };
+    queue::save_queue(&resolved.queue_path, &initial)?;
+    queue::save_queue(&resolved.done_path, &QueueFile::default())?;
+    git_test::commit_all(&resolved.repo_root, "init")?;
+
+    let queue_after_path = resolved
+        .repo_root
+        .join(".cueloop/cache/update-queue-after.json");
+    std::fs::create_dir_all(
+        queue_after_path
+            .parent()
+            .expect("queue-after parent should exist"),
+    )?;
+    std::fs::write(
+        &queue_after_path,
+        serde_json::json!({
+            "version": 1,
+            "tasks": [{
+                "id": "RQ-0001",
+                "status": "todo",
+                "title": "Updated title",
+                "priority": "medium",
+                "tags": ["tag"],
+                "scope": ["file"],
+                "evidence": ["observed"],
+                "plan": ["do thing"],
+                "notes": [],
+                "request": "test request",
+                "created_at": "2026-01-18T00:00:00Z",
+                "updated_at": "2026-01-19T00:00:00Z",
+                "depends_on": [],
+                "blocks": [],
+                "relates_to": [],
+                "custom_fields": {}
+            }]
+        })
+        .to_string(),
+    )?;
+
+    let readme_path = resolved.repo_root.join("README.md");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+cat >/dev/null
+cp "{queue_after}" "{queue_path}"
+printf '\nstray edit\n' >> "{readme_path}"
+echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"updated task"}}}}'
+"#,
+        queue_after = queue_after_path.display(),
+        queue_path = resolved.queue_path.display(),
+        readme_path = readme_path.display(),
+    );
+    let runner_dir = TempDir::new()?;
+    let runner_path = create_fake_runner(runner_dir.path(), "codex", &runner_script)?;
+    resolved.config.agent.codex_bin = Some(runner_path.to_string_lossy().to_string());
+    resolved.config.agent.git_revert_mode = Some(crate::contracts::GitRevertMode::Enabled);
+
+    let settings = crate::commands::task::TaskUpdateSettings {
+        fields: "scope,evidence,plan,notes,tags,depends_on".to_string(),
+        runner_override: Some(crate::contracts::Runner::Codex),
+        model_override: Some(crate::contracts::Model::Gpt53Codex),
+        reasoning_effort_override: None,
+        runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(),
+        force: false,
+        repoprompt_tool_injection: false,
+        dry_run: false,
+    };
+
+    let err = update_task(&resolved, "RQ-0001", &settings)
+        .expect_err("task update should fail on stray mutation");
+    let message = format!("{err:#}");
+    assert!(message.contains("Queue-only mutation boundary violated."));
+    assert!(message.contains("README.md"));
+
+    let queue_after = queue::load_queue(&resolved.queue_path)?;
+    assert_eq!(queue_after.tasks[0].title, "Test task");
+    assert_eq!(
+        std::fs::read_to_string(&readme_path)?,
+        "# task update test\n"
+    );
     Ok(())
 }
 

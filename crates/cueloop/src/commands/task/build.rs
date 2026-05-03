@@ -30,7 +30,7 @@ use super::{TaskBuildOptions, resolve_task_build_settings};
 use crate::commands::run::PhaseType;
 use crate::contracts::ProjectType;
 use crate::queue::operations::{CreatedTaskNormalization, normalize_created_tasks};
-use crate::{config, prompts, queue, runner, runutil, timeutil};
+use crate::{config, git, prompts, queue, runner, runutil, timeutil};
 use anyhow::{Context, Result, bail};
 
 pub fn build_task(resolved: &config::Resolved, opts: TaskBuildOptions) -> Result<()> {
@@ -53,6 +53,12 @@ fn build_task_impl(
     mut opts: TaskBuildOptions,
     acquire_lock: bool,
 ) -> Result<Vec<crate::contracts::Task>> {
+    git::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        opts.force,
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+    )?;
+
     let _queue_lock = if acquire_lock {
         Some(queue::acquire_queue_lock(
             &resolved.repo_root,
@@ -147,6 +153,11 @@ fn build_task_impl(
     prompt = prompts::wrap_with_repoprompt_requirement(&prompt, opts.repoprompt_tool_injection);
     prompt = prompts::wrap_with_instruction_files(&resolved.repo_root, &prompt, &resolved.config)?;
 
+    let baseline = git::capture_dirty_path_baseline_ignoring_paths(
+        &resolved.repo_root,
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+    )?;
+
     let settings = resolve_task_build_settings(resolved, &opts)?;
     let bins = runner::resolve_binaries(&resolved.config.agent);
     // Two-pass mode disabled for task (only generates task, should not implement)
@@ -204,6 +215,19 @@ fn build_task_impl(
                 )
             },
         },
+    )?;
+
+    runutil::handle_queue_only_unexpected_mutations(
+        &resolved.repo_root,
+        "Task builder queue-only mutation boundary",
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+        &baseline,
+        resolved
+            .config
+            .agent
+            .git_revert_mode
+            .unwrap_or(crate::contracts::GitRevertMode::Ask),
+        None,
     )?;
 
     let mut after = match queue::load_queue(&resolved.queue_path)
@@ -270,4 +294,151 @@ fn build_task_impl(
         }
     }
     Ok(created_tasks)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{Config, Model, QueueFile, Runner, RunnerCliOptionsPatch};
+    use crate::testsupport::git as git_test;
+    use crate::testsupport::runner::create_fake_runner;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    fn resolved_with_config(config: Config) -> (config::Resolved, TempDir) {
+        let dir = TempDir::new().expect("temp dir");
+        let repo_root = dir.path().to_path_buf();
+        let queue_rel = config
+            .queue
+            .file
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(".cueloop/queue.jsonc"));
+        let done_rel = config
+            .queue
+            .done_file
+            .clone()
+            .unwrap_or_else(|| PathBuf::from(".cueloop/done.jsonc"));
+        let id_prefix = config
+            .queue
+            .id_prefix
+            .clone()
+            .unwrap_or_else(|| "RQ".to_string());
+        let id_width = config.queue.id_width.unwrap_or(4) as usize;
+
+        (
+            config::Resolved {
+                config,
+                repo_root: repo_root.clone(),
+                queue_path: repo_root.join(queue_rel),
+                done_path: repo_root.join(done_rel),
+                id_prefix,
+                id_width,
+                global_config_path: None,
+                project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
+            },
+            dir,
+        )
+    }
+
+    fn initialize_repo(resolved: &config::Resolved) -> anyhow::Result<()> {
+        git_test::init_repo(&resolved.repo_root)?;
+        std::fs::create_dir_all(
+            resolved
+                .queue_path
+                .parent()
+                .expect("queue parent should exist"),
+        )?;
+        std::fs::write(resolved.repo_root.join("README.md"), "# task build test\n")?;
+        queue::save_queue(&resolved.queue_path, &QueueFile::default())?;
+        queue::save_queue(&resolved.done_path, &QueueFile::default())?;
+        git_test::commit_all(&resolved.repo_root, "init task build repo")?;
+        Ok(())
+    }
+
+    fn build_opts() -> TaskBuildOptions {
+        TaskBuildOptions {
+            request: "Build a queue-only task".to_string(),
+            hint_tags: String::new(),
+            hint_scope: String::new(),
+            runner_override: Some(Runner::Codex),
+            model_override: Some(Model::Gpt53Codex),
+            reasoning_effort_override: None,
+            runner_cli_overrides: RunnerCliOptionsPatch::default(),
+            force: false,
+            repoprompt_tool_injection: false,
+            output: super::super::TaskBuildOutputTarget::Quiet,
+            template_hint: None,
+            template_target: None,
+            strict_templates: false,
+            estimated_minutes: None,
+        }
+    }
+
+    #[test]
+    fn build_task_rejects_stray_non_queue_mutations() -> anyhow::Result<()> {
+        let (mut resolved, _dir) = resolved_with_config(Config::default());
+        initialize_repo(&resolved)?;
+
+        let queue_after = serde_json::json!({
+            "version": 1,
+            "tasks": [{
+                "id": "RQ-0001",
+                "status": "todo",
+                "title": "Built by runner",
+                "priority": "medium",
+                "tags": [],
+                "scope": [],
+                "evidence": [],
+                "plan": [],
+                "notes": [],
+                "request": "Build a queue-only task",
+                "created_at": "2026-04-23T00:00:00Z",
+                "updated_at": "2026-04-23T00:00:00Z"
+            }]
+        });
+        let queue_after_path = resolved
+            .repo_root
+            .join(".cueloop/cache/build-queue-after.json");
+        std::fs::create_dir_all(
+            queue_after_path
+                .parent()
+                .expect("queue-after parent should exist"),
+        )?;
+        std::fs::write(
+            &queue_after_path,
+            serde_json::to_string_pretty(&queue_after)?,
+        )?;
+
+        let readme_path = resolved.repo_root.join("README.md");
+        let runner_script = format!(
+            r#"#!/bin/sh
+set -e
+cat >/dev/null
+cp "{queue_after}" "{queue_path}"
+printf '\nstray edit\n' >> "{readme_path}"
+echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"task complete"}}}}'
+"#,
+            queue_after = queue_after_path.display(),
+            queue_path = resolved.queue_path.display(),
+            readme_path = readme_path.display(),
+        );
+        let runner_dir = TempDir::new()?;
+        let runner_path = create_fake_runner(runner_dir.path(), "codex", &runner_script)?;
+        resolved.config.agent.codex_bin = Some(runner_path.to_string_lossy().to_string());
+        resolved.config.agent.git_revert_mode = Some(crate::contracts::GitRevertMode::Enabled);
+
+        let err = build_task_created_tasks(&resolved, build_opts())
+            .expect_err("task build should fail on stray mutation");
+        let message = format!("{err:#}");
+        assert!(message.contains("Queue-only mutation boundary violated."));
+        assert!(message.contains("README.md"));
+
+        let queue = queue::load_queue(&resolved.queue_path)?;
+        assert!(queue.tasks.is_empty(), "queue changes should be reverted");
+        assert_eq!(
+            std::fs::read_to_string(&readme_path)?,
+            "# task build test\n"
+        );
+        Ok(())
+    }
 }

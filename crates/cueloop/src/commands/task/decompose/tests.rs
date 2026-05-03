@@ -29,12 +29,15 @@ use super::write_task_decomposition;
 use crate::config;
 use crate::contracts::{Config, QueueFile, Task, TaskKind, TaskStatus};
 use crate::queue;
+use crate::testsupport::git as git_test;
+use crate::testsupport::runner::create_fake_runner;
 use anyhow::Result;
 use tempfile::TempDir;
 
 mod actionability;
 mod checkpoint;
 mod plan_file_ordering;
+mod planner_guard;
 
 #[test]
 fn normalize_response_resolves_sibling_dependencies() -> Result<()> {
@@ -89,6 +92,7 @@ fn normalize_response_resolves_sibling_dependencies() -> Result<()> {
         runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(),
         repoprompt_tool_injection: false,
         stream_planner_output: false,
+        force: false,
     };
 
     let plan = normalize_response(raw, SourceKind::Freeform, &opts, "Ship OAuth")?;

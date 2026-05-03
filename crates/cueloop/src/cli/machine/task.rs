@@ -155,6 +155,7 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
                         &resolved,
                     ),
                     stream_planner_output: false,
+                    force,
                 },
             )?;
             let write = if args.write {

@@ -38,6 +38,8 @@ pub use revert::{
     parse_revert_response, prompt_revert_choice_with_io,
 };
 
+pub(crate) use revert::handle_queue_only_unexpected_mutations;
+
 // --- Crate-private API (unchanged call-site paths) ---------------------------
 
 pub(crate) use abort::{

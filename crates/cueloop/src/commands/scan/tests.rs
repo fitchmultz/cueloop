@@ -264,6 +264,60 @@ echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"scan com
 }
 
 #[test]
+fn run_scan_rejects_stray_non_queue_mutations() -> anyhow::Result<()> {
+    let (mut resolved, _dir) = resolved_with_config(Config::default());
+    initialize_scan_repo(&resolved)?;
+
+    let queue_after = QueueFile {
+        version: 1,
+        tasks: vec![scan_task_missing_request("RQ-0001", "Follow up on TODOs")],
+    };
+    let queue_after_path = resolved.repo_root.join(".cueloop/cache/queue-after.json");
+    std::fs::create_dir_all(
+        queue_after_path
+            .parent()
+            .expect("queue-after parent should exist"),
+    )?;
+    std::fs::write(
+        &queue_after_path,
+        serde_json::to_string_pretty(&queue_after)?,
+    )?;
+
+    let readme_path = resolved.repo_root.join("README.md");
+    let runner_script = format!(
+        r#"#!/bin/sh
+set -e
+cat >/dev/null
+cp "{queue_after}" "{queue_path}"
+printf '\nstray edit\n' >> "{readme_path}"
+echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"scan complete"}}}}'
+"#,
+        queue_after = queue_after_path.display(),
+        queue_path = resolved.queue_path.display(),
+        readme_path = readme_path.display(),
+    );
+    let runner_dir = TempDir::new()?;
+    let runner_path = create_fake_runner(runner_dir.path(), "codex", &runner_script)?;
+    resolved.config.agent.codex_bin = Some(runner_path.to_string_lossy().to_string());
+
+    let mut opts = scan_opts();
+    opts.focus = "review TODO coverage".to_string();
+    opts.git_revert_mode = GitRevertMode::Enabled;
+    opts.runner_override = Some(Runner::Codex);
+    opts.model_override = Some(Model::Gpt53Codex);
+
+    let err = run_scan(&resolved, opts).expect_err("scan should fail on stray mutation");
+    let message = format!("{err:#}");
+    assert!(message.contains("Queue-only mutation boundary violated."));
+    assert!(message.contains("README.md"));
+
+    let queue = load_queue(&resolved.queue_path)?;
+    assert!(queue.tasks.is_empty(), "queue changes should be reverted");
+    assert_eq!(std::fs::read_to_string(&readme_path)?, "# scan test\n");
+    Ok(())
+}
+
+#[test]
 fn run_scan_fails_before_runner_when_queue_is_invalid() -> anyhow::Result<()> {
     let (mut resolved, _dir) = resolved_with_config(Config::default());
     initialize_scan_repo(&resolved)?;

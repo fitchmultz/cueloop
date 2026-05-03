@@ -22,7 +22,7 @@
 //!   failure), the prompt handler returns an error and the run aborts; no default decision
 //!   is assumed.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader, IsTerminal, Write};
 use std::path::Path;
 use std::sync::Arc;
@@ -169,6 +169,43 @@ pub fn format_revert_failure_message(base: &str, outcome: RevertOutcome) -> Stri
         }
         RevertOutcome::Proceed { .. } => {
             format!("{base} Proceed requested. No changes were reverted.")
+        }
+    }
+}
+
+pub(crate) fn handle_queue_only_unexpected_mutations(
+    repo_root: &Path,
+    prompt_label: &str,
+    allowed_paths: &[&str],
+    baseline: &git::DirtyPathBaseline,
+    mode: GitRevertMode,
+    revert_prompt: Option<&RevertPromptHandler>,
+) -> Result<()> {
+    match git::require_no_unexpected_dirty_paths_since_baseline(repo_root, allowed_paths, baseline)
+    {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            let preface =
+                format!("{prompt_label} violated the queue-only mutation boundary.\n{err:#}");
+            let outcome = if baseline.has_revert_sensitive_disallowed_paths()
+                && mode == GitRevertMode::Enabled
+            {
+                RevertOutcome::Skipped {
+                    reason: "pre-existing disallowed dirty paths were present; not auto-reverting user work"
+                        .to_string(),
+                }
+            } else {
+                apply_git_revert_mode_with_context(
+                    repo_root,
+                    mode,
+                    RevertPromptContext::new(prompt_label, false).with_preface(preface),
+                    revert_prompt,
+                )?
+            };
+            Err(err).context(format_revert_failure_message(
+                "Queue-only mutation boundary violated.",
+                outcome,
+            ))
         }
     }
 }

@@ -86,6 +86,7 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
             runner_cli_overrides: overrides.runner_cli,
             repoprompt_tool_injection: agent::resolve_rp_required(args.repo_prompt, resolved),
             stream_planner_output: args.format == TaskDecomposeFormatArg::Text,
+            force,
         },
     )?;
 

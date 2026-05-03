@@ -44,8 +44,9 @@ pub mod workspace;
 // Re-export commonly used items for convenience within the crate.
 pub(crate) use branch::current_branch;
 pub use clean::{
-    CUELOOP_RUN_CLEAN_ALLOWED_PATHS, repo_dirty_only_allowed_paths,
-    require_clean_repo_ignoring_paths,
+    CUELOOP_QUEUE_ONLY_ALLOWED_PATHS, CUELOOP_RUN_CLEAN_ALLOWED_PATHS, DirtyPathBaseline,
+    capture_dirty_path_baseline_ignoring_paths, repo_dirty_only_allowed_paths,
+    require_clean_repo_ignoring_paths, require_no_unexpected_dirty_paths_since_baseline,
 };
 pub use commit::{
     abort_rebase, add_paths_force, commit_all, fetch_branch, is_ahead_of_upstream,

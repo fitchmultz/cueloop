@@ -49,6 +49,7 @@ pub struct TaskDecomposeOptions {
     pub runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch,
     pub repoprompt_tool_injection: bool,
     pub stream_planner_output: bool,
+    pub force: bool,
 }
 
 #[derive(Debug, Clone)]

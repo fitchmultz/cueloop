@@ -23,10 +23,11 @@ use super::fixtures::{commit_file, init_git_repo};
 use crate::contracts::GitRevertMode;
 use crate::runutil::{
     RevertDecision, RevertOutcome, RevertPromptContext, RevertPromptHandler, RevertSource,
-    apply_git_revert_mode, apply_git_revert_mode_with_context, parse_revert_response,
-    prompt_revert_choice_with_io,
+    apply_git_revert_mode, apply_git_revert_mode_with_context,
+    handle_queue_only_unexpected_mutations, parse_revert_response, prompt_revert_choice_with_io,
 };
 use std::fs;
+use std::process::Command;
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -228,4 +229,47 @@ fn apply_git_revert_mode_allows_proceed_when_enabled() {
     );
     let contents = fs::read_to_string(&file_path).expect("read file");
     assert_eq!(contents, "modified");
+}
+
+#[test]
+fn queue_only_guard_does_not_auto_revert_preexisting_disallowed_dirt() {
+    let dir = TempDir::new().expect("temp dir");
+    init_git_repo(&dir);
+    commit_file(&dir, "README.md", "original\n", "initial");
+
+    let readme_path = dir.path().join("README.md");
+    fs::write(&readme_path, "pre-existing user work\n").expect("dirty README");
+    let baseline = crate::git::capture_dirty_path_baseline_ignoring_paths(
+        dir.path(),
+        crate::git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+    )
+    .expect("baseline");
+
+    fs::write(dir.path().join("stray.txt"), "runner stray edit\n").expect("stray file");
+    let err = handle_queue_only_unexpected_mutations(
+        dir.path(),
+        "test queue-only guard",
+        crate::git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+        &baseline,
+        GitRevertMode::Enabled,
+        None,
+    )
+    .expect_err("guard should reject stray edits");
+
+    let message = format!("{err:#}");
+    assert!(message.contains("Queue-only mutation boundary violated."));
+    assert!(message.contains("not auto-reverting user work"));
+    assert_eq!(
+        fs::read_to_string(&readme_path).expect("read README"),
+        "pre-existing user work\n"
+    );
+    assert!(dir.path().join("stray.txt").exists());
+    let status = Command::new("git")
+        .args(["status", "--short"])
+        .current_dir(dir.path())
+        .output()
+        .expect("git status");
+    let status_text = String::from_utf8(status.stdout).expect("status utf8");
+    assert!(status_text.contains("README.md"));
+    assert!(status_text.contains("stray.txt"));
 }

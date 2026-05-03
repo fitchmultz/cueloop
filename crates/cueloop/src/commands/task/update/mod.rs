@@ -30,7 +30,7 @@ mod state;
 mod tests;
 
 use super::TaskUpdateSettings;
-use crate::{config, queue};
+use crate::{config, git, queue, runutil};
 use anyhow::{Context, Result, bail};
 
 pub fn update_task(
@@ -82,6 +82,12 @@ fn update_task_impl(
         return preview::preview_task_update(resolved, task_id, settings);
     }
 
+    git::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        settings.force,
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+    )?;
+
     let _queue_lock = if acquire_lock {
         Some(queue::acquire_queue_lock(
             &resolved.repo_root,
@@ -92,11 +98,29 @@ fn update_task_impl(
         None
     };
 
+    let baseline = git::capture_dirty_path_baseline_ignoring_paths(
+        &resolved.repo_root,
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+    )?;
+
     let backup_path = state::backup_queue_for_update(resolved)?;
     let prepared = state::prepare_task_update(resolved, task_id)?;
     let prompt = runner::build_task_update_prompt(resolved, prepared.task_id.as_str(), settings)?;
 
     runner::run_task_updater(resolved, settings, &prompt)?;
+
+    runutil::handle_queue_only_unexpected_mutations(
+        &resolved.repo_root,
+        "Task updater queue-only mutation boundary",
+        git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
+        &baseline,
+        resolved
+            .config
+            .agent
+            .git_revert_mode
+            .unwrap_or(crate::contracts::GitRevertMode::Ask),
+        None,
+    )?;
 
     let after = state::load_validate_and_save_queue_after_update(
         resolved,

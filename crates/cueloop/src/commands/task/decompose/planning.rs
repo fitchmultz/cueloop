@@ -30,13 +30,21 @@ use super::types::{
 };
 use crate::commands::run::PhaseType;
 use crate::contracts::ProjectType;
-use crate::{config, prompts, queue, runner, runutil};
+use crate::{config, git, prompts, queue, runner, runutil};
 use anyhow::{Context, Result};
+
+const CUELOOP_DECOMPOSE_PLANNER_ALLOWED_PATHS: &[&str] = &[".cueloop/cache/"];
 
 pub fn plan_task_decomposition(
     resolved: &config::Resolved,
     opts: &TaskDecomposeOptions,
 ) -> Result<DecompositionPreview> {
+    git::require_clean_repo_ignoring_paths(
+        &resolved.repo_root,
+        opts.force,
+        CUELOOP_DECOMPOSE_PLANNER_ALLOWED_PATHS,
+    )?;
+
     let (active, done) = queue::load_and_validate_queues(resolved, true)?;
     let source = resolve_source(resolved, &active, done.as_ref(), &opts.source)?;
     let attach_target = resolve_attach_target(
@@ -49,6 +57,11 @@ pub fn plan_task_decomposition(
 
     let template = prompts::load_task_decompose_prompt(&resolved.repo_root)?;
     let prompt = build_planner_prompt(resolved, opts, &source, attach_target.as_ref(), &template)?;
+    let baseline = git::capture_dirty_path_baseline_ignoring_paths(
+        &resolved.repo_root,
+        CUELOOP_DECOMPOSE_PLANNER_ALLOWED_PATHS,
+    )?;
+
     let settings = resolve_task_runner_settings(
         resolved,
         opts.runner_override.clone(),
@@ -113,6 +126,19 @@ pub fn plan_task_decomposition(
                 )
             },
         },
+    )?;
+
+    runutil::handle_queue_only_unexpected_mutations(
+        &resolved.repo_root,
+        "Task decomposition planner mutation boundary",
+        CUELOOP_DECOMPOSE_PLANNER_ALLOWED_PATHS,
+        &baseline,
+        resolved
+            .config
+            .agent
+            .git_revert_mode
+            .unwrap_or(crate::contracts::GitRevertMode::Ask),
+        None,
     )?;
 
     let planner_text = extract_planner_text(&output.stdout).context(

@@ -219,16 +219,26 @@ pub fn snapshot_paths(repo_root: &Path, paths: &[String]) -> Result<Vec<PathSnap
 
 /// Validate that each baseline dirty path is unchanged from its fingerprint.
 pub fn ensure_paths_unchanged(repo_root: &Path, snapshots: &[PathSnapshot]) -> Result<()> {
+    let changed = changed_paths_from_snapshots(repo_root, snapshots)?;
+    if let Some(path) = changed.first() {
+        bail!("Baseline dirty path changed during Phase 1: {}", path);
+    }
+    Ok(())
+}
+
+/// Return the subset of snapshotted paths whose fingerprint changed.
+pub(crate) fn changed_paths_from_snapshots(
+    repo_root: &Path,
+    snapshots: &[PathSnapshot],
+) -> Result<Vec<String>> {
+    let mut changed = Vec::new();
     for snapshot in snapshots {
         let current = snapshot_path(&repo_root.join(&snapshot.path))?;
         if current != snapshot.fingerprint {
-            bail!(
-                "Baseline dirty path changed during Phase 1: {}",
-                snapshot.path
-            );
+            changed.push(snapshot.path.clone());
         }
     }
-    Ok(())
+    Ok(changed)
 }
 
 fn snapshot_path(path: &Path) -> Result<Option<u64>> {
