@@ -210,7 +210,8 @@ fn is_node_script(path: &Path) -> bool {
 }
 
 const PI_WRAPPER_SOURCE: &str = r#"
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const piBin = process.env.CUELOOP_PI_BIN;
@@ -232,7 +233,18 @@ Object.defineProperty(process, "title", {
 });
 
 process.argv = [process.argv[0], piBin, ...process.argv.slice(2)];
-await import(pathToFileURL(realpathSync(piEntrypoint)).href);
+process.env.PI_CODING_AGENT = "true";
+process.emitWarning = (() => {});
+
+const entrypoint = realpathSync(piEntrypoint);
+const piMain = join(dirname(entrypoint), "main.js");
+if (existsSync(piMain)) {
+  const { main } = await import(pathToFileURL(piMain).href);
+  await main(process.argv.slice(2));
+  process.exit(process.exitCode ?? 0);
+} else {
+  await import(pathToFileURL(entrypoint).href);
+}
 "#;
 
 /// Resolve the path to a Pi session file for resume operations.

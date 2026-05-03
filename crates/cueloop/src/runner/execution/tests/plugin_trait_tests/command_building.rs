@@ -20,7 +20,8 @@
 //! - Command assertions focus on stable argv semantics instead of arg ordering beyond required flags.
 
 use super::*;
-use std::{ffi::OsString, io::Write as _, sync::Mutex};
+use crate::runner::execution::process::run_with_streaming_json;
+use std::{ffi::OsString, io::Write as _, sync::Mutex, time::Duration};
 
 static PATH_ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -478,9 +479,49 @@ fn pi_build_run_command_uses_process_title_wrapper() {
 
     let wrapper_source = std::fs::read_to_string(wrapper_path).expect("read wrapper source");
     assert!(wrapper_source.contains("Object.defineProperty(process, \"title\""));
-    assert!(
-        wrapper_source.contains("await import(pathToFileURL(realpathSync(piEntrypoint)).href)")
-    );
+    assert!(wrapper_source.contains("const { main } = await import(pathToFileURL(piMain).href)"));
+    assert!(wrapper_source.contains("await main(process.argv.slice(2))"));
+    assert!(wrapper_source.contains("process.exit(process.exitCode ?? 0)"));
+}
+
+#[test]
+fn pi_process_title_wrapper_awaits_main_and_forces_exit() {
+    let plugin = BuiltInRunnerPlugin::Pi;
+    let temp_dir = tempfile::tempdir().expect("create fake pi package");
+    let fake_pi_path = temp_dir.path().join("pi");
+    std::fs::write(&fake_pi_path, "#!/usr/bin/env node\n").expect("write fake pi bin");
+    std::fs::write(temp_dir.path().join("package.json"), r#"{"type":"module"}"#)
+        .expect("write fake pi package metadata");
+    std::fs::write(
+        temp_dir.path().join("main.js"),
+        r#"
+export async function main(args) {
+  console.log(JSON.stringify({ type: "result", result: args.join("|") }));
+  setInterval(() => {}, 1000);
+}
+"#,
+    )
+    .expect("write fake pi main");
+
+    let fake_pi = fake_pi_path.to_string_lossy().to_string();
+    let mut ctx = create_run_context("test prompt", None);
+    ctx.bin = &fake_pi;
+    ctx.timeout = Some(Duration::from_secs(1));
+
+    let (cmd, payload, _guards) = plugin.build_run_command(ctx).unwrap();
+    let output = run_with_streaming_json(
+        cmd,
+        payload.as_deref(),
+        Runner::Pi,
+        "node",
+        Some(Duration::from_secs(1)),
+        None,
+        OutputStream::HandlerOnly,
+    )
+    .expect("wrapper should exit after awaited main returns even with lingering handles");
+
+    assert!(output.status.success());
+    assert!(output.stdout.contains("test prompt"));
 }
 
 #[test]

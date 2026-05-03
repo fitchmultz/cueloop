@@ -23,7 +23,11 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use crate::runner::execution::process::{test_ctrlc_state, wait_for_child};
+use crate::contracts::Runner;
+use crate::runner::OutputStream;
+use crate::runner::execution::process::{
+    run_with_streaming_json, test_ctrlc_state, wait_for_child,
+};
 
 /// Creates a command that exits after a configurable SIGINT cleanup delay and
 /// writes a readiness marker only after the SIGINT handler is installed.
@@ -350,6 +354,33 @@ fn test_no_timeout_no_interrupt_process_completes_normally() {
 
     assert!(result.is_ok());
     assert!(result.unwrap().success());
+}
+
+#[cfg(unix)]
+#[test]
+fn test_streaming_runner_cleanup_kills_lingering_stdout_holder() {
+    let mut cmd = Command::new("sh");
+    cmd.arg("-c")
+        .arg(r#"printf '%s\n' '{"type":"result","result":"done"}'; sleep 2 & exit 0"#);
+
+    let start = std::time::Instant::now();
+    let output = run_with_streaming_json(
+        cmd,
+        None,
+        Runner::Pi,
+        "sh",
+        None,
+        None,
+        OutputStream::HandlerOnly,
+    )
+    .expect("runner should exit successfully despite lingering background fd holder");
+
+    assert!(output.status.success());
+    assert!(output.stdout.contains("done"));
+    assert!(
+        start.elapsed() < Duration::from_secs(1),
+        "cleanup should not wait for a background grandchild that only holds stdout open"
+    );
 }
 
 #[test]

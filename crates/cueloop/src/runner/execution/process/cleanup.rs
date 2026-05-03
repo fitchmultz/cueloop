@@ -21,6 +21,9 @@
 
 use std::thread;
 
+#[cfg(unix)]
+use libc::{ESRCH, SIGKILL};
+
 use super::CtrlCState;
 
 type ReaderResult = anyhow::Result<()>;
@@ -53,9 +56,19 @@ impl<'a> ProcessCleanupGuard<'a> {
 
         #[cfg(unix)]
         {
-            if let Ok(mut guard) = self.ctrlc.active_pgid.lock() {
-                *guard = None;
-            }
+            let pgid = self
+                .ctrlc
+                .active_pgid
+                .lock()
+                .map(|mut guard| {
+                    let pgid = *guard;
+                    *guard = None;
+                    pgid
+                })
+                .inspect_err(|e| log::debug!("cleanup: failed to lock active_pgid: {}", e))
+                .ok()
+                .flatten();
+            terminate_lingering_process_group(pgid);
         }
 
         if let Some(handle) = self.stdout_handle.take()
@@ -77,5 +90,26 @@ impl<'a> ProcessCleanupGuard<'a> {
 impl Drop for ProcessCleanupGuard<'_> {
     fn drop(&mut self) {
         self.cleanup();
+    }
+}
+
+#[cfg(unix)]
+fn terminate_lingering_process_group(pgid: Option<i32>) {
+    let Some(pgid) = pgid.filter(|value| *value > 0) else {
+        return;
+    };
+
+    // The direct runner process has already exited by the time normal cleanup runs,
+    // but orphaned grandchildren can keep inherited stdout/stderr pipes open. Kill
+    // any remaining members of the isolated process group before joining reader
+    // threads so the CLI can exit cleanly after the runner returns.
+    // SAFETY: `pgid` was captured from the child process group created for this
+    // runner invocation. Sending a signal to `-pgid` targets that group only.
+    let result = unsafe { libc::kill(-pgid, SIGKILL) };
+    if result == -1 {
+        let err = std::io::Error::last_os_error();
+        if err.raw_os_error() != Some(ESRCH) {
+            log::debug!("cleanup: failed to kill runner process group {pgid}: {err}");
+        }
     }
 }
