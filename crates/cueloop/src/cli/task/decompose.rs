@@ -85,6 +85,7 @@ pub fn handle(args: &TaskDecomposeArgs, force: bool, resolved: &config::Resolved
             reasoning_effort_override: overrides.reasoning_effort,
             runner_cli_overrides: overrides.runner_cli,
             repoprompt_tool_injection: agent::resolve_rp_required(args.repo_prompt, resolved),
+            stream_planner_output: args.format == TaskDecomposeFormatArg::Text,
         },
     )?;
 
@@ -130,9 +131,22 @@ fn validate_from_preview_args(args: &TaskDecomposeArgs) -> Result<()> {
             "`cueloop task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
         );
     }
-    if args.attach_to.is_some() || args.with_dependencies {
+    if args.attach_to.is_some()
+        || args.with_dependencies
+        || args.max_depth != 3
+        || args.max_children != 5
+        || args.max_nodes != 50
+        || args.status != crate::cli::task::args::TaskStatusArg::Draft
+        || args.parent_status.is_some()
+        || args.leaf_status.is_some()
+        || args.child_policy != TaskDecomposeChildPolicyArg::Fail
+        || args.runner.is_some()
+        || args.model.is_some()
+        || args.effort.is_some()
+        || args.repo_prompt.is_some()
+    {
         bail!(
-            "`cueloop task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
+            "`cueloop task decompose --from-preview` replays saved preview options and cannot be combined with planner/status flags. Do not add --leaf-status, --parent-status, --with-dependencies, or other planner options; the preview already captured them."
         );
     }
     Ok(())
@@ -240,7 +254,7 @@ fn print_text_output(
         }
     }
     if !preview.plan.warnings.is_empty() {
-        println!("Warnings:");
+        println!("Decomposition notes:");
         for warning in &preview.plan.warnings {
             println!("  - {}", warning);
         }

@@ -105,7 +105,7 @@ fn validate_allows_shallow_dependency_chain() {
 }
 
 #[test]
-fn validate_warns_on_blocked_dependency_chain() {
+fn validate_allows_expected_incomplete_dependency_chain() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
@@ -116,12 +116,13 @@ fn validate_warns_on_blocked_dependency_chain() {
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on blocked chain");
+        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on queued chain");
     assert!(
-        warnings
+        !warnings
             .iter()
-            .any(|warning| warning.message.contains("blocked")),
-        "Should warn about blocked dependency chain: {:?}",
+            .any(|warning| warning.message.contains("blocked")
+                || warning.message.contains("all dependency paths")),
+        "expected incomplete dependency chains should stay quiet: {:?}",
         warnings
     );
 }
@@ -150,7 +151,7 @@ fn validate_draft_only_dependency_tree_suppresses_blocked_chain_noise() {
 }
 
 #[test]
-fn validate_todo_blocked_by_draft_dependency_still_warns() {
+fn validate_todo_blocked_by_draft_dependency_stays_quiet() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
@@ -160,12 +161,12 @@ fn validate_todo_blocked_by_draft_dependency_still_warns() {
     };
 
     let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
-        .expect("mixed todo/draft blocked dependency should warn, not error");
+        .expect("mixed todo/draft dependency should stay structurally valid");
 
     assert!(
-        warnings.iter().any(|warning| warning.task_id == "RQ-0001"
+        !warnings.iter().any(|warning| warning.task_id == "RQ-0001"
             && warning.message.contains("all dependency paths")),
-        "todo blocked by draft dependency should still warn: {:?}",
+        "todo blocked by draft dependency is expected queue state, not validation noise: {:?}",
         warnings
     );
 }
@@ -256,9 +257,8 @@ fn validate_detects_transitive_rejected_dependency() {
     assert!(
         warnings
             .iter()
-            .any(|warning| warning.message.contains("rejected")
-                || warning.message.contains("blocked")),
-        "Should warn about rejected or blocked dependency: {:?}",
+            .any(|warning| warning.message.contains("rejected")),
+        "Should warn about rejected dependency: {:?}",
         warnings
     );
 }

@@ -69,7 +69,12 @@ fn preview_continuation_uses_exact_checkpoint_command_without_ellipsis() {
         .collect::<Vec<_>>();
     assert_eq!(
         commands,
-        vec!["cueloop machine task decompose --write --from-preview dp-test-123"]
+        vec!["cueloop task decompose --from-preview dp-test-123 --write"]
+    );
+    assert!(
+        document.continuation.next_steps[0]
+            .detail
+            .contains("cueloop machine task decompose --from-preview dp-test-123 --write")
     );
     assert!(commands.iter().all(|command| !command.contains("...")));
 }
@@ -85,9 +90,7 @@ fn blocked_preview_continuation_has_no_placeholder_ellipsis() {
         .iter()
         .map(|step| step.command.as_str())
         .collect::<Vec<_>>();
-    assert!(
-        commands.contains(&"cueloop machine task decompose --write --from-preview dp-test-123")
-    );
+    assert!(commands.contains(&"cueloop task decompose --from-preview dp-test-123 --write"));
     assert!(commands.iter().all(|command| !command.contains("...")));
     let suggested = match &document.blocking.as_ref().expect("blocking state").reason {
         BlockingReason::OperatorRecovery {

@@ -29,6 +29,7 @@ mod tests;
 use std::collections::HashMap;
 
 use anyhow::{Context, Result, bail};
+use serde::Serialize;
 
 use crate::agent;
 use crate::cli::machine::args::{MachineTaskArgs, MachineTaskCommand};
@@ -153,6 +154,7 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
                         args.agent.repo_prompt,
                         &resolved,
                     ),
+                    stream_planner_output: false,
                 },
             )?;
             let write = if args.write {
@@ -191,9 +193,22 @@ fn validate_machine_from_preview_args(
             "`cueloop machine task decompose --from-preview` cannot be combined with SOURCE text or --from-file."
         );
     }
-    if args.attach_to.is_some() || args.with_dependencies {
+    if args.attach_to.is_some()
+        || args.with_dependencies
+        || args.max_depth != 3
+        || args.max_children != 5
+        || args.max_nodes != 50
+        || args.status != "draft"
+        || args.parent_status.is_some()
+        || args.leaf_status.is_some()
+        || args.child_policy != "fail"
+        || args.agent.runner.is_some()
+        || args.agent.model.is_some()
+        || args.agent.effort.is_some()
+        || args.agent.repo_prompt.is_some()
+    {
         bail!(
-            "`cueloop machine task decompose --from-preview` replays saved preview options and cannot be combined with planner options."
+            "`cueloop machine task decompose --from-preview` replays saved preview options and cannot be combined with planner/status flags. Do not add --leaf-status, --parent-status, --with-dependencies, or other planner options; the preview already captured them."
         );
     }
     Ok(())
@@ -306,6 +321,7 @@ pub(crate) fn build_decompose_document(
 ) -> MachineDecomposeDocument {
     let continuation = decompose_continuation(preview, write, checkpoint);
     let blocking = continuation.blocking.clone();
+    let tasks = flatten_decompose_tasks(preview);
 
     MachineDecomposeDocument {
         version: MACHINE_DECOMPOSE_VERSION,
@@ -314,11 +330,51 @@ pub(crate) fn build_decompose_document(
             "version": 2,
             "mode": if write.is_some() { "write" } else { "preview" },
             "preview": preview,
+            "tasks": tasks,
             "write": write,
             "checkpoint": checkpoint,
             "replay_exact": checkpoint.is_some(),
         }),
         continuation,
+    }
+}
+
+#[derive(Serialize)]
+struct FlattenedDecomposeTask<'a> {
+    id: Option<&'a str>,
+    key: &'a str,
+    title: &'a str,
+    status: TaskStatus,
+    depends_on_keys: &'a [String],
+}
+
+fn flatten_decompose_tasks(
+    preview: &task_cmd::DecompositionPreview,
+) -> Vec<FlattenedDecomposeTask<'_>> {
+    let mut tasks = Vec::new();
+    flatten_decompose_node(&preview.plan.root, preview, &mut tasks);
+    tasks
+}
+
+fn flatten_decompose_node<'a>(
+    node: &'a task_cmd::PlannedNode,
+    preview: &task_cmd::DecompositionPreview,
+    tasks: &mut Vec<FlattenedDecomposeTask<'a>>,
+) {
+    let status = if node.children.is_empty() {
+        preview.leaf_status
+    } else {
+        preview.parent_status
+    };
+    tasks.push(FlattenedDecomposeTask {
+        id: None,
+        key: &node.planner_key,
+        title: &node.title,
+        status,
+        depends_on_keys: &node.depends_on_keys,
+    });
+    for child in &node.children {
+        flatten_decompose_node(child, preview, tasks);
     }
 }
 

@@ -54,9 +54,16 @@ pub(crate) fn machine_task_build_command() -> &'static str {
     "cueloop machine task build --input <PATH>"
 }
 
+pub(crate) fn task_decompose_write_preview_command(checkpoint_id: &str) -> String {
+    format!(
+        "cueloop task decompose --from-preview {} --write",
+        shell_quote(checkpoint_id)
+    )
+}
+
 pub(crate) fn machine_task_decompose_write_preview_command(checkpoint_id: &str) -> String {
     format!(
-        "cueloop machine task decompose --write --from-preview {}",
+        "cueloop machine task decompose --from-preview {} --write",
         shell_quote(checkpoint_id)
     )
 }

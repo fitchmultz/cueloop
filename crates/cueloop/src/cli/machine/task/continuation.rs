@@ -23,6 +23,7 @@ use crate::cli::machine::common::{
     machine_queue_graph_command, machine_queue_undo_dry_run_command,
     machine_queue_validate_command, machine_run_one_resume_command, machine_task_build_command,
     machine_task_decompose_write_preview_command, machine_task_mutate_command,
+    task_decompose_write_preview_command,
 };
 use crate::commands::task as task_cmd;
 use crate::contracts::{
@@ -188,13 +189,14 @@ pub(super) fn decompose_continuation(
                 "CueLoop planned a task tree that can be written when you are ready.".to_string()
             });
         let write_command = checkpoint
-            .map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id))
-            .unwrap_or_else(|| "cueloop machine task decompose --write <SOURCE>".to_string());
+            .map(|checkpoint| task_decompose_write_preview_command(&checkpoint.id))
+            .unwrap_or_else(|| "cueloop task decompose --write <SOURCE>".to_string());
         let replay_detail = checkpoint
             .map(|checkpoint| {
                 format!(
-                    "Persist this exact saved preview from checkpoint {} into the queue.",
-                    checkpoint.id
+                    "Exact replay from checkpoint {}; do not add --leaf-status, --parent-status, --with-dependencies, or other planner/status flags because the preview already captured them. Machine form: {}",
+                    checkpoint.id,
+                    machine_task_decompose_write_preview_command(&checkpoint.id)
                 )
             })
             .unwrap_or_else(|| {
@@ -223,7 +225,7 @@ pub(super) fn decompose_continuation(
                     .map(|target| target.task.id.clone()),
                 "CueLoop is blocked from continuing this decomposition write.",
                 preview.write_blockers.join(" "),
-                checkpoint.map(|checkpoint| machine_task_decompose_write_preview_command(&checkpoint.id)),
+                checkpoint.map(|checkpoint| task_decompose_write_preview_command(&checkpoint.id)),
             )
             .with_observed_at(crate::timeutil::now_utc_rfc3339_or_fallback()),
         ),
@@ -247,15 +249,12 @@ fn blocked_decompose_steps(
         ),
     ];
     if let Some(checkpoint) = checkpoint {
-        let command = machine_task_decompose_write_preview_command(&checkpoint.id);
-        steps.insert(
-            0,
-            step(
-                "Retry exact preview write",
-                &command,
-                "Retry writing the same saved preview after resolving the blocker; this does not invoke the planner again.",
-            ),
+        let command = task_decompose_write_preview_command(&checkpoint.id);
+        let detail = format!(
+            "Retry the same saved preview after resolving the blocker; do not add planner/status flags. Machine form: {}",
+            machine_task_decompose_write_preview_command(&checkpoint.id)
         );
+        steps.insert(0, step("Retry exact preview write", &command, &detail));
     }
     steps
 }

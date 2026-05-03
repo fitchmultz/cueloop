@@ -6,6 +6,7 @@
 //! Responsibilities:
 //! - Define CLI arguments for displaying a single task.
 //! - Load queue + done data and render a task in JSON or compact form.
+//! - Keep validation opt-in so task stdout stays clean for humans and scripts.
 //!
 //! Not handled here:
 //! - Queue persistence beyond reading files.
@@ -17,7 +18,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Queue files are valid and already validated by the loader.
+//! - Plain show validates structure but does not emit queue-wide validation warnings.
 //! - Task IDs are matched after trimming whitespace.
 
 use anyhow::{Result, anyhow};
@@ -42,10 +43,23 @@ pub struct QueueShowArgs {
     /// Output format.
     #[arg(long, value_enum, default_value_t = QueueShowFormat::Json)]
     pub format: QueueShowFormat,
+
+    /// Validate queue files before showing the task.
+    #[arg(long)]
+    pub validate: bool,
 }
 
-pub(crate) fn show_task(resolved: &Resolved, task_id: &str, format: QueueShowFormat) -> Result<()> {
-    let (queue_file, done_file) = load_and_validate_queues_read_only(resolved, true)?;
+pub(crate) fn show_task(
+    resolved: &Resolved,
+    task_id: &str,
+    format: QueueShowFormat,
+    validate: bool,
+) -> Result<()> {
+    let (queue_file, done_file) = if validate {
+        load_and_validate_queues_read_only(resolved, true)?
+    } else {
+        queue::load_and_validate_queues_without_warning_logs(resolved, true)?
+    };
     let done_ref = done_file
         .as_ref()
         .filter(|d| !d.tasks.is_empty() || resolved.done_path.exists());
@@ -66,5 +80,5 @@ pub(crate) fn show_task(resolved: &Resolved, task_id: &str, format: QueueShowFor
 }
 
 pub(crate) fn handle(resolved: &Resolved, args: QueueShowArgs) -> Result<()> {
-    show_task(resolved, &args.task_id, args.format)
+    show_task(resolved, &args.task_id, args.format, args.validate)
 }

@@ -19,6 +19,7 @@
 //! - `todo` leaf status is the runnable activation mode.
 
 use super::{planned_node, test_resolved};
+use crate::commands::task::DecompositionPreviewCheckpointRef;
 use crate::commands::task::decompose::types::{
     DecompositionChildPolicy, DecompositionPlan, DecompositionPreview, DecompositionSource,
     TaskDecomposeWriteResult,
@@ -202,6 +203,62 @@ fn decompose_document_single_leaf_draft_write_ignores_parent_status_for_activati
         document.continuation.next_steps[0].command,
         "cueloop task ready RQ-0001"
     );
+}
+
+#[test]
+fn decompose_preview_document_includes_flat_task_table_and_safe_replay_guidance() {
+    let preview = DecompositionPreview {
+        source: DecompositionSource::Freeform {
+            request: "Ship OAuth".to_string(),
+        },
+        attach_target: None,
+        plan: DecompositionPlan {
+            root: planned_node(
+                "root",
+                "Ship OAuth",
+                vec![],
+                vec![planned_node("schema", "Schema", vec![], vec![])],
+            ),
+            warnings: vec![],
+            total_nodes: 2,
+            leaf_nodes: 1,
+            dependency_edges: vec![],
+        },
+        write_blockers: vec![],
+        child_status: TaskStatus::Draft,
+        parent_status: TaskStatus::Draft,
+        leaf_status: TaskStatus::Todo,
+        child_policy: DecompositionChildPolicy::Fail,
+        with_dependencies: true,
+    };
+    let checkpoint = DecompositionPreviewCheckpointRef {
+        id: "dp-20260503-safe".to_string(),
+        path: ".cueloop/checkpoints/dp-20260503-safe.json".to_string(),
+        created_at: "2026-05-03T00:00:00Z".to_string(),
+        expires_at: "2026-05-04T00:00:00Z".to_string(),
+    };
+
+    let document =
+        crate::cli::machine::build_task_decompose_document(&preview, None, Some(&checkpoint));
+
+    assert_eq!(
+        document.continuation.next_steps[0].command,
+        "cueloop task decompose --from-preview dp-20260503-safe --write"
+    );
+    assert!(
+        document.continuation.next_steps[0]
+            .detail
+            .contains("do not add --leaf-status")
+    );
+    assert!(
+        document.continuation.next_steps[0]
+            .detail
+            .contains("cueloop machine task decompose --from-preview dp-20260503-safe --write")
+    );
+    assert_eq!(document.result["tasks"][0]["key"], "root");
+    assert_eq!(document.result["tasks"][0]["status"], "draft");
+    assert_eq!(document.result["tasks"][1]["key"], "schema");
+    assert_eq!(document.result["tasks"][1]["status"], "todo");
 }
 
 #[test]

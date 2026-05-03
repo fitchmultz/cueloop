@@ -72,7 +72,11 @@ pub fn plan_task_decomposition(
                 timeout: None,
                 permission_mode: settings.permission_mode,
                 output_handler: None,
-                output_stream: runner::OutputStream::Terminal,
+                output_stream: if opts.stream_planner_output {
+                    runner::OutputStream::Terminal
+                } else {
+                    runner::OutputStream::HandlerOnly
+                },
             },
             execution: runutil::RunnerExecutionContext {
                 prompt: &prompt,

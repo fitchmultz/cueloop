@@ -88,6 +88,7 @@ fn normalize_response_resolves_sibling_dependencies() -> Result<()> {
         reasoning_effort_override: None,
         runner_cli_overrides: crate::contracts::RunnerCliOptionsPatch::default(),
         repoprompt_tool_injection: false,
+        stream_planner_output: false,
     };
 
     let plan = normalize_response(raw, SourceKind::Freeform, &opts, "Ship OAuth")?;

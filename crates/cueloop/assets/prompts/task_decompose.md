@@ -32,9 +32,13 @@ Limits:
 - Do not call tools and do not edit the queue.
 - Prefer fewer, stronger, directly actionable tasks over shallow filler.
 - Each leaf must have a clear outcome, scope, acceptance signal, and no need for another planning pass.
+- Preserve relevant source-plan paths aggressively in each node's `scope`; child scopes may narrow but must not drop a relevant parent/source path.
+- If a title, tag, or plan section is UI/frontend related, include discovered or mentioned frontend paths such as `web/`, `apps/`, `frontend/`, `ui/`, or `src/` as applicable instead of defaulting blindly to `src/`.
 - Keep sibling tasks distinct and non-overlapping.
 - Avoid wrapper-only children and placeholder-only tasks like "testing", "documentation", or "polish" unless they are truly independent work items.
 - If a node should stay a leaf, return it with an empty `children` array.
+- Split leaves whose title combines several independent verbs with commas or "and" (for example rename, duplicate, delete, archive, pin) unless the actions are inseparable.
+- For high-blast-radius integrations such as resume/fork/session ownership/process ownership/browser automation, create an explicit discovery or design-contract leaf before implementation leaves.
 - In `freeform` mode, the root represents the requested goal.
 - In `plan_file` mode, the root represents the whole plan document named in the original request; decompose the full file content, not just the title.
 - In `plan_file` mode, cover every meaningful source section, headline, or ordered phase. Do not emit only the most obvious subset. If a section is non-actionable, duplicated, or intentionally merged into another task, include a warning naming that source section and why it was not represented as its own task.

@@ -27,5 +27,5 @@ use crate::config;
 
 /// Handle the `show` command.
 pub fn handle(args: &TaskShowArgs, resolved: &config::Resolved) -> Result<()> {
-    show_task(resolved, &args.task_id, args.format)
+    show_task(resolved, &args.task_id, args.format, false)
 }
