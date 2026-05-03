@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- CueLoop is now the primary CLI/crate/app identity, with matching `cueloop` binary/package metadata, public docs, help examples, shell helpers, URL scheme, macOS operator copy, bundled app CLI preference, environment aliases, and final cutover checks.
+- Task decomposition gained first-class plan-file input, source-plan provenance, group/draft semantics, activation modes, first-runnable-leaf reporting, exact copy-paste continuations, and calmer guidance for all-draft decomposition results.
+- Queue follow-up proposal application can run during final Phase 3 completion, and task follow-up queues now support broader roadmap materialization flows.
+- Repo trust and ignored-file synchronization gained a trusted allowlist for files beneath ignored directories, with explicit docs/init UX for the real allowlist contract.
+- macOS app parity tracking now uses scenario-level proof entries for machine contracts, native surfaces, and Rust/CueLoopMac regression anchors.
+- Release and development workflows gained Rust 1.95 verification gates, dependency/security posture refreshes, local file-size guardrails, repeatable dogfood harness support, and faster local CI waits.
+
+### Changed
+
+- The Rust baseline moved to Rust `1.95.0`, with crate `rust-version` aligned to `1.95` and dependencies refreshed.
+- The Cursor runner was cut over to the SDK bridge, and Pi reasoning-effort support, runner buffer noise, and runner/session diagnostics were tightened.
+- Parallel queue/done synchronization now handles gitignored JSONC queues, ignored-file sync, coordinator branch refreshes, local clone races, and push/rebase failure reporting more reliably.
+- Machine run, machine error, recovery, queue validation, workspace overview, and runner-session flows now prefer versioned/structured state over stderr heuristics and stale fallback parsing.
+- Webhook runtime behavior was hardened around startup gating, shutdown retry cancellation, persisted failure redaction, and repository context propagation.
+- macOS retry, watcher, health, execution-control, workspace routing, and operator-copy behavior were aligned with actual CLI semantics.
+- Documentation was split and refreshed across configuration, task, plugin, public-readiness, generated AGENTS templates, and current CueLoop naming.
+
+### Fixed
+
+- Pi-backed `cueloop scan` and `cueloop run loop` invocations now exit cleanly after the Pi runner returns: CueLoop's Pi wrapper awaits Pi `main(...)` and exits, while runner cleanup terminates lingering process-group descendants before joining stdout/stderr reader threads.
+- Machine run loops now guarantee terminal summaries, select next tasks correctly, and fail fast instead of drifting after terminal runner/session states.
+- Runner and recovery paths now validate session IDs before persistence, quarantine corrupt session caches, classify missing CLI binaries as `cli_unavailable`, keep machine-mode recovery JSON-only, and defer retry warnings until recovery is exhausted.
+- Trust allowlist matching no longer lets zero-match entries block unrelated machines, and ignored-file sync rejects repo-escaping symlinks.
+- Decompose preview continuations, queue selection messaging, CI gate wording, and validation output were made more accurate for normal operator workflows.
+- Old runtime directory migration, cutover gate policy, macOS stale alias paths, and generated runtime guidance were cleaned up.
+
+### Removed
+
+- Legacy Ralph/RalphMac naming, filenames, helper symbols, docs, compatibility messaging, and self-compat fallback paths were removed from active surfaces.
+- Obsolete debug logging, outdated critical notes, stale macOS aliases, and outdated CI/runtime docs were cleaned out.
+
+### Security
+
+- Ignored-file sync now blocks repo-escaping symlinks and requires explicit trust for allowlisted ignored paths.
+- Webhook failure payloads are redacted before persistence, and webhook runtime startup is gated.
+- Untrusted execution settings are classified as configuration errors, machine-mode recovery output stays JSON-only, and public-readiness/release gates continue to reject local artifacts, obvious secrets, and unsafe release states.
+
 ## [0.4.0] - 2026-04-23
 
 ### Added
