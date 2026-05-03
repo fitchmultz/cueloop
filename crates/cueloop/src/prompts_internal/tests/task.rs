@@ -56,19 +56,17 @@ fn render_task_builder_prompt_allows_placeholder_like_request() -> Result<()> {
 }
 
 #[test]
-fn default_task_builder_prompt_mentions_next_id_command() -> Result<()> {
+fn default_task_builder_prompt_prefers_atomic_insert_command() -> Result<()> {
     let dir = TempDir::new()?;
     let prompt = load_task_builder_prompt(dir.path())?;
-    assert!(prompt.contains("cueloop queue next-id"));
-    // Should mention --count for multi-task cases
+    assert!(prompt.contains("cueloop task insert"));
     assert!(
-        prompt.contains("next-id --count"),
-        "prompt should mention next-id --count for multi-task creation"
+        prompt.contains("no durable `id` field") || prompt.contains("no durable `id` fields"),
+        "prompt should require local keys instead of reserved IDs"
     );
-    // Should warn that next-id does not reserve IDs
     assert!(
-        prompt.contains("does NOT reserve IDs") || prompt.contains("does not reserve IDs"),
-        "prompt should warn that next-id does not reserve IDs"
+        prompt.contains("preview-only") || prompt.contains("does **not** reserve IDs"),
+        "prompt should demote next-id to fallback/manual guidance"
     );
     Ok(())
 }

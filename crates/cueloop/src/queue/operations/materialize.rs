@@ -23,7 +23,7 @@
 //! - Local keys are unique within one materialization request.
 //! - Parent-local and dependency-local references point only within the same request.
 
-use crate::contracts::{QueueFile, Task, TaskKind, TaskPriority, TaskStatus};
+use crate::contracts::{QueueFile, Task, TaskAgent, TaskKind, TaskPriority, TaskStatus};
 use crate::queue;
 use anyhow::{Context, Result, anyhow, bail};
 use std::collections::{HashMap, HashSet};
@@ -43,9 +43,14 @@ pub struct MaterializedTaskSpec {
     pub notes: Vec<String>,
     pub request: Option<String>,
     pub relates_to: Vec<String>,
+    pub blocks: Vec<String>,
+    pub duplicates: Option<String>,
+    pub custom_fields: HashMap<String, String>,
+    pub agent: Option<TaskAgent>,
     pub parent_local_key: Option<String>,
     pub parent_task_id: Option<String>,
     pub depends_on_local_keys: Vec<String>,
+    pub depends_on_task_ids: Vec<String>,
     pub estimated_minutes: Option<u32>,
 }
 
@@ -257,6 +262,18 @@ fn validate_specs(specs: &[MaterializedTaskSpec]) -> Result<()> {
                 bail!("unknown local dependency key: {dependency_key}");
             }
         }
+        for dependency_id in &spec.depends_on_task_ids {
+            normalize_required(dependency_id, "depends_on task id")?;
+        }
+        for related_id in &spec.relates_to {
+            normalize_required(related_id, "relates_to task id")?;
+        }
+        for blocked_id in &spec.blocks {
+            normalize_required(blocked_id, "blocks task id")?;
+        }
+        if let Some(duplicate_id) = &spec.duplicates {
+            normalize_required(duplicate_id, "duplicates task id")?;
+        }
     }
 
     Ok(())
@@ -320,7 +337,7 @@ fn materialize_tasks(
                 (None, None) => None,
                 (Some(_), Some(_)) => unreachable!("validated earlier"),
             };
-            let depends_on =
+            let mut depends_on =
                 spec.depends_on_local_keys
                     .iter()
                     .map(|dependency_key| {
@@ -331,6 +348,7 @@ fn materialize_tasks(
                         })
                     })
                     .collect::<Result<Vec<_>>>()?;
+            depends_on.extend(spec.depends_on_task_ids.clone());
 
             Ok(Task {
                 id,
@@ -345,10 +363,14 @@ fn materialize_tasks(
                 plan: spec.plan.clone(),
                 notes: spec.notes.clone(),
                 request: spec.request.clone(),
+                agent: spec.agent.clone(),
                 created_at: Some(now.to_string()),
                 updated_at: Some(now.to_string()),
                 depends_on,
+                blocks: spec.blocks.clone(),
                 relates_to: spec.relates_to.clone(),
+                duplicates: spec.duplicates.clone(),
+                custom_fields: spec.custom_fields.clone(),
                 parent_id,
                 estimated_minutes: spec.estimated_minutes,
                 ..Task::default()

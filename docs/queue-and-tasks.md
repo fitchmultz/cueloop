@@ -161,6 +161,41 @@ Apply allocates real task IDs, maps `depends_on_keys`, inherits `request` from t
 
 Follow-ups are for independent work or queue-shaping tasks. They must not replace completing the active task's current scope. Reports remain opt-in: create a report only when the user explicitly asked for one or when the report is the deliverable.
 
+## Atomic Task Insertion for Agents and Scripts
+
+When agents or scripts already know the full task content, prefer `cueloop task insert` over `cueloop queue next-id` plus manual JSON editing.
+
+```bash
+cueloop task insert --input /tmp/task-insert.json
+cueloop task insert --dry-run --format json --input /tmp/task-insert.json
+```
+
+Minimal request shape:
+
+```json
+{
+  "version": 1,
+  "tasks": [
+    {
+      "key": "queue-safety",
+      "title": "Make agent task insertion atomic",
+      "status": "todo",
+      "priority": "medium",
+      "tags": ["scan", "queue"],
+      "scope": ["crates/cueloop/src/queue/operations/insert.rs"],
+      "evidence": ["path: ..."],
+      "plan": ["Insert via locked queue path.", "Run cueloop queue validate."],
+      "request": "scan: queue safety"
+    }
+  ]
+}
+```
+
+Rules:
+- Omit durable `id`, `created_at`, and `updated_at` fields; CueLoop assigns/stamps them while holding the queue lock.
+- Use local `key` values and `depends_on_keys` when multiple new tasks depend on each other.
+- `cueloop queue next-id` remains available for human/manual recovery, but it is preview-only and does **not** reserve IDs.
+
 ## Dependency Validation
 
 CueLoop validates task dependencies on queue operations to ensure correctness and prevent issues:
@@ -343,8 +378,8 @@ If `RQ-0452` exists in both `done.json` (completed task about "Fix Kimi runner")
 
 ### Prevention
 
-- Use `cueloop task` commands to create tasks (handles ID generation automatically)
-- Use `cueloop queue next-id` to get the next ID when manually editing files
+- Use `cueloop task` commands to create tasks; prefer `cueloop task insert` for agent/script queue shaping because it allocates IDs under the queue lock.
+- Use `cueloop queue next-id` only for manual recovery or one-off JSON surgery; it previews IDs but does **not** reserve them.
 - Always run `cueloop queue validate` after manual edits to catch issues early
 
 ## Dependency Visualization

@@ -41,7 +41,8 @@ use crate::contracts::{
     MACHINE_DECOMPOSE_VERSION, MACHINE_TASK_BUILD_VERSION, MACHINE_TASK_CREATE_VERSION,
     MACHINE_TASK_MUTATION_VERSION, MachineDecomposeDocument, MachineTaskBuildDocument,
     MachineTaskBuildRequest, MachineTaskBuildResult, MachineTaskCreateDocument,
-    MachineTaskCreateRequest, MachineTaskMutationDocument, RunnerCliOptionsPatch, Task, TaskStatus,
+    MachineTaskCreateRequest, MachineTaskMutationDocument, RunnerCliOptionsPatch, Task,
+    TaskInsertDocument, TaskInsertRequest, TaskStatus,
 };
 use crate::queue;
 use crate::timeutil;
@@ -76,6 +77,13 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
                 version: MACHINE_TASK_CREATE_VERSION,
                 task,
             })
+        }
+        MachineTaskCommand::Insert(args) => {
+            let raw = read_json_input(args.input.as_deref())?;
+            let request: TaskInsertRequest =
+                serde_json::from_str(&raw).context("parse machine task insert request")?;
+            let document = insert_tasks(&resolved, &request, args.dry_run, force)?;
+            print_json(&document)
         }
         MachineTaskCommand::Mutate(args) => {
             let raw = read_json_input(args.input.as_deref())?;
@@ -377,6 +385,37 @@ fn flatten_decompose_node<'a>(
     for child in &node.children {
         flatten_decompose_node(child, preview, tasks);
     }
+}
+
+fn insert_tasks(
+    resolved: &config::Resolved,
+    request: &TaskInsertRequest,
+    dry_run: bool,
+    force: bool,
+) -> Result<TaskInsertDocument> {
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "machine task insert", force)?;
+    let mut active = queue::load_queue(&resolved.queue_path)?;
+    let done = queue::load_queue_or_default(&resolved.done_path)?;
+    let done_ref = done_queue_ref(&done, &resolved.done_path);
+    let now = timeutil::now_utc_rfc3339()?;
+    let document = queue::operations::apply_task_insert_request(
+        &mut active,
+        done_ref,
+        request,
+        &now,
+        &resolved.id_prefix,
+        resolved.id_width,
+        queue_max_dependency_depth(resolved),
+        dry_run,
+    )?;
+    if !dry_run {
+        crate::undo::create_undo_snapshot(
+            resolved,
+            &format!("machine task insert [{} task(s)]", document.created_count),
+        )?;
+        queue::save_queue(&resolved.queue_path, &active)?;
+    }
+    Ok(document)
 }
 
 fn create_task(

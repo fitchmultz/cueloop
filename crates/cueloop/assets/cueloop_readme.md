@@ -59,6 +59,9 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
 
 - Build a task from a request:
   - `cueloop task "Add tests for X"`
+- Insert fully-shaped tasks atomically:
+  - `cueloop task insert --input /tmp/task-insert.json`
+  - `cueloop task insert --dry-run --format json --input /tmp/task-insert.json`
 - Update task fields from repo state:
   - `cueloop task update RQ-0001`
   - `cueloop task update`
@@ -103,7 +106,7 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
 
 If `cueloop queue validate` reports a duplicate task ID, this usually means a new task was added without incrementing the ID. Do not delete tasks.
 
-1. Run `cueloop queue next-id` to get the next available ID.
+1. Run `cueloop queue next-id` to preview the next available ID.
 2. Edit `{{RUNTIME_DIR}}/queue.jsonc` and change the colliding task ID.
 3. Re-run `cueloop queue validate`.
 
@@ -117,7 +120,7 @@ Use `--count` to generate IDs in one call:
 cueloop queue next-id --count 7
 ```
 
-`next-id` does not reserve IDs. Assign the printed IDs to tasks and insert all tasks into `{{RUNTIME_DIR}}/queue.jsonc` before running other queue commands.
+`next-id` does not reserve IDs. For agent or script queue growth, prefer `cueloop task insert` so CueLoop assigns IDs under the queue lock. Keep `next-id` for manual recovery or one-off JSON surgery.
 
 ## Template variables
 

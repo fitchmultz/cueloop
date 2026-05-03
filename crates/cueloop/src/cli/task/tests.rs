@@ -300,6 +300,33 @@ fn task_followups_apply_parses_source_input_dry_run_and_format() {
 }
 
 #[test]
+fn task_insert_parses_input_dry_run_and_format() {
+    let cli = Cli::try_parse_from([
+        "cueloop",
+        "task",
+        "insert",
+        "--input",
+        "/tmp/task-insert.json",
+        "--dry-run",
+        "--format",
+        "json",
+    ])
+    .expect("parse");
+
+    match cli.command {
+        crate::cli::Command::Task(args) => match args.command {
+            Some(crate::cli::task::TaskCommand::Insert(args)) => {
+                assert_eq!(args.input.as_deref(), Some("/tmp/task-insert.json"));
+                assert!(args.dry_run);
+                assert_eq!(args.format, crate::cli::task::TaskInsertFormatArg::Json);
+            }
+            _ => panic!("expected task insert command"),
+        },
+        _ => panic!("expected task command"),
+    }
+}
+
+#[test]
 fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
     let cli = Cli::try_parse_from([
         "cueloop",

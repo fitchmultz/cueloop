@@ -36,7 +36,7 @@ use crate::queue::validation;
 
 #[derive(Args)]
 pub struct QueueNextIdArgs {
-    /// Number of IDs to generate
+    /// Number of preview IDs to generate (non-atomic; does not reserve them)
     #[arg(short = 'n', long, default_value = "1", value_name = "COUNT")]
     pub count: usize,
 }

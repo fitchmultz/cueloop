@@ -46,7 +46,7 @@ use crate::contracts::{
     MachineRunEventEnvelope, MachineRunStopDocument, MachineRunSummaryDocument,
     MachineSystemInfoDocument, MachineTaskBuildDocument, MachineTaskBuildRequest,
     MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
-    MachineWorkspaceOverviewDocument,
+    MachineWorkspaceOverviewDocument, TaskInsertDocument, TaskInsertRequest,
 };
 
 pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
@@ -115,6 +115,8 @@ pub fn handle_machine(args: MachineArgs, force: bool) -> Result<()> {
             "task_create": schema_for!(MachineTaskCreateDocument),
             "task_build_request": schema_for!(MachineTaskBuildRequest),
             "task_build": schema_for!(MachineTaskBuildDocument),
+            "task_insert_request": schema_for!(TaskInsertRequest),
+            "task_insert": schema_for!(TaskInsertDocument),
             "task_mutation": schema_for!(MachineTaskMutationDocument),
             "graph_read": schema_for!(MachineGraphReadDocument),
             "dashboard_read": schema_for!(MachineDashboardReadDocument),

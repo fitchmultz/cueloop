@@ -303,9 +303,14 @@ fn materialized_followup_specs(
                 notes: vec![format!("Generated from follow-up proposal key {key}")],
                 request: source_request.clone(),
                 relates_to: vec![source_task_id.to_string()],
+                blocks: vec![],
+                duplicates: None,
+                custom_fields: std::collections::HashMap::new(),
+                agent: None,
                 parent_local_key: None,
                 parent_task_id: None,
                 depends_on_local_keys: proposal.depends_on_keys.clone(),
+                depends_on_task_ids: vec![],
                 estimated_minutes: None,
             })
         })

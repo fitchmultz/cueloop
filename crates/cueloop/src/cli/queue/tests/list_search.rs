@@ -115,6 +115,14 @@ fn queue_next_id_help_examples_expanded() {
         help.contains("cueloop --verbose queue next-id"),
         "missing verbose next-id example: {help}"
     );
+    assert!(
+        help.contains("does not reserve IDs"),
+        "next-id help should warn that IDs are not reserved: {help}"
+    );
+    assert!(
+        help.contains("cueloop task insert"),
+        "next-id help should point users to task insert: {help}"
+    );
 }
 
 #[test]

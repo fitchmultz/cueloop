@@ -283,6 +283,33 @@ fn cli_parses_machine_task_build_input() {
 }
 
 #[test]
+fn cli_parses_machine_task_insert_input() {
+    let cli = Cli::try_parse_from([
+        "cueloop",
+        "machine",
+        "task",
+        "insert",
+        "--input",
+        "request.json",
+        "--dry-run",
+    ])
+    .expect("parse");
+    match cli.command {
+        Command::Machine(args) => match args.command {
+            machine::MachineCommand::Task(args) => match args.command {
+                machine::MachineTaskCommand::Insert(args) => {
+                    assert_eq!(args.input.as_deref(), Some("request.json"));
+                    assert!(args.dry_run);
+                }
+                _ => panic!("expected machine task insert command"),
+            },
+            _ => panic!("expected machine task command"),
+        },
+        _ => panic!("expected machine command"),
+    }
+}
+
+#[test]
 fn cli_parses_run_one_id() {
     let cli = Cli::try_parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]).expect("parse");
     match cli.command {

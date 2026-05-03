@@ -140,9 +140,9 @@ pub enum QueueCommand {
     )]
     Next(QueueNextArgs),
 
-    /// Print the next available task ID (across queue + done archive).
+    /// Preview the next available task ID (across queue + done archive).
     #[command(
-        after_long_help = "Examples:\n cueloop queue next-id\n cueloop queue next-id --count 5\n cueloop queue next-id -n 3\n cueloop --verbose queue next-id"
+        after_long_help = "Preview workflow:\n - This command is read-only and does not reserve IDs.\n - For agents or scripts that create tasks, prefer `cueloop task insert` so IDs are assigned under the queue lock.\n - Keep `next-id` for manual recovery or one-off queue surgery only.\n\nExamples:\n cueloop queue next-id\n cueloop queue next-id --count 5\n cueloop queue next-id -n 3\n cueloop task insert --input /tmp/task-insert.json\n cueloop --verbose queue next-id"
     )]
     NextId(QueueNextIdArgs),
 

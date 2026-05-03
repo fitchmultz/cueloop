@@ -121,6 +121,66 @@ fn machine_task_create_and_mutate_round_trip() -> Result<()> {
 }
 
 #[test]
+fn machine_task_insert_creates_full_tasks_atomically() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+
+    let insert_request = serde_json::json!({
+        "version": 1,
+        "tasks": [
+            {
+                "key": "alpha",
+                "title": "Machine-inserted task",
+                "description": "Created through cueloop machine task insert",
+                "priority": TaskPriority::High.as_str(),
+                "status": TaskStatus::Todo.as_str(),
+                "tags": ["machine", "queue"],
+                "scope": ["crates/cueloop"],
+                "evidence": ["path: crates/cueloop :: machine task insert"],
+                "plan": ["Insert atomically", "Validate queue"],
+                "request": "scan: queue safety",
+                "custom_fields": {"scan_agent": "scan-general"}
+            }
+        ]
+    });
+    let insert_path = write_json_file(dir.path(), "insert-request.json", &insert_request)?;
+
+    let (status, stdout, stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().expect("utf-8 insert request path"),
+        ],
+    );
+    assert!(
+        status.success(),
+        "machine task insert failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["version"], 1);
+    assert_eq!(document["created_count"], 1);
+    assert_eq!(document["tasks"][0]["key"], "alpha");
+    assert_eq!(document["tasks"][0]["task"]["id"], "RQ-0001");
+    assert_eq!(
+        document["tasks"][0]["task"]["custom_fields"]["scan_agent"],
+        "scan-general"
+    );
+
+    let (read_status, read_stdout, read_stderr) =
+        run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        read_status.success(),
+        "machine queue read failed\nstdout:\n{read_stdout}\nstderr:\n{read_stderr}"
+    );
+    let read_document: Value = serde_json::from_str(&read_stdout)?;
+    assert_eq!(read_document["active"]["tasks"][0]["id"], "RQ-0001");
+    Ok(())
+}
+
+#[test]
 fn task_mutate_json_uses_shared_continuation_document() -> Result<()> {
     let dir = setup_cueloop_repo()?;
 

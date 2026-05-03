@@ -7493,6 +7493,1256 @@
     "title": "MachineTaskCreateRequest",
     "type": "object"
   },
+  "task_insert": {
+    "$defs": {
+      "Model": {
+        "oneOf": [
+          {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.4",
+            "description": "OpenAI GPT-5.4",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.3-codex",
+            "description": "OpenAI GPT-5.3 Codex",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.3-codex-spark",
+            "description": "OpenAI GPT-5.3 Codex Spark (fast)",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.3",
+            "description": "OpenAI GPT-5.3",
+            "type": "string"
+          },
+          {
+            "const": "zai-coding-plan/glm-4.7",
+            "description": "ZhipuAI GLM-4.7",
+            "type": "string"
+          },
+          {
+            "description": "Custom model identifier",
+            "minLength": 1,
+            "type": "string"
+          }
+        ]
+      },
+      "PhaseOverrideConfig": {
+        "additionalProperties": false,
+        "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Model"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Model to use for this phase (overrides global agent.model)"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reasoning effort for this phase (overrides global agent.reasoning_effort)"
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Runner"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Runner to use for this phase (overrides global agent.runner)"
+          }
+        },
+        "type": "object"
+      },
+      "PhaseOverrides": {
+        "additionalProperties": false,
+        "description": "Phase overrides container for Phase 1/2/3 execution.\n\nPer-phase configuration for Phase 1/2/3 execution.\n\nInvariants/assumptions:\n- Overrides are defined per phase only; there is no shared `defaults` layer inside\n  `agent.phase_overrides`. Use global `agent.runner` / `agent.model` /\n  `agent.reasoning_effort` for shared defaults.\n- Merging is leaf-wise: `Some(value)` overrides, `None` inherits.",
+        "properties": {
+          "phase1": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrideConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 1 specific overrides"
+          },
+          "phase2": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrideConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 2 specific overrides"
+          },
+          "phase3": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrideConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 3 specific overrides"
+          }
+        },
+        "type": "object"
+      },
+      "ReasoningEffort": {
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "type": "string"
+      },
+      "Runner": {
+        "description": "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.",
+        "examples": [
+          "claude",
+          "acme.super_runner"
+        ],
+        "type": "string"
+      },
+      "RunnerApprovalMode": {
+        "oneOf": [
+          {
+            "const": "default",
+            "description": "Do not apply any approval flags; runner defaults apply.",
+            "type": "string"
+          },
+          {
+            "const": "auto_edits",
+            "description": "Attempt to auto-approve edits but not all tool actions (runner-specific).",
+            "type": "string"
+          },
+          {
+            "const": "yolo",
+            "description": "Bypass approvals / run headless (runner-specific).",
+            "type": "string"
+          },
+          {
+            "const": "safe",
+            "description": "Strict safety mode. Warning: some runners may become interactive and hang.",
+            "type": "string"
+          }
+        ]
+      },
+      "RunnerCliOptionsPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerApprovalMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired approval/permission behavior."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerOutputFormat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired output format for runner execution."
+          },
+          "plan_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerPlanMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired plan/read-only behavior (when supported by the runner)."
+          },
+          "sandbox": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerSandboxMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired sandbox behavior (when supported by the runner)."
+          },
+          "unsupported_option_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/UnsupportedOptionPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Policy for unsupported options (warn/error/ignore)."
+          },
+          "verbosity": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerVerbosity"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired verbosity (when supported by the runner)."
+          }
+        },
+        "type": "object"
+      },
+      "RunnerOutputFormat": {
+        "oneOf": [
+          {
+            "const": "stream_json",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
+            "type": "string"
+          },
+          {
+            "const": "json",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
+            "type": "string"
+          },
+          {
+            "const": "text",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
+            "type": "string"
+          }
+        ]
+      },
+      "RunnerPlanMode": {
+        "enum": [
+          "default",
+          "enabled",
+          "disabled"
+        ],
+        "type": "string"
+      },
+      "RunnerSandboxMode": {
+        "enum": [
+          "default",
+          "enabled",
+          "disabled"
+        ],
+        "type": "string"
+      },
+      "RunnerVerbosity": {
+        "enum": [
+          "quiet",
+          "normal",
+          "verbose"
+        ],
+        "type": "string"
+      },
+      "Task": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_minutes": {
+            "description": "Actual time spent on this task in minutes.\nOptional; set manually or computed from started_at to completed_at.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TaskAgent"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional per-task agent override (runner/model/model_effort/phases/iterations/phase_overrides)."
+          },
+          "blocks": {
+            "default": [],
+            "description": "Task IDs that this task blocks (must be Done/Rejected before blocked tasks can run).\nSemantically different from depends_on: blocks is \"I prevent X\" vs depends_on \"I need X\".",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "description": "RFC3339 UTC timestamps as strings to keep the contract tool-agnostic.",
+            "type": "string"
+          },
+          "custom_fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "default": {},
+            "description": "Custom user-defined fields (key-value pairs for extensibility).\nValues may be written as string/number/boolean; CueLoop coerces them to strings when loading.",
+            "type": "object"
+          },
+          "depends_on": {
+            "default": [],
+            "description": "Task IDs that this task depends on (must be Done or Rejected before this task can run).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": {
+            "description": "Detailed description of the task's context, goal, purpose, and desired outcome.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duplicates": {
+            "description": "Task ID that this task duplicates (if any).\nSingular reference, not a list.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "estimated_minutes": {
+            "description": "Estimated time to complete this task in minutes.\nOptional; used for planning and estimation accuracy tracking.",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "evidence": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/TaskKind",
+            "description": "Whether this task is executable work or a non-runnable grouping node."
+          },
+          "notes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "parent_id": {
+            "description": "Parent task ID if this is a subtask (child-to-parent reference).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "priority": {
+            "$ref": "#/$defs/TaskPriority",
+            "default": "medium"
+          },
+          "relates_to": {
+            "default": [],
+            "description": "Task IDs that this task relates to (loose coupling, no execution constraint).\nBidirectional awareness but no execution constraint.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "request": {
+            "description": "Original human request that created the task (Task Builder / Scan).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scheduled_start": {
+            "description": "RFC3339 timestamp when the task should become runnable (optional scheduling).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "started_at": {
+            "description": "RFC3339 UTC timestamp when work on this task actually started.\n\nInvariants:\n- Must be RFC3339 UTC (Z) if set.\n- Should be set when transitioning into `doing` (see status policy).",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/$defs/TaskStatus",
+            "default": "todo"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "TaskAgent": {
+        "additionalProperties": false,
+        "properties": {
+          "followup_reasoning_effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reasoning effort override for follow-up iterations (iterations > 1)."
+          },
+          "iterations": {
+            "description": "Number of iterations to run for this task (overrides config).",
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Model"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_effort": {
+            "default": "default",
+            "description": "Per-task reasoning effort override for runners with reasoning controls. Default falls back to config.",
+            "enum": [
+              "default",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "type": "string"
+          },
+          "phase_overrides": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrides"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional per-phase runner/model/effort overrides for this task."
+          },
+          "phases": {
+            "description": "Number of execution phases for this task (1, 2, or 3), overriding config defaults.",
+            "format": "uint8",
+            "maximum": 3,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Runner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runner_cli": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerCliOptionsPatch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional normalized runner CLI overrides for this task.\n\nThis is intended to express runner behavior intent (output/approval/sandbox/etc)\nwithout embedding runner-specific flag syntax into the queue."
+          }
+        },
+        "type": "object"
+      },
+      "TaskInsertCreatedTask": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "task": {
+            "$ref": "#/$defs/Task"
+          }
+        },
+        "required": [
+          "key",
+          "task"
+        ],
+        "type": "object"
+      },
+      "TaskKind": {
+        "oneOf": [
+          {
+            "const": "work_item",
+            "description": "Executable atomic work item. This is the default for existing queues.",
+            "type": "string"
+          },
+          {
+            "const": "group",
+            "description": "Non-executable grouping/decomposition node.",
+            "type": "string"
+          }
+        ]
+      },
+      "TaskPriority": {
+        "description": "Task priority used for queue ordering and display.",
+        "enum": [
+          "critical",
+          "high",
+          "medium",
+          "low"
+        ],
+        "type": "string"
+      },
+      "TaskStatus": {
+        "enum": [
+          "draft",
+          "todo",
+          "doing",
+          "done",
+          "rejected"
+        ],
+        "type": "string"
+      },
+      "UnsupportedOptionPolicy": {
+        "enum": [
+          "ignore",
+          "warn",
+          "error"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "created_count": {
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "dry_run": {
+        "type": "boolean"
+      },
+      "tasks": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/TaskInsertCreatedTask"
+        },
+        "type": "array"
+      },
+      "version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "dry_run",
+      "created_count"
+    ],
+    "title": "TaskInsertDocument",
+    "type": "object"
+  },
+  "task_insert_request": {
+    "$defs": {
+      "Model": {
+        "oneOf": [
+          {
+            "const": "openai-codex/gpt-5.5",
+            "description": "OpenAI Codex GPT-5.5",
+            "type": "string"
+          },
+          {
+            "const": "openai-codex/gpt-5.4",
+            "description": "OpenAI Codex GPT-5.4 (default implementation model)",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.4",
+            "description": "OpenAI GPT-5.4",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.3-codex",
+            "description": "OpenAI GPT-5.3 Codex",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.3-codex-spark",
+            "description": "OpenAI GPT-5.3 Codex Spark (fast)",
+            "type": "string"
+          },
+          {
+            "const": "gpt-5.3",
+            "description": "OpenAI GPT-5.3",
+            "type": "string"
+          },
+          {
+            "const": "zai-coding-plan/glm-4.7",
+            "description": "ZhipuAI GLM-4.7",
+            "type": "string"
+          },
+          {
+            "description": "Custom model identifier",
+            "minLength": 1,
+            "type": "string"
+          }
+        ]
+      },
+      "PhaseOverrideConfig": {
+        "additionalProperties": false,
+        "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Model"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Model to use for this phase (overrides global agent.model)"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reasoning effort for this phase (overrides global agent.reasoning_effort)"
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Runner"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Runner to use for this phase (overrides global agent.runner)"
+          }
+        },
+        "type": "object"
+      },
+      "PhaseOverrides": {
+        "additionalProperties": false,
+        "description": "Phase overrides container for Phase 1/2/3 execution.\n\nPer-phase configuration for Phase 1/2/3 execution.\n\nInvariants/assumptions:\n- Overrides are defined per phase only; there is no shared `defaults` layer inside\n  `agent.phase_overrides`. Use global `agent.runner` / `agent.model` /\n  `agent.reasoning_effort` for shared defaults.\n- Merging is leaf-wise: `Some(value)` overrides, `None` inherits.",
+        "properties": {
+          "phase1": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrideConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 1 specific overrides"
+          },
+          "phase2": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrideConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 2 specific overrides"
+          },
+          "phase3": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrideConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Phase 3 specific overrides"
+          }
+        },
+        "type": "object"
+      },
+      "ReasoningEffort": {
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "xhigh"
+        ],
+        "type": "string"
+      },
+      "Runner": {
+        "description": "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. Plugin runner IDs are also supported as non-empty strings.",
+        "examples": [
+          "claude",
+          "acme.super_runner"
+        ],
+        "type": "string"
+      },
+      "RunnerApprovalMode": {
+        "oneOf": [
+          {
+            "const": "default",
+            "description": "Do not apply any approval flags; runner defaults apply.",
+            "type": "string"
+          },
+          {
+            "const": "auto_edits",
+            "description": "Attempt to auto-approve edits but not all tool actions (runner-specific).",
+            "type": "string"
+          },
+          {
+            "const": "yolo",
+            "description": "Bypass approvals / run headless (runner-specific).",
+            "type": "string"
+          },
+          {
+            "const": "safe",
+            "description": "Strict safety mode. Warning: some runners may become interactive and hang.",
+            "type": "string"
+          }
+        ]
+      },
+      "RunnerCliOptionsPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerApprovalMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired approval/permission behavior."
+          },
+          "output_format": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerOutputFormat"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired output format for runner execution."
+          },
+          "plan_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerPlanMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired plan/read-only behavior (when supported by the runner)."
+          },
+          "sandbox": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerSandboxMode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired sandbox behavior (when supported by the runner)."
+          },
+          "unsupported_option_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/UnsupportedOptionPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Policy for unsupported options (warn/error/ignore)."
+          },
+          "verbosity": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerVerbosity"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired verbosity (when supported by the runner)."
+          }
+        },
+        "type": "object"
+      },
+      "RunnerOutputFormat": {
+        "oneOf": [
+          {
+            "const": "stream_json",
+            "description": "Newline-delimited JSON objects (required for CueLoop's streaming parser).",
+            "type": "string"
+          },
+          {
+            "const": "json",
+            "description": "JSON output (may not be streaming; currently treated as unsupported by CueLoop execution).",
+            "type": "string"
+          },
+          {
+            "const": "text",
+            "description": "Plain text output (currently treated as unsupported by CueLoop execution).",
+            "type": "string"
+          }
+        ]
+      },
+      "RunnerPlanMode": {
+        "enum": [
+          "default",
+          "enabled",
+          "disabled"
+        ],
+        "type": "string"
+      },
+      "RunnerSandboxMode": {
+        "enum": [
+          "default",
+          "enabled",
+          "disabled"
+        ],
+        "type": "string"
+      },
+      "RunnerVerbosity": {
+        "enum": [
+          "quiet",
+          "normal",
+          "verbose"
+        ],
+        "type": "string"
+      },
+      "TaskAgent": {
+        "additionalProperties": false,
+        "properties": {
+          "followup_reasoning_effort": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningEffort"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reasoning effort override for follow-up iterations (iterations > 1)."
+          },
+          "iterations": {
+            "description": "Number of iterations to run for this task (overrides config).",
+            "format": "uint8",
+            "maximum": 255,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Model"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_effort": {
+            "default": "default",
+            "description": "Per-task reasoning effort override for runners with reasoning controls. Default falls back to config.",
+            "enum": [
+              "default",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ],
+            "type": "string"
+          },
+          "phase_overrides": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/PhaseOverrides"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional per-phase runner/model/effort overrides for this task."
+          },
+          "phases": {
+            "description": "Number of execution phases for this task (1, 2, or 3), overriding config defaults.",
+            "format": "uint8",
+            "maximum": 3,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Runner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runner_cli": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/RunnerCliOptionsPatch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional normalized runner CLI overrides for this task.\n\nThis is intended to express runner behavior intent (output/approval/sandbox/etc)\nwithout embedding runner-specific flag syntax into the queue."
+          }
+        },
+        "type": "object"
+      },
+      "TaskInsertSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TaskAgent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blocks": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "custom_fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "type": "object"
+          },
+          "depends_on": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "depends_on_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duplicates": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "estimated_minutes": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "evidence": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/TaskKind"
+          },
+          "notes": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "parent_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parent_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "plan": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "priority": {
+            "$ref": "#/$defs/TaskPriority",
+            "default": "medium"
+          },
+          "relates_to": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "request": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scope": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/$defs/TaskStatus",
+            "default": "todo"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title"
+        ],
+        "type": "object"
+      },
+      "TaskKind": {
+        "oneOf": [
+          {
+            "const": "work_item",
+            "description": "Executable atomic work item. This is the default for existing queues.",
+            "type": "string"
+          },
+          {
+            "const": "group",
+            "description": "Non-executable grouping/decomposition node.",
+            "type": "string"
+          }
+        ]
+      },
+      "TaskPriority": {
+        "description": "Task priority used for queue ordering and display.",
+        "enum": [
+          "critical",
+          "high",
+          "medium",
+          "low"
+        ],
+        "type": "string"
+      },
+      "TaskStatus": {
+        "enum": [
+          "draft",
+          "todo",
+          "doing",
+          "done",
+          "rejected"
+        ],
+        "type": "string"
+      },
+      "UnsupportedOptionPolicy": {
+        "enum": [
+          "ignore",
+          "warn",
+          "error"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "tasks": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/TaskInsertSpec"
+        },
+        "type": "array"
+      },
+      "version": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version"
+    ],
+    "title": "TaskInsertRequest",
+    "type": "object"
+  },
   "task_mutation": {
     "$defs": {
       "BlockingReason": {

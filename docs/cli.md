@@ -157,6 +157,7 @@ cueloop queue archive
 
 ```bash
 cueloop task build "Refactor queue parsing"
+cueloop task insert --input /tmp/task-insert.json
 cueloop task decompose "Build OAuth login with GitHub and Google"
 cueloop task decompose --from-file docs/plans/oauth.md
 cueloop task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
@@ -207,6 +208,8 @@ When CueLoop is not making progress, `cueloop doctor` now uses the same canonica
 cueloop queue validate
 cueloop queue repair --dry-run
 cueloop queue repair
+cueloop task insert --dry-run --format json --input task-insert.json
+cueloop task insert --format json --input task-insert.json
 cueloop task mutate --dry-run --input request.json
 cueloop task mutate --format json --input request.json
 cueloop task decompose --format json "Improve webhook reliability"
@@ -223,7 +226,7 @@ These commands are now first-class continuation tools. They explain whether CueL
 
 If `cueloop run loop` stops on queue validation, start with `cueloop queue repair --dry-run` to preview recoverable fixes, apply them with `cueloop queue repair`, and optionally confirm the result with `cueloop queue validate`.
 
-`cueloop task mutate --format json` and `cueloop task decompose --format json` now emit the same shared versioned continuation documents used by `cueloop machine` commands.
+`cueloop task insert --format json`, `cueloop task mutate --format json`, and `cueloop task decompose --format json` emit versioned JSON documents suitable for automation.
 `cueloop task followups apply` consumes `.cueloop/cache/followups/<TASK_ID>.json`, validates the proposal, creates undo, inserts generated tasks into the queue, and records continuation state in the same family as task mutate/decompose.
 
 ### Machine API
@@ -236,6 +239,7 @@ cueloop machine queue repair --dry-run
 cueloop machine queue undo --dry-run
 cueloop machine config resolve
 cueloop machine doctor report
+cueloop machine task insert --input task-insert.json
 cueloop machine task mutate --input request.json
 cueloop machine task decompose --from-file docs/plans/oauth.md --with-dependencies
 cueloop machine task decompose --write --from-preview <CHECKPOINT_ID>
@@ -309,7 +313,7 @@ cueloop undo
 
 ### `cueloop task`
 
-- Build/create: `task` (freeform), `build`, `refactor`, `build-refactor`, `from`, `template`, `followups`
+- Build/create: `task` (freeform), `build`, `insert`, `refactor`, `build-refactor`, `from`, `template`, `followups`
 - Lifecycle: `show`, `ready`, `status`, `done`, `reject`, `start`, `schedule`
 - Editing: `field`, `edit`, `update`
 - Structure/relations: `clone`, `split`, `relate`, `blocks`, `mark-duplicate`, `children`, `parent`

@@ -129,6 +129,7 @@ pub struct MachineTaskArgs {
 pub enum MachineTaskCommand {
     Build(Box<MachineTaskBuildArgs>),
     Create(MachineTaskCreateArgs),
+    Insert(MachineTaskInsertArgs),
     Mutate(MachineTaskMutateArgs),
     Decompose(Box<MachineTaskDecomposeArgs>),
 }
@@ -145,6 +146,14 @@ pub struct MachineTaskBuildArgs {
 pub struct MachineTaskCreateArgs {
     #[arg(long, value_name = "PATH")]
     pub input: Option<String>,
+}
+
+#[derive(Args)]
+pub struct MachineTaskInsertArgs {
+    #[arg(long, value_name = "PATH")]
+    pub input: Option<String>,
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Args)]

@@ -173,6 +173,15 @@ fn queue_recovery_help_mentions_continuation_workflows() {
     assert_contains(&repair_combined, "Continuation workflow");
     assert_contains(&repair_combined, "cueloop undo --dry-run");
 
+    let (next_id_status, next_id_stdout, next_id_stderr) = run(&["queue", "next-id", "--help"]);
+    assert!(
+        next_id_status.success(),
+        "expected `cueloop queue next-id --help` to succeed\nstdout:\n{next_id_stdout}\nstderr:\n{next_id_stderr}"
+    );
+    let next_id_combined = format!("{next_id_stdout}\n{next_id_stderr}");
+    assert_contains(&next_id_combined, "does not reserve IDs");
+    assert_contains(&next_id_combined, "cueloop task insert");
+
     let (undo_status, undo_stdout, undo_stderr) = run(&["undo", "--help"]);
     assert!(
         undo_status.success(),
@@ -197,6 +206,21 @@ fn run_loop_help_mentions_blocking_state_diagnosis() {
     assert_contains(&combined, "Blocking-state diagnosis");
     assert_contains(&combined, "cueloop doctor");
     assert_contains(&combined, "wait-when-blocked");
+}
+
+#[test]
+fn task_insert_help_mentions_atomic_locking_and_format() {
+    let (status, stdout, stderr) = run(&["task", "insert", "--help"]);
+    assert!(
+        status.success(),
+        "expected `cueloop task insert --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+    assert_contains(&combined, "queue lock");
+    assert_contains(&combined, "--format");
+    assert_contains(&combined, "--dry-run");
+    assert_contains(&combined, "cueloop machine task insert");
 }
 
 #[test]
@@ -238,6 +262,7 @@ fn task_help_mentions_default_and_explicit_build() {
 
     assert_contains(&combined, "cueloop task");
     assert_contains(&combined, "build");
+    assert_contains(&combined, "insert");
     assert_contains(&combined, "template");
     assert_contains(&combined, "done --note \"Build checks pass\" RQ-0001");
     assert_contains(&combined, "split --number 3 RQ-0001");
@@ -255,7 +280,7 @@ fn task_help_shows_group_headings() {
 
     assert_occurs_once(
         &combined,
-        "Create and build: task, build, refactor, build-refactor",
+        "Create and build: task, build, insert, refactor, build-refactor, followups",
     );
     assert_occurs_once(
         &combined,
@@ -281,6 +306,7 @@ fn task_help_shows_common_journeys() {
 
     assert_contains(&combined, "Common journeys:");
     assert_contains(&combined, "Create a task:");
+    assert_contains(&combined, "Insert fully-shaped tasks atomically:");
     assert_contains(&combined, "Start work on a task:");
     assert_contains(&combined, "Complete a task:");
     assert_contains(&combined, "Split a task:");

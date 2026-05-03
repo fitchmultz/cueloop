@@ -37,7 +37,7 @@ pub use args::{
     MachineQueueRepairArgs, MachineQueueUndoArgs, MachineRunArgs, MachineRunCommand,
     MachineRunLoopArgs, MachineRunOneArgs, MachineSystemArgs, MachineSystemCommand,
     MachineTaskArgs, MachineTaskCommand, MachineTaskCreateArgs, MachineTaskDecomposeArgs,
-    MachineTaskMutateArgs,
+    MachineTaskInsertArgs, MachineTaskMutateArgs,
 };
 pub(crate) use common::{
     machine_doctor_report_command, machine_run_loop_command, machine_run_parallel_status_command,

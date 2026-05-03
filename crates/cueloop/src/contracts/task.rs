@@ -17,6 +17,7 @@
 //!   split.
 //! - Priority ordering remains critical > high > medium > low.
 
+mod insert;
 mod priority;
 mod serde_helpers;
 mod types;
@@ -24,5 +25,9 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+pub use insert::{
+    TASK_INSERT_VERSION, TaskInsertCreatedTask, TaskInsertDocument, TaskInsertRequest,
+    TaskInsertSpec,
+};
 pub use priority::TaskPriority;
 pub use types::{Task, TaskAgent, TaskKind, TaskStatus};

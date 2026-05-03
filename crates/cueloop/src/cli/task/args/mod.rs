@@ -29,6 +29,7 @@ mod build;
 mod decompose;
 mod edit;
 mod followups;
+mod insert;
 mod lifecycle;
 mod mutate;
 mod relations;
@@ -45,6 +46,7 @@ pub use edit::{TaskEditArgs, TaskFieldArgs, TaskUpdateArgs};
 pub use followups::{
     TaskFollowupsApplyArgs, TaskFollowupsArgs, TaskFollowupsCommand, TaskFollowupsFormatArg,
 };
+pub use insert::{TaskInsertArgs, TaskInsertFormatArg};
 pub use lifecycle::{
     TaskDoneArgs, TaskReadyArgs, TaskRejectArgs, TaskScheduleArgs, TaskShowArgs, TaskStartArgs,
     TaskStatusArgs,
@@ -66,7 +68,7 @@ pub use types::{
 #[command(
     about = "Create and build tasks from freeform requests",
     subcommand_required = false,
-    after_long_help = "Common journeys:\n - Create a task:\n   cueloop task \"Refactor queue parsing\"\n   cueloop task build-refactor\n - Start work on a task:\n   cueloop task ready RQ-0001\n   cueloop task start RQ-0001\n - Complete a task:\n   cueloop task status done RQ-0001\n   cueloop task done --note \"Build checks pass\" RQ-0001\n - Apply discovered follow-ups:\n   cueloop task followups apply --task RQ-0135\n - Split a task:\n   cueloop task split RQ-0001\n   cueloop task split --number 3 RQ-0001\n\nCommand intent sections:\nCreate and build: task, build, refactor, build-refactor, followups\nLifecycle: show, ready, status, done, reject, start, schedule\nEdit: field, edit, update\nRelationships: clone, split, relate, blocks, mark-duplicate, children, parent\nBatch and templates: batch, template"
+    after_long_help = "Common journeys:\n - Create a task:\n   cueloop task \"Refactor queue parsing\"\n   cueloop task build-refactor\n - Insert fully-shaped tasks atomically:\n   cueloop task insert --input /tmp/tasks.json\n - Start work on a task:\n   cueloop task ready RQ-0001\n   cueloop task start RQ-0001\n - Complete a task:\n   cueloop task status done RQ-0001\n   cueloop task done --note \"Build checks pass\" RQ-0001\n - Apply discovered follow-ups:\n   cueloop task followups apply --task RQ-0135\n - Split a task:\n   cueloop task split RQ-0001\n   cueloop task split --number 3 RQ-0001\n\nCommand intent sections:\nCreate and build: task, build, insert, refactor, build-refactor, followups\nLifecycle: show, ready, status, done, reject, start, schedule\nEdit: field, edit, update\nRelationships: clone, split, relate, blocks, mark-duplicate, children, parent\nBatch and templates: batch, template"
 )]
 pub struct TaskArgs {
     #[command(subcommand)]
@@ -91,6 +93,13 @@ pub enum TaskCommand {
         after_long_help = "Runner selection:\n - Override runner/model/effort for this invocation using flags.\n - Defaults come from config when flags are omitted.\n\nContinuation workflow:\n - Preview is the default; use --write to mutate queue state.\n - Existing tasks are preserved as parents unless --attach-to is used for a freeform request or plan file.\n - Use --from-file to decompose an arbitrary plan document with the recursive planner.\n - Plan-file decompositions should cover every meaningful source section and preserve ordered phases.\n - Existing parents with children are blocked by default; use --child-policy append|replace to continue safely.\n - Successful writes create an undo checkpoint before queue mutation.\n - Plain --write keeps generated tasks in draft; use --parent-status draft --leaf-status todo to make leaf work runnable.\n - All-draft writes print the exact `cueloop task ready <TASK_ID>` command for the first actionable leaf.\n - Use --with-dependencies to request sibling prerequisite depends_on edges.\n - Use --format json to emit the same versioned continuation document used by `cueloop machine task decompose`.\n\nExamples:\n cueloop task decompose \"Build OAuth login with GitHub and Google\"\n cueloop task decompose \"Improve webhook reliability\" --write\n cueloop task decompose \"Plan webhook reliability work\" --write --parent-status draft --leaf-status todo\n cueloop task decompose RQ-0123 --max-depth 3 --preview\n cueloop task decompose RQ-0123 --child-policy append --with-dependencies --write\n cueloop task decompose --from-file docs/plans/oauth.md\n cueloop task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write\n cueloop task decompose --from-file docs/plans/oauth.md --format json\n cueloop task decompose --attach-to RQ-0042 \"Plan webhook reliability work\" --write\n cueloop task decompose --attach-to RQ-0042 --child-policy replace --format json \"Rebuild the auth subtree\"\n cueloop task decompose --runner codex --model gpt-5.4 --effort high \"Plan queue migration\"\n cueloop undo --dry-run"
     )]
     Decompose(TaskDecomposeArgs),
+
+    /// Insert one or more fully shaped tasks atomically.
+    #[command(
+        next_help_heading = "Create and build",
+        after_long_help = "Continuation workflow:\n - CueLoop assigns durable task IDs while holding the queue lock.\n - Use local `key` values in the request; do not include durable `id` fields.\n - Use --dry-run to preview allocated IDs and validation without saving queue changes.\n - Use --format json to emit the same versioned document used by `cueloop machine task insert`.\n - Prefer this command over `cueloop queue next-id` + manual JSON edits for agent/script queue shaping.\n\nExamples:\n cat /tmp/task-insert.json | cueloop task insert\n cueloop task insert --input /tmp/task-insert.json\n cueloop task insert --dry-run --input /tmp/task-insert.json\n cueloop task insert --format json --input /tmp/task-insert.json\n cueloop queue validate"
+    )]
+    Insert(TaskInsertArgs),
 
     /// Automatically create refactoring tasks for large files.
     #[command(

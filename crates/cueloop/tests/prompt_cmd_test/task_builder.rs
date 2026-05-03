@@ -35,5 +35,6 @@ fn task_builder_prompt_includes_request_and_hints() -> Result<()> {
     assert!(prompt.contains("Add tests"));
     assert!(prompt.contains("rust,tests"));
     assert!(prompt.contains("crates/cueloop"));
+    assert!(prompt.contains("cueloop task insert"));
     Ok(())
 }

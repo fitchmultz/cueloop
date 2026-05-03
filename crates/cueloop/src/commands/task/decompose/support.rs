@@ -387,6 +387,10 @@ fn collect_materialized_specs_for_nodes(
             notes: Vec::new(),
             request: Some(context.request.to_string()),
             relates_to: Vec::new(),
+            blocks: Vec::new(),
+            duplicates: None,
+            custom_fields: HashMap::new(),
+            agent: None,
             parent_local_key: parent_local_key.map(|value| value.to_string()),
             parent_task_id: parent_task_id.map(|value| value.to_string()),
             depends_on_local_keys: node
@@ -399,6 +403,7 @@ fn collect_materialized_specs_for_nodes(
                         .expect("sibling dependency should resolve during normalization")
                 })
                 .collect(),
+            depends_on_task_ids: Vec::new(),
             estimated_minutes: None,
         });
 

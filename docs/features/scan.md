@@ -435,7 +435,12 @@ After a successful scan, the agent:
    - Higher priority tasks come first
    - Includes evidence, plan, scope, and tags
 
-2. **Logs results to console**
+2. **Inserts tasks atomically**
+   - Scan agents should prefer `cueloop task insert` with local request keys and no durable `id` fields.
+   - CueLoop allocates durable IDs while holding the queue lock, validates the preview, and only then saves the queue.
+   - `cueloop queue next-id` remains a manual preview helper and does not reserve IDs.
+
+3. **Logs results to console**
    ```
    Scan added 12 task(s):
    - RQ-0045: Fix unsafe deserialization in auth module
@@ -444,12 +449,12 @@ After a successful scan, the agent:
    ...
    ```
 
-3. **Backfills metadata**
+4. **Backfills metadata**
    - Sets `request` field to `"scan: <focus>"`
    - Sets `created_at` and `updated_at` timestamps
    - Adds appropriate tags (`maintenance`, `innovation`, or `scan`)
 
-4. **Validates queue integrity**
+5. **Validates queue integrity**
    - Ensures edited queue passes `cueloop queue validate`
    - Rejects invalid task relationships or malformed fields
 
@@ -457,7 +462,7 @@ After a successful scan, the agent:
 
 | Field | Value |
 |-------|-------|
-| `id` | Auto-generated via `cueloop queue next-id` |
+| `id` | Auto-generated during `cueloop task insert` while the queue lock is held |
 | `status` | `"todo"` |
 | `priority` | `critical`, `high`, `medium`, or `low` |
 | `title` | Outcome-sized description |

@@ -33,9 +33,14 @@ fn spec(local_key: &str, title: &str) -> MaterializedTaskSpec {
         notes: vec![],
         request: Some("shared request".to_string()),
         relates_to: vec![],
+        blocks: vec![],
+        duplicates: None,
+        custom_fields: HashMap::new(),
+        agent: None,
         parent_local_key: None,
         parent_task_id: None,
         depends_on_local_keys: vec![],
+        depends_on_task_ids: vec![],
         estimated_minutes: None,
     }
 }

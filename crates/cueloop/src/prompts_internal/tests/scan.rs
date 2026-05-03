@@ -99,7 +99,7 @@ fn render_scan_prompt_maintenance_mode_includes_maintenance_guidance() -> Result
 }
 
 #[test]
-fn default_scan_prompt_mentions_next_id_command() -> Result<()> {
+fn default_scan_prompt_mentions_atomic_insert_command() -> Result<()> {
     let dir = TempDir::new()?;
     let template = load_scan_prompt(dir.path(), ScanPromptVersion::V1, ScanMode::Innovation)?;
     let config = default_config();
@@ -111,17 +111,16 @@ fn default_scan_prompt_mentions_next_id_command() -> Result<()> {
         ProjectType::Code,
         &config,
     )?;
-    assert!(rendered.contains("cueloop queue next-id"));
+    assert!(rendered.contains("cueloop task insert"));
     assert!(
-        rendered.contains("cueloop queue next is NOT an ID generator")
-            || rendered.contains("returns the next queued task, not a new ID"),
-        "prompt should clarify the difference between 'next' and 'next-id'"
+        rendered.contains("returns the next queued task, not a new ID"),
+        "prompt should clarify the difference between 'next' and ID creation"
     );
     Ok(())
 }
 
 #[test]
-fn default_scan_prompt_mentions_count_flag_for_multi_task() -> Result<()> {
+fn default_scan_prompt_prefers_atomic_insert_and_demotes_next_id() -> Result<()> {
     let dir = TempDir::new()?;
     let template = load_scan_prompt(dir.path(), ScanPromptVersion::V1, ScanMode::Maintenance)?;
     let config = default_config();
@@ -133,21 +132,19 @@ fn default_scan_prompt_mentions_count_flag_for_multi_task() -> Result<()> {
         ProjectType::Code,
         &config,
     )?;
-    // Should mention --count for generating multiple IDs
     assert!(
-        rendered.contains("next-id --count"),
-        "prompt should mention next-id --count"
+        rendered.contains("cueloop task insert"),
+        "prompt should mention task insert"
     );
-    // Should warn that next-id does not reserve IDs
     assert!(
         rendered.contains("does NOT reserve IDs") || rendered.contains("does not reserve IDs"),
-        "prompt should warn that next-id does not reserve IDs"
+        "prompt should warn that next-id is only a fallback preview"
     );
     Ok(())
 }
 
 #[test]
-fn default_scan_prompt_innovation_mode_mentions_count_flag() -> Result<()> {
+fn default_scan_prompt_innovation_mode_mentions_atomic_insert() -> Result<()> {
     let dir = TempDir::new()?;
     let template = load_scan_prompt(dir.path(), ScanPromptVersion::V1, ScanMode::Innovation)?;
     let config = default_config();
@@ -159,10 +156,9 @@ fn default_scan_prompt_innovation_mode_mentions_count_flag() -> Result<()> {
         ProjectType::Code,
         &config,
     )?;
-    // Innovation mode should also have the --count guidance
     assert!(
-        rendered.contains("next-id --count"),
-        "innovation mode prompt should mention next-id --count"
+        rendered.contains("cueloop task insert"),
+        "innovation mode prompt should mention task insert"
     );
     assert!(
         rendered.contains("does NOT reserve IDs") || rendered.contains("does not reserve IDs"),
