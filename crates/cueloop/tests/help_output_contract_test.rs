@@ -69,7 +69,7 @@ fn primary_binary_reports_invoked_name_in_root_help() {
 }
 
 #[test]
-fn root_help_mentions_runner_and_models_and_precedence() {
+fn root_help_is_a_concise_command_map() {
     let (status, stdout, stderr) = run(&["--help"]);
     assert!(
         status.success(),
@@ -78,33 +78,29 @@ fn root_help_mentions_runner_and_models_and_precedence() {
 
     let combined = format!("{stdout}\n{stderr}");
 
-    assert_contains(&combined, "Allowed runners:");
-    assert_contains(&combined, "codex");
-    assert_contains(&combined, "opencode");
-    assert_contains(&combined, "gemini");
-    assert_contains(&combined, "claude");
-    assert_contains(&combined, "cursor");
+    assert_contains(&combined, "BLUF command map:");
+    assert_contains(&combined, "cueloop queue list");
+    assert_contains(&combined, "cueloop queue next --with-title");
+    assert_contains(&combined, "cueloop task \"Fix the flaky test\"");
+    assert_contains(&combined, "cueloop scan \"CI gaps\"");
+    assert_contains(&combined, "cueloop run one");
+    assert_contains(&combined, "cueloop run loop --max-tasks 1");
+    assert_contains(&combined, "cueloop help-all");
+    assert_contains(&combined, "cueloop <command> --help");
+    assert_contains(&combined, "cueloop runner list");
+    assert_contains(&combined, "cueloop runner capabilities codex");
 
-    assert_contains(&combined, "Allowed models:");
-    assert_contains(&combined, "gpt-5.3-codex");
-    assert_contains(&combined, "gpt-5.3-codex-spark");
-    assert_contains(&combined, "gpt-5.3");
-    assert_not_contains(&combined, "gpt-5.2-codex");
-    assert_not_contains(&combined, "gpt-5.2");
-    assert_contains(&combined, "zai-coding-plan/glm-4.7");
-    assert_contains(&combined, "gemini-3-pro-preview");
-    assert_contains(&combined, "gemini-3-flash-preview");
-    assert_contains(&combined, "sonnet");
-    assert_contains(&combined, "opus");
-    assert_contains(&combined, "arbitrary model ids");
-
-    assert_contains(&combined, "CLI flags override");
-    assert_contains(&combined, "project config");
-    assert_contains(&combined, "global config");
+    assert_not_contains(&combined, "Config example (.cueloop/config.jsonc):");
+    assert_not_contains(&combined, "Allowed models:");
+    assert_not_contains(&combined, "Allowed runners:");
+    assert_not_contains(&combined, "executes queued tasks via codex/opencode");
+    assert_not_contains(&combined, "zai-coding-plan/glm-4.7");
+    assert_not_contains(&combined, "arbitrary model ids");
+    assert_not_contains(&combined, "CLI flags override project config");
 }
 
 #[test]
-fn run_help_mentions_precedence_and_overrides_exist() {
+fn run_help_mentions_precedence_and_detailed_runner_catalog() {
     let (status, stdout, stderr) = run(&["run", "--help"]);
     assert!(
         status.success(),
@@ -117,6 +113,19 @@ fn run_help_mentions_precedence_and_overrides_exist() {
     assert_contains(&combined, "CLI overrides");
     assert_contains(&combined, "task");
     assert_contains(&combined, "config");
+    assert_contains(&combined, "Allowed runners:");
+    assert_contains(&combined, "Allowed models:");
+    assert_contains(&combined, "gpt-5.3-codex");
+    assert_contains(&combined, "gpt-5.3-codex-spark");
+    assert_contains(&combined, "gpt-5.3");
+    assert_not_contains(&combined, "gpt-5.2-codex");
+    assert_not_contains(&combined, "gpt-5.2");
+    assert_contains(&combined, "zai-coding-plan/glm-4.7");
+    assert_contains(&combined, "gemini-3-pro-preview");
+    assert_contains(&combined, "gemini-3-flash-preview");
+    assert_contains(&combined, "sonnet");
+    assert_contains(&combined, "opus");
+    assert_contains(&combined, "arbitrary model ids");
     assert_contains(&combined, "Blocking-state diagnosis");
     assert_contains(&combined, "cueloop doctor");
     assert_contains(&combined, "cueloop machine doctor report");
@@ -238,7 +247,7 @@ fn task_mutate_help_mentions_continuation_and_format() {
 }
 
 #[test]
-fn task_build_help_mentions_repo_prompt_flag() {
+fn task_build_help_mentions_repo_prompt_flag_and_runner_examples() {
     let (status, stdout, stderr) = run(&["task", "build", "--help"]);
     assert!(
         status.success(),
@@ -248,6 +257,14 @@ fn task_build_help_mentions_repo_prompt_flag() {
     let combined = format!("{stdout}\n{stderr}");
 
     assert_contains(&combined, "--repo-prompt");
+    assert_contains(
+        &combined,
+        "cueloop task --runner opencode --model gpt-5.3 \"Add docs for OpenCode setup\"",
+    );
+    assert_contains(
+        &combined,
+        "cueloop task --runner codex --model gpt-5.4 --effort high \"Fix queue validation\"",
+    );
 }
 
 #[test]
@@ -328,7 +345,7 @@ fn task_show_help_mentions_examples() {
 }
 
 #[test]
-fn scan_help_mentions_repo_prompt_flag() {
+fn scan_help_mentions_repo_prompt_flag_and_runner_override_examples() {
     let (status, stdout, stderr) = run(&["scan", "--help"]);
     assert!(
         status.success(),
@@ -338,6 +355,14 @@ fn scan_help_mentions_repo_prompt_flag() {
     let combined = format!("{stdout}\n{stderr}");
 
     assert_contains(&combined, "--repo-prompt");
+    assert_contains(
+        &combined,
+        "cueloop scan --runner opencode --model gpt-5.3 \"CI and safety gaps\"",
+    );
+    assert_contains(
+        &combined,
+        "cueloop scan --runner codex --model gpt-5.4 --effort high \"queue correctness\"",
+    );
 }
 
 #[test]

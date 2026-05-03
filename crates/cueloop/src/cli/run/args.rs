@@ -28,7 +28,7 @@ use super::help::{
 
 #[derive(Args)]
 #[command(
-    about = "Run CueLoop supervisor (executes queued tasks via codex/opencode/gemini/claude/cursor/kimi/pi)",
+    about = "Run CueLoop supervisor (executes queued tasks)",
     after_long_help = RUN_AFTER_LONG_HELP
 )]
 pub struct RunArgs {

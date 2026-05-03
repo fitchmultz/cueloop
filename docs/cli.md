@@ -140,7 +140,11 @@ cueloop run one --phases 3
 cueloop run one --runner codex --model gpt-5.4 --effort high
 cueloop run one --runner-phase1 codex --model-phase1 gpt-5.4 --effort-phase1 high
 cueloop run one --runner-phase2 codex --model-phase2 gpt-5.4 --effort-phase2 medium
+cueloop runner list
+cueloop runner capabilities codex
 ```
+
+Use `cueloop runner list` to discover runner IDs and `cueloop runner capabilities <runner>` to inspect model and feature support before picking overrides.
 
 ### Queue Operations
 

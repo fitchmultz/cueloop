@@ -33,53 +33,30 @@ use super::{
 #[command(name = "cueloop")]
 #[command(about = "CueLoop CLI")]
 #[command(version)]
-#[command(after_long_help = r#"Runner selection:
-  - CLI flags override project config, which overrides global config, which overrides built-in defaults.
-  - Default runner/model come from config files: project config (.cueloop/config.jsonc) > global config (~/.config/cueloop/config.jsonc) > built-in.
-  - `task` and `scan` accept --runner/--model/--effort as one-off overrides.
-  - `run one` and `run loop` accept --runner/--model/--effort as one-off overrides; otherwise they use task.agent overrides when present; otherwise config agent defaults.
+#[command(after_long_help = r#"BLUF command map:
+  cueloop init                         Bootstrap CueLoop in this repo
+  cueloop queue list                   See queued work
+  cueloop queue next --with-title      Pick the next task to run
+  cueloop task "Fix the flaky test"    Create a task from a request
+  cueloop scan "CI gaps"               Scan repo state into task ideas
+  cueloop run one                      Run the next task
+  cueloop run loop --max-tasks 1       Run one bounded supervisor iteration
+  cueloop app open                     Open the macOS app
 
-Config example (.cueloop/config.jsonc):
-  {
-    "version": 2,
-    "agent": {
-      "runner": "codex",
-      "model": "gpt-5.4",
-      "codex_bin": "codex",
-      "gemini_bin": "gemini",
-      "claude_bin": "claude"
-    }
-  }
+Next help:
+  cueloop <command> --help             Show command-specific flags and examples
+  cueloop help-all                     Show advanced and experimental commands
+  cueloop run --help                   Runner precedence, loop limits, phase overrides
+  cueloop task --help                  Task creation and lifecycle map
+  cueloop scan --help                  Scan modes and runner overrides
+  cueloop config --help                Config surfaces and schema
+  cueloop runner list                  See available runners
+  cueloop runner capabilities codex    Inspect runner models and features
 
 Notes:
-  - Allowed runners: codex, opencode, gemini, claude, cursor, kimi, pi
-  - Allowed models: gpt-5.4, gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.3, zai-coding-plan/glm-4.7, gemini-3-pro-preview, gemini-3-flash-preview, sonnet, opus, kimi-for-coding (codex supports only gpt-5.4 + gpt-5.3-codex + gpt-5.3-codex-spark + gpt-5.3; opencode/gemini/claude/cursor/kimi/pi accept arbitrary model ids))
   - CueLoop is the product and executable name.
   - Repos store runtime state in `.cueloop/`.
-  - On macOS: use `cueloop app open` to launch the GUI.
-  - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only.
-
-Examples:
-  cueloop app open
-  cueloop queue list
-  cueloop queue show RQ-0008
-  cueloop queue next --with-title
-  cueloop scan --runner opencode --model gpt-5.3 --focus "CI gaps"
-  cueloop task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
-  cueloop scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
-  cueloop scan --runner claude --model sonnet --focus "risk audit"
-  cueloop task --runner claude --model opus "Add tests for X"
-  cueloop scan --runner cursor --model claude-opus-4-5-20251101 --focus "risk audit"
-  cueloop task --runner cursor --model claude-opus-4-5-20251101 "Add tests for X"
-  cueloop scan --runner kimi --focus "risk audit"
-  cueloop task --runner kimi --model kimi-for-coding "Add tests for X"
-  cueloop run one
-  cueloop run loop --max-tasks 1
-  cueloop run loop
-
-More help:
-  - Default help shows core commands only.
-  - Run `cueloop help-all` to see advanced and experimental commands."#)]
+  - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only."#)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
