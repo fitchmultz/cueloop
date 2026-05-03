@@ -1,4 +1,146 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0082",
+      "status": "todo",
+      "priority": "high",
+      "title": "Make run-loop examples safe by default",
+      "description": "CueLoop's first-run and agent-facing docs repeatedly present unbounded `run loop` usage as the normal path. That is risky guidance for AI agents and new operators because it encourages unattended queue execution before the user has chosen an explicit cap. Replace default examples with capped or single-task commands, keep `--max-tasks 0` documented only as an explicit advanced/unlimited mode, and add regression checks so generated help and docs do not drift back to unsafe defaults.",
+      "tags": [
+        "scan",
+        "docs",
+        "cli-help",
+        "agent-docs",
+        "safety"
+      ],
+      "scope": [
+        "crates/cueloop/src/cli/run/help.rs",
+        "crates/cueloop/src/cli/args.rs",
+        "crates/cueloop/src/templates or runtime README template source",
+        ".cueloop/README.md",
+        "docs/cli.md",
+        "docs/quick-start.md",
+        "docs/guides/getting-started.md",
+        "crates/cueloop/tests/",
+        "cueloop --help",
+        "cueloop run loop --help",
+        "cueloop queue validate"
+      ],
+      "evidence": [
+        "path: crates/cueloop/src/cli/run/help.rs:158-176 :: run-loop help defines `--max-tasks 0` as unlimited and lists unlimited loop examples before capped examples.",
+        "path: crates/cueloop/src/cli/args.rs:62-78 :: top-level help examples end with both `cueloop run loop --max-tasks 1` and uncapped `cueloop run loop`, making uncapped loop execution look like a normal starter command.",
+        "path: .cueloop/README.md:82-84 :: generated runtime guidance lists `cueloop run loop --max-tasks 0` and `cueloop run loop --phases 2 --max-tasks 0` under Run multiple tasks.",
+        "path: docs/cli.md:72-82 :: Create and Run quick path includes `cueloop run loop --max-tasks 0` before explaining that it means unlimited execution.",
+        "path: docs/quick-start.md:55-60 :: quick start says `cueloop run loop` runs continuously until the queue is drained with no capped alternative in that primary code block.",
+        "workflow: rg -n \"run loop --max-tasks 0|cueloop run loop$\" README.md docs .cueloop/README.md crates/cueloop/src crates/cueloop/tests :: found unbounded or unlimited run-loop examples across generated runtime docs, quick-start docs, CLI reference, and help source."
+      ],
+      "plan": [
+        "Decide the safe default wording for human and agent surfaces: prefer `cueloop run one`, `cueloop run loop --max-tasks 1`, or another positive cap in starter examples.",
+        "Update run-loop help so unlimited mode remains documented but is labeled advanced/intentional and no longer appears first in examples.",
+        "Update the top-level help examples, docs quick-start paths, and generated `.cueloop/README.md` template source so default execution examples are capped or single-task.",
+        "Add or update help/docs regression checks that fail on primary starter examples using uncapped `cueloop run loop` or `--max-tasks 0` outside explicit unlimited sections.",
+        "Regenerate any generated runtime docs from their source template instead of hand-editing generated output alone.",
+        "Verify with focused help/docs tests, `cueloop --help`, `cueloop run loop --help`, and `cueloop queue validate`."
+      ],
+      "request": "scan: documentation and AI-agent guidance",
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      },
+      "created_at": "2026-05-03T14:17:28Z",
+      "updated_at": "2026-05-03T14:17:28Z"
+    },
+    {
+      "id": "RQ-0083",
+      "status": "todo",
+      "priority": "medium",
+      "title": "Trim top-level help to a BLUF command map",
+      "description": "The root `cueloop --help` surface currently mixes command discovery, runner precedence, a full config snippet, a long model catalog, and many runner-specific examples. That makes the first help screen harder for agents and new users to scan. Reshape root help into a short BLUF command map with a few canonical next actions, then move detailed runner/model examples to `task`, `scan`, `run`, config docs, or `help-all` where users ask for that detail.",
+      "tags": [
+        "scan",
+        "cli-help",
+        "docs",
+        "ux",
+        "brevity"
+      ],
+      "scope": [
+        "crates/cueloop/src/cli/args.rs",
+        "crates/cueloop/src/cli/*/help.rs",
+        "crates/cueloop/tests/",
+        "docs/cli.md",
+        "cueloop --help",
+        "cueloop help-all",
+        "cueloop scan --help",
+        "cueloop task --help",
+        "cueloop queue validate"
+      ],
+      "evidence": [
+        "path: crates/cueloop/src/cli/args.rs:36-60 :: top-level after-long-help embeds runner precedence, a JSON config example, allowed runners, and a full allowed-models catalog before examples.",
+        "path: crates/cueloop/src/cli/args.rs:62-78 :: top-level help includes 16 example commands, with 7 runner/model-specific scan/task examples plus both capped and uncapped run-loop examples.",
+        "workflow: cueloop --help :: rendered root help prints the same config snippet, long model list, and runner-specific examples before the More help section.",
+        "path: crates/cueloop/src/cli/run/help.rs:153-181 :: detailed run help already owns run-loop limits and runner override examples, so root help duplicates detail that can live in subcommand help.",
+        "path: docs/cli.md:17-38 :: CLI Reference already provides a command map, giving a better home for detailed command discovery than the first root help screen."
+      ],
+      "plan": [
+        "Define a short root-help information architecture: one-line purpose, core command map, 4-6 starter examples, and pointers to `help-all`, `config`, `task`, `scan`, and `run` help for details.",
+        "Move or deduplicate runner/model catalog and config-example detail out of root help into subcommand help or docs that already own those concepts.",
+        "Keep the allowed-runner/model source of truth testable so removing the root catalog does not reduce discoverability for users who ask for detailed help.",
+        "Update help snapshot/parse tests to assert root help stays concise and that detailed runner examples remain reachable from the owning subcommands.",
+        "Cross-check `docs/cli.md` so it links to the right detailed surfaces and does not duplicate stale root-help text.",
+        "Verify with `cueloop --help`, `cueloop help-all`, representative subcommand help commands, focused Rust tests, and `cueloop queue validate`."
+      ],
+      "request": "scan: documentation and AI-agent guidance",
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      },
+      "created_at": "2026-05-03T14:17:28Z",
+      "updated_at": "2026-05-03T14:17:28Z"
+    },
+    {
+      "id": "RQ-0084",
+      "status": "todo",
+      "priority": "medium",
+      "title": "Make generated AGENTS.md templates repo-evidence based",
+      "description": "The `cueloop context init` templates are agent-facing source-of-truth files, but the generated non-negotiables and build sections currently impose broad defaults that may not be true for the target repo. In particular, every language template requires documentation comments in every changed source file, and the generated build section treats Makefile targets as the contract even when a repo may not have those targets. Tighten the templates so generated AGENTS.md files are BLUF, evidence-based, and explicit about defaults versus detected facts.",
+      "tags": [
+        "scan",
+        "agent-docs",
+        "context",
+        "templates",
+        "docs"
+      ],
+      "scope": [
+        "crates/cueloop/assets/agents_templates/",
+        "crates/cueloop/src/commands/context/render.rs",
+        "crates/cueloop/src/commands/context/detect.rs",
+        "crates/cueloop/tests/context_cmd_test/",
+        "docs/features/context.md",
+        "cueloop context init --help",
+        "cueloop context validate --help",
+        "cueloop queue validate"
+      ],
+      "evidence": [
+        "path: crates/cueloop/assets/agents_templates/rust.md:5-16 :: generated Rust AGENTS.md marks CI, source docs, tests, feature parity, CLI help, and secrets as Non-Negotiables; it requires every changed source file to start with module docs.",
+        "path: crates/cueloop/assets/agents_templates/typescript.md:5-14 :: generated TypeScript AGENTS.md requires every changed source file to start with a JSDoc comment, regardless of project convention.",
+        "path: crates/cueloop/assets/agents_templates/generic.md:5-13 :: generic template also requires source docs on every changed source file, even without detected language-specific evidence.",
+        "path: crates/cueloop/assets/agents_templates/rust.md:25-41 :: generated Rust AGENTS.md states `The Makefile is the contract` and lists `make install`, `make test`, `make lint`, `make format`, `make type-check`, `make generate`, `make update`, and `make clean` as commands.",
+        "path: crates/cueloop/src/commands/context/render.rs:68-80 :: noninteractive generation defaults missing wizard hints to `make ci`, `make build`, `make test`, `make lint`, and `make format`.",
+        "path: docs/features/context.md:152-160 :: public docs show the generated AGENTS.md example with `CI gate: {ci_command} MUST pass`, `Source docs: every new/changed source file MUST start with module docs`, and tests as non-negotiables."
+      ],
+      "plan": [
+        "Separate detected facts from recommended defaults in the AGENTS.md templates so generated agent instructions do not claim a Makefile or source-doc policy unless detection or user input supports it.",
+        "Replace blanket source-doc mandates with a concise maintainability rule that preserves existing project documentation style and asks agents to add file-level docs only when the repo convention or complexity warrants it.",
+        "Make build/test/CI sections render commands from detected repo files or wizard hints, with clear TODO placeholders only when no command can be proven.",
+        "Update context docs examples to match the safer generated template shape and explain how to opt into stricter local policies.",
+        "Add or update context init tests for repos with and without Makefiles and for each language template's non-negotiables, guarding against false source-of-truth claims.",
+        "Verify with context command tests, `cueloop context init --help`, generated sample inspection, and `cueloop queue validate`."
+      ],
+      "request": "scan: documentation and AI-agent guidance",
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      },
+      "created_at": "2026-05-03T14:17:28Z",
+      "updated_at": "2026-05-03T14:17:28Z"
+    }
+  ]
 }
