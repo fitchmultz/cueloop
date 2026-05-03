@@ -128,6 +128,8 @@ pub(super) fn handle_finished_workers(
             if let Some(worker) = guard.state_file_mut().get_worker_mut(&task_id) {
                 worker.mark_completed(timeutil::now_utc_rfc3339_or_fallback());
             }
+
+            remove_workspace_best_effort(context.workspace_root, &workspace, "worker success");
         } else {
             stats.record_failure();
 
