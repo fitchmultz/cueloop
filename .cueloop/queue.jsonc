@@ -2,57 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0085",
-      "status": "todo",
-      "title": "Guard queue-only agent commands against stray edits",
-      "description": "Runner-backed queue-shaping commands tell agents to modify only the queue, but the command implementations trust successful runner exits and valid queue JSON rather than enforcing a post-run mutation boundary. A scan or task-builder runner can accidentally edit source, docs, or config files and still succeed if the queue validates. Add a shared post-run guard for queue-only workflows so CueLoop either rejects/reverts unexpected non-queue mutations or reports an explicit operator decision before persisting backfilled queue fields.",
-      "priority": "high",
-      "tags": [
-        "scan",
-        "safety",
-        "queue",
-        "runner",
-        "agent-docs"
-      ],
-      "scope": [
-        "crates/cueloop/src/commands/scan.rs",
-        "crates/cueloop/src/commands/task/build.rs",
-        "crates/cueloop/src/commands/task/update/runner.rs",
-        "crates/cueloop/src/commands/task/decompose/planning.rs",
-        "crates/cueloop/src/git/clean.rs or equivalent git cleanliness helper",
-        "crates/cueloop/assets/prompts/scan_general_v2.md",
-        "crates/cueloop/assets/prompts/scan_maintenance_v2.md",
-        "crates/cueloop/assets/prompts/task_builder.md",
-        "crates/cueloop/tests/",
-        "cueloop queue validate"
-      ],
-      "evidence": [
-        "path: crates/cueloop/assets/prompts/scan_general_v2.md :: Outcome Contract :: scan agents are told success means only `{{config.queue.file}}` is modified and queue validation passes.",
-        "path: crates/cueloop/assets/prompts/task_builder.md :: Output Target :: task-builder agents are told to modify `{{config.queue.file}}` only and no other files.",
-        "path: crates/cueloop/src/commands/scan.rs :: run_scan :: pre-run cleanliness is checked with `git::require_clean_repo_ignoring_paths`, then runner execution uses `revert_on_error: true`, but the success path only validates queue state, backfills new task fields, and saves the queue; it does not reject unexpected source/docs/config edits after a successful runner run.",
-        "path: crates/cueloop/src/commands/task/build.rs :: build_task_impl :: runner-backed task creation validates queue state before/after and saves backfilled fields, but it does not run a clean-repo preflight or post-run allowed-path check even though its prompt says queue-only output.",
-        "path: crates/cueloop/src/runutil/execution/orchestration/core.rs :: run_prompt_with_handling_backend :: revert handling is only applied on interrupted, timeout, non-zero, signal, or other failure paths; successful runner output returns without any mutation-boundary check."
-      ],
-      "plan": [
-        "Define the canonical allowed mutation set for queue-only runner commands: active queue, done archive when applicable, and any intentional CueLoop cache/checkpoint outputs; exclude source, docs, configs, and prompts by default.",
-        "Add a shared post-run cleanliness helper that compares the clean pre-run baseline with current git status and reports unexpected paths with enough detail for humans and machine callers.",
-        "Wire the guard into scan, task build, task update, and task decomposition planning/write paths where prompts or docs promise queue-only behavior, without breaking legitimate queue/cache backfills.",
-        "Decide and implement safe handling for unexpected edits: fail before queue backfill/save when possible, and use the existing revert/keep decision path when runner output already changed the workspace.",
-        "Add integration tests using a fake runner that edits both `.cueloop/queue.jsonc` and an unrelated source/doc file; assert the command does not silently succeed and that the queue remains valid or is restored according to the chosen policy.",
-        "Verify with focused command tests, representative prompt rendering tests, `cueloop scan --help`, `cueloop task --help`, and `cueloop queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: post-0.4.1 release dogfood scan",
-      "created_at": "2026-05-03T17:51:11Z",
-      "updated_at": "2026-05-03T17:51:11Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0086",
       "status": "todo",
       "title": "Make agent task insertion atomic",
