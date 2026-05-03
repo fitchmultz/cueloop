@@ -2,57 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0087",
-      "status": "todo",
-      "title": "Remove misleading release-dry-run mutation path",
-      "description": "The Makefile still exposes `make release-dry-run`, but that target runs the same `scripts/release.sh verify` transaction as `make release-verify`. Verify intentionally syncs versions, promotes the changelog, runs release gates, builds artifacts, and records a release snapshot, leaving release metadata dirty until execute commits it. A target named dry-run is a trap for agents and maintainers because it sounds non-mutating. Rename, remove, or change the target so the command name and help text match the transaction's real side effects.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "release",
-        "workflow",
-        "docs",
-        "automation"
-      ],
-      "scope": [
-        "Makefile",
-        "mk/rust.mk",
-        "scripts/release.sh",
-        "scripts/lib/release_verify_pipeline.sh",
-        "docs/guides/release-runbook.md",
-        "docs/releasing.md",
-        "crates/cueloop/tests/release_script_help_test.rs",
-        "crates/cueloop/tests/release_integration_contract_test/",
-        "make help",
-        "make release-verify VERSION=<version>",
-        "cueloop queue validate"
-      ],
-      "evidence": [
-        "path: mk/rust.mk :: release-dry-run target :: `make release-dry-run VERSION=x.y.z` invokes `scripts/release.sh verify \"$(VERSION)\"`, the same release verification transaction used by `make release-verify`.",
-        "path: scripts/lib/release_verify_pipeline.sh :: release_prepare_verified_snapshot :: verify mode runs `versioning.sh sync --version`, `release_generate_changelog_entries`, `release_promote_changelog`, `pre-public-check --release-context`, `release_run_ship_gate`, `build-release-artifacts.sh`, `release_generate_release_notes`, and records the ready snapshot.",
-        "path: docs/guides/release-runbook.md :: Notes :: a successful `make release-verify` intentionally leaves release metadata dirty until `make release` turns it into the release commit.",
-        "path: Makefile :: help target :: help advertises `make release-verify VERSION=x.y.z` but does not explain `release-dry-run`, leaving the mutating alias discoverable only from target names and scripts.",
-        "path: crates/cueloop/tests/release_script_help_test.rs :: release script help coverage :: tests assert the transaction command model for `verify`, `execute`, and `reconcile`, but there is no contract test preventing Makefile aliases from presenting verify as a non-mutating dry run."
-      ],
-      "plan": [
-        "Choose the safest cutover: remove `release-dry-run`, make it a pure preview that never mutates tracked files, or turn it into a deprecated alias that prints an explicit mutation warning and points to `release-verify`.",
-        "Update Makefile help, release docs, and any script references so there is only one clear source of truth for the mutating verification transaction.",
-        "If the target remains, add a prominent help line and preflight output stating that it prepares a release snapshot and intentionally dirties release metadata.",
-        "Add Makefile/release contract tests that assert mutating release verification is not exposed under a misleading dry-run name without a warning.",
-        "Verify with `make help`, release script help tests, targeted release policy tests, and `cueloop queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: post-0.4.1 release dogfood scan",
-      "created_at": "2026-05-03T17:51:11Z",
-      "updated_at": "2026-05-03T17:51:11Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0082",
       "status": "todo",
       "title": "Make run-loop examples safe by default",
