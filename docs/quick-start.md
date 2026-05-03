@@ -56,8 +56,8 @@ cueloop task build "Audit webhook retry behavior"
 # Run one runnable task
 cueloop run one
 
-# Run continuously until queue is drained
-cueloop run loop
+# Run a capped loop; choose the cap before starting
+cueloop run loop --max-tasks 1
 ```
 
 Useful run variants:

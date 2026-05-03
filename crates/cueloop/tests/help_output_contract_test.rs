@@ -55,6 +55,9 @@ fn assert_occurs_once(haystack: &str, needle: &str) {
         "expected {needle:?} to appear exactly once, found {count}\n--- output ---\n{haystack}\n--- end ---"
     );
 }
+fn contains_exact_trimmed_line(haystack: &str, needle: &str) -> bool {
+    haystack.lines().any(|line| line.trim() == needle)
+}
 
 #[test]
 fn primary_binary_reports_invoked_name_in_root_help() {
@@ -131,7 +134,11 @@ fn run_help_mentions_precedence_and_detailed_runner_catalog() {
     assert_contains(&combined, "cueloop machine doctor report");
     assert_contains(&combined, "Examples:");
     assert_contains(&combined, "cueloop run one");
-    assert_contains(&combined, "cueloop run loop");
+    assert_contains(&combined, "cueloop run loop --max-tasks 1");
+    assert_contains(
+        &combined,
+        "cueloop run loop --max-tasks 0 (advanced unlimited)",
+    );
     assert_contains(&combined, "cueloop run resume");
 }
 
@@ -463,4 +470,48 @@ fn config_examples_from_docs_execute_successfully() {
             args.join(" ")
         );
     }
+}
+
+#[test]
+fn root_help_uses_capped_loop_examples() {
+    let (status, stdout, stderr) = run(&["--help"]);
+    assert!(
+        status.success(),
+        "expected `cueloop --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+    assert!(
+        !contains_exact_trimmed_line(&combined, "cueloop run loop"),
+        "root help should not show a bare unlimited loop starter command\n--- output ---\n{combined}\n--- end ---"
+    );
+    assert!(contains_exact_trimmed_line(
+        &combined,
+        "cueloop run loop --max-tasks 1"
+    ));
+    assert!(contains_exact_trimmed_line(
+        &combined,
+        "cueloop run loop --max-tasks 3"
+    ));
+}
+
+#[test]
+fn run_loop_help_orders_capped_examples_before_unlimited_mode() {
+    let (status, stdout, stderr) = run(&["run", "loop", "--help"]);
+    assert!(
+        status.success(),
+        "expected `cueloop run loop --help` to succeed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+
+    let combined = format!("{stdout}\n{stderr}");
+    let capped = combined
+        .find("cueloop run loop --max-tasks 1")
+        .expect("capped loop example");
+    let unlimited = combined
+        .find("cueloop run loop --max-tasks 0 (intentional unlimited)")
+        .expect("intentional unlimited example");
+    assert!(
+        capped < unlimited,
+        "run loop help should present capped examples before unlimited mode\n--- output ---\n{combined}\n--- end ---"
+    );
 }

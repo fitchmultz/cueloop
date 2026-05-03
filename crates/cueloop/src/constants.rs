@@ -305,7 +305,7 @@ pub mod versions {
     pub const CURSOR_SDK_VERSION: &str = "1.0.11";
 
     /// README template version.
-    pub const README_VERSION: u32 = 9;
+    pub const README_VERSION: u32 = 10;
 
     /// Session state schema version.
     pub const SESSION_STATE_VERSION: u32 = 1;

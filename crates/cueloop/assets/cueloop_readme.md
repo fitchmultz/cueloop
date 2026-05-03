@@ -1,4 +1,4 @@
-<!-- CUELOOP_README_VERSION: 9 -->
+<!-- CUELOOP_README_VERSION: 10 -->
 # CueLoop runtime files
 
 This repo is using CueLoop. The `cueloop` executable is the primary command name. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`.
@@ -82,9 +82,11 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
   - `cueloop run one --phases 3`
   - `cueloop run one --quick`
   - `cueloop run one --include-draft`
-- Run multiple tasks:
+- Run a capped loop:
+  - `cueloop run loop --max-tasks 1`
+  - `cueloop run loop --phases 2 --max-tasks 1`
+- Advanced unlimited loop mode (intentional only):
   - `cueloop run loop --max-tasks 0`
-  - `cueloop run loop --phases 2 --max-tasks 0`
 
 ### PRD, context, and scans
 

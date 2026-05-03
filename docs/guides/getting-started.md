@@ -187,8 +187,8 @@ From the CLI, run the next task in the queue:
 # Run the next available task
 cueloop run one
 
-# Or run in loop mode until all tasks complete
-cueloop run loop
+# Or run a capped loop after choosing an explicit limit
+cueloop run loop --max-tasks 1
 ```
 
 ### View the Queue
@@ -592,7 +592,7 @@ cueloop queue archive
 | `cueloop app open` | Open the macOS app UI |
 | `cueloop run one` | Run next task |
 | `cueloop run one --id RQ-0001` | Run specific task |
-| `cueloop run loop` | Run tasks continuously |
+| `cueloop run loop --max-tasks 3` | Run a capped task loop |
 | `cueloop help-all` | Show core, advanced, and experimental commands |
 | `cueloop task "title"` | Create new task |
 | `cueloop queue list` | List all tasks |
@@ -657,8 +657,8 @@ CueLoop works best with a clean git workflow:
 # 1. Ensure working directory is clean
 git status
 
-# 2. Run tasks (CueLoop will create commits if enabled)
-cueloop run loop
+# 2. Run tasks with an explicit cap (CueLoop will create commits if enabled)
+cueloop run loop --max-tasks 3
 
 # 3. Review changes
 git log --oneline -5
@@ -776,7 +776,7 @@ cueloop prd create requirements.md
 │ INIT       cueloop init                                          │
 │ APP (macOS) cueloop app open                                     │
 │ RUN        cueloop run one        # next task                    │
-│            cueloop run loop       # continuous                   │
+│            cueloop run loop --max-tasks 1 # capped loop          │
 │ TASK       cueloop task "title"                                  │
 │ LIST       cueloop queue list                                    │
 │ ARCHIVE    cueloop queue archive                                 │

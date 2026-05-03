@@ -1,7 +1,7 @@
-<!-- CUELOOP_README_VERSION: 9 -->
+<!-- CUELOOP_README_VERSION: 10 -->
 # CueLoop runtime files
 
-This repo is using CueLoop. The command is `cueloop`. This project stores runtime state in `.cueloop/`.
+This repo is using CueLoop. The `cueloop` executable is the primary command name. This project stores runtime state in `.cueloop/`. New repos default to `.cueloop/`.
 
 > This file is generated and owned by CueLoop. `cueloop init` and agent-facing write-enabled commands may refresh it when CueLoop ships a newer template. Avoid hand-editing it unless you intentionally accept that local drift may be replaced.
 
@@ -59,6 +59,9 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
 
 - Build a task from a request:
   - `cueloop task "Add tests for X"`
+- Insert fully-shaped tasks atomically:
+  - `cueloop task insert --input /tmp/task-insert.json`
+  - `cueloop task insert --dry-run --format json --input /tmp/task-insert.json`
 - Update task fields from repo state:
   - `cueloop task update RQ-0001`
   - `cueloop task update`
@@ -79,9 +82,11 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
   - `cueloop run one --phases 3`
   - `cueloop run one --quick`
   - `cueloop run one --include-draft`
-- Run multiple tasks:
+- Run a capped loop:
+  - `cueloop run loop --max-tasks 1`
+  - `cueloop run loop --phases 2 --max-tasks 1`
+- Advanced unlimited loop mode (intentional only):
   - `cueloop run loop --max-tasks 0`
-  - `cueloop run loop --phases 2 --max-tasks 0`
 
 ### PRD, context, and scans
 
@@ -103,7 +108,7 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
 
 If `cueloop queue validate` reports a duplicate task ID, this usually means a new task was added without incrementing the ID. Do not delete tasks.
 
-1. Run `cueloop queue next-id` to get the next available ID.
+1. Run `cueloop queue next-id` to preview the next available ID.
 2. Edit `.cueloop/queue.jsonc` and change the colliding task ID.
 3. Re-run `cueloop queue validate`.
 
@@ -117,7 +122,7 @@ Use `--count` to generate IDs in one call:
 cueloop queue next-id --count 7
 ```
 
-`next-id` does not reserve IDs. Assign the printed IDs to tasks and insert all tasks into `.cueloop/queue.jsonc` before running other queue commands.
+`next-id` does not reserve IDs. For agent or script queue growth, prefer `cueloop task insert` so CueLoop assigns IDs under the queue lock. Keep `next-id` for manual recovery or one-off JSON surgery.
 
 ## Template variables
 

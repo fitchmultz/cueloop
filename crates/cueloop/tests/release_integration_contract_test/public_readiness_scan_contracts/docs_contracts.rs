@@ -178,3 +178,155 @@ Valid config preview example:
         "docs scan should ignore unrelated version 3 JSON blocks outside the config preview example"
     );
 }
+
+#[test]
+fn public_readiness_scan_docs_mode_rejects_quick_start_bare_run_loop() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path();
+
+    copy_public_readiness_scan_fixture(repo_root);
+    write_file(
+        &repo_root.join("docs/quick-start.md"),
+        r#"```bash
+cueloop run one
+cueloop run loop
+```
+"#,
+    );
+
+    let output = Command::new("bash")
+        .arg(repo_root.join("scripts/lib/public_readiness_scan.sh"))
+        .arg("docs")
+        .current_dir(repo_root)
+        .output()
+        .expect("run public-readiness docs scan");
+
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "docs scan should reject bare run-loop starter examples in quick start"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains(
+            "docs/quick-start.md: quick start must use `cueloop run one` or a capped `run loop --max-tasks <N>` example"
+        ),
+        "docs scan should explain the quick-start run-loop failure\nstdout:\n{}",
+        stdout
+    );
+}
+
+#[test]
+fn public_readiness_scan_docs_mode_rejects_cli_primary_unlimited_loop_example() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path();
+
+    copy_public_readiness_scan_fixture(repo_root);
+    write_file(
+        &repo_root.join("docs/cli.md"),
+        r#"### Create and Run
+
+```bash
+cueloop run one
+cueloop run loop --max-tasks 0
+```
+"#,
+    );
+
+    let output = Command::new("bash")
+        .arg(repo_root.join("scripts/lib/public_readiness_scan.sh"))
+        .arg("docs")
+        .current_dir(repo_root)
+        .output()
+        .expect("run public-readiness docs scan");
+
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "docs scan should reject unlimited loop examples in the primary CLI starter block"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains(
+            "docs/cli.md: CLI Create and Run examples must keep unlimited mode out of the primary starter block"
+        ),
+        "docs scan should explain the CLI starter-block failure\nstdout:\n{}",
+        stdout
+    );
+}
+
+#[test]
+fn public_readiness_scan_docs_mode_allows_cli_advanced_unlimited_loop_section() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path();
+
+    copy_public_readiness_scan_fixture(repo_root);
+    write_file(
+        &repo_root.join("docs/cli.md"),
+        r#"### Create and Run
+
+```bash
+cueloop run one
+cueloop run loop --max-tasks 1
+```
+
+Safe default: use a positive cap.
+
+Advanced unlimited mode:
+
+```bash
+cueloop run loop --max-tasks 0
+```
+"#,
+    );
+
+    let output = Command::new("bash")
+        .arg(repo_root.join("scripts/lib/public_readiness_scan.sh"))
+        .arg("docs")
+        .current_dir(repo_root)
+        .output()
+        .expect("run public-readiness docs scan");
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "docs scan should allow unlimited loop examples outside the primary starter block\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn public_readiness_scan_docs_mode_rejects_generated_readme_unlimited_default() {
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let repo_root = temp_dir.path();
+
+    copy_public_readiness_scan_fixture(repo_root);
+    write_file(
+        &repo_root.join(".cueloop/README.md"),
+        r#"- Run multiple tasks:
+  - `cueloop run loop --max-tasks 0`
+"#,
+    );
+
+    let output = Command::new("bash")
+        .arg(repo_root.join("scripts/lib/public_readiness_scan.sh"))
+        .arg("docs")
+        .current_dir(repo_root)
+        .output()
+        .expect("run public-readiness docs scan");
+
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "docs scan should reject generated runtime README unlimited defaults"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains(
+            ".cueloop/README.md: generated runtime README must use capped loop examples by default"
+        ),
+        "docs scan should explain the runtime README failure\nstdout:\n{}",
+        stdout
+    );
+}

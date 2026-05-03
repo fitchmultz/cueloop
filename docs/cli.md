@@ -74,12 +74,20 @@ cueloop task "Stabilize flaky CI test"
 cueloop run one --profile safe
 cueloop run one --resume
 cueloop run one --debug
-cueloop run loop --max-tasks 0
+cueloop run loop --max-tasks 1
 cueloop run loop --max-tasks 5
 cueloop run resume
 ```
 
-`cueloop run loop --max-tasks 0` means unlimited execution. Use a positive `--max-tasks` value when you want a fixed cap on successful iterations.
+Safe default: use `cueloop run one` or `cueloop run loop --max-tasks <N>` with a positive cap.
+
+Advanced unlimited mode:
+
+```bash
+cueloop run loop --max-tasks 0
+```
+
+`cueloop run loop --max-tasks 0` means unlimited execution. Choose it intentionally when you want the loop to keep running until work runs out, the queue blocks, or you stop it.
 
 ### Resume-aware execution
 

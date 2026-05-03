@@ -93,6 +93,45 @@ STALE_DOC_SNIPPET_CONTRACTS = (
         message="use `cueloop machine task decompose` for CueLoopMac decomposition docs",
     ),
     DocSnippetContract(
+        rel_path="docs/features/app.md",
+        pattern=re.compile(r"(?m)^cueloop run loop$"),
+        message="use a capped run-loop example in app CLI parity snippets; do not show bare `cueloop run loop`",
+    ),
+    DocSnippetContract(
+        rel_path="docs/quick-start.md",
+        pattern=re.compile(r"(?m)^cueloop run loop$"),
+        message="quick start must use `cueloop run one` or a capped `run loop --max-tasks <N>` example",
+    ),
+    DocSnippetContract(
+        rel_path="docs/guides/getting-started.md",
+        pattern=re.compile(r"(?m)^cueloop run loop$"),
+        message="getting started must use capped loop examples instead of bare `cueloop run loop`",
+    ),
+    DocSnippetContract(
+        rel_path="docs/cli.md",
+        pattern=re.compile(
+            r"### Create and Run\n\n```bash\n(?:(?!```)[\s\S])*?cueloop run loop --max-tasks 0",
+            re.MULTILINE,
+        ),
+        message="CLI Create and Run examples must keep unlimited mode out of the primary starter block",
+    ),
+    DocSnippetContract(
+        rel_path="crates/cueloop/assets/cueloop_readme.md",
+        pattern=re.compile(
+            r"- Run (?:multiple tasks|a capped loop):(?:(?!\n- )[\s\S])*?cueloop run loop --max-tasks 0",
+            re.MULTILINE,
+        ),
+        message="generated runtime README template must use capped loop examples by default",
+    ),
+    DocSnippetContract(
+        rel_path=".cueloop/README.md",
+        pattern=re.compile(
+            r"- Run (?:multiple tasks|a capped loop):(?:(?!\n- )[\s\S])*?cueloop run loop --max-tasks 0",
+            re.MULTILINE,
+        ),
+        message="generated runtime README must use capped loop examples by default",
+    ),
+    DocSnippetContract(
         rel_path="docs/features/session-management.md",
         pattern=re.compile(
             r'"version"\s*:\s*4[\s\S]*?"resume_preview"',

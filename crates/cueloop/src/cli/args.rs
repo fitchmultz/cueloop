@@ -56,7 +56,30 @@ Next help:
 Notes:
   - CueLoop is the product and executable name.
   - Repos store runtime state in `.cueloop/`.
-  - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only."#)]
+  - On macOS: use `cueloop app open` to launch the GUI.
+  - App-launched runs are noninteractive: they stream output, but interactive approvals remain terminal-only.
+
+Examples:
+  cueloop app open
+  cueloop queue list
+  cueloop queue show RQ-0008
+  cueloop queue next --with-title
+  cueloop scan --runner opencode --model gpt-5.3 --focus "CI gaps"
+  cueloop task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
+  cueloop scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
+  cueloop scan --runner claude --model sonnet --focus "risk audit"
+  cueloop task --runner claude --model opus "Add tests for X"
+  cueloop scan --runner cursor --model claude-opus-4-5-20251101 --focus "risk audit"
+  cueloop task --runner cursor --model claude-opus-4-5-20251101 "Add tests for X"
+  cueloop scan --runner kimi --focus "risk audit"
+  cueloop task --runner kimi --model kimi-for-coding "Add tests for X"
+  cueloop run one
+  cueloop run loop --max-tasks 1
+  cueloop run loop --max-tasks 3
+
+More help:
+  - Default help shows core commands only.
+  - Run `cueloop help-all` to see advanced and experimental commands."#)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

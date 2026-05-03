@@ -23,8 +23,8 @@ pub(super) const RUN_AFTER_LONG_HELP: &str = "Runner selection:\n\
   3) otherwise: resolved config defaults (`agent.runner`, `agent.model`, `agent.reasoning_effort`).\n\
  \n\
 Loop limits:\n\
-  - `cueloop run loop --max-tasks 0` means unlimited execution until CueLoop runs out of runnable work, blocks, or is stopped.\n\
-  - Use a positive `--max-tasks` value to cap successful task iterations.\n\
+  - Safe default: use `cueloop run one` or `cueloop run loop --max-tasks <N>` with a positive cap.\n\
+  - Advanced unlimited mode: `cueloop run loop --max-tasks 0` runs until CueLoop runs out of runnable work, blocks, or is stopped.\n\
  \n\
  Resume behavior:\n\
   - CueLoop now narrates whether it is resuming the same session, starting fresh, or refusing to guess.\n\
@@ -83,7 +83,7 @@ Examples:\n\
  cueloop run one --git-revert-mode disabled\n\
  cueloop run one --git-publish-mode off\n\
  cueloop run one --lfs-check\n\
- cueloop run loop --max-tasks 0 (unlimited)\n\
+ cueloop run loop --max-tasks 1\n\
  cueloop run loop --max-tasks 1 --runner opencode --model gpt-5.3\n\
  cueloop run loop --include-draft --max-tasks 1\n\
  cueloop run loop --git-revert-mode ask --max-tasks 1\n\
@@ -91,6 +91,7 @@ Examples:\n\
  cueloop run loop --lfs-check --max-tasks 1\n\
  cueloop run loop --parallel --max-tasks 4\n\
  cueloop run loop --parallel 4 --max-tasks 8\n\
+ cueloop run loop --max-tasks 0 (advanced unlimited)\n\
  cueloop run resume\n\
  cueloop run resume --force\n\
  cueloop run loop --resume --max-tasks 5";
@@ -160,8 +161,8 @@ pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - If confirmation is required but unavailable (for example `--non-interactive`), CueLoop refuses instead of silently guessing.\n\
 \n\
 Loop limits:\n\
- - `--max-tasks 0` means unlimited successful iterations.\n\
- - Use a positive `--max-tasks` value when you want a fixed cap.\n\
+ - Safe default: use a positive `--max-tasks` value when you want a fixed cap.\n\
+ - Advanced unlimited mode: `--max-tasks 0` means unlimited successful iterations.\n\
 \n\
 Blocking-state diagnosis:\n\
  - `cueloop run loop` emits canonical blocking states during waiting and stall transitions.\n\
@@ -172,12 +173,12 @@ Queue validation recovery:\n\
  - Apply recoverable fixes with `cueloop queue repair`, then re-run `cueloop queue validate` if desired.\n\
 \n\
 Examples:\n\
- cueloop run loop --max-tasks 0 (unlimited)\n\
+ cueloop run loop --max-tasks 1\n\
  cueloop run loop --profile fast-local --max-tasks 5\n\
  cueloop run loop --profile deep-review --max-tasks 5\n\
  cueloop run loop --resume --max-tasks 5\n\
- cueloop run loop --phases 3 --max-tasks 0 (unlimited, plan/implement+CI/review+complete)\n\
- cueloop run loop --phases 2 --max-tasks 0 (unlimited, plan/implement)\n\
+ cueloop run loop --phases 3 --max-tasks 3 (plan/implement+CI/review+complete)\n\
+ cueloop run loop --phases 2 --max-tasks 3 (plan/implement)\n\
  cueloop run loop --phases 1 --max-tasks 1 (single-pass)\n\
  cueloop run loop --quick --max-tasks 1 (single-pass, same as --phases 1)\n\
  cueloop run loop --max-tasks 3\n\
@@ -195,7 +196,10 @@ Examples:\n\
  cueloop run loop --wait-when-blocked\n\
  cueloop run loop --wait-when-blocked --wait-timeout-seconds 600\n\
  cueloop run loop --wait-when-blocked --wait-poll-ms 250\n\
- cueloop run loop --wait-when-blocked --notify-when-unblocked";
+ cueloop run loop --wait-when-blocked --notify-when-unblocked\n\
+ Advanced unlimited mode:\n\
+ cueloop run loop --max-tasks 0 (intentional unlimited)\n\
+ cueloop run loop --phases 2 --max-tasks 0 (intentional unlimited, plan/implement)";
 
 pub(super) const PARALLEL_AFTER_LONG_HELP: &str = "Experimental direct-push parallel execution.\n\
 \n\

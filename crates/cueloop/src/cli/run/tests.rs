@@ -58,8 +58,26 @@ fn run_loop_help_clarifies_unlimited_max_tasks() {
     let help = run_loop.render_long_help().to_string();
 
     assert!(help.contains("Maximum tasks to run before stopping (0 = unlimited)"));
-    assert!(help.contains("`--max-tasks 0` means unlimited successful iterations."));
-    assert!(help.contains("cueloop run loop --max-tasks 0 (unlimited)"));
+    assert!(
+        help.contains(
+            "Safe default: use a positive `--max-tasks` value when you want a fixed cap."
+        )
+    );
+    assert!(help.contains(
+        "Advanced unlimited mode: `--max-tasks 0` means unlimited successful iterations."
+    ));
+    assert!(help.contains("cueloop run loop --max-tasks 0 (intentional unlimited)"));
+
+    let capped = help
+        .find("cueloop run loop --max-tasks 1")
+        .expect("capped loop example");
+    let unlimited = help
+        .find("cueloop run loop --max-tasks 0 (intentional unlimited)")
+        .expect("unlimited loop example");
+    assert!(
+        capped < unlimited,
+        "capped loop example should appear before unlimited mode"
+    );
 }
 
 #[test]

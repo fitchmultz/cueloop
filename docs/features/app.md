@@ -33,7 +33,7 @@ If you are not on macOS (or prefer terminal workflows), use the CLI directly:
 ```bash
 cueloop queue list
 cueloop run one
-cueloop run loop
+cueloop run loop --max-tasks 1
 ```
 
 Security note:
