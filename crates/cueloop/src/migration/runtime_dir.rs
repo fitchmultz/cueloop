@@ -303,17 +303,19 @@ where
 
 fn update_gitignore_runtime_dir_references(repo_root: &Path) -> Result<bool> {
     let path = repo_root.join(".gitignore");
-    if !path.exists() {
-        return Ok(false);
-    }
-
-    let raw = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+    let original = if path.exists() {
+        fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?
+    } else {
+        String::new()
+    };
+    let raw =
+        crate::commands::init::gitignore::normalize_legacy_runtime_gitignore_policy(&original);
     let existing_lines = raw
         .lines()
         .map(|line| line.trim().to_string())
         .collect::<std::collections::HashSet<_>>();
 
-    let mut changed = false;
+    let mut changed = raw != original;
     let mut updated_lines = Vec::new();
     for line in raw.lines() {
         if let Some(converted) = convert_gitignore_line(line) {
@@ -330,17 +332,20 @@ fn update_gitignore_runtime_dir_references(repo_root: &Path) -> Result<bool> {
     }
 
     let mut updated = updated_lines.join("\n");
-    if raw.ends_with('\n') {
+    if raw.ends_with('\n') && !updated.is_empty() {
         updated.push('\n');
     }
 
-    if updated != raw {
+    if updated != original {
         crate::fsutil::write_atomic(&path, updated.as_bytes())
             .with_context(|| format!("write {}", path.display()))?;
         changed = true;
     }
 
-    Ok(changed)
+    let ensured =
+        crate::commands::init::gitignore::ensure_cueloop_gitignore_entries_changed(repo_root)?;
+
+    Ok(changed || ensured)
 }
 
 fn convert_gitignore_line(line: &str) -> Option<String> {

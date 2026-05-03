@@ -122,7 +122,7 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     write_minimal_old_runtime(temp.path())?;
     fs::write(
         temp.path().join(".gitignore"),
-        ".ralph/logs/\n.ralph/workspaces/\n.ralph/trust.jsonc\n.ralph/trust.json\n.ralph/cache/\n.ralph/undo/\n.ralph/webhooks/\n",
+        ".ralph/logs/\n.ralph/workspaces/\n.ralph/trust.jsonc\n.ralph/trust.json\n.ralph/cache/\n.ralph/lock/\n.ralph/undo/\n.ralph/webhooks/\n",
     )?;
 
     let report = apply_runtime_dir_migration(temp.path())?;
@@ -146,6 +146,7 @@ fn apply_moves_runtime_dir_updates_refs_and_records_history() -> Result<()> {
     assert!(gitignore.contains(".cueloop/trust.jsonc"));
     assert!(gitignore.contains(".cueloop/trust.json"));
     assert!(gitignore.contains(".cueloop/cache/"));
+    assert!(gitignore.contains(".cueloop/lock/"));
     assert!(gitignore.contains(".cueloop/undo/"));
     assert!(gitignore.contains(".cueloop/webhooks/"));
     assert!(!gitignore.contains(".ralph/"));
@@ -222,7 +223,30 @@ fn gitignore_conversion_avoids_duplicate_current_entries() -> Result<()> {
     let gitignore = fs::read_to_string(temp.path().join(".gitignore"))?;
     assert_eq!(gitignore.matches(".cueloop/logs/").count(), 1);
     assert!(gitignore.contains("  .cueloop/workspaces/  "));
-    assert!(gitignore.contains("!.cueloop/done.jsonc"));
+    assert!(!gitignore.contains("!.cueloop/done.jsonc"));
     assert!(!gitignore.contains("!.ralph/done.jsonc"));
+    assert!(gitignore.contains(".cueloop/cache/"));
+    assert!(gitignore.contains(".cueloop/lock/"));
+    Ok(())
+}
+
+#[test]
+fn gitignore_conversion_removes_legacy_broad_runtime_policy() -> Result<()> {
+    let temp = TempDir::new()?;
+    fs::write(
+        temp.path().join(".gitignore"),
+        "!.ralph/\n.ralph/*\n!.ralph/queue.jsonc\n!.ralph/done.jsonc\n!.ralph/config.jsonc\n",
+    )?;
+
+    assert!(update_gitignore_runtime_dir_references(temp.path())?);
+
+    let gitignore = fs::read_to_string(temp.path().join(".gitignore"))?;
+    assert!(!gitignore.contains(".ralph/*"));
+    assert!(!gitignore.contains("!.ralph/queue.jsonc"));
+    assert!(!gitignore.contains(".cueloop/*"));
+    assert!(!gitignore.contains("!.cueloop/queue.jsonc"));
+    assert!(gitignore.contains(".cueloop/cache/"));
+    assert!(gitignore.contains(".cueloop/logs/"));
+    assert!(gitignore.contains(".cueloop/trust.jsonc"));
     Ok(())
 }

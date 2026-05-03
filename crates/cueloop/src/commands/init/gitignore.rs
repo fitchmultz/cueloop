@@ -4,14 +4,13 @@
 //! - Gitignore management for CueLoop initialization.
 //!
 //! Responsibilities:
-//! - Ensure active runtime `workspaces/` entries are in `.gitignore` to prevent dirty repo issues.
-//! - Ensure active runtime `logs/` entries are in `.gitignore` to prevent committing unredacted debug logs.
-//! - Ensure active runtime `trust.jsonc` entries are in `.gitignore` to keep local trust decisions untracked.
+//! - Ensure active runtime entries are in `.gitignore` to prevent dirty repo issues.
+//! - Ensure local trust files are in `.gitignore` to keep machine-local trust decisions untracked.
 //! - Optionally ensure queue/done files are ignored for local-private queue mode.
+//! - Normalize obsolete broad `.cueloop/*` / `.ralph/*` ignore conventions to the current specific runtime-only policy.
 //! - Provide idempotent updates to `.gitignore`.
 //!
 //! Not handled here:
-//! - Reading or parsing existing `.gitignore` patterns (only simple line-based checks).
 //! - Global gitignore configuration (only repo-local `.gitignore`).
 //!
 //!
@@ -19,19 +18,26 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Updates are additive only (never removes entries).
+//! - Queue, done archive, project config, and runtime README are shared project state by default and are not ignored here.
+//! - Legacy broad runtime-dir ignore conventions may be removed because they conflict with the shared-state default.
 //! - Safe to run multiple times (idempotent).
 
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-/// Ensures CueLoop-specific entries exist in `.gitignore`.
+/// Ensures CueLoop-specific local/runtime entries exist in `.gitignore`.
 ///
-/// The active runtime dir comes from config path authority: repos get `.cueloop/*` entries.
+/// The active runtime dir comes from config path authority: repos get `.cueloop/...` entries.
+/// Queue, done archive, project config, and runtime README stay trackable by default.
 ///
 /// This function is idempotent - calling it multiple times is safe.
 pub fn ensure_cueloop_gitignore_entries(repo_root: &Path) -> Result<()> {
+    ensure_cueloop_gitignore_entries_changed(repo_root).map(|_| ())
+}
+
+/// Ensure default CueLoop gitignore policy and report whether the file changed.
+pub(crate) fn ensure_cueloop_gitignore_entries_changed(repo_root: &Path) -> Result<bool> {
     let gitignore_path = repo_root.join(".gitignore");
 
     let existing_content = if gitignore_path.exists() {
@@ -41,77 +47,109 @@ pub fn ensure_cueloop_gitignore_entries(repo_root: &Path) -> Result<()> {
         String::new()
     };
 
+    let mut new_content = normalize_legacy_runtime_gitignore_policy(&existing_content);
     let runtime_name = active_runtime_name(repo_root);
-    let logs_entry = format!("{runtime_name}/logs/");
-    let workspaces_entry = format!("{runtime_name}/workspaces/");
-    let trust_entry = format!("{runtime_name}/trust.jsonc");
+    let entries = default_runtime_gitignore_entries(&runtime_name);
+    let missing = entries
+        .iter()
+        .filter(|entry| !has_exact_gitignore_entry(&new_content, entry))
+        .cloned()
+        .collect::<Vec<_>>();
 
-    let needs_workspaces_entry = !existing_content
-        .lines()
-        .any(|line| is_runtime_ignore_entry(line, &runtime_name, "workspaces"));
-    let needs_logs_entry = !existing_content
-        .lines()
-        .any(|line| is_runtime_ignore_entry(line, &runtime_name, "logs"));
-    let needs_trust_entry = !existing_content
-        .lines()
-        .any(|line| line.trim() == trust_entry);
-
-    if !needs_workspaces_entry && !needs_logs_entry && !needs_trust_entry {
-        log::debug!("{workspaces_entry}, {logs_entry}, and {trust_entry} already in .gitignore");
-        return Ok(());
+    if missing.is_empty() && new_content == existing_content {
+        log::debug!("CueLoop local/runtime entries already in .gitignore");
+        return Ok(false);
     }
 
-    let mut new_content = existing_content;
-    if !new_content.is_empty() && !new_content.ends_with('\n') {
-        new_content.push('\n');
-    }
-
-    if needs_logs_entry {
+    if !missing.is_empty() {
+        if !new_content.is_empty() && !new_content.ends_with('\n') {
+            new_content.push('\n');
+        }
         if !new_content.is_empty() {
             new_content.push('\n');
         }
-        new_content.push_str("# CueLoop debug logs (raw/unredacted; do not commit)\n");
-        new_content.push_str(&logs_entry);
-        new_content.push('\n');
-    }
-
-    if needs_workspaces_entry {
-        if !new_content.is_empty() {
+        new_content.push_str("# CueLoop local/runtime artifacts (do not commit)\n");
+        for entry in &missing {
+            new_content.push_str(entry);
             new_content.push('\n');
         }
-        new_content.push_str("# CueLoop parallel mode workspace directories\n");
-        new_content.push_str(&workspaces_entry);
-        new_content.push('\n');
     }
 
-    if needs_trust_entry {
-        if !new_content.is_empty() {
-            new_content.push('\n');
-        }
-        new_content.push_str("# CueLoop local trust decision (machine-local; do not commit)\n");
-        new_content.push_str(&trust_entry);
-        new_content.push('\n');
+    if new_content != existing_content {
+        fs::write(&gitignore_path, &new_content)
+            .with_context(|| format!("write {}", gitignore_path.display()))?;
     }
 
-    fs::write(&gitignore_path, new_content)
-        .with_context(|| format!("write {}", gitignore_path.display()))?;
-
-    if needs_logs_entry {
-        log::info!("Added '{}' to .gitignore", logs_entry);
-    }
-    if needs_workspaces_entry {
-        log::info!("Added '{}' to .gitignore", workspaces_entry);
-    }
-    if needs_trust_entry {
-        log::info!("Added '{}' to .gitignore", trust_entry);
+    if !missing.is_empty() {
+        log::info!("Added CueLoop local/runtime artifacts to .gitignore");
     }
 
-    Ok(())
+    Ok(new_content != existing_content)
 }
 
-fn is_runtime_ignore_entry(line: &str, runtime_name: &str, child: &str) -> bool {
-    let trimmed = line.trim();
-    trimmed == format!("{runtime_name}/{child}/") || trimmed == format!("{runtime_name}/{child}")
+fn default_runtime_gitignore_entries(runtime_name: &str) -> Vec<String> {
+    [
+        "cache/",
+        "logs/",
+        "workspaces/",
+        "lock/",
+        "undo/",
+        "webhooks/",
+    ]
+    .into_iter()
+    .map(|child| format!("{runtime_name}/{child}"))
+    .chain([
+        format!("{runtime_name}/trust.json"),
+        format!("{runtime_name}/trust.jsonc"),
+    ])
+    .collect()
+}
+
+fn has_exact_gitignore_entry(content: &str, entry: &str) -> bool {
+    let without_slash = entry.trim_end_matches('/');
+    content.lines().any(|line| {
+        let trimmed = line.trim();
+        trimmed == entry || trimmed == without_slash
+    })
+}
+
+pub(crate) fn normalize_legacy_runtime_gitignore_policy(content: &str) -> String {
+    let mut normalized = content
+        .lines()
+        .filter(|line| !is_legacy_broad_runtime_policy_line(line.trim()))
+        .map(str::to_string)
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    if content.ends_with('\n') && !normalized.is_empty() {
+        normalized.push('\n');
+    }
+
+    normalized
+}
+
+fn is_legacy_broad_runtime_policy_line(trimmed: &str) -> bool {
+    matches!(
+        trimmed,
+        ".cueloop"
+            | ".cueloop/"
+            | ".cueloop/*"
+            | "!.cueloop"
+            | "!.cueloop/"
+            | "!.cueloop/queue.jsonc"
+            | "!.cueloop/done.jsonc"
+            | "!.cueloop/config.jsonc"
+            | "!.cueloop/README.md"
+            | ".ralph"
+            | ".ralph/"
+            | ".ralph/*"
+            | "!.ralph"
+            | "!.ralph/"
+            | "!.ralph/queue.jsonc"
+            | "!.ralph/done.jsonc"
+            | "!.ralph/config.jsonc"
+            | "!.ralph/README.md"
+    )
 }
 
 fn active_runtime_name(repo_root: &Path) -> String {
@@ -254,10 +292,15 @@ mod tests {
         let content = fs::read_to_string(&gitignore_path)?;
         assert!(content.contains(".cueloop/workspaces/"));
         assert!(content.contains(".cueloop/logs/"));
+        assert!(content.contains(".cueloop/cache/"));
+        assert!(content.contains(".cueloop/lock/"));
+        assert!(content.contains(".cueloop/undo/"));
+        assert!(content.contains(".cueloop/webhooks/"));
+        assert!(content.contains(".cueloop/trust.json"));
         assert!(content.contains(".cueloop/trust.jsonc"));
-        assert!(content.contains("# CueLoop parallel mode"));
-        assert!(content.contains("# CueLoop debug logs"));
-        assert!(content.contains("# CueLoop local trust decision"));
+        assert!(content.contains("# CueLoop local/runtime artifacts"));
+        assert!(!content.contains(".cueloop/queue.jsonc"));
+        assert!(!content.contains(".cueloop/done.jsonc"));
         Ok(())
     }
 
@@ -294,12 +337,14 @@ mod tests {
         // Should only have one entry for each
         let workspaces_count = content.matches(".cueloop/workspaces/").count();
         let logs_count = content.matches(".cueloop/logs/").count();
+        let cache_count = content.matches(".cueloop/cache/").count();
         let trust_count = content.matches(".cueloop/trust.jsonc").count();
         assert_eq!(
             workspaces_count, 1,
             "Should only have one .cueloop/workspaces/ entry"
         );
         assert_eq!(logs_count, 1, "Should only have one .cueloop/logs/ entry");
+        assert_eq!(cache_count, 1, "Should only have one .cueloop/cache/ entry");
         assert_eq!(
             trust_count, 1,
             "Should only have one .cueloop/trust.jsonc entry"
@@ -347,6 +392,28 @@ mod tests {
     }
 
     #[test]
+    fn ensure_cueloop_gitignore_entries_normalizes_legacy_broad_policy() -> Result<()> {
+        let temp = TempDir::new()?;
+        let repo_root = temp.path();
+        fs::write(
+            repo_root.join(".gitignore"),
+            "!.cueloop\n.cueloop/*\n!.cueloop/queue.jsonc\n!.cueloop/done.jsonc\n!.cueloop/config.jsonc\n.ralph/*\n!.ralph/queue.jsonc\n",
+        )?;
+
+        ensure_cueloop_gitignore_entries(repo_root)?;
+
+        let content = fs::read_to_string(repo_root.join(".gitignore"))?;
+        assert!(!content.contains(".cueloop/*"));
+        assert!(!content.contains("!.cueloop/queue.jsonc"));
+        assert!(!content.contains(".ralph/*"));
+        assert!(!content.contains("!.ralph/queue.jsonc"));
+        assert!(content.contains(".cueloop/cache/"));
+        assert!(content.contains(".cueloop/logs/"));
+        assert!(content.contains(".cueloop/trust.jsonc"));
+        Ok(())
+    }
+
+    #[test]
     fn ensure_local_queue_gitignore_entries_adds_queue_and_done_once() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
@@ -389,37 +456,34 @@ mod tests {
     }
 
     #[test]
-    fn is_runtime_ignore_entry_matches_variations() {
-        assert!(is_runtime_ignore_entry(
-            ".cueloop/logs/",
-            ".cueloop",
-            "logs"
+    fn has_exact_gitignore_entry_matches_variations() {
+        assert!(has_exact_gitignore_entry(
+            ".cueloop/logs/\n",
+            ".cueloop/logs/"
         ));
-        assert!(is_runtime_ignore_entry(".cueloop/logs", ".cueloop", "logs"));
-        assert!(is_runtime_ignore_entry(
-            "  .cueloop/logs/  ",
-            ".cueloop",
-            "logs"
+        assert!(has_exact_gitignore_entry(
+            ".cueloop/logs\n",
+            ".cueloop/logs/"
         ));
-        assert!(is_runtime_ignore_entry(
-            "  .cueloop/logs  ",
-            ".cueloop",
-            "logs"
+        assert!(has_exact_gitignore_entry(
+            "  .cueloop/logs/  \n",
+            ".cueloop/logs/"
         ));
-        assert!(!is_runtime_ignore_entry(
-            ".cueloop/logs/debug.log",
-            ".cueloop",
-            "logs"
+        assert!(has_exact_gitignore_entry(
+            "  .cueloop/logs  \n",
+            ".cueloop/logs/"
         ));
-        assert!(!is_runtime_ignore_entry(
-            "# .cueloop/logs/",
-            ".cueloop",
-            "logs"
+        assert!(!has_exact_gitignore_entry(
+            ".cueloop/logs/debug.log\n",
+            ".cueloop/logs/"
         ));
-        assert!(!is_runtime_ignore_entry(
-            "something else",
-            ".cueloop",
-            "logs"
+        assert!(!has_exact_gitignore_entry(
+            "# .cueloop/logs/\n",
+            ".cueloop/logs/"
+        ));
+        assert!(!has_exact_gitignore_entry(
+            "something else\n",
+            ".cueloop/logs/"
         ));
     }
 }
