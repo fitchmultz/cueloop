@@ -131,3 +131,24 @@ fn makefile_release_build_uses_shared_bundle_entrypoint() {
         "Makefile should not expose a direct crates.io publish bypass outside the release transaction"
     );
 }
+
+#[test]
+fn makefile_does_not_expose_release_verify_as_dry_run() {
+    let make_surface = format!(
+        "{}\n{}",
+        read_repo_file("Makefile"),
+        read_repo_file("mk/rust.mk")
+    );
+    assert!(
+        make_surface.contains("release-verify:"),
+        "Makefile should keep release-verify as the canonical release verification target"
+    );
+    assert!(
+        !make_surface.contains("release-dry-run"),
+        "Makefile should not expose or advertise release-dry-run because release verification mutates local release metadata"
+    );
+    assert!(
+        make_surface.contains("Mutating local preflight: prepares the exact release snapshot that make release will publish"),
+        "Makefile help should describe release-verify as a mutating local preflight"
+    );
+}

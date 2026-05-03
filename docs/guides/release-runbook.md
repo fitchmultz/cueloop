@@ -38,8 +38,9 @@ scripts/release.sh reconcile <version>
 ## What `make release-verify` Does
 
 - runs `scripts/release.sh verify <version>`
-- prepares the publish-ready local snapshot (`VERSION`, changelog, app metadata, artifacts, release notes)
+- mutates local release metadata to prepare the publish-ready snapshot (`VERSION`, changelog, app metadata, artifacts, release notes)
 - records verification state under `target/release-verifications/v<version>/`
+- does not publish remotely, but it is not a dry run
 
 ## What `make release` Does
 

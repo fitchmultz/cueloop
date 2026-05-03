@@ -61,7 +61,7 @@ make security-audit
 
 The release gate also runs `make rust-toolchain-drift-check`, which compares the repo-local `rust-toolchain.toml` override with global rustup stable outside the workspace. If global stable has advanced, intentionally adopt it by updating `rust-toolchain.toml` and `crates/cueloop/Cargo.toml` `rust-version` together before rerunning release verification.
 
-`make release-verify VERSION=<x.y.z>` is the canonical release preflight because it now prepares the exact local release snapshot that `make release` will publish:
+`make release-verify VERSION=<x.y.z>` is the canonical release preflight because it now prepares the exact local release snapshot that `make release` will publish. It does not publish remotely, but it is not a dry run because it mutates local release metadata:
 
 1. `scripts/release.sh verify <x.y.z>`
 

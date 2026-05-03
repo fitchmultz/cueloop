@@ -145,7 +145,7 @@ make pre-public-check
 # Optional (shared workstation): CUELOOP_CI_JOBS=4 CUELOOP_XCODE_JOBS=4 make pre-public-check
 ```
 
-`make release-verify` is the full release preflight. It also deliberately tolerates an already-existing local `v<version>` tag during the dry-run release-script phase so shipped releases can be revalidated without hand-editing tag state.
+`make release-verify` is the full release preflight. It also deliberately tolerates an already-existing local `v<version>` tag during the local release verification phase so shipped releases can be revalidated without hand-editing tag state.
 
 ## Contribution Guidelines
 

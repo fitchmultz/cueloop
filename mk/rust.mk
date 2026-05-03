@@ -214,13 +214,6 @@ release:
 	fi
 	@scripts/release.sh execute "$(VERSION)"
 
-release-dry-run:
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Usage: make release-dry-run VERSION=x.y.z"; \
-		exit 2; \
-	fi
-	@scripts/release.sh verify "$(VERSION)"
-
 release-verify:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Usage: make release-verify VERSION=x.y.z"; \
@@ -228,6 +221,7 @@ release-verify:
 	fi
 	@scripts/release.sh verify "$(VERSION)"
 	@echo "  ✓ Release snapshot prepared for $(VERSION)"
+	@echo "  ✓ Release metadata may be dirty by design until: make release VERSION=$(VERSION)"
 	@echo "  ✓ Safe to run: make release VERSION=$(VERSION)"
 
 release-artifacts:

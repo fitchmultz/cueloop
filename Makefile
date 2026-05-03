@@ -95,7 +95,7 @@ MAKEFLAGS += --no-builtin-rules
 
 .PHONY: help install install-verify macos-install-app update security-audit lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast ci-docs deps \
 	rust-toolchain-check rust-toolchain-drift-check \
-	changelog changelog-preview changelog-check version-check version-sync publish-check release release-dry-run release-verify release-artifacts pre-commit pre-public-check release-gate \
+	changelog changelog-preview changelog-check version-check version-sync publish-check release release-verify release-artifacts pre-commit pre-public-check release-gate \
 	profile-ship-gate profile-ship-gate-clean agent-ci check-env-safety check-backup-artifacts check-file-size-limits check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
 	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
 	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean
@@ -134,7 +134,7 @@ help:
 	@echo "  make version-check # Verify VERSION, Cargo, and Xcode version metadata are synchronized"
 	@echo "  make version-sync VERSION=x.y.z # Sync repo version metadata from one canonical semver"
 	@echo "  make publish-check # Run cargo package review + crates.io dry-run for $(CARGO_PACKAGE_NAME)"
-	@echo "  make release-verify VERSION=x.y.z # Prepare the exact local release snapshot that make release will publish"
+	@echo "  make release-verify VERSION=x.y.z # Mutating local preflight: prepares the exact release snapshot that make release will publish"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
 	@echo "  make check-file-size-limits # Enforce warn-on-soft/fail-on-hard file-size guardrail"
 	@echo ""
