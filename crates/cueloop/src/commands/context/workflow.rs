@@ -62,6 +62,7 @@ pub fn run_context_init(
             &prompter,
             detected_type_to_hint(detected_type),
             &opts.output_path,
+            &resolved.repo_root,
         )
         .context("interactive wizard failed")?;
 

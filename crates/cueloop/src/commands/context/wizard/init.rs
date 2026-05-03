@@ -22,6 +22,8 @@
 use super::prompt::ContextPrompter;
 use super::types::{ConfigHints, InitWizardResult};
 use crate::cli::context::ProjectTypeHint;
+use crate::commands::context::render::suggested_config_hints;
+use crate::commands::context::types::DetectedProjectType;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -31,6 +33,7 @@ pub(crate) fn run_init_wizard(
     prompter: &dyn ContextPrompter,
     detected_type: ProjectTypeHint,
     default_output: &Path,
+    repo_root: &Path,
 ) -> Result<InitWizardResult> {
     let type_idx = prompter.select(
         "Select project type",
@@ -38,16 +41,27 @@ pub(crate) fn run_init_wizard(
         default_project_type_index(detected_type),
     )?;
 
+    let project_type = project_type_from_index(type_idx);
     let output_path = prompt_output_path(prompter, default_output)?;
-    let config_hints = prompt_config_hints(prompter)?;
+    let config_hints = prompt_config_hints(prompter, project_type, repo_root)?;
     let confirm_write = prompter.confirm("Preview and confirm before writing?", true)?;
 
     Ok(InitWizardResult {
-        project_type: project_type_from_index(type_idx),
+        project_type,
         output_path,
         config_hints,
         confirm_write,
     })
+}
+
+fn project_type_to_detected(project_type: ProjectTypeHint) -> DetectedProjectType {
+    match project_type {
+        ProjectTypeHint::Rust => DetectedProjectType::Rust,
+        ProjectTypeHint::Python => DetectedProjectType::Python,
+        ProjectTypeHint::TypeScript => DetectedProjectType::TypeScript,
+        ProjectTypeHint::Go => DetectedProjectType::Go,
+        ProjectTypeHint::Generic => DetectedProjectType::Generic,
+    }
 }
 
 fn project_type_items() -> Vec<String> {
@@ -98,10 +112,16 @@ fn prompt_output_path(
     Ok(Some(PathBuf::from(path)))
 }
 
-fn prompt_config_hints(prompter: &dyn ContextPrompter) -> Result<ConfigHints> {
-    let mut config_hints = ConfigHints::default();
+fn prompt_config_hints(
+    prompter: &dyn ContextPrompter,
+    project_type: ProjectTypeHint,
+    repo_root: &Path,
+) -> Result<ConfigHints> {
+    let mut config_hints =
+        suggested_config_hints(repo_root, project_type_to_detected(project_type));
 
     if prompter.confirm("Customize build/test commands?", false)? {
+        config_hints.customized_commands = true;
         config_hints.ci_command =
             prompter.input("CI command", Some(&config_hints.ci_command), false)?;
         config_hints.build_command =

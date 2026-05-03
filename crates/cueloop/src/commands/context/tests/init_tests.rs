@@ -95,3 +95,55 @@ fn init_overwrites_with_force() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn init_templates_avoid_blanket_source_doc_claims() -> Result<()> {
+    for (project_type, seed_file, seed_contents) in [
+        (DetectedProjectType::Generic, None, None),
+        (
+            DetectedProjectType::Rust,
+            Some("Cargo.toml"),
+            Some("[package]\nname = \"test-project\"\nversion = \"0.1.0\"\n"),
+        ),
+        (
+            DetectedProjectType::Python,
+            Some("pyproject.toml"),
+            Some("[project]\nname = \"test-project\"\nversion = \"0.1.0\"\n"),
+        ),
+        (
+            DetectedProjectType::TypeScript,
+            Some("package.json"),
+            Some("{\"name\":\"test-project\"}"),
+        ),
+        (
+            DetectedProjectType::Go,
+            Some("go.mod"),
+            Some("module test-project\n\ngo 1.21\n"),
+        ),
+    ] {
+        let dir = TempDir::new()?;
+        let resolved = create_test_resolved(&dir);
+        if let (Some(seed_file), Some(seed_contents)) = (seed_file, seed_contents) {
+            fs::write(resolved.repo_root.join(seed_file), seed_contents)?;
+        }
+
+        let output_path = resolved.repo_root.join("AGENTS.md");
+        run_context_init(
+            &resolved,
+            ContextInitOptions {
+                force: false,
+                project_type_hint: None,
+                output_path: output_path.clone(),
+                interactive: false,
+            },
+        )?;
+
+        let content = fs::read_to_string(&output_path)?;
+        assert!(
+            !content.contains("every new/changed source file MUST start"),
+            "blanket source-doc claim returned for {project_type:?}"
+        );
+    }
+
+    Ok(())
+}

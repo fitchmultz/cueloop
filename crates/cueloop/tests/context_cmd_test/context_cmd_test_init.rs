@@ -25,6 +25,22 @@ use std::fs;
 
 use super::context_cmd_test_support::{run_in_dir, setup_repo};
 
+fn assert_no_false_source_doc_claims(content: &str) -> Result<()> {
+    anyhow::ensure!(
+        !content.contains("every new/changed source file MUST start"),
+        "generated content still contains blanket source-doc mandate"
+    );
+    Ok(())
+}
+
+fn assert_no_makefile_contract_claims(content: &str) -> Result<()> {
+    anyhow::ensure!(
+        !content.contains("The Makefile is the contract"),
+        "generated content still claims Makefile is the contract"
+    );
+    Ok(())
+}
+
 #[test]
 fn context_init_creates_agents_md() -> Result<()> {
     let dir = setup_repo()?;
@@ -113,7 +129,7 @@ fn context_init_detects_python_project() -> Result<()> {
 
     let content = fs::read_to_string(dir.path().join("AGENTS.md"))?;
     anyhow::ensure!(
-        content.contains("pip") || content.contains("python") || content.contains("pytest"),
+        content.contains("Python Conventions") || content.contains("typing expectations"),
         "Python-specific content missing"
     );
     Ok(())
@@ -226,6 +242,138 @@ fn context_init_respects_project_type_hint() -> Result<()> {
     anyhow::ensure!(
         content.contains("cargo") || content.contains("rust") || content.contains("clippy"),
         "Rust-specific content missing"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn context_init_generic_repo_uses_todos_not_false_contracts() -> Result<()> {
+    let dir = setup_repo()?;
+
+    let (status, _stdout, stderr) = run_in_dir(dir.path(), &["context", "init"]);
+    anyhow::ensure!(status.success(), "context init failed\nstderr:\n{stderr}");
+
+    let content = fs::read_to_string(dir.path().join("AGENTS.md"))?;
+    assert_no_false_source_doc_claims(&content)?;
+    assert_no_makefile_contract_claims(&content)?;
+    anyhow::ensure!(
+        content.contains("No repo-specific command contract detected"),
+        "generic repo should explain missing command contract"
+    );
+    anyhow::ensure!(
+        content.contains("TODO: record this repo's CI command."),
+        "generic repo should render TODO command placeholders"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn context_init_rust_repo_without_makefile_uses_verified_defaults() -> Result<()> {
+    let dir = setup_repo()?;
+    fs::write(
+        dir.path().join("Cargo.toml"),
+        "[package]\nname = \"test-project\"\nversion = \"0.1.0\"\n",
+    )?;
+
+    let (status, _stdout, stderr) = run_in_dir(dir.path(), &["context", "init"]);
+    anyhow::ensure!(status.success(), "context init failed\nstderr:\n{stderr}");
+
+    let content = fs::read_to_string(dir.path().join("AGENTS.md"))?;
+    assert_no_false_source_doc_claims(&content)?;
+    assert_no_makefile_contract_claims(&content)?;
+    anyhow::ensure!(
+        content.contains("common Rust verification suite"),
+        "rust repo should render Rust default note when no repo command contract is detected"
+    );
+    anyhow::ensure!(
+        content.contains("cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"),
+        "rust repo should render the fallback Rust verification suite"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn context_init_makefile_repo_only_lists_detected_targets() -> Result<()> {
+    let dir = setup_repo()?;
+    fs::write(
+        dir.path().join("Makefile"),
+        ".PHONY: ci test fmt\nci:\n\t@echo ci\ntest:\n\t@echo test\nfmt:\n\t@echo fmt\n",
+    )?;
+
+    let (status, _stdout, stderr) = run_in_dir(dir.path(), &["context", "init"]);
+    anyhow::ensure!(status.success(), "context init failed\nstderr:\n{stderr}");
+
+    let content = fs::read_to_string(dir.path().join("AGENTS.md"))?;
+    assert_no_false_source_doc_claims(&content)?;
+    assert_no_makefile_contract_claims(&content)?;
+    anyhow::ensure!(
+        content.contains("Detected from Makefile targets"),
+        "makefile repo should explain detected command source"
+    );
+    anyhow::ensure!(
+        content.contains("`make ci` — detected from `Makefile` targets."),
+        "makefile repo should render detected ci target"
+    );
+    anyhow::ensure!(
+        content.contains("`make test` — detected from `Makefile` targets."),
+        "makefile repo should render detected test target"
+    );
+    anyhow::ensure!(
+        content.contains("`make fmt` — detected from `Makefile` targets."),
+        "makefile repo should render detected format target"
+    );
+    anyhow::ensure!(
+        !content.contains("make install")
+            && !content.contains("make update")
+            && !content.contains("make clean"),
+        "makefile repo should not invent absent make targets"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn context_init_typescript_package_scripts_detected() -> Result<()> {
+    let dir = setup_repo()?;
+    fs::write(
+        dir.path().join("package.json"),
+        r#"{
+  "name": "test-project",
+  "scripts": {
+    "ci": "vitest run && tsc -b",
+    "build": "tsc -b",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --check ."
+  }
+}"#,
+    )?;
+    fs::write(dir.path().join("pnpm-lock.yaml"), "lockfileVersion: '9.0'")?;
+
+    let (status, _stdout, stderr) = run_in_dir(dir.path(), &["context", "init"]);
+    anyhow::ensure!(status.success(), "context init failed\nstderr:\n{stderr}");
+
+    let content = fs::read_to_string(dir.path().join("AGENTS.md"))?;
+    assert_no_false_source_doc_claims(&content)?;
+    assert_no_makefile_contract_claims(&content)?;
+    anyhow::ensure!(
+        content.contains("Detected from package.json scripts"),
+        "package-script repo should explain detected command source"
+    );
+    anyhow::ensure!(
+        content.contains("`pnpm run ci` — detected from `package.json` scripts."),
+        "typescript repo should detect ci script"
+    );
+    anyhow::ensure!(
+        content.contains("`pnpm run build` — detected from `package.json` scripts."),
+        "typescript repo should detect build script"
+    );
+    anyhow::ensure!(
+        content.contains("`pnpm run format` — detected from `package.json` scripts."),
+        "typescript repo should detect format script"
     );
 
     Ok(())

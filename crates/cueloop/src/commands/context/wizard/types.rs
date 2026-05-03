@@ -16,7 +16,7 @@
 //! - Used through the crate module tree or integration test harness.
 //!
 //! Invariants/assumptions:
-//! - Default command hints remain the canonical generated-command fallbacks.
+//! - Suggested command hints should stay aligned with `render.rs` detection defaults.
 //! - Result types stay aligned with `workflow.rs` and `render.rs` consumers.
 
 use crate::cli::context::ProjectTypeHint;
@@ -27,27 +27,30 @@ use std::path::PathBuf;
 pub(crate) struct ConfigHints {
     /// Project description to replace placeholder.
     pub(crate) project_description: Option<String>,
-    /// CI command (default: make ci).
+    /// CI command suggestion or user-provided override.
     pub(crate) ci_command: String,
-    /// Build command (default: make build).
+    /// Build command suggestion or user-provided override.
     pub(crate) build_command: String,
-    /// Test command (default: make test).
+    /// Test command suggestion or user-provided override.
     pub(crate) test_command: String,
-    /// Lint command (default: make lint).
+    /// Lint command suggestion or user-provided override.
     pub(crate) lint_command: String,
-    /// Format command (default: make format).
+    /// Format command.
     pub(crate) format_command: String,
+    /// Whether the user explicitly customized command fields in interactive mode.
+    pub(crate) customized_commands: bool,
 }
 
 impl Default for ConfigHints {
     fn default() -> Self {
         Self {
             project_description: None,
-            ci_command: "make ci".to_string(),
-            build_command: "make build".to_string(),
-            test_command: "make test".to_string(),
-            lint_command: "make lint".to_string(),
-            format_command: "make format".to_string(),
+            ci_command: "TODO: record this repo's CI command.".to_string(),
+            build_command: "TODO: record this repo's build command.".to_string(),
+            test_command: "TODO: record this repo's test command.".to_string(),
+            lint_command: "TODO: record this repo's lint command.".to_string(),
+            format_command: "TODO: record this repo's format command.".to_string(),
+            customized_commands: false,
         }
     }
 }

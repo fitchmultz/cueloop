@@ -36,7 +36,12 @@ fn scripted_prompter_works() {
         ScriptedResponse::Confirm(false), // Don't confirm before write
     ]);
 
-    let result = run_init_wizard(&prompter, ProjectTypeHint::Generic, Path::new("AGENTS.md"));
+    let result = run_init_wizard(
+        &prompter,
+        ProjectTypeHint::Generic,
+        Path::new("AGENTS.md"),
+        Path::new("."),
+    );
 
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -47,7 +52,12 @@ fn scripted_prompter_works() {
 fn scripted_prompter_out_of_responses() {
     let prompter = ScriptedPrompter::new(vec![]);
 
-    let result = run_init_wizard(&prompter, ProjectTypeHint::Generic, Path::new("AGENTS.md"));
+    let result = run_init_wizard(
+        &prompter,
+        ProjectTypeHint::Generic,
+        Path::new("AGENTS.md"),
+        Path::new("."),
+    );
 
     assert!(result.is_err());
     assert!(
@@ -64,7 +74,12 @@ fn scripted_prompter_type_mismatch() {
         ScriptedResponse::Confirm(true), // Wrong type - should be Select
     ]);
 
-    let result = run_init_wizard(&prompter, ProjectTypeHint::Generic, Path::new("AGENTS.md"));
+    let result = run_init_wizard(
+        &prompter,
+        ProjectTypeHint::Generic,
+        Path::new("AGENTS.md"),
+        Path::new("."),
+    );
 
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("Expected Select"));
@@ -153,10 +168,17 @@ fn update_wizard_cancellation() {
 #[test]
 fn config_hints_default() {
     let hints = ConfigHints::default();
-    assert_eq!(hints.ci_command, "make ci");
-    assert_eq!(hints.build_command, "make build");
-    assert_eq!(hints.test_command, "make test");
-    assert_eq!(hints.lint_command, "make lint");
-    assert_eq!(hints.format_command, "make format");
+    assert_eq!(hints.ci_command, "TODO: record this repo's CI command.");
+    assert_eq!(
+        hints.build_command,
+        "TODO: record this repo's build command."
+    );
+    assert_eq!(hints.test_command, "TODO: record this repo's test command.");
+    assert_eq!(hints.lint_command, "TODO: record this repo's lint command.");
+    assert_eq!(
+        hints.format_command,
+        "TODO: record this repo's format command."
+    );
+    assert!(!hints.customized_commands);
     assert!(hints.project_description.is_none());
 }

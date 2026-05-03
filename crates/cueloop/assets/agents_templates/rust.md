@@ -4,17 +4,12 @@
 
 ## Non-Negotiables
 
-- CI gate: `{ci_command}` MUST pass before claiming completion, committing, or merging.
-- Source docs: every new/changed source file MUST start with a module doc comment that states:
-  - what the file is responsible for
-  - what it explicitly does NOT handle
-  - any invariants/assumptions callers must respect
-  - (prefer `//!` module docs at the top of the file)
+- {ci_gate_rule}
+- {documentation_style_rule}
 - Tests: all new/changed behavior must be covered (success + failure modes). Prefer tests near the code.
-- Feature parity: when changing a user-visible workflow, maintain parity between the CLI and any supported GUI client (or document/justify the divergence explicitly).
-- CLI help: user-facing commands/flags MUST have `--help` text with examples.
+- Cross-surface parity: if the repo ships multiple user-facing surfaces for the same workflow, keep them aligned or document the intended divergence.
+- User-facing interfaces: update help text, docs, or UX copy when changing commands, flags, prompts, or visible behavior.
 - Secrets: never commit or print secrets; redact runner output before copying into documentation.
-
 
 ## Agent Execution Style
 
@@ -30,19 +25,17 @@
 
 ## Build, Test, and CI
 
-The Makefile is the contract; keep these targets working:
+BLUF: use detected or explicitly configured repo commands when listed below. If a line is marked as a default or TODO, verify it before treating it as the repo contract.
 
-- `{ci_command}`: local CI gate (see the configured Makefile/validation command for exact ordering). Do not remove required install/verification steps from the repo contract.
-- `make install`: install binary to `~/.local/bin/` (or a writable fallback).
-- `make test`: runs cargo-nextest for workspace tests (fallback to `cargo test` if nextest is missing), then `cargo test --doc` in isolated temp dirs.
-- `make lint`: `cargo clippy --workspace --all-targets -- -D warnings`
-- `make format`: `cargo fmt --all`
-- `make type-check`: `cargo check --workspace --all-targets`
-- `make generate`: regenerates any generated artifacts (schemas, etc.).
-- `make update`: upgrades direct Rust dependencies (`cargo upgrade --incompatible`) and refreshes transitive pins (`cargo update`); pair with `make macos-ci` when a bundled Swift/Xcode app is in scope because there may be no separate Swift package manifest to bump.
-- `make clean`: removes build artifacts, logs, and cache entries.
+Command source: {command_source_note}
 
-Useful iteration commands (not a substitute for `{ci_command}`):
+- CI gate: {ci_command_line}
+- Build: {build_command_line}
+- Test: {test_command_line}
+- Lint: {lint_command_line}
+- Format: {format_command_line}
+
+Useful iteration commands (not a substitute for the recorded CI gate):
 
 - `cargo test -p {package_name}`
 - `cargo run -p {package_name} -- <command>`
@@ -50,7 +43,7 @@ Useful iteration commands (not a substitute for `{ci_command}`):
 
 ## Rust Conventions
 
-- Formatting/linting: `cargo fmt` + Clippy with `-D warnings` (CI treats warnings as errors).
+- Formatting/linting: prefer the repo's existing Rust verification flow; common defaults are `cargo fmt` and Clippy with `-D warnings`.
 - Visibility: keep APIs small; default to private, prefer `pub(crate)` over `pub`.
 - Errors: prefer descriptive error types (`thiserror`) and `Result<T, E>` over panics.
 - Cohesion: keep modules/files focused; split large files rather than growing grab-bags.
@@ -62,7 +55,7 @@ Useful iteration commands (not a substitute for `{ci_command}`):
 
 - Unit tests: colocate with implementation via `#[cfg(test)]`.
 - Integration tests: use `tests/` directory when cross-module behavior is the subject.
-- Temp dirs: CI tests run in isolated temp directories (set `CUELOOP_CI_KEEP_TMP=1` to keep).
+- Temp dirs: CI tests should run in isolated temp directories.
 
 ## Workflow Contracts
 
@@ -84,24 +77,24 @@ Config precedence (highest to lowest):
 ## Git Hygiene
 
 - Commit message: `{id_prefix}-####: <short summary>` (task id + summary).
-- Do not commit if `{ci_command}` is failing.
-- This repo is local-CI-first; avoid adding remote CI (e.g., GitHub Actions) as a substitute for `{ci_command}`.
+- {git_ci_rule}
+- This repo is local-CI-first; avoid adding remote CI (for example GitHub Actions) as a substitute for the recorded local gate.
 
 ## PR / Review Expectations
 
-- Include a short "what changed" + "how to verify" section (expected: `{ci_command}`).
+- Include a short "what changed" + "how to verify" section (expected local verification: {ci_review_expectation}).
 - Call out any breaking behavior explicitly and update docs/help accordingly.
 - When working from an issue/PR, prefer `gh` for context (`gh issue view ...`, `gh pr view ...`).
 
 ## Documentation Maintenance
 
-- Schema changes: update code, run `make generate`, and keep schemas + docs aligned.
+- Schema changes: update code, regenerate schemas, and keep docs aligned.
 - CLI changes: update help text/examples and keep CLI documentation aligned.
 - Queue/task field changes: update task documentation.
 
 ## Troubleshooting
 
-- CI failing: run `{ci_command}`; common checks are `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test --workspace`.
+- {ci_troubleshooting}
 - Queue lock: investigate `.cueloop/lock`; use `--force` only when you understand why the lock is stale.
 - Runner issues: verify the runner binary is on `PATH` and check runner/model settings in config.
 

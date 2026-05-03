@@ -4,14 +4,10 @@
 
 ## Non-Negotiables
 
-- CI gate: `{ci_command}` MUST pass before claiming completion, committing, or merging.
-- Source docs: every new/changed source file MUST start with a module doc comment that states:
-  - what the file is responsible for
-  - what it explicitly does NOT handle
-  - any invariants/assumptions callers must respect
+- {ci_gate_rule}
+- {documentation_style_rule}
 - Tests: all new/changed behavior must be covered (success + failure modes). Prefer tests near the code.
 - Secrets: never commit or print secrets; redact sensitive output before recording in documentation.
-
 
 ## Agent Execution Style
 
@@ -27,18 +23,20 @@
 
 ## Build, Test, and CI
 
-The Makefile is the contract; keep these targets working:
+BLUF: use detected or explicitly configured repo commands when listed below. If a line is marked as a default or TODO, verify it before treating it as the repo contract.
 
-- `{ci_command}`: local CI gate (format → type-check → lint → build → test).
-- `{build_command}`: build the project.
-- `{test_command}`: run all tests.
-- `{lint_command}`: run linting.
-- `{format_command}`: format code.
+Command source: {command_source_note}
+
+- CI gate: {ci_command_line}
+- Build: {build_command_line}
+- Test: {test_command_line}
+- Lint: {lint_command_line}
+- Format: {format_command_line}
 
 ## Testing
 
-- Unit tests: colocate with implementation where possible.
-- Integration tests: use dedicated test directories for cross-module behavior.
+- Unit tests: colocate with implementation where practical.
+- Integration tests: use dedicated test directories when cross-module behavior is the subject.
 - Temp dirs: tests should use isolated temp directories.
 
 ## Workflow Contracts
@@ -60,7 +58,7 @@ Config precedence (highest to lowest):
 ## Git Hygiene
 
 - Commit message: `{id_prefix}-####: <short summary>` (task id + summary).
-- Do not commit if `{ci_command}` is failing.
+- {git_ci_rule}
 - Prefer local CI over remote CI.
 
 ## Documentation Maintenance
@@ -69,9 +67,14 @@ Config precedence (highest to lowest):
 - CLI changes: update help text/examples and keep CLI documentation aligned.
 - Task field changes: update task documentation.
 
+## PR / Review Expectations
+
+- Include a short "what changed" + "how to verify" section (expected local verification: {ci_review_expectation}).
+- Call out any breaking behavior explicitly and update docs/help accordingly.
+
 ## Troubleshooting
 
-- CI failing: run `{ci_command}`; check formatting, linting, and tests.
+- {ci_troubleshooting}
 - Task system issues: check lock files and use `--force` only when you understand why locks are stale.
 
 ---
