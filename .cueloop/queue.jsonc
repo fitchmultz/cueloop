@@ -2,57 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0086",
-      "status": "todo",
-      "title": "Make agent task insertion atomic",
-      "description": "Agent-facing scan and task-builder prompts require a two-step `next-id` then manual queue edit flow. The `next-id` command explicitly does not reserve IDs, so independent agents or concurrent shells can generate the same IDs and race each other into duplicate queue entries. Provide an atomic, lock-aware task insertion path for agents and update prompts/docs to use it for queue shaping instead of open-coded JSON edits whenever possible.",
-      "priority": "medium",
-      "tags": [
-        "scan",
-        "queue",
-        "safety",
-        "concurrency",
-        "agent-docs"
-      ],
-      "scope": [
-        "crates/cueloop/src/cli/queue/next_id.rs",
-        "crates/cueloop/src/cli/machine/task.rs",
-        "crates/cueloop/src/queue/operations/materialize.rs or adjacent mutation helpers",
-        "crates/cueloop/assets/prompts/scan_general_v2.md",
-        "crates/cueloop/assets/prompts/scan_maintenance_v2.md",
-        "crates/cueloop/assets/prompts/task_builder.md",
-        "docs/features/scan.md",
-        "docs/queue-and-tasks.md",
-        "crates/cueloop/tests/",
-        "cueloop queue validate"
-      ],
-      "evidence": [
-        "path: crates/cueloop/src/cli/queue/next_id.rs :: module docs :: `next-id` is read-only, does not reserve IDs, and duplicate IDs are warned but do not block ID generation.",
-        "path: crates/cueloop/assets/prompts/scan_general_v2.md :: Queue Insertion Rules :: scan agents are instructed to generate IDs once with `cueloop queue next-id --count N` and then insert tasks manually into `{{config.queue.file}}`.",
-        "path: crates/cueloop/assets/prompts/task_builder.md :: Queue Insertion Rules :: task-builder agents are likewise instructed to use `cueloop queue next-id --count N` followed by direct JSON queue insertion.",
-        "path: crates/cueloop/src/queue/validation/queue_files.rs :: validate_queue and validate_cross_file_duplicates :: duplicate task IDs are rejected only after they have been written, so a race turns into a broken queue instead of an atomic conflict.",
-        "workflow: cueloop queue next-id --count 3 :: printed RQ-0085, RQ-0086, and RQ-0087 without reserving them; the command output itself carries no lock token or transaction handle."
-      ],
-      "plan": [
-        "Design one lock-aware insertion interface for externally generated tasks, preferably through an existing machine task mutation/materialization command that accepts complete task specs and assigns IDs inside the queue lock.",
-        "Keep `queue next-id` available for human/manual workflows but label it as preview-only or non-atomic in help text and docs.",
-        "Update scan and task-builder prompts to prefer the atomic insertion command or machine mutation path, falling back to manual JSON editing only when the atomic path is unavailable and explicitly warning about races.",
-        "Add concurrency regression coverage that starts two insertions from the same initial queue state and proves CueLoop either serializes them with unique IDs or rejects the loser without corrupting the queue.",
-        "Add prompt/help tests so future agent-facing instructions do not present non-reserved IDs as a safe transaction boundary.",
-        "Verify with focused queue mutation tests, prompt rendering tests, `cueloop queue next-id --help`, the new atomic insertion help, and `cueloop queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: post-0.4.1 release dogfood scan",
-      "created_at": "2026-05-03T17:51:11Z",
-      "updated_at": "2026-05-03T17:51:11Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0087",
       "status": "todo",
       "title": "Remove misleading release-dry-run mutation path",

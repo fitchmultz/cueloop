@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "task_kind": "queue_shaping",
+        "runner_used": "codex",
         "skill": "comprehensive-codebase-audit",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "task_kind": "queue_shaping",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -431,8 +431,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race"
+        "audit_finding": "MEDIUM: app-side Run Next Task duplicates CLI task selection and can race",
+        "source_report": "/tmp/cueloop-report.md"
       }
     },
     {
@@ -481,8 +481,8 @@
       ],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed",
-        "source_report": "/tmp/cueloop-report.md"
+        "source_report": "/tmp/cueloop-report.md",
+        "audit_finding": "HIGH: machine run loop reports idle and blocked states as completed"
       }
     },
     {
@@ -540,9 +540,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
-        "runner_used": "codex",
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/cueloop-report.md"
+        "runner_used": "codex",
+        "source_report": "/tmp/cueloop-report.md",
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
       }
     },
     {
@@ -686,10 +686,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "codex",
         "model_used": "gpt-5.4",
         "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
-        "runner_used": "codex"
+        "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources"
       }
     },
     {
@@ -760,10 +760,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths",
-        "model_used": "gpt-5.4",
         "source_report": "/tmp/cueloop-report.md",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "model_used": "gpt-5.4",
+        "audit_finding": "MEDIUM: custom queue paths are second-class in some app and doc paths"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "source_report": "/tmp/cueloop-report.md",
-        "model_used": "gpt-5.4",
         "runner_used": "codex",
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions"
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -956,8 +956,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "gpt-5.4",
-        "source_report": "/tmp/cueloop-report.md",
         "runner_used": "codex",
+        "source_report": "/tmp/cueloop-report.md",
         "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     },
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "reported_command": "cueloop run loop --parallel 2",
-        "severity_reason": "parallel-mode task state/data integrity loss",
         "model_used": "openai-codex/gpt-5.5",
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
+        "severity_reason": "parallel-mode task state/data integrity loss",
         "runner_used": "pi",
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
+        "reported_command": "cueloop run loop --parallel 2"
       }
     },
     {
@@ -2945,8 +2945,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi"
       }
     },
     {
@@ -3063,9 +3063,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3123,8 +3123,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3180,9 +3180,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3249,9 +3249,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3318,9 +3318,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3513,8 +3513,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3644,8 +3644,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:high",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3702,8 +3702,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:high",
+        "runner_used": "pi",
         "scan_agent": "scan-general"
       }
     },
@@ -3832,8 +3832,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi"
       }
     },
@@ -3887,9 +3887,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3944,8 +3944,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi",
         "scan_agent": "scan-general"
       }
     },
@@ -3996,8 +3996,8 @@
       "relates_to": [],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "scan_agent": "scan-general",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -4062,8 +4062,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback",
         "runner_used": "pi",
+        "source_feedback": "warden_task_decompose_feedback",
         "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
@@ -4122,8 +4122,8 @@
       ],
       "custom_fields": {
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
     {
@@ -4185,9 +4185,9 @@
         "RQ-0078"
       ],
       "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "model_used": "openai-codex/gpt-5.5:xhigh",
+        "source_feedback": "warden_task_decompose_feedback"
       }
     },
     {
@@ -4261,9 +4261,9 @@
         "RQ-0079"
       ],
       "custom_fields": {
+        "runner_used": "pi",
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
     {
@@ -4320,8 +4320,8 @@
         "RQ-0078"
       ],
       "custom_fields": {
-        "runner_used": "pi",
         "source_feedback": "warden_task_decompose_feedback",
+        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh"
       }
     },
@@ -4370,6 +4370,58 @@
       "created_at": "2026-05-03T17:51:11Z",
       "updated_at": "2026-05-03T20:55:42.277536000Z",
       "completed_at": "2026-05-03T20:55:42.277536000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-general"
+      }
+    },
+    {
+      "id": "RQ-0086",
+      "status": "done",
+      "title": "Make agent task insertion atomic",
+      "description": "Agent-facing scan and task-builder prompts require a two-step `next-id` then manual queue edit flow. The `next-id` command explicitly does not reserve IDs, so independent agents or concurrent shells can generate the same IDs and race each other into duplicate queue entries. Provide an atomic, lock-aware task insertion path for agents and update prompts/docs to use it for queue shaping instead of open-coded JSON edits whenever possible.",
+      "priority": "medium",
+      "tags": [
+        "scan",
+        "queue",
+        "safety",
+        "concurrency",
+        "agent-docs"
+      ],
+      "scope": [
+        "crates/cueloop/src/cli/queue/next_id.rs",
+        "crates/cueloop/src/cli/machine/task.rs",
+        "crates/cueloop/src/queue/operations/materialize.rs or adjacent mutation helpers",
+        "crates/cueloop/assets/prompts/scan_general_v2.md",
+        "crates/cueloop/assets/prompts/scan_maintenance_v2.md",
+        "crates/cueloop/assets/prompts/task_builder.md",
+        "docs/features/scan.md",
+        "docs/queue-and-tasks.md",
+        "crates/cueloop/tests/",
+        "cueloop queue validate"
+      ],
+      "evidence": [
+        "path: crates/cueloop/src/cli/queue/next_id.rs :: module docs :: `next-id` is read-only, does not reserve IDs, and duplicate IDs are warned but do not block ID generation.",
+        "path: crates/cueloop/assets/prompts/scan_general_v2.md :: Queue Insertion Rules :: scan agents are instructed to generate IDs once with `cueloop queue next-id --count N` and then insert tasks manually into `{{config.queue.file}}`.",
+        "path: crates/cueloop/assets/prompts/task_builder.md :: Queue Insertion Rules :: task-builder agents are likewise instructed to use `cueloop queue next-id --count N` followed by direct JSON queue insertion.",
+        "path: crates/cueloop/src/queue/validation/queue_files.rs :: validate_queue and validate_cross_file_duplicates :: duplicate task IDs are rejected only after they have been written, so a race turns into a broken queue instead of an atomic conflict.",
+        "workflow: cueloop queue next-id --count 3 :: printed RQ-0085, RQ-0086, and RQ-0087 without reserving them; the command output itself carries no lock token or transaction handle."
+      ],
+      "plan": [
+        "Design one lock-aware insertion interface for externally generated tasks, preferably through an existing machine task mutation/materialization command that accepts complete task specs and assigns IDs inside the queue lock.",
+        "Keep `queue next-id` available for human/manual workflows but label it as preview-only or non-atomic in help text and docs.",
+        "Update scan and task-builder prompts to prefer the atomic insertion command or machine mutation path, falling back to manual JSON editing only when the atomic path is unavailable and explicitly warning about races.",
+        "Add concurrency regression coverage that starts two insertions from the same initial queue state and proves CueLoop either serializes them with unique IDs or rejects the loser without corrupting the queue.",
+        "Add prompt/help tests so future agent-facing instructions do not present non-reserved IDs as a safe transaction boundary.",
+        "Verify with focused queue mutation tests, prompt rendering tests, `cueloop queue next-id --help`, the new atomic insertion help, and `cueloop queue validate`."
+      ],
+      "notes": [],
+      "request": "scan: post-0.4.1 release dogfood scan",
+      "created_at": "2026-05-03T17:51:11Z",
+      "updated_at": "2026-05-03T21:00:10.668653000Z",
+      "completed_at": "2026-05-03T21:00:10.668653000Z",
       "depends_on": [],
       "blocks": [],
       "relates_to": [],
