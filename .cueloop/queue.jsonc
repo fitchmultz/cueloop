@@ -2,59 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0082",
-      "status": "todo",
-      "title": "Make run-loop examples safe by default",
-      "description": "CueLoop's first-run and agent-facing docs repeatedly present unbounded `run loop` usage as the normal path. That is risky guidance for AI agents and new operators because it encourages unattended queue execution before the user has chosen an explicit cap. Replace default examples with capped or single-task commands, keep `--max-tasks 0` documented only as an explicit advanced/unlimited mode, and add regression checks so generated help and docs do not drift back to unsafe defaults.",
-      "priority": "high",
-      "tags": [
-        "scan",
-        "docs",
-        "cli-help",
-        "agent-docs",
-        "safety"
-      ],
-      "scope": [
-        "crates/cueloop/src/cli/run/help.rs",
-        "crates/cueloop/src/cli/args.rs",
-        "crates/cueloop/src/templates or runtime README template source",
-        ".cueloop/README.md",
-        "docs/cli.md",
-        "docs/quick-start.md",
-        "docs/guides/getting-started.md",
-        "crates/cueloop/tests/",
-        "cueloop --help",
-        "cueloop run loop --help",
-        "cueloop queue validate"
-      ],
-      "evidence": [
-        "path: crates/cueloop/src/cli/run/help.rs:158-176 :: run-loop help defines `--max-tasks 0` as unlimited and lists unlimited loop examples before capped examples.",
-        "path: crates/cueloop/src/cli/args.rs:62-78 :: top-level help examples end with both `cueloop run loop --max-tasks 1` and uncapped `cueloop run loop`, making uncapped loop execution look like a normal starter command.",
-        "path: .cueloop/README.md:82-84 :: generated runtime guidance lists `cueloop run loop --max-tasks 0` and `cueloop run loop --phases 2 --max-tasks 0` under Run multiple tasks.",
-        "path: docs/cli.md:72-82 :: Create and Run quick path includes `cueloop run loop --max-tasks 0` before explaining that it means unlimited execution.",
-        "path: docs/quick-start.md:55-60 :: quick start says `cueloop run loop` runs continuously until the queue is drained with no capped alternative in that primary code block.",
-        "workflow: rg -n \"run loop --max-tasks 0|cueloop run loop$\" README.md docs .cueloop/README.md crates/cueloop/src crates/cueloop/tests :: found unbounded or unlimited run-loop examples across generated runtime docs, quick-start docs, CLI reference, and help source."
-      ],
-      "plan": [
-        "Decide the safe default wording for human and agent surfaces: prefer `cueloop run one`, `cueloop run loop --max-tasks 1`, or another positive cap in starter examples.",
-        "Update run-loop help so unlimited mode remains documented but is labeled advanced/intentional and no longer appears first in examples.",
-        "Update the top-level help examples, docs quick-start paths, and generated `.cueloop/README.md` template source so default execution examples are capped or single-task.",
-        "Add or update help/docs regression checks that fail on primary starter examples using uncapped `cueloop run loop` or `--max-tasks 0` outside explicit unlimited sections.",
-        "Regenerate any generated runtime docs from their source template instead of hand-editing generated output alone.",
-        "Verify with focused help/docs tests, `cueloop --help`, `cueloop run loop --help`, and `cueloop queue validate`."
-      ],
-      "notes": [],
-      "request": "scan: documentation and AI-agent guidance",
-      "created_at": "2026-05-03T14:17:28Z",
-      "updated_at": "2026-05-03T14:17:28Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-general"
-      }
-    },
-    {
       "id": "RQ-0084",
       "status": "todo",
       "title": "Make generated AGENTS.md templates repo-evidence based",
