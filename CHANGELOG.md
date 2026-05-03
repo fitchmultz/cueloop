@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-03
+
 ### Added
 
 - CueLoop is now the primary CLI/crate/app identity, with matching `cueloop` binary/package metadata, public docs, help examples, shell helpers, URL scheme, macOS operator copy, bundled app CLI preference, environment aliases, and final cutover checks.
@@ -163,7 +165,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/fitchmultz/cueloop/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/fitchmultz/cueloop/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/fitchmultz/cueloop/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/fitchmultz/cueloop/compare/v0.2.2...v0.3.0
