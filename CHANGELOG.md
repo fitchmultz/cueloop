@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added atomic task insertion across CLI and machine contracts, including `cueloop task insert`, queue insertion operations, schema coverage, prompt guidance, and end-to-end tests.
+- Added safer interrupted-task resume handling with phase-aware session progress, dirty-worktree coverage, clearer `run` help, and more precise continuation behavior.
+- Added evidence-based AGENTS template generation so `cueloop context init` can render language-specific guidance from detected repository evidence instead of generic assumptions.
+
+### Changed
+
+- Updated default agent configuration and schema/docs for the Pi runner and current OpenAI Codex model naming.
+- Tightened task decomposition and queue display flows with better CLI/machine output, actionable child-task semantics, and dependency-graph validation simplification.
+- Made run-loop examples safe by default across root help, docs, generated README content, and public-readiness checks.
+- Trimmed root help into a shorter BLUF command map and removed the misleading release dry-run target from docs, Makefile help, and release contract tests.
+- Refactored init gitignore management and runtime-directory migration handling for clearer ignored-file setup behavior.
+
+### Fixed
+
+- Guarded queue-only runner mutations so scan, task build/decompose/update, and revert flows avoid unintended workspace changes and have targeted regression coverage.
+- Parallel worker completion now attempts best-effort workspace removal after successful worker cleanup.
+
 ## [0.4.1] - 2026-05-03
 
 ### Added
