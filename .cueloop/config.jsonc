@@ -9,7 +9,7 @@
     },
     "git_publish_mode": "commit_and_push",
     "runner": "pi",
-    "model": "openai-codex/gpt-5.4",
+    "model": "openai-codex/gpt-5.5",
     "reasoning_effort": "medium",
     "phases": 3,
     "phase_overrides": {
@@ -18,8 +18,8 @@
         "reasoning_effort": "medium"
       },
       "phase2": {
-        "model": "openai-codex/gpt-5.4",
-        "reasoning_effort": "medium"
+        "runner": "cursor",
+        "model": "composer-2"
       },
       "phase3": {
         "model": "openai-codex/gpt-5.5",
