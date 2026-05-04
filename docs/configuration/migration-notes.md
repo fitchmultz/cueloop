@@ -39,7 +39,7 @@ Use `--check` before `--apply`. The migration moves `.ralph/` to `.cueloop/` whe
 ## Runner and reasoning changes
 
 - `reasoning_effort` no longer accepts `minimal`; use `low`, `medium`, `high`, or `xhigh`.
-- Cursor runner execution now uses CueLoop's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `cueloop migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk`; global npm installs and `CUELOOP_CURSOR_SDK_MODULE_PATH` are also supported. CueLoop's preferred/tested SDK is `@cursor/sdk@1.0.12`; version drift is diagnostic only unless the SDK is unusable.
+- Cursor runner execution now uses CueLoop's local Cursor SDK bridge. Legacy `agent.cursor_bin` and `profiles.<name>.cursor_bin` settings are removed by `cueloop migrate --apply`; use `agent.cursor_sdk_node_bin` only when you need to override the Node.js executable. Project-level Cursor selection requires repo trust because the target workspace can provide `@cursor/sdk`. Global npm installs and `CUELOOP_CURSOR_SDK_MODULE_PATH` are also supported, and version drift is warning-only when the SDK remains structurally usable. See [Cursor SDK setup](agent-and-runners.md#cursor-sdk-setup).
 
 ## Parallel configuration changes
 

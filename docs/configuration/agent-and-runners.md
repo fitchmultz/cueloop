@@ -27,7 +27,7 @@ Supported fields:
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
   **Safety warning:** Disabling the CI gate skips CueLoop-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name.
-- `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). Cursor no longer uses the legacy `agent` binary; install the preferred/tested SDK in a trusted workspace with `npm install --save-exact @cursor/sdk@1.0.12`, install `@cursor/sdk` globally, or set `CUELOOP_CURSOR_SDK_MODULE_PATH` to a trusted SDK entrypoint. Version drift is a warning unless the SDK is structurally unusable.
+- `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). It selects Node only; see [Cursor SDK setup](#cursor-sdk-setup) for SDK resolution, install paths, and version-drift behavior.
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
@@ -42,6 +42,26 @@ Supported fields:
     }
   }
   ```
+
+### Cursor SDK setup
+
+`agent.cursor_sdk_node_bin` selects the Node.js executable used to run CueLoop's checked-in Cursor SDK bridge. It does not select an SDK package, and Cursor runner execution no longer shells out to the legacy Cursor `agent` binary.
+
+CueLoop resolves `@cursor/sdk` in this order:
+
+1. `CUELOOP_CURSOR_SDK_MODULE_PATH`, when set to a trusted SDK entrypoint.
+2. A workspace install resolvable from the target repository.
+3. Global npm roots resolvable by the selected Node.js executable.
+
+Supported install patterns:
+
+- Workspace install: `npm install --save-dev @cursor/sdk`, or `npm install --save-exact @cursor/sdk@1.0.12` when you want the preferred/tested version pinned locally.
+- Global npm install: `npm install -g @cursor/sdk` when Node can resolve global npm roots.
+- Explicit module path: `CUELOOP_CURSOR_SDK_MODULE_PATH=/path/to/@cursor/sdk/...` for a trusted SDK entrypoint.
+
+CueLoop's preferred/tested SDK version is `@cursor/sdk@1.0.12`. An exact version match is not required to attempt execution: older or newer SDK versions are tried best-effort with a warning when the required API is present.
+
+Fatal setup problems include missing `@cursor/sdk`, an unusable explicit module path or failed import, Node below the SDK's supported floor, missing `CURSOR_API_KEY`, or a loaded SDK module that does not expose the required `Agent` API.
 
 Notes:
 - Broad default quota policy: CueLoop defaults to Pi with `openai-codex/gpt-5.4` at `medium` effort, plus phase overrides that use `openai-codex/gpt-5.5` at `medium` effort for Phase 1 planning and Phase 3 review while keeping Phase 2 implementation on `openai-codex/gpt-5.4` at `medium` effort. This spends premium tokens on deciding and catching mistakes while using the cheaper strong model for the bulk implementation loop.

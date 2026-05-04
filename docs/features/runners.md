@@ -171,6 +171,7 @@ Codex only supports this restricted model list:
 **Model Options:**
 - Arbitrary model IDs supported
 - Cursor uses CueLoop's local SDK bridge through Node and `@cursor/sdk`
+- See [Cursor SDK setup](../configuration/agent-and-runners.md#cursor-sdk-setup) for workspace, global npm, and explicit module-path installs
 
 **Special Features:**
 - Durable SDK agent IDs are used for resume (`agent-...` locally, `bc-...` for cloud IDs)
@@ -273,7 +274,7 @@ Override runner binary paths in your config:
 }
 ```
 
-**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. The target workspace, global npm roots, or `CUELOOP_CURSOR_SDK_MODULE_PATH` must provide a usable `@cursor/sdk` entrypoint. CueLoop's preferred/tested version is `@cursor/sdk@1.0.12`; version drift is reported as a warning and tried best-effort.
+**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. `cursor_sdk_node_bin` selects the Node.js executable only. See [Cursor SDK setup](../configuration/agent-and-runners.md#cursor-sdk-setup) for supported `@cursor/sdk` install paths and warning-vs-fatal version-drift behavior.
 
 ### Configuration Precedence
 
