@@ -69,6 +69,7 @@ fn test_invocation<'a>(
             bins: test_bins(),
             model,
             reasoning_effort: None,
+            cursor: None,
             runner_cli: runner::ResolvedRunnerCliOptions::default(),
             timeout,
             permission_mode: None,

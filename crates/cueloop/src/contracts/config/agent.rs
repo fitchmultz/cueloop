@@ -18,8 +18,8 @@
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use crate::contracts::config::{
-    GitPublishMode, GitRevertMode, NotificationConfig, PhaseOverrides, RunnerRetryConfig,
-    ScanPromptVersion, WebhookConfig,
+    CursorRunnerConfig, GitPublishMode, GitRevertMode, NotificationConfig, PhaseOverrides,
+    RunnerRetryConfig, ScanPromptVersion, WebhookConfig,
 };
 use crate::contracts::model::{Model, ReasoningEffort};
 use crate::contracts::runner::{
@@ -137,6 +137,9 @@ pub struct AgentConfig {
     #[serde(skip_serializing)]
     #[schemars(skip)]
     pub cursor_bin: Option<String>,
+
+    /// Cursor SDK runner settings, including model parameters and local setting sources.
+    pub cursor: Option<CursorRunnerConfig>,
 
     /// Override the kimi executable name/path (default is "kimi" if None).
     pub kimi_bin: Option<String>,
@@ -276,6 +279,12 @@ impl AgentConfig {
         }
         if other.cursor_sdk_node_bin.is_some() {
             self.cursor_sdk_node_bin = other.cursor_sdk_node_bin;
+        }
+        if let Some(other_cursor) = other.cursor {
+            match &mut self.cursor {
+                Some(existing) => existing.merge_from(other_cursor),
+                None => self.cursor = Some(other_cursor),
+            }
         }
         if other.kimi_bin.is_some() {
             self.kimi_bin = other.kimi_bin;

@@ -24,8 +24,7 @@ use std::path::{Path, PathBuf};
 use serde_json::{Value as JsonValue, json};
 
 use crate::commands::run::PhaseType;
-use crate::constants::defaults::DEFAULT_CURSOR_MODEL;
-use crate::contracts::{Runner, RunnerSandboxMode};
+use crate::contracts::{CursorRunnerConfig, Runner, RunnerSandboxMode};
 use crate::fsutil;
 use crate::runner::RunnerError;
 
@@ -81,6 +80,7 @@ impl RunnerPlugin for CursorPlugin {
             message: ctx.prompt,
             agent_id: None,
             opts: ctx.runner_cli,
+            cursor: ctx.cursor.as_ref(),
             phase_type: ctx.phase_type.unwrap_or(PhaseType::Implementation),
             force: false,
         })?;
@@ -103,6 +103,7 @@ impl RunnerPlugin for CursorPlugin {
             message: ctx.message,
             agent_id: Some(ctx.session_id),
             opts: ctx.runner_cli,
+            cursor: ctx.cursor.as_ref(),
             phase_type: ctx.phase_type.unwrap_or(PhaseType::Implementation),
             force: ctx.force,
         })?;
@@ -162,6 +163,7 @@ struct CursorSdkRequest<'a> {
     message: &'a str,
     agent_id: Option<&'a str>,
     opts: super::super::cli_options::ResolvedRunnerCliOptions,
+    cursor: Option<&'a CursorRunnerConfig>,
     phase_type: PhaseType,
     force: bool,
 }
@@ -175,6 +177,14 @@ fn cursor_sdk_request(args: CursorSdkRequest<'_>) -> Result<Vec<u8>, RunnerError
         "agent_id": args.agent_id,
         "sandbox_enabled": cursor_sandbox_enabled(args.opts, args.phase_type),
     });
+    if let Some(cursor) = args.cursor {
+        if let Some(params) = cursor_sdk_model_params(cursor) {
+            request["model_params"] = json!(params);
+        }
+        if let Some(sources) = cursor_sdk_setting_sources(cursor) {
+            request["setting_sources"] = json!(sources);
+        }
+    }
     if args.force {
         request["force"] = json!(true);
     }
@@ -185,11 +195,30 @@ fn cursor_sdk_request(args: CursorSdkRequest<'_>) -> Result<Vec<u8>, RunnerError
     })
 }
 
+fn cursor_sdk_model_params(cursor: &CursorRunnerConfig) -> Option<Vec<serde_json::Value>> {
+    let params = cursor.model_params.as_ref()?;
+    let values = params
+        .iter()
+        .map(|(id, value)| json!({ "id": id, "value": value.as_sdk_value() }))
+        .collect::<Vec<_>>();
+    (!values.is_empty()).then_some(values)
+}
+
+fn cursor_sdk_setting_sources(cursor: &CursorRunnerConfig) -> Option<Vec<&'static str>> {
+    let sources = cursor.setting_sources.as_ref()?;
+    let values = sources
+        .iter()
+        .copied()
+        .map(|source| source.as_sdk_value())
+        .collect::<Vec<_>>();
+    (!values.is_empty()).then_some(values)
+}
+
 fn cursor_sdk_model_id(model: &crate::contracts::Model) -> &str {
     match model.as_str() {
-        "auto" | "gpt-5.4" | "gpt-5.3" | "gpt-5.3-codex" | "gpt-5.3-codex-spark" => {
-            DEFAULT_CURSOR_MODEL
-        }
+        "auto" => "default",
+        "openai-codex/gpt-5.5" => "gpt-5.5",
+        "openai-codex/gpt-5.4" => "gpt-5.4",
         other => other,
     }
 }
@@ -284,9 +313,87 @@ impl ResponseParser for CursorResponseParser {
 
 #[cfg(test)]
 mod tests {
-    use super::CURSOR_SDK_RUNNER;
-    use serde_json::json;
+    use super::{CURSOR_SDK_RUNNER, cursor_sdk_request};
+    use crate::contracts::{CursorModelParamValue, CursorRunnerConfig, CursorSettingSource};
+    use serde_json::{Value as JsonValue, json};
+    use std::collections::BTreeMap;
     use std::process::Command;
+
+    #[test]
+    fn cursor_request_serializes_model_params_and_setting_sources() -> anyhow::Result<()> {
+        let cursor = CursorRunnerConfig {
+            model_params: Some(BTreeMap::from([
+                (
+                    "context".to_string(),
+                    CursorModelParamValue::String("1m".to_string()),
+                ),
+                ("fast".to_string(), CursorModelParamValue::Bool(false)),
+                (
+                    "reasoning".to_string(),
+                    CursorModelParamValue::String("high".to_string()),
+                ),
+            ])),
+            setting_sources: Some(vec![
+                CursorSettingSource::Project,
+                CursorSettingSource::User,
+                CursorSettingSource::Plugins,
+            ]),
+        };
+        let payload = cursor_sdk_request(super::CursorSdkRequest {
+            operation: "run",
+            work_dir: std::path::Path::new("/tmp/work"),
+            model: &crate::contracts::Model::Custom("gpt-5.5".to_string()),
+            message: "hello",
+            agent_id: None,
+            opts: crate::runner::ResolvedRunnerCliOptions::default(),
+            cursor: Some(&cursor),
+            phase_type: crate::commands::run::PhaseType::Implementation,
+            force: false,
+        })?;
+        let request: JsonValue = serde_json::from_slice(&payload)?;
+        assert_eq!(request["model"], "gpt-5.5");
+        assert_eq!(
+            request["setting_sources"],
+            json!(["project", "user", "plugins"])
+        );
+        assert_eq!(
+            request["model_params"],
+            json!([
+                {"id":"context","value":"1m"},
+                {"id":"fast","value":"false"},
+                {"id":"reasoning","value":"high"}
+            ])
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_request_maps_cueloop_model_aliases_to_cursor_sdk_ids() -> anyhow::Result<()> {
+        for (model, expected) in [
+            (
+                crate::contracts::Model::Custom("auto".to_string()),
+                "default",
+            ),
+            (crate::contracts::Model::OpenAiCodexGpt55, "gpt-5.5"),
+            (crate::contracts::Model::OpenAiCodexGpt54, "gpt-5.4"),
+            (crate::contracts::Model::Gpt54, "gpt-5.4"),
+        ] {
+            let payload = cursor_sdk_request(super::CursorSdkRequest {
+                operation: "run",
+                work_dir: std::path::Path::new("/tmp/work"),
+                model: &model,
+                message: "hello",
+                agent_id: None,
+                opts: crate::runner::ResolvedRunnerCliOptions::default(),
+                cursor: None,
+                phase_type: crate::commands::run::PhaseType::Implementation,
+                force: false,
+            })?;
+            let request: JsonValue = serde_json::from_slice(&payload)?;
+            assert_eq!(request["model"], expected, "model={}", model.as_str());
+        }
+        Ok(())
+    }
 
     fn node_available() -> bool {
         Command::new("node")

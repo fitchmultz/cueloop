@@ -21,7 +21,7 @@
 //! - Model validation occurs before execution for every operation.
 
 use crate::commands::run::PhaseType;
-use crate::contracts::{ClaudePermissionMode, Model, ReasoningEffort, Runner};
+use crate::contracts::{ClaudePermissionMode, CursorRunnerConfig, Model, ReasoningEffort, Runner};
 use crate::plugins::registry::PluginRegistry;
 use crate::runner::{
     OutputHandler, OutputStream, RunnerBinaries, RunnerError, RunnerOutput, execution,
@@ -51,6 +51,7 @@ pub(crate) struct RunnerDispatchContext<'a> {
     pub bins: RunnerBinaries<'a>,
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub cursor: Option<CursorRunnerConfig>,
     pub runner_cli: execution::ResolvedRunnerCliOptions,
     pub timeout: Option<Duration>,
     pub permission_mode: Option<ClaudePermissionMode>,
@@ -89,6 +90,7 @@ pub(crate) fn dispatch(
             resolve_bin(&ctx.runner, ctx.bins),
             ctx.model,
             ctx.reasoning_effort,
+            ctx.cursor,
             ctx.runner_cli,
             prompt,
             ctx.timeout,
@@ -116,6 +118,7 @@ pub(crate) fn dispatch(
                 resolve_bin(&ctx.runner, ctx.bins),
                 ctx.model,
                 ctx.reasoning_effort,
+                ctx.cursor,
                 ctx.runner_cli,
                 session_id,
                 message,

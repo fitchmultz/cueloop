@@ -92,6 +92,7 @@ pub(super) fn execute_runner_pass(
                 bins,
                 model: settings.model.clone(),
                 reasoning_effort: settings.reasoning_effort,
+                cursor: settings.cursor.clone(),
                 runner_cli: settings.runner_cli,
                 timeout: None,
                 permission_mode,

@@ -81,6 +81,7 @@ pub fn plan_task_decomposition(
                 bins,
                 model: settings.model,
                 reasoning_effort: settings.reasoning_effort,
+                cursor: settings.cursor,
                 runner_cli: settings.runner_cli,
                 timeout: None,
                 permission_mode: settings.permission_mode,

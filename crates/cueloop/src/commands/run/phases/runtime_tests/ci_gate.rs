@@ -51,6 +51,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         runner: Runner::Opencode,
         model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let bins = runner::RunnerBinaries {
@@ -113,6 +114,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         runner: Runner::Opencode,
         model: settings.model.clone(),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: settings.runner_cli,
         phase_type: PhaseType::Implementation,
         session_id: Some("sess-123".to_string()),
@@ -172,6 +174,7 @@ echo '{"type":"session","sessionID":"sess-phase2"}'
         runner: Runner::Opencode,
         model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let bins = runner::RunnerBinaries {

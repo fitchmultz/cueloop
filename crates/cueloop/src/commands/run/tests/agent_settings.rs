@@ -43,6 +43,7 @@ fn resolve_run_agent_settings_task_agent_overrides_config() -> anyhow::Result<()
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -71,6 +72,7 @@ fn resolve_run_agent_settings_cli_overrides_task_agent_and_config() -> anyhow::R
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -231,6 +233,7 @@ fn resolve_run_agent_settings_model_effort_default_uses_config() -> anyhow::Resu
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -257,6 +260,7 @@ fn resolve_run_agent_settings_model_effort_overrides_config_for_codex() -> anyho
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -283,6 +287,7 @@ fn resolve_run_agent_settings_effort_is_ignored_for_opencode() -> anyhow::Result
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -339,6 +344,7 @@ fn resolve_iteration_settings_prefers_task_over_config() -> anyhow::Result<()> {
         phases: None,
         iterations: Some(2),
         followup_reasoning_effort: Some(ReasoningEffort::High),
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -358,6 +364,7 @@ fn apply_followup_reasoning_effort_overrides_supported_runners() {
         runner: Runner::Codex,
         model: Model::Gpt53Codex,
         reasoning_effort: Some(ReasoningEffort::Medium),
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let updated = apply_followup_reasoning_effort(&base, Some(ReasoningEffort::High), true);
@@ -367,6 +374,7 @@ fn apply_followup_reasoning_effort_overrides_supported_runners() {
         runner: Runner::Pi,
         model: Model::Custom("openai-codex/gpt-5.5".to_string()),
         reasoning_effort: Some(ReasoningEffort::Medium),
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let updated_pi = apply_followup_reasoning_effort(&base_pi, Some(ReasoningEffort::High), true);
@@ -376,6 +384,7 @@ fn apply_followup_reasoning_effort_overrides_supported_runners() {
         runner: Runner::Opencode,
         model: Model::Glm47,
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let updated_non_codex =
@@ -389,6 +398,7 @@ fn apply_followup_reasoning_effort_warns_for_non_codex() {
         runner: Runner::Opencode,
         model: Model::Glm47,
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
 

@@ -23,6 +23,7 @@ fn continue_session_for_ci_tests() -> crate::commands::run::supervision::Continu
         runner: crate::contracts::Runner::Codex,
         model: crate::contracts::Model::Gpt53Codex,
         reasoning_effort: None,
+        cursor: None,
         runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
         phase_type: crate::commands::run::PhaseType::Implementation,
         session_id: Some("sess-123".to_string()),

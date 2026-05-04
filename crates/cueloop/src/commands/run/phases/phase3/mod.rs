@@ -73,6 +73,7 @@ fn build_continue_session(
         runner: ctx.settings.runner.clone(),
         model: ctx.settings.model.clone(),
         reasoning_effort: ctx.settings.reasoning_effort,
+        cursor: ctx.settings.cursor.clone(),
         runner_cli: ctx.settings.runner_cli,
         phase_type: PhaseType::Review,
         session_id,

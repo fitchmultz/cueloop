@@ -382,16 +382,19 @@ mod tests {
                 runner: Some(Runner::Codex),
                 model: Some(crate::contracts::Model::Gpt53Codex),
                 reasoning_effort: Some(ReasoningEffort::Low),
+                cursor: None,
             }),
             phase2: Some(PhaseOverrideConfig {
                 runner: Some(Runner::Claude),
                 model: Some(crate::contracts::Model::Gpt53),
                 reasoning_effort: Some(ReasoningEffort::Medium),
+                cursor: None,
             }),
             phase3: Some(PhaseOverrideConfig {
                 runner: Some(Runner::Kimi),
                 model: Some(crate::contracts::Model::Glm47),
                 reasoning_effort: Some(ReasoningEffort::High),
+                cursor: None,
             }),
         };
         let agent_overrides = AgentOverrides {

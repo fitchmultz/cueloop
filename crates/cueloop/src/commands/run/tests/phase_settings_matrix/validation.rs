@@ -29,6 +29,7 @@ fn resolve_phase_settings_invalid_model_for_codex() {
             runner: Some(Runner::Codex),
             model: Some(Model::Glm47),
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };
@@ -50,6 +51,7 @@ fn resolve_phase_settings_invalid_custom_model_for_codex() {
             runner: Some(Runner::Codex),
             model: Some(Model::Custom("invalid-model".to_string())),
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };

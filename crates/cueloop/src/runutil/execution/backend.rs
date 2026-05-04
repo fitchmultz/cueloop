@@ -27,7 +27,9 @@ use std::time::Duration;
 
 use crate::commands::run::PhaseType;
 use crate::constants::buffers::{OUTPUT_TAIL_LINE_MAX_CHARS, OUTPUT_TAIL_LINES};
-use crate::contracts::{ClaudePermissionMode, GitRevertMode, Model, ReasoningEffort, Runner};
+use crate::contracts::{
+    ClaudePermissionMode, CursorRunnerConfig, GitRevertMode, Model, ReasoningEffort, Runner,
+};
 use crate::{outpututil, runner};
 
 pub(crate) struct RunnerInvocation<'a> {
@@ -43,6 +45,7 @@ pub(crate) struct RunnerSettings<'a> {
     pub bins: runner::RunnerBinaries<'a>,
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub cursor: Option<CursorRunnerConfig>,
     pub runner_cli: runner::ResolvedRunnerCliOptions,
     pub timeout: Option<Duration>,
     pub permission_mode: Option<ClaudePermissionMode>,
@@ -62,6 +65,7 @@ impl RunnerSettings<'_> {
             bins: self.bins,
             model: &self.model,
             reasoning_effort: self.reasoning_effort,
+            cursor: self.cursor.clone(),
             runner_cli: self.runner_cli,
             timeout: self.timeout,
             permission_mode: self.permission_mode,
@@ -108,6 +112,7 @@ pub(super) struct RunnerAttemptContext<'a> {
     pub bins: runner::RunnerBinaries<'a>,
     pub model: &'a Model,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub cursor: Option<CursorRunnerConfig>,
     pub runner_cli: runner::ResolvedRunnerCliOptions,
     pub timeout: Option<Duration>,
     pub permission_mode: Option<ClaudePermissionMode>,
@@ -128,6 +133,7 @@ impl RunnerAttemptContext<'_> {
             bins: self.bins,
             model: self.model.clone(),
             reasoning_effort: self.reasoning_effort,
+            cursor: self.cursor.clone(),
             runner_cli: self.runner_cli,
             prompt,
             timeout: self.timeout,
@@ -152,6 +158,7 @@ impl RunnerAttemptContext<'_> {
             bins: self.bins,
             model: self.model.clone(),
             reasoning_effort: self.reasoning_effort,
+            cursor: self.cursor.clone(),
             runner_cli: self.runner_cli,
             session_id,
             message,
@@ -172,6 +179,7 @@ pub(crate) struct RunnerBackendRunPrompt<'a> {
     pub bins: runner::RunnerBinaries<'a>,
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub cursor: Option<CursorRunnerConfig>,
     pub runner_cli: runner::ResolvedRunnerCliOptions,
     pub prompt: &'a str,
     pub timeout: Option<Duration>,
@@ -189,6 +197,7 @@ pub(crate) struct RunnerBackendResumeSession<'a> {
     pub bins: runner::RunnerBinaries<'a>,
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
+    pub cursor: Option<CursorRunnerConfig>,
     pub runner_cli: runner::ResolvedRunnerCliOptions,
     pub session_id: &'a str,
     pub message: &'a str,
@@ -226,6 +235,7 @@ impl RunnerBackend for RealRunnerBackend {
             bins,
             model,
             reasoning_effort,
+            cursor,
             runner_cli,
             prompt,
             timeout,
@@ -243,6 +253,7 @@ impl RunnerBackend for RealRunnerBackend {
             bins,
             model,
             reasoning_effort,
+            cursor,
             runner_cli,
             prompt,
             timeout,
@@ -265,6 +276,7 @@ impl RunnerBackend for RealRunnerBackend {
             bins,
             model,
             reasoning_effort,
+            cursor,
             runner_cli,
             session_id,
             message,
@@ -283,6 +295,7 @@ impl RunnerBackend for RealRunnerBackend {
             bins,
             model,
             reasoning_effort,
+            cursor,
             runner_cli,
             session_id,
             message,

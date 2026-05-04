@@ -33,6 +33,7 @@ pub(crate) struct ContinueSession {
     pub runner: crate::contracts::Runner,
     pub model: crate::contracts::Model,
     pub reasoning_effort: Option<crate::contracts::ReasoningEffort>,
+    pub cursor: Option<crate::contracts::CursorRunnerConfig>,
     /// The runner CLI settings resolved for the run that created this continue session.
     /// These must be preserved to avoid losing CLI overrides / task-specific settings.
     pub runner_cli: crate::runner::ResolvedRunnerCliOptions,
@@ -104,6 +105,7 @@ fn run_fresh_continue(
         bins,
         session.model.clone(),
         session.reasoning_effort,
+        session.cursor.clone(),
         session.runner_cli,
         message,
         None,
@@ -147,6 +149,7 @@ pub(crate) fn resume_continue_session(
                 bins,
                 session.model.clone(),
                 session.reasoning_effort,
+                session.cursor.clone(),
                 session.runner_cli,
                 session_id,
                 message,

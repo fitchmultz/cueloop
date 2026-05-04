@@ -81,6 +81,7 @@ fn resolved_with_ci_command(
             claude_bin: Some("claude".to_string()),
             cursor_sdk_node_bin: Some("node".to_string()),
             cursor_bin: None,
+            cursor: None,
             kimi_bin: Some("kimi".to_string()),
             pi_bin: Some("pi".to_string()),
             claude_permission_mode: Some(crate::contracts::ClaudePermissionMode::BypassPermissions),

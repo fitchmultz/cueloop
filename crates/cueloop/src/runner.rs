@@ -56,7 +56,7 @@ const _: () = {
 };
 
 use crate::commands::run::PhaseType;
-use crate::contracts::{ClaudePermissionMode, Model, ReasoningEffort, Runner};
+use crate::contracts::{ClaudePermissionMode, CursorRunnerConfig, Model, ReasoningEffort, Runner};
 use crate::plugins::registry::PluginRegistry;
 use crate::redaction::redact_text;
 use anyhow::Result;
@@ -161,6 +161,7 @@ pub(crate) fn run_prompt(
     bins: RunnerBinaries<'_>,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
+    cursor: Option<CursorRunnerConfig>,
     runner_cli: execution::ResolvedRunnerCliOptions,
     prompt: &str,
     timeout: Option<Duration>,
@@ -178,6 +179,7 @@ pub(crate) fn run_prompt(
             bins,
             model,
             reasoning_effort,
+            cursor,
             runner_cli,
             timeout,
             permission_mode,
@@ -197,6 +199,7 @@ pub(crate) fn resume_session(
     bins: RunnerBinaries<'_>,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
+    cursor: Option<CursorRunnerConfig>,
     runner_cli: execution::ResolvedRunnerCliOptions,
     session_id: &str,
     message: &str,
@@ -213,6 +216,7 @@ pub(crate) fn resume_session(
         bins,
         model,
         reasoning_effort,
+        cursor,
         runner_cli,
         session_id,
         message,
@@ -233,6 +237,7 @@ pub(crate) fn resume_session_with_options(
     bins: RunnerBinaries<'_>,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
+    cursor: Option<CursorRunnerConfig>,
     runner_cli: execution::ResolvedRunnerCliOptions,
     session_id: &str,
     message: &str,
@@ -251,6 +256,7 @@ pub(crate) fn resume_session_with_options(
             bins,
             model,
             reasoning_effort,
+            cursor,
             runner_cli,
             timeout,
             permission_mode,

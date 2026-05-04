@@ -34,6 +34,7 @@ fn task_runner_group_key_prefers_custom_fields_runner_used() {
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });
@@ -51,6 +52,7 @@ fn task_runner_group_key_falls_back_to_agent_runner() {
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     });

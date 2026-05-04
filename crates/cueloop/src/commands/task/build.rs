@@ -173,6 +173,7 @@ fn build_task_impl(
                 bins,
                 model: settings.model,
                 reasoning_effort: settings.reasoning_effort,
+                cursor: settings.cursor,
                 runner_cli: settings.runner_cli,
                 timeout: None,
                 permission_mode: settings.permission_mode,

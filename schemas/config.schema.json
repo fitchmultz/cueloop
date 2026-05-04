@@ -18,6 +18,7 @@
         "claude_bin": "claude",
         "claude_permission_mode": "accept_edits",
         "codex_bin": "codex",
+        "cursor": null,
         "cursor_sdk_node_bin": "node",
         "followup_reasoning_effort": null,
         "gemini_bin": "gemini",
@@ -240,6 +241,18 @@
           "type": [
             "string",
             "null"
+          ],
+          "default": null
+        },
+        "cursor": {
+          "description": "Cursor SDK runner settings, including model parameters and local setting sources.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CursorRunnerConfig"
+            },
+            {
+              "type": "null"
+            }
           ],
           "default": null
         },
@@ -528,6 +541,56 @@
       "enum": [
         "accept_edits",
         "bypass_permissions"
+      ]
+    },
+    "CursorModelParamValue": {
+      "description": "Cursor SDK model parameter value.",
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "CursorRunnerConfig": {
+      "description": "Cursor SDK runner configuration.",
+      "type": "object",
+      "properties": {
+        "model_params": {
+          "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/CursorModelParamValue"
+          }
+        },
+        "setting_sources": {
+          "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/CursorSettingSource"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CursorSettingSource": {
+      "description": "Cursor local setting source.",
+      "type": "string",
+      "enum": [
+        "project",
+        "user",
+        "team",
+        "mdm",
+        "plugins",
+        "all"
       ]
     },
     "GitPublishMode": {
@@ -821,6 +884,17 @@
       "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
       "type": "object",
       "properties": {
+        "cursor": {
+          "description": "Cursor SDK runner settings for this phase.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CursorRunnerConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "model": {
           "description": "Model to use for this phase (overrides global agent.model)",
           "anyOf": [

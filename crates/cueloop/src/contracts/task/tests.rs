@@ -275,12 +275,14 @@ fn task_agent_omits_default_phase_and_effort_fields_when_serializing() {
             phases: None,
             iterations: None,
             followup_reasoning_effort: None,
+            cursor: None,
             runner_cli: None,
             phase_overrides: Some(PhaseOverrides {
                 phase1: Some(PhaseOverrideConfig {
                     runner: Some(Runner::Codex),
                     model: Some(Model::Gpt53Codex),
                     reasoning_effort: Some(ReasoningEffort::Medium),
+                    cursor: None,
                 }),
                 ..Default::default()
             }),

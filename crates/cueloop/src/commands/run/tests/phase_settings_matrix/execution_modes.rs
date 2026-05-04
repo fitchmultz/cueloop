@@ -29,16 +29,19 @@ fn resolve_phase_settings_single_pass_uses_phase2_overrides() {
             runner: Some(Runner::Opencode),
             model: Some(Model::Glm47),
             reasoning_effort: None,
+            cursor: None,
         }),
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
+            cursor: None,
         }),
         phase3: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
     };
     let overrides = test_overrides_with_phases(None, None, None, Some(phase_overrides));
@@ -61,6 +64,7 @@ fn resolve_phase_settings_two_phase_warns_about_phase3() {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };
@@ -82,6 +86,7 @@ fn resolve_phase_settings_warns_unused_phase3_when_phases_is_2() {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };
@@ -106,12 +111,14 @@ fn resolve_phase_settings_warns_unused_task_phase3_override_when_phases_is_2() {
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: Some(PhaseOverrides {
             phase3: Some(PhaseOverrideConfig {
                 runner: Some(Runner::Gemini),
                 model: Some(Model::Custom("gemini-3-pro-preview".to_string())),
                 reasoning_effort: None,
+                cursor: None,
             }),
             ..Default::default()
         }),
@@ -135,11 +142,13 @@ fn resolve_phase_settings_warns_unused_phase1_and_phase3_when_phases_is_1() {
             runner: Some(Runner::Opencode),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         phase3: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };

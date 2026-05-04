@@ -75,6 +75,7 @@ struct ScanRunnerSettings {
     runner: Runner,
     model: Model,
     reasoning_effort: Option<ReasoningEffort>,
+    cursor: Option<crate::contracts::CursorRunnerConfig>,
     runner_cli: runner::ResolvedRunnerCliOptions,
     permission_mode: Option<ClaudePermissionMode>,
 }
@@ -96,6 +97,7 @@ fn resolve_scan_runner_settings(
         runner: settings.runner,
         model: settings.model,
         reasoning_effort: settings.reasoning_effort,
+        cursor: settings.cursor,
         runner_cli: settings.runner_cli,
         permission_mode: resolved.config.agent.claude_permission_mode,
     })
@@ -196,6 +198,7 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
                 bins,
                 model: settings.model,
                 reasoning_effort: settings.reasoning_effort,
+                cursor: settings.cursor,
                 runner_cli: settings.runner_cli,
                 timeout: None,
                 permission_mode: settings.permission_mode,

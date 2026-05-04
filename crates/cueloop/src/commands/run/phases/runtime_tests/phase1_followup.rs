@@ -46,6 +46,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         runner: Runner::Opencode,
         model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let bins = runner::RunnerBinaries {
@@ -162,6 +163,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         runner: Runner::Opencode,
         model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let bins = runner::RunnerBinaries {
@@ -268,6 +270,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         runner: Runner::Opencode,
         model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let bins = runner::RunnerBinaries {
@@ -366,6 +369,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         runner: Runner::Opencode,
         model: Model::Custom("zai-coding-plan/glm-4.7".to_string()),
         reasoning_effort: None,
+        cursor: None,
         runner_cli: runner::ResolvedRunnerCliOptions::default(),
     };
     let bins = runner::RunnerBinaries {

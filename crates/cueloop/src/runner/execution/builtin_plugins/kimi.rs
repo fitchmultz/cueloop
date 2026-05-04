@@ -72,6 +72,7 @@ impl RunnerPlugin for KimiPlugin {
             output_handler: ctx.output_handler,
             output_stream: ctx.output_stream,
             runner_cli: ctx.runner_cli,
+            cursor: ctx.cursor.clone(),
             reasoning_effort: ctx.reasoning_effort,
             permission_mode: ctx.permission_mode,
             phase_type: ctx.phase_type,

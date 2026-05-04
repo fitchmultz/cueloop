@@ -49,6 +49,7 @@ fn resolve_phase_settings_phase_runner_override_uses_default_model() {
             runner: Some(Runner::Opencode),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };
@@ -74,6 +75,7 @@ fn resolve_phase_settings_explicit_model_preserved_with_runner_override() {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53),
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     };
@@ -138,6 +140,7 @@ fn resolve_phase_settings_effort_precedence_within_codex() {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
+            cursor: None,
         }),
         ..Default::default()
     };

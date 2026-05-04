@@ -28,6 +28,7 @@ fn resolved_phase_settings_to_agent_settings_conversion() {
         runner: Runner::Codex,
         model: Model::Gpt53Codex,
         reasoning_effort: Some(ReasoningEffort::High),
+        cursor: None,
         runner_cli: crate::runner::ResolvedRunnerCliOptions::default(),
     };
 
@@ -52,16 +53,19 @@ fn per_phase_settings_different_runners_per_phase() {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::High),
+            cursor: None,
         }),
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Opencode),
             model: Some(Model::Glm47),
             reasoning_effort: None,
+            cursor: None,
         }),
         phase3: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
             model: Some(Model::Custom("gemini-pro".to_string())),
             reasoning_effort: None,
+            cursor: None,
         }),
     };
 
@@ -96,16 +100,19 @@ fn single_pass_uses_phase2_settings() {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53Codex),
             reasoning_effort: None,
+            cursor: None,
         }),
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Opencode),
             model: Some(Model::Glm47),
             reasoning_effort: None,
+            cursor: None,
         }),
         phase3: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
     };
 
@@ -151,16 +158,19 @@ fn resolution_warnings_collected_correctly() {
             runner: Some(Runner::Codex),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Opencode),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         phase3: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
     };
 

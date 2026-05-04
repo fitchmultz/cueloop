@@ -39,6 +39,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 mod agent;
+mod cursor;
 mod enums;
 mod loop_;
 mod notification;
@@ -53,6 +54,7 @@ mod tests;
 mod webhook;
 
 pub use agent::{AgentConfig, CiGateConfig};
+pub use cursor::{CursorModelParamValue, CursorRunnerConfig, CursorSettingSource};
 pub use enums::{GitPublishMode, GitRevertMode, ProjectType, ScanPromptVersion};
 pub use loop_::LoopConfig;
 pub use notification::NotificationConfig;
@@ -131,6 +133,7 @@ impl Default for Config {
                 claude_bin: Some("claude".to_string()),
                 cursor_sdk_node_bin: Some("node".to_string()),
                 cursor_bin: None,
+                cursor: None,
                 kimi_bin: Some("kimi".to_string()),
                 pi_bin: Some("pi".to_string()),
                 phases: Some(3),

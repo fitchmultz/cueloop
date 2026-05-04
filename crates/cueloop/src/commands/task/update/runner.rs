@@ -58,6 +58,7 @@ pub(super) fn run_task_updater(
                 bins,
                 model: runner_settings.model.clone(),
                 reasoning_effort: runner_settings.reasoning_effort,
+                cursor: runner_settings.cursor,
                 runner_cli: runner_settings.runner_cli,
                 timeout: None,
                 permission_mode: runner_settings.permission_mode,

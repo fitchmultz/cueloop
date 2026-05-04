@@ -22,7 +22,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::contracts::{
-    Model, ModelEffort, PhaseOverrides, ReasoningEffort, Runner, RunnerCliOptionsPatch,
+    CursorRunnerConfig, Model, ModelEffort, PhaseOverrides, ReasoningEffort, Runner,
+    RunnerCliOptionsPatch,
 };
 
 use super::priority::TaskPriority;
@@ -231,6 +232,10 @@ pub struct TaskAgent {
     /// Reasoning effort override for follow-up iterations (iterations > 1).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub followup_reasoning_effort: Option<ReasoningEffort>,
+
+    /// Optional Cursor SDK runner settings for this task.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<CursorRunnerConfig>,
 
     /// Optional normalized runner CLI overrides for this task.
     ///

@@ -278,7 +278,7 @@ fn cursor_build_run_command_phase_aware_defaults() {
     let request: serde_json::Value = serde_json::from_slice(&payload).unwrap();
     assert_eq!(request["operation"], "run");
     assert_eq!(request["message"], "test prompt");
-    assert_eq!(request["model"], "composer-2");
+    assert_eq!(request["model"], "gpt-5.3");
     assert_eq!(request["sandbox_enabled"], true);
     assert!(
         request.get("plan").is_none(),

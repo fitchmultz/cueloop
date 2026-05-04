@@ -21,7 +21,7 @@
 
 use crate::commands::task::{TaskBuildOptions, TaskUpdateSettings};
 use crate::contracts::{
-    ClaudePermissionMode, Model, ReasoningEffort, Runner, RunnerCliOptionsPatch,
+    ClaudePermissionMode, CursorRunnerConfig, Model, ReasoningEffort, Runner, RunnerCliOptionsPatch,
 };
 use crate::{config, runner};
 use anyhow::Result;
@@ -31,6 +31,7 @@ pub(crate) struct TaskRunnerSettings {
     pub(crate) runner: Runner,
     pub(crate) model: Model,
     pub(crate) reasoning_effort: Option<ReasoningEffort>,
+    pub(crate) cursor: Option<CursorRunnerConfig>,
     pub(crate) runner_cli: runner::ResolvedRunnerCliOptions,
     pub(crate) permission_mode: Option<ClaudePermissionMode>,
 }
@@ -55,6 +56,7 @@ pub(crate) fn resolve_task_runner_settings(
         runner: settings.runner,
         model: settings.model,
         reasoning_effort: settings.reasoning_effort,
+        cursor: settings.cursor,
         runner_cli: settings.runner_cli,
         permission_mode: resolved.config.agent.claude_permission_mode,
     })

@@ -84,6 +84,7 @@ fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
             claude_bin: Some("claude".to_string()),
             cursor_sdk_node_bin: Some("node".to_string()),
             cursor_bin: None,
+            cursor: None,
             kimi_bin: Some("kimi".to_string()),
             pi_bin: Some("pi".to_string()),
             claude_permission_mode: Some(crate::contracts::ClaudePermissionMode::BypassPermissions),

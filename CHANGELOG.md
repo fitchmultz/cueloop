@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added Cursor SDK model parameter configuration for global, task, and phase-specific runner settings, including pass-through support for SDK params like `fast`, `reasoning`, `thinking`, `effort`, and `context` plus local setting-source selection.
+
+### Changed
+
+- Cursor runner model aliases now map OpenAI Codex-prefixed CueLoop model names to Cursor SDK model IDs instead of falling back to `composer-2`.
+
 ## [0.5.0] - 2026-05-03
 
 ### Added

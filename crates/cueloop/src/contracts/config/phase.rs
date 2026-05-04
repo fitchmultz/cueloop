@@ -15,6 +15,7 @@
 //! Invariants/Assumptions:
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
+use crate::contracts::config::CursorRunnerConfig;
 use crate::contracts::model::{Model, ReasoningEffort};
 use crate::contracts::runner::Runner;
 use schemars::JsonSchema;
@@ -39,6 +40,10 @@ pub struct PhaseOverrideConfig {
     /// Reasoning effort for this phase (overrides global agent.reasoning_effort)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_effort: Option<ReasoningEffort>,
+
+    /// Cursor SDK runner settings for this phase.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<CursorRunnerConfig>,
 }
 
 impl PhaseOverrideConfig {
@@ -52,6 +57,12 @@ impl PhaseOverrideConfig {
         }
         if other.reasoning_effort.is_some() {
             self.reasoning_effort = other.reasoning_effort;
+        }
+        if let Some(other_cursor) = other.cursor {
+            match &mut self.cursor {
+                Some(existing) => existing.merge_from(other_cursor),
+                None => self.cursor = Some(other_cursor),
+            }
         }
     }
 }

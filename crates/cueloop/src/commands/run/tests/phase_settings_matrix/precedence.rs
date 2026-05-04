@@ -29,6 +29,7 @@ fn resolve_phase_settings_cli_phase_override_beats_global() {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::Low),
+            cursor: None,
         }),
         ..Default::default()
     };
@@ -55,6 +56,7 @@ fn resolve_phase_settings_config_phase_override_beats_global() {
             runner: Some(Runner::Gemini),
             model: Some(Model::Custom("gemini-pro".to_string())),
             reasoning_effort: None,
+            cursor: None,
         }),
         ..Default::default()
     });
@@ -81,6 +83,7 @@ fn resolve_phase_settings_task_phase_override_beats_config_phase_override() {
             runner: Some(Runner::Codex),
             model: Some(Model::Gpt53Codex),
             reasoning_effort: Some(ReasoningEffort::Low),
+            cursor: None,
         }),
         ..Default::default()
     });
@@ -92,12 +95,14 @@ fn resolve_phase_settings_task_phase_override_beats_config_phase_override() {
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: Some(PhaseOverrides {
             phase1: Some(PhaseOverrideConfig {
                 runner: Some(Runner::Kimi),
                 model: Some(Model::Custom("kimi-code/kimi-for-coding".to_string())),
                 reasoning_effort: Some(ReasoningEffort::High),
+                cursor: None,
             }),
             ..Default::default()
         }),
@@ -121,12 +126,14 @@ fn resolve_phase_settings_cli_phase_override_beats_task_phase_override() {
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: Some(PhaseOverrides {
             phase1: Some(PhaseOverrideConfig {
                 runner: Some(Runner::Kimi),
                 model: Some(Model::Custom("kimi-code/kimi-for-coding".to_string())),
                 reasoning_effort: None,
+                cursor: None,
             }),
             ..Default::default()
         }),
@@ -140,6 +147,7 @@ fn resolve_phase_settings_cli_phase_override_beats_task_phase_override() {
                 runner: Some(Runner::Codex),
                 model: Some(Model::Gpt53Codex),
                 reasoning_effort: Some(ReasoningEffort::High),
+                cursor: None,
             }),
             ..Default::default()
         }),

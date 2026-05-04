@@ -88,6 +88,7 @@ pub(super) fn base_invocation<'a>(repo_root: &'a Path) -> RunnerInvocation<'a> {
             },
             model: Model::Gpt53Codex,
             reasoning_effort: None,
+            cursor: None,
             runner_cli: runner::ResolvedRunnerCliOptions::default(),
             timeout: None,
             permission_mode: None,

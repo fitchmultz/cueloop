@@ -24,7 +24,8 @@
 use anyhow::{Result, anyhow};
 
 use crate::contracts::{
-    AgentConfig, Model, ReasoningEffort, Runner, RunnerCliOptionsPatch, TaskAgent,
+    AgentConfig, CursorRunnerConfig, Model, ReasoningEffort, Runner, RunnerCliOptionsPatch,
+    TaskAgent,
 };
 
 use super::execution;
@@ -36,6 +37,7 @@ pub(crate) struct AgentSettings {
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
     pub runner_cli: execution::ResolvedRunnerCliOptions,
+    pub cursor: Option<CursorRunnerConfig>,
 }
 
 pub(crate) fn resolve_agent_settings(
@@ -86,11 +88,14 @@ pub(crate) fn resolve_agent_settings(
         config_agent,
     )?;
 
+    let cursor = resolve_global_cursor_config(&runner, task_agent, config_agent);
+
     Ok(AgentSettings {
         runner: runner.clone(),
         model,
         reasoning_effort,
         runner_cli,
+        cursor,
     })
 }
 
@@ -100,6 +105,7 @@ pub(crate) struct ResolvedPhaseSettings {
     pub model: Model,
     pub reasoning_effort: Option<ReasoningEffort>,
     pub runner_cli: execution::ResolvedRunnerCliOptions,
+    pub cursor: Option<CursorRunnerConfig>,
 }
 
 impl ResolvedPhaseSettings {
@@ -109,6 +115,7 @@ impl ResolvedPhaseSettings {
             model: self.model.clone(),
             reasoning_effort: self.reasoning_effort,
             runner_cli: self.runner_cli,
+            cursor: self.cursor.clone(),
         }
     }
 }
@@ -285,12 +292,93 @@ fn resolve_single_phase(
         config_agent,
     )?;
 
+    let cursor = resolve_phase_cursor_config(
+        &runner,
+        &model_value,
+        cli_phase_override,
+        task_phase_override,
+        config_phase_override,
+        task_agent,
+        config_agent,
+    );
+
     Ok(ResolvedPhaseSettings {
         runner: runner.clone(),
         model: model_value,
         reasoning_effort,
         runner_cli,
+        cursor,
     })
+}
+
+fn merge_cursor_config(
+    base: Option<&CursorRunnerConfig>,
+    other: Option<&CursorRunnerConfig>,
+) -> Option<CursorRunnerConfig> {
+    let mut merged = base.cloned();
+    if let Some(other) = other {
+        match &mut merged {
+            Some(existing) => existing.merge_from(other.clone()),
+            None => merged = Some(other.clone()),
+        }
+    }
+    merged.filter(|config| !config.is_effectively_empty())
+}
+
+fn resolve_global_cursor_config(
+    runner: &Runner,
+    task_agent: Option<&TaskAgent>,
+    config_agent: &AgentConfig,
+) -> Option<CursorRunnerConfig> {
+    if runner != &Runner::Cursor {
+        return None;
+    }
+    merge_cursor_config(
+        config_agent.cursor.as_ref(),
+        task_agent.and_then(|a| a.cursor.as_ref()),
+    )
+}
+
+fn resolve_base_cursor_model(task_agent: Option<&TaskAgent>, config_agent: &AgentConfig) -> Model {
+    model::resolve_model_for_runner(
+        &Runner::Cursor,
+        None,
+        task_agent.and_then(|a| a.model.clone()),
+        config_agent.model.clone(),
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn resolve_phase_cursor_config(
+    runner: &Runner,
+    phase_model: &Model,
+    cli_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
+    task_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
+    config_phase_override: Option<&crate::contracts::PhaseOverrideConfig>,
+    task_agent: Option<&TaskAgent>,
+    config_agent: &AgentConfig,
+) -> Option<CursorRunnerConfig> {
+    if runner != &Runner::Cursor {
+        return None;
+    }
+
+    let base_model = resolve_base_cursor_model(task_agent, config_agent);
+    let mut resolved = if phase_model == &base_model {
+        resolve_global_cursor_config(runner, task_agent, config_agent)
+    } else {
+        None
+    };
+
+    for cursor in [
+        config_phase_override.and_then(|p| p.cursor.as_ref()),
+        task_phase_override.and_then(|p| p.cursor.as_ref()),
+        cli_phase_override.and_then(|p| p.cursor.as_ref()),
+    ] {
+        resolved = merge_cursor_config(resolved.as_ref(), cursor);
+    }
+
+    resolved
 }
 
 fn resolve_phase_reasoning_effort(

@@ -42,6 +42,7 @@ pub(super) fn resolve_single_phase_override(
         runner: runner.map(parse_runner).transpose()?,
         model: model.map(runner::parse_model).transpose()?,
         reasoning_effort: effort.map(runner::parse_reasoning_effort).transpose()?,
+        cursor: None,
     }))
 }
 

@@ -267,6 +267,18 @@
               "null"
             ]
           },
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Cursor SDK runner settings, including model parameters and local setting sources."
+          },
           "cursor_sdk_node_bin": {
             "default": null,
             "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThis selects Node only; it does not select an SDK package. The Cursor runner uses a\nchecked-in CueLoop Node bridge plus a usable `@cursor/sdk` resolved from an explicit\n`CUELOOP_CURSOR_SDK_MODULE_PATH`, the target workspace, or global npm roots. CueLoop's\npreferred/tested SDK version is `@cursor/sdk@1.0.12`; other versions are tried\nbest-effort with a warning when compatible. It no longer shells out to Cursor's legacy\n`agent` binary.",
@@ -571,6 +583,7 @@
               "claude_bin": "claude",
               "claude_permission_mode": "accept_edits",
               "codex_bin": "codex",
+              "cursor": null,
               "cursor_sdk_node_bin": "node",
               "followup_reasoning_effort": null,
               "gemini_bin": "gemini",
@@ -752,6 +765,56 @@
           }
         },
         "type": "object"
+      },
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
       },
       "GitPublishMode": {
         "description": "Git publish mode for post-run repository changes.",
@@ -1310,6 +1373,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -3187,6 +3261,56 @@
   },
   "queue_read": {
     "$defs": {
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
+      },
       "MachineQueuePaths": {
         "additionalProperties": false,
         "properties": {
@@ -3267,6 +3391,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -3720,6 +3855,17 @@
       "TaskAgent": {
         "additionalProperties": false,
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional Cursor SDK runner settings for this task."
+          },
           "followup_reasoning_effort": {
             "anyOf": [
               {
@@ -6014,6 +6160,56 @@
         ],
         "type": "string"
       },
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
+      },
       "MachineContinuationAction": {
         "additionalProperties": false,
         "properties": {
@@ -6143,6 +6339,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -6575,6 +6782,17 @@
       "TaskAgent": {
         "additionalProperties": false,
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional Cursor SDK runner settings for this task."
+          },
           "followup_reasoning_effort": {
             "anyOf": [
               {
@@ -6808,6 +7026,56 @@
   },
   "task_create": {
     "$defs": {
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
+      },
       "Model": {
         "oneOf": [
           {
@@ -6856,6 +7124,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -7288,6 +7567,17 @@
       "TaskAgent": {
         "additionalProperties": false,
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional Cursor SDK runner settings for this task."
+          },
           "followup_reasoning_effort": {
             "anyOf": [
               {
@@ -7495,6 +7785,56 @@
   },
   "task_insert": {
     "$defs": {
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
+      },
       "Model": {
         "oneOf": [
           {
@@ -7543,6 +7883,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -7975,6 +8326,17 @@
       "TaskAgent": {
         "additionalProperties": false,
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional Cursor SDK runner settings for this task."
+          },
           "followup_reasoning_effort": {
             "anyOf": [
               {
@@ -8156,6 +8518,56 @@
   },
   "task_insert_request": {
     "$defs": {
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
+      },
       "Model": {
         "oneOf": [
           {
@@ -8204,6 +8616,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -8445,6 +8868,17 @@
       "TaskAgent": {
         "additionalProperties": false,
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional Cursor SDK runner settings for this task."
+          },
           "followup_reasoning_effort": {
             "anyOf": [
               {
@@ -9129,6 +9563,18 @@
               "null"
             ]
           },
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Cursor SDK runner settings, including model parameters and local setting sources."
+          },
           "cursor_sdk_node_bin": {
             "default": null,
             "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThis selects Node only; it does not select an SDK package. The Cursor runner uses a\nchecked-in CueLoop Node bridge plus a usable `@cursor/sdk` resolved from an explicit\n`CUELOOP_CURSOR_SDK_MODULE_PATH`, the target workspace, or global npm roots. CueLoop's\npreferred/tested SDK version is `@cursor/sdk@1.0.12`; other versions are tried\nbest-effort with a warning when compatible. It no longer shells out to Cursor's legacy\n`agent` binary.",
@@ -9433,6 +9879,7 @@
               "claude_bin": "claude",
               "claude_permission_mode": "accept_edits",
               "codex_bin": "codex",
+              "cursor": null,
               "cursor_sdk_node_bin": "node",
               "followup_reasoning_effort": null,
               "gemini_bin": "gemini",
@@ -9614,6 +10061,56 @@
           }
         },
         "type": "object"
+      },
+      "CursorModelParamValue": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "description": "Cursor SDK model parameter value."
+      },
+      "CursorRunnerConfig": {
+        "additionalProperties": false,
+        "description": "Cursor SDK runner configuration.",
+        "properties": {
+          "model_params": {
+            "additionalProperties": {
+              "$ref": "#/$defs/CursorModelParamValue"
+            },
+            "description": "Cursor SDK model parameters keyed by SDK parameter id.\n\nCueLoop serializes values to the SDK's `{ id, value }[]` string shape. Use\n`cueloop runner models cursor --model <id>` to discover valid ids/values when available.",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "setting_sources": {
+            "description": "Ambient Cursor settings layers to load for the local SDK runner.",
+            "items": {
+              "$ref": "#/$defs/CursorSettingSource"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "CursorSettingSource": {
+        "description": "Cursor local setting source.",
+        "enum": [
+          "project",
+          "user",
+          "team",
+          "mdm",
+          "plugins",
+          "all"
+        ],
+        "type": "string"
       },
       "GitPublishMode": {
         "description": "Git publish mode for post-run repository changes.",
@@ -10246,6 +10743,17 @@
         "additionalProperties": false,
         "description": "Per-phase configuration overrides for runner, model, and reasoning effort.\n\nAll fields are optional to support leaf-wise merging:\n- `Some(value)` overrides the parent config\n- `None` means \"inherit from parent\"",
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cursor SDK runner settings for this phase."
+          },
           "model": {
             "anyOf": [
               {
@@ -10982,6 +11490,17 @@
       "TaskAgent": {
         "additionalProperties": false,
         "properties": {
+          "cursor": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CursorRunnerConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional Cursor SDK runner settings for this task."
+          },
           "followup_reasoning_effort": {
             "anyOf": [
               {

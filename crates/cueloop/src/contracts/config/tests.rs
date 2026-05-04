@@ -52,12 +52,14 @@ fn test_phase_override_config_merge_from() {
         runner: Some(Runner::Codex),
         model: None,
         reasoning_effort: Some(ReasoningEffort::Medium),
+        cursor: None,
     };
 
     let override_config = PhaseOverrideConfig {
         runner: Some(Runner::Claude),
         model: Some(Model::Custom("claude-opus-4".to_string())),
         reasoning_effort: None,
+        cursor: None,
     };
 
     base.merge_from(override_config);
@@ -74,6 +76,7 @@ fn test_phase_overrides_merge_from() {
             runner: Some(Runner::Codex),
             model: Some(Model::Custom("o3-mini".to_string())),
             reasoning_effort: None,
+            cursor: None,
         }),
         phase2: None,
         phase3: None,
@@ -84,11 +87,13 @@ fn test_phase_overrides_merge_from() {
             runner: None,
             model: Some(Model::Custom("claude-sonnet".to_string())),
             reasoning_effort: Some(ReasoningEffort::High),
+            cursor: None,
         }),
         phase2: Some(PhaseOverrideConfig {
             runner: Some(Runner::Gemini),
             model: None,
             reasoning_effort: None,
+            cursor: None,
         }),
         phase3: None,
     };
@@ -128,6 +133,7 @@ fn test_agent_config_phase_overrides_merge() {
         claude_bin: None,
         cursor_sdk_node_bin: None,
         cursor_bin: None,
+        cursor: None,
         kimi_bin: None,
         pi_bin: None,
         claude_permission_mode: None,
@@ -163,6 +169,7 @@ fn test_agent_config_phase_overrides_merge() {
         claude_bin: None,
         cursor_sdk_node_bin: None,
         cursor_bin: None,
+        cursor: None,
         kimi_bin: None,
         pi_bin: None,
         claude_permission_mode: None,
@@ -172,6 +179,7 @@ fn test_agent_config_phase_overrides_merge() {
                 runner: None,
                 model: Some(Model::Custom("claude-opus-4".to_string())),
                 reasoning_effort: Some(ReasoningEffort::XHigh),
+                cursor: None,
             }),
             phase2: None,
             phase3: None,

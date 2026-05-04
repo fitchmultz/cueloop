@@ -56,6 +56,7 @@ fn base_agent_config() -> AgentConfig {
         claude_bin: Some("claude".to_string()),
         cursor_sdk_node_bin: Some("node".to_string()),
         cursor_bin: None,
+        cursor: None,
         kimi_bin: Some("kimi".to_string()),
         pi_bin: Some("pi".to_string()),
         phases: Some(3),
@@ -217,6 +218,7 @@ pub(crate) fn test_task_agent(
         phases: None,
         iterations: None,
         followup_reasoning_effort: None,
+        cursor: None,
         runner_cli: None,
         phase_overrides: None,
     }

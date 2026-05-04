@@ -30,7 +30,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use crate::commands::run::PhaseType;
-use crate::contracts::{ClaudePermissionMode, Model, ReasoningEffort};
+use crate::contracts::{ClaudePermissionMode, CursorRunnerConfig, Model, ReasoningEffort};
 use crate::runner::{OutputHandler, OutputStream, ResolvedRunnerCliOptions, RunnerError};
 
 /// Metadata about a runner plugin.
@@ -57,6 +57,7 @@ pub struct RunContext<'a> {
     pub output_handler: Option<OutputHandler>,
     pub output_stream: OutputStream,
     pub runner_cli: ResolvedRunnerCliOptions,
+    pub cursor: Option<CursorRunnerConfig>,
     /// Runner-specific settings
     pub reasoning_effort: Option<ReasoningEffort>,
     pub permission_mode: Option<ClaudePermissionMode>,
@@ -74,6 +75,7 @@ impl std::fmt::Debug for RunContext<'_> {
             .field("timeout", &self.timeout)
             .field("output_stream", &self.output_stream)
             .field("runner_cli", &self.runner_cli)
+            .field("cursor", &self.cursor)
             .field("reasoning_effort", &self.reasoning_effort)
             .field("permission_mode", &self.permission_mode)
             .field("phase_type", &self.phase_type)
@@ -95,6 +97,7 @@ pub struct ResumeContext<'a> {
     pub output_stream: OutputStream,
     pub runner_cli: ResolvedRunnerCliOptions,
     pub force: bool,
+    pub cursor: Option<CursorRunnerConfig>,
     /// Runner-specific settings
     pub reasoning_effort: Option<ReasoningEffort>,
     pub permission_mode: Option<ClaudePermissionMode>,
@@ -113,6 +116,7 @@ impl std::fmt::Debug for ResumeContext<'_> {
             .field("output_stream", &self.output_stream)
             .field("runner_cli", &self.runner_cli)
             .field("force", &self.force)
+            .field("cursor", &self.cursor)
             .field("reasoning_effort", &self.reasoning_effort)
             .field("permission_mode", &self.permission_mode)
             .field("phase_type", &self.phase_type)

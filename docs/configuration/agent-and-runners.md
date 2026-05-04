@@ -28,6 +28,7 @@ Supported fields:
   **Safety warning:** Disabling the CI gate skips CueLoop-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name.
 - `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). It selects Node only; see [Cursor SDK setup](#cursor-sdk-setup) for SDK resolution, install paths, and version-drift behavior.
+- `cursor`: Cursor SDK runner settings. Use `cursor.model_params` for SDK model parameters such as `fast`, `reasoning`, `thinking`, `effort`, and `context`, and `cursor.setting_sources` for local Cursor setting layers.
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.
@@ -62,6 +63,27 @@ Supported install patterns:
 CueLoop's preferred/tested SDK version is `@cursor/sdk@1.0.12`. An exact version match is not required to attempt execution: older or newer SDK versions are tried best-effort with a warning when the required API is present.
 
 Fatal setup problems include missing `@cursor/sdk`, an unusable explicit module path or failed import, Node below the SDK's supported floor, missing `CURSOR_API_KEY`, or a loaded SDK module that does not expose the required `Agent` API.
+
+Cursor model parameters pass through to the SDK as `{ id, value }` entries. CueLoop stores them as a map for readability and serializes booleans as SDK string values (`true`/`false`):
+
+```json
+{
+  "agent": {
+    "runner": "cursor",
+    "model": "gpt-5.5",
+    "cursor": {
+      "model_params": {
+        "context": "1m",
+        "reasoning": "high",
+        "fast": false
+      },
+      "setting_sources": ["project", "user", "plugins"]
+    }
+  }
+}
+```
+
+Discover valid Cursor model parameters with the live Cursor SDK model catalog when available. The current SDK uses model-specific ids: for example GPT-family models commonly use `reasoning`, Claude-family models commonly use `thinking` and `effort`, and only some models expose `context` or `fast`.
 
 Notes:
 - Broad default quota policy: CueLoop defaults to Pi with `openai-codex/gpt-5.4` at `medium` effort, plus phase overrides that use `openai-codex/gpt-5.5` at `medium` effort for Phase 1 planning and Phase 3 review while keeping Phase 2 implementation on `openai-codex/gpt-5.4` at `medium` effort. This spends premium tokens on deciding and catching mistakes while using the cheaper strong model for the bulk implementation loop.
@@ -205,6 +227,7 @@ Each phase config can specify:
 - `runner` - Override the runner (e.g., "codex", "claude")
 - `model` - Override the model (e.g., "o3-mini", "claude-opus-4")
 - `reasoning_effort` - Override reasoning effort ("low", "medium", "high", "xhigh")
+- `cursor` - Override Cursor SDK model params and setting sources for that phase
 
 **Example:**
 
@@ -226,6 +249,48 @@ Each phase config can specify:
       "phase3": {
         "model": "openai-codex/gpt-5.5",
         "reasoning_effort": "medium"
+      }
+    }
+  }
+}
+```
+
+Cursor phase override params are resolved after the phase model. When a phase changes the model, global `agent.cursor.model_params` are not blindly inherited into that phase, preventing GPT params like `reasoning`/`fast` from leaking into Claude-style models. Add `phaseN.cursor.model_params` explicitly for any phase-specific model.
+
+Example Cursor phase overrides:
+
+```json
+{
+  "agent": {
+    "runner": "cursor",
+    "model": "gpt-5.5",
+    "cursor": {
+      "model_params": {
+        "context": "1m",
+        "reasoning": "medium",
+        "fast": false
+      }
+    },
+    "phase_overrides": {
+      "phase1": {
+        "model": "claude-sonnet-4-6",
+        "cursor": {
+          "model_params": {
+            "thinking": true,
+            "context": "1m",
+            "effort": "medium"
+          }
+        }
+      },
+      "phase2": {
+        "model": "gpt-5.5",
+        "cursor": {
+          "model_params": {
+            "reasoning": "high",
+            "fast": false,
+            "context": "1m"
+          }
+        }
       }
     }
   }
