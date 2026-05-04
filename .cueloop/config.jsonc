@@ -19,7 +19,7 @@
       },
       "phase2": {
         "model": "openai-codex/gpt-5.5",
-        "reasoning_effort": "low"
+        "reasoning_effort": "medium"
       },
       "phase3": {
         "model": "openai-codex/gpt-5.5",
