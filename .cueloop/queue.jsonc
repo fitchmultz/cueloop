@@ -1,4 +1,142 @@
 {
   "version": 1,
-  "tasks": []
+  "tasks": [
+    {
+      "id": "RQ-0088",
+      "status": "todo",
+      "title": "Let Cursor runner tolerate SDK version drift",
+      "description": "Make CueLoop's Cursor runner and doctor resolve @cursor/sdk from explicit, workspace, or global npm installs without failing fast solely because the installed SDK version differs from CueLoop's preferred/tested version. If the user has @cursor/sdk installed, runner=cursor model=composer-2 should try to work; version mismatches should become warnings/diagnostics unless the SDK is structurally unusable. Also update CueLoop's preferred Cursor SDK metadata to the latest available version so guidance and tests are current.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "cursor",
+        "sdk",
+        "module-resolution",
+        "version-tolerance",
+        "doctor"
+      ],
+      "scope": [
+        "crates/cueloop/assets/cursor_sdk_runner.mjs",
+        "crates/cueloop/src/commands/doctor/runner.rs",
+        "crates/cueloop/src/runner/execution/builtin_plugins/cursor.rs",
+        "crates/cueloop/src/commands/doctor/runner.rs tests",
+        "cargo test cursor_sdk"
+      ],
+      "evidence": [
+        "Observed failure: runner=cursor model=composer-2 reports Unable to load @cursor/sdk and instructs installing @cursor/sdk@1.0.11 or setting CUELOOP_CURSOR_SDK_MODULE_PATH.",
+        "User expectation: a globally installed @cursor/sdk, such as 1.0.12, should be accepted or at least attempted instead of rejected because CueLoop expects 1.0.11.",
+        "path: crates/cueloop/assets/cursor_sdk_runner.mjs :: current SDK loading guidance and validation appear tied to a specific @cursor/sdk version instead of a compatible-version warning model.",
+        "path: crates/cueloop/src/commands/doctor/runner.rs :: doctor should distinguish missing SDK, incompatible/unusable SDK, and merely newer/different SDK versions."
+      ],
+      "plan": [
+        "Find the latest published @cursor/sdk version and update CueLoop's preferred/tested SDK version constants, docs, and tests to that latest version.",
+        "Define resolution order shared by the runtime bridge and doctor: CUELOOP_CURSOR_SDK_MODULE_PATH, trusted workspace package, then global npm roots.",
+        "Replace exact-version hard failure with best-effort compatibility: record the detected version, warn when it differs from CueLoop's preferred/tested version, then attempt to load/use the SDK unless required exports or runtime calls are missing.",
+        "Keep hard failures for true unusable states only: no package found, invalid entrypoint, missing required Agent/export/API shape, unsupported Node, or runtime SDK call failure.",
+        "Add regression coverage for matching latest version, newer/different global version, older/different workspace version, env override, missing SDK, and structurally invalid SDK across doctor and bridge load paths.",
+        "Run targeted cursor SDK tests, make agent-ci, and cueloop queue validate."
+      ],
+      "notes": [],
+      "request": "user-adjusted scan: Cursor SDK global install and version drift must be tolerated; bump preferred SDK to latest without exact-version runtime mandate",
+      "created_at": "2026-05-04T00:43:57.000000000Z",
+      "updated_at": "2026-05-04T00:50:00.000000000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0089",
+      "status": "todo",
+      "title": "Improve Cursor SDK load diagnostics",
+      "description": "Make Cursor SDK load failures and warnings tell operators exactly which locations were tried, whether a global npm install was detected, which SDK version was found, what CueLoop's preferred/tested version is, and whether CueLoop proceeded best-effort. Version mismatch by itself must not be reported as a fatal missing-package error.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "cursor",
+        "diagnostics",
+        "operator-experience",
+        "sdk"
+      ],
+      "scope": [
+        "crates/cueloop/assets/cursor_sdk_runner.mjs",
+        "crates/cueloop/src/commands/doctor/runner.rs",
+        "crates/cueloop/src/runner/error.rs",
+        "crates/cueloop/src/runner/execution/stream_events/cursor.rs",
+        "crates/cueloop/src/runner/execution/tests/",
+        "cargo test cursor"
+      ],
+      "evidence": [
+        "Observed failure text tells users to install @cursor/sdk@1.0.11 even when the likely local state is a globally installed newer SDK version.",
+        "Current diagnostics collapse missing package, version mismatch, global npm path mismatch, and invalid CUELOOP_CURSOR_SDK_MODULE_PATH into similar operator guidance.",
+        "User requirement: if @cursor/sdk is installed, CueLoop should try to work even when the version differs; diagnostics should show mismatch as warning context, not fatal root cause."
+      ],
+      "plan": [
+        "Define a stable Cursor SDK diagnostic payload with attempted sources, entrypoints, detected package versions, preferred/tested version, warnings, and final fatal cause when any.",
+        "Emit version mismatch as a non-fatal warning when required SDK exports/API shape are present, and include that warning in human logs and machine JSON.",
+        "Make fatal messages distinguish missing SDK, invalid module path, missing required export/API shape, unsupported Node, and SDK runtime failure.",
+        "Update doctor output to say when a global/workspace SDK was found and will be tried despite version drift.",
+        "Add assertions for user-visible messages for version drift, missing package, invalid entrypoint, and structurally incompatible SDK."
+      ],
+      "notes": [],
+      "request": "user-adjusted scan: Cursor SDK global install and version drift must be tolerated; bump preferred SDK to latest without exact-version runtime mandate",
+      "created_at": "2026-05-04T00:43:57.000000000Z",
+      "updated_at": "2026-05-04T00:50:00.000000000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    },
+    {
+      "id": "RQ-0090",
+      "status": "todo",
+      "title": "Update Cursor SDK version and install guidance",
+      "description": "Update Cursor runner documentation, schema descriptions, and getting-started guidance so operators know CueLoop uses a latest preferred/tested @cursor/sdk version but does not require an exact SDK version match to attempt execution. Document workspace installs, global npm installs, CUELOOP_CURSOR_SDK_MODULE_PATH, and the warning-vs-fatal behavior for SDK version drift.",
+      "priority": "medium",
+      "tags": [
+        "maintenance",
+        "cursor",
+        "docs",
+        "configuration",
+        "sdk"
+      ],
+      "scope": [
+        "docs/configuration/agent-and-runners.md",
+        "docs/features/runners.md",
+        "docs/features/configuration-agent.md",
+        "docs/guides/getting-started.md",
+        "docs/configuration/migration-notes.md",
+        "schemas/config.schema.json",
+        "schemas/machine.schema.json",
+        "make agent-ci"
+      ],
+      "evidence": [
+        "Current error guidance and docs mention @cursor/sdk@1.0.11, which may already lag globally installed @cursor/sdk versions such as 1.0.12.",
+        "User requirement: CueLoop should bump its Cursor SDK references to latest, but not mandate that exact version as a runtime prerequisite.",
+        "Docs need to explain that cursor_sdk_node_bin selects Node, while CUELOOP_CURSOR_SDK_MODULE_PATH selects an SDK entrypoint, and global npm installs are supported when resolvable."
+      ],
+      "plan": [
+        "Check npm for the latest @cursor/sdk version and update CueLoop's preferred/tested version references to that latest version.",
+        "Choose one canonical Cursor SDK setup section and link other docs to it instead of repeating stale exact-version instructions.",
+        "Document supported paths: workspace npm install @cursor/sdk, global npm install -g @cursor/sdk, and CUELOOP_CURSOR_SDK_MODULE_PATH pointing at a trusted SDK entrypoint.",
+        "State explicitly that version mismatches produce warnings and best-effort execution, while missing packages or missing required SDK APIs remain fatal.",
+        "Update schema/generated descriptions through the generator when applicable, not by hand-editing generated outputs.",
+        "Run docs/schema validation, make agent-ci, and cueloop queue validate."
+      ],
+      "notes": [],
+      "request": "user-adjusted scan: Cursor SDK global install and version drift must be tolerated; bump preferred SDK to latest without exact-version runtime mandate",
+      "created_at": "2026-05-04T00:43:57.000000000Z",
+      "updated_at": "2026-05-04T00:50:00.000000000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "scan_agent": "scan-maintenance"
+      }
+    }
+  ]
 }
