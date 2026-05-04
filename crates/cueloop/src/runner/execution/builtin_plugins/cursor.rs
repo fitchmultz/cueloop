@@ -330,6 +330,13 @@ export class Agent {
     }
 
     fn run_helper(work_dir: &std::path::Path) -> anyhow::Result<std::process::Output> {
+        run_helper_with_env(work_dir, [])
+    }
+
+    fn run_helper_with_env<const N: usize>(
+        work_dir: &std::path::Path,
+        envs: [(&str, &std::path::Path); N],
+    ) -> anyhow::Result<std::process::Output> {
         let helper = tempfile::NamedTempFile::with_suffix(".mjs")?;
         std::fs::write(helper.path(), CURSOR_SDK_RUNNER)?;
         let request = json!({
@@ -338,7 +345,8 @@ export class Agent {
             "model": "composer-2",
             "message": "hi"
         });
-        let mut child = Command::new("node")
+        let mut command = Command::new("node");
+        command
             .arg(helper.path())
             .current_dir(work_dir)
             .env("CURSOR_API_KEY", "fake-key")
@@ -346,8 +354,11 @@ export class Agent {
             .env_remove("CUELOOP_CURSOR_SDK_GLOBAL_ROOT")
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()?;
+            .stderr(std::process::Stdio::piped());
+        for (key, value) in envs {
+            command.env(key, value);
+        }
+        let mut child = command.spawn()?;
         use std::io::Write as _;
         child
             .stdin
@@ -382,6 +393,22 @@ export class Agent {
             stdout.contains(r#""sdk_version":"1.0.13""#),
             "stdout: {stdout}"
         );
+        assert!(
+            stdout.contains(r#""preferred_sdk_version":"1.0.12""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""proceeded_best_effort":true"#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""attempted_sources""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""source":"workspace""#),
+            "stdout: {stdout}"
+        );
         assert!(stdout.contains(r#""type":"result""#), "stdout: {stdout}");
         Ok(())
     }
@@ -405,7 +432,101 @@ export class Agent {
 
         assert!(!output.status.success());
         let stdout = String::from_utf8(output.stdout)?;
-        assert!(stdout.contains("does not expose Agent"), "stdout: {stdout}");
+        assert!(
+            stdout.contains("does not expose required export Agent"),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""fatal_cause":"incompatible_api""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""source":"workspace""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""sdk_version":"1.0.12""#),
+            "stdout: {stdout}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_sdk_runner_missing_sdk_reports_attempted_sources() -> anyhow::Result<()> {
+        if !node_available() {
+            return Ok(());
+        }
+        let temp = tempfile::TempDir::new()?;
+        std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
+        let empty_global_root = temp.path().join("empty_global_node_modules");
+        std::fs::create_dir_all(&empty_global_root)?;
+
+        let output = run_helper_with_env(
+            temp.path(),
+            [(
+                "CUELOOP_CURSOR_SDK_GLOBAL_ROOT",
+                empty_global_root.as_path(),
+            )],
+        )?;
+
+        assert!(!output.status.success());
+        let stdout = String::from_utf8(output.stdout)?;
+        assert!(
+            stdout.contains(r#""fatal_cause":"missing_sdk""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""attempted_sources""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains("CUELOOP_CURSOR_SDK_MODULE_PATH (unset)"),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""source":"workspace""#),
+            "stdout: {stdout}"
+        );
+        assert!(stdout.contains(r#""source":"global""#), "stdout: {stdout}");
+        assert!(!stdout.contains("version mismatch"), "stdout: {stdout}");
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_sdk_runner_invalid_env_entrypoint_reports_env_path() -> anyhow::Result<()> {
+        if !node_available() {
+            return Ok(());
+        }
+        let temp = tempfile::TempDir::new()?;
+        std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
+        let missing_entrypoint = temp.path().join("missing-sdk.mjs");
+
+        let output = run_helper_with_env(
+            temp.path(),
+            [(
+                "CUELOOP_CURSOR_SDK_MODULE_PATH",
+                missing_entrypoint.as_path(),
+            )],
+        )?;
+
+        assert!(!output.status.success());
+        let stdout = String::from_utf8(output.stdout)?;
+        assert!(
+            stdout.contains(r#""fatal_cause":"invalid_module_path""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(missing_entrypoint.to_string_lossy().as_ref()),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""status":"invalid_path""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            !stdout.contains(r#""fatal_cause":"missing_sdk""#),
+            "stdout: {stdout}"
+        );
         Ok(())
     }
 }

@@ -1,25 +1,8 @@
 //! Runner configuration and binary checks for the doctor command.
-//!
-//! Purpose:
-//! - Runner configuration and binary checks for the doctor command.
-//!
-//! Responsibilities:
-//! - Verify runner binary availability
-//! - Check model compatibility with selected runner
-//! - Validate instruction file configuration
-//!
-//! Not handled here:
-//! - Runner execution (see runner module)
-//! - Git repository checks (see git.rs)
-//!
-//!
-//! Usage:
-//! - Used through the crate module tree or integration test harness.
-//!
-//! Invariants/assumptions:
-//! - Runner binaries may have different flag conventions
-//! - Plugin runners require separate validation
 
+use super::cursor_sdk_probe::{
+    check_cursor_sdk_node_version, check_cursor_sdk_package, cursor_sdk_blocking_reason,
+};
 use crate::commands::doctor::types::{CheckResult, DoctorReport};
 use crate::config;
 use crate::constants::versions::CURSOR_SDK_VERSION;
@@ -27,26 +10,7 @@ use crate::contracts::{BlockingState, Runner};
 use crate::prompts;
 use crate::runner;
 use crate::runutil::{ManagedCommand, TimeoutClass, execute_managed_command};
-use serde::Deserialize;
 use std::process::Command;
-
-const MIN_CURSOR_SDK_NODE_MAJOR: u32 = 18;
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct CursorSdkPackageCheck {
-    pub(crate) source: String,
-    pub(crate) entrypoint: String,
-    pub(crate) detected_version: Option<String>,
-    pub(crate) preferred_version: String,
-}
-
-impl CursorSdkPackageCheck {
-    pub(crate) fn version_mismatch(&self) -> bool {
-        self.detected_version
-            .as_deref()
-            .is_some_and(|version| version != self.preferred_version)
-    }
-}
 
 fn runner_blocking_state(
     scope: &str,
@@ -200,28 +164,49 @@ pub(crate) fn check_runner(report: &mut DoctorReport, resolved: &config::Resolve
     } else if runner == Runner::Cursor {
         match check_cursor_sdk_package(bin_name, &resolved.repo_root) {
             Ok(check) if check.version_mismatch() => {
-                let detected = check.detected_version.as_deref().unwrap_or("unknown");
+                let selected = check
+                    .selected
+                    .as_ref()
+                    .expect("version mismatch requires selected Cursor SDK");
+                let detected = selected.sdk_version.as_deref().unwrap_or("unknown");
+                let best_effort = if check.proceeded_best_effort {
+                    "Cursor runner will try it best-effort"
+                } else {
+                    "Cursor runner can proceed best-effort when the SDK API shape is compatible"
+                };
+                let mut details = format!(
+                    "SDK entrypoint: {}; package: {}; global root: {}; fatal cause: {}; tried: {}",
+                    selected.entrypoint,
+                    selected.package_json.as_deref().unwrap_or("unknown"),
+                    selected.global_root.as_deref().unwrap_or("n/a"),
+                    check.fatal_cause.as_deref().unwrap_or("none"),
+                    check.attempted_sources_summary()
+                );
+                if !check.warnings.is_empty() {
+                    details.push_str(&format!("; warnings: {}", check.warnings.join("; ")));
+                }
                 report.add(CheckResult::warning(
                     "runner",
                     "cursor_sdk_package",
                     &format!(
-                        "@cursor/sdk {detected} from {} differs from CueLoop's preferred/tested {}; Cursor runner will try it best-effort",
-                        check.source, check.preferred_version
+                        "@cursor/sdk {detected} from {} differs from CueLoop's preferred/tested {}; {best_effort}",
+                        selected.source, check.preferred_sdk_version
                     ),
                     false,
-                    Some(&format!("SDK entrypoint: {}", check.entrypoint)),
+                    Some(&details),
                 ));
             }
             Ok(_) => {}
             Err(e) => {
                 let message = format!("Cursor SDK package check failed for '{}': {}", bin_name, e);
+                let reason = cursor_sdk_blocking_reason(&e.to_string());
                 let guidance = format!(
                     "Install @cursor/sdk in this workspace (preferred/tested: `npm install --save-exact @cursor/sdk@{CURSOR_SDK_VERSION}`), \
-                        install it globally, or set CUELOOP_CURSOR_SDK_MODULE_PATH to a trusted SDK entrypoint."
+                        install it globally, or set CUELOOP_CURSOR_SDK_MODULE_PATH to a trusted SDK entrypoint. Version drift is warning-only when the SDK exposes Agent."
                 );
                 let blocking = runner_blocking_state(
                     "runner",
-                    "cursor_sdk_missing",
+                    reason,
                     "CueLoop is stalled because the Cursor SDK package is unavailable or unusable.",
                     guidance.clone(),
                 );
@@ -475,185 +460,6 @@ pub(crate) fn check_runner_binary(bin: &str) -> anyhow::Result<()> {
     ))
 }
 
-pub(crate) fn check_cursor_sdk_package(
-    node_bin: &str,
-    cwd: &std::path::Path,
-) -> anyhow::Result<CursorSdkPackageCheck> {
-    let script = r#"
-const fs = require('fs');
-const path = require('path');
-const { createRequire } = require('module');
-const { pathToFileURL } = require('url');
-const { execFileSync } = require('child_process');
-
-const preferredVersion = '__CUELOOP_CURSOR_SDK_VERSION__';
-
-function findCursorSdkPackageJson(entrypoint) {
-  let current = path.resolve(entrypoint);
-  if (!fs.existsSync(current)) return null;
-  if (!fs.statSync(current).isDirectory()) current = path.dirname(current);
-  while (true) {
-    const candidate = path.join(current, 'package.json');
-    if (fs.existsSync(candidate)) {
-      try {
-        const pkg = JSON.parse(fs.readFileSync(candidate, 'utf8'));
-        if (pkg.name === '@cursor/sdk') return candidate;
-      } catch { return null; }
-    }
-    const parent = path.dirname(current);
-    if (parent === current) return null;
-    current = parent;
-  }
-}
-
-function metadata(entrypoint) {
-  const packageJsonPath = findCursorSdkPackageJson(entrypoint);
-  if (!packageJsonPath) return { version: null };
-  const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-  return { version: pkg.version || null };
-}
-
-function candidate(source, entrypoint, shouldImport) {
-  return { source, entrypoint: path.resolve(entrypoint), shouldImport };
-}
-
-function globalRoots() {
-  const roots = [];
-  if (process.env.CUELOOP_CURSOR_SDK_GLOBAL_ROOT) return [path.resolve(process.env.CUELOOP_CURSOR_SDK_GLOBAL_ROOT)];
-  try {
-    const root = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-    if (root) roots.push(root);
-  } catch {}
-  return [...new Set(roots.map((root) => path.resolve(root)))];
-}
-
-function resolveFromGlobalRoot(root) {
-  const packageJson = path.join(root, '@cursor', 'sdk', 'package.json');
-  if (fs.existsSync(packageJson)) return createRequire(packageJson).resolve('./');
-  const requireFromGlobalRoot = createRequire(path.join(root, 'package.json'));
-  return requireFromGlobalRoot.resolve('@cursor/sdk', { paths: [root] });
-}
-
-function resolveCandidate() {
-  const configured = process.env.CUELOOP_CURSOR_SDK_MODULE_PATH;
-  if (configured) return candidate('env', configured, true);
-
-  try {
-    const requireFromWorkspace = createRequire(path.join(process.cwd(), 'package.json'));
-    const resolved = requireFromWorkspace.resolve('@cursor/sdk', { paths: [process.cwd()] });
-    return candidate('workspace', resolved, false);
-  } catch (error) {}
-
-  for (const root of globalRoots()) {
-    try {
-      const resolved = resolveFromGlobalRoot(root);
-      return candidate('global', resolved, true);
-    } catch (error) {}
-  }
-  throw new Error('@cursor/sdk could not be resolved from CUELOOP_CURSOR_SDK_MODULE_PATH, the workspace, or global npm roots');
-}
-
-function normalizeSdkModule(moduleNamespace) {
-  const candidates = [moduleNamespace, moduleNamespace && moduleNamespace.default, moduleNamespace && moduleNamespace.default && moduleNamespace.default.default];
-  const sdk = candidates.find((candidate) => candidate && candidate.Agent);
-  if (!sdk) throw new Error('Loaded @cursor/sdk module does not expose Agent');
-}
-
-(async () => {
-  const resolved = resolveCandidate();
-  if (resolved.shouldImport) normalizeSdkModule(await import(pathToFileURL(resolved.entrypoint).href));
-  const meta = metadata(resolved.entrypoint);
-  process.stdout.write(JSON.stringify({
-    source: resolved.source,
-    entrypoint: resolved.entrypoint,
-    detected_version: meta.version,
-    preferred_version: preferredVersion
-  }));
-})().catch((error) => {
-  console.error(error && error.stack ? error.stack : String(error));
-  process.exit(1);
-});
-"#
-    .replace("__CUELOOP_CURSOR_SDK_VERSION__", CURSOR_SDK_VERSION);
-    let mut command = Command::new(node_bin);
-    command
-        .current_dir(cwd)
-        .arg("-e")
-        .arg(script)
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-    let output = execute_managed_command(ManagedCommand::new(
-        command,
-        "doctor runner probe: Cursor SDK package".to_string(),
-        TimeoutClass::Probe,
-    ))?
-    .into_output();
-
-    if output.status.success() {
-        Ok(serde_json::from_slice(&output.stdout)?)
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(anyhow::anyhow!(
-            "{}",
-            if stderr.trim().is_empty() {
-                "@cursor/sdk could not be resolved from CUELOOP_CURSOR_SDK_MODULE_PATH, the workspace, or global npm roots".to_string()
-            } else {
-                stderr.trim().to_string()
-            }
-        ))
-    }
-}
-
-pub(crate) fn check_cursor_sdk_node_version(node_bin: &str) -> anyhow::Result<()> {
-    let mut command = Command::new(node_bin);
-    command
-        .args(["-p", "process.versions.node"])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-    let output = execute_managed_command(ManagedCommand::new(
-        command,
-        format!("doctor runner probe: {node_bin} Cursor SDK Node version"),
-        TimeoutClass::Probe,
-    ))?
-    .into_output();
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!(
-            "{}",
-            if stderr.trim().is_empty() {
-                format!(
-                    "failed to read Node version, exit status: {}",
-                    output.status
-                )
-            } else {
-                stderr.trim().to_string()
-            }
-        );
-    }
-
-    let version = String::from_utf8_lossy(&output.stdout);
-    ensure_cursor_sdk_node_version_supported(version.trim())
-}
-
-fn ensure_cursor_sdk_node_version_supported(version: &str) -> anyhow::Result<()> {
-    let major = version
-        .trim_start_matches('v')
-        .split('.')
-        .next()
-        .and_then(|part| part.parse::<u32>().ok());
-
-    match major {
-        Some(major) if major >= MIN_CURSOR_SDK_NODE_MAJOR => Ok(()),
-        Some(major) => anyhow::bail!(
-            "Node {major} is unsupported; Cursor SDK requires Node {MIN_CURSOR_SDK_NODE_MAJOR} or newer"
-        ),
-        None => anyhow::bail!(
-            "could not parse Node version '{version}'; Cursor SDK requires Node {MIN_CURSOR_SDK_NODE_MAJOR} or newer"
-        ),
-    }
-}
-
 fn cursor_api_key_configured() -> bool {
     cursor_api_key_value_configured(std::env::var_os("CURSOR_API_KEY"))
 }
@@ -713,8 +519,9 @@ fn check_command(bin: &str, args: &[&str]) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        check_cursor_sdk_package, cursor_api_key_value_configured,
+    use super::cursor_api_key_value_configured;
+    use crate::commands::doctor::cursor_sdk_probe::{
+        check_cursor_sdk_package, cursor_sdk_blocking_reason,
         ensure_cursor_sdk_node_version_supported,
     };
     use std::path::PathBuf;
@@ -808,8 +615,9 @@ mod tests {
         write_workspace_sdk(&temp, "1.0.12")?;
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
-        assert_eq!(check.source, "workspace");
-        assert_eq!(check.detected_version.as_deref(), Some("1.0.12"));
+        let selected = check.selected.as_ref().expect("selected SDK");
+        assert_eq!(selected.source, "workspace");
+        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.12"));
         assert!(!check.version_mismatch());
 
         assert!(
@@ -835,9 +643,18 @@ mod tests {
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
 
-        assert_eq!(check.source, "workspace");
-        assert_eq!(check.detected_version.as_deref(), Some("1.0.10"));
+        let selected = check.selected.as_ref().expect("selected SDK");
+        assert_eq!(selected.source, "workspace");
+        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.10"));
         assert!(check.version_mismatch());
+        assert!(check.proceeded_best_effort);
+        assert!(
+            check
+                .warnings
+                .iter()
+                .any(|warning| warning.contains("preferred/tested"))
+        );
+        assert!(check.attempted_sources_summary().contains("workspace"));
         assert!(
             !temp.path().join("sdk-imported").exists(),
             "doctor workspace SDK version probe must not import repo-local package code"
@@ -863,10 +680,16 @@ mod tests {
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
 
-        assert_eq!(check.source, "env");
-        assert_eq!(check.entrypoint, env_entrypoint.to_string_lossy().as_ref());
-        assert_eq!(check.detected_version.as_deref(), Some("1.0.13"));
+        let selected = check.selected.as_ref().expect("selected SDK");
+        assert_eq!(selected.source, "env");
+        assert_eq!(
+            selected.entrypoint,
+            env_entrypoint.to_string_lossy().as_ref()
+        );
+        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.13"));
         assert!(check.version_mismatch());
+        assert!(check.proceeded_best_effort);
+        assert!(check.attempted_sources_summary().contains("env"));
         Ok(())
     }
 
@@ -888,13 +711,20 @@ mod tests {
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
 
-        assert_eq!(check.source, "global");
+        let selected = check.selected.as_ref().expect("selected SDK");
+        assert_eq!(selected.source, "global");
         assert_eq!(
-            check.entrypoint,
+            selected.entrypoint,
             global_entrypoint.canonicalize()?.to_string_lossy().as_ref()
         );
-        assert_eq!(check.detected_version.as_deref(), Some("1.0.13"));
+        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.13"));
+        assert_eq!(
+            selected.global_root.as_deref(),
+            Some(global_root.to_string_lossy().as_ref())
+        );
         assert!(check.version_mismatch());
+        assert!(check.proceeded_best_effort);
+        assert!(check.attempted_sources_summary().contains("global"));
         Ok(())
     }
 
@@ -917,7 +747,8 @@ mod tests {
         let err = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())
             .expect_err("missing Cursor SDK should fail doctor");
         assert!(
-            err.to_string().contains("could not be resolved"),
+            err.to_string().contains("missing_sdk")
+                && err.to_string().contains("attempted_sources"),
             "unexpected error: {err}"
         );
         Ok(())
@@ -948,7 +779,10 @@ mod tests {
         let err = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())
             .expect_err("invalid Cursor SDK override should fail doctor");
         assert!(
-            err.to_string().contains("does not expose Agent"),
+            err.to_string()
+                .contains("does not expose required export Agent")
+                && err.to_string().contains("invalid_module_path")
+                && err.to_string().contains("attempted_sources"),
             "unexpected error: {err}"
         );
         Ok(())
@@ -963,6 +797,30 @@ mod tests {
         assert!(cursor_api_key_value_configured(Some(
             std::ffi::OsString::from("cursor-key")
         )));
+    }
+
+    #[test]
+    fn cursor_sdk_blocking_reason_uses_fatal_cause_before_tried_location_text() {
+        for (message, reason) in [
+            (
+                r#"{"fatal_cause":"missing_sdk","message":"tried CUELOOP_CURSOR_SDK_MODULE_PATH, workspace, and global npm roots"}"#,
+                "cursor_sdk_missing",
+            ),
+            (
+                r#"{"fatal_cause":"invalid_module_path"}"#,
+                "cursor_sdk_invalid_module_path",
+            ),
+            (
+                r#"{"fatal_cause":"incompatible_api"}"#,
+                "cursor_sdk_incompatible_api",
+            ),
+            (
+                r#"{"fatal_cause":"import_failed"}"#,
+                "cursor_sdk_import_failed",
+            ),
+        ] {
+            assert_eq!(cursor_sdk_blocking_reason(message), reason);
+        }
     }
 
     #[test]

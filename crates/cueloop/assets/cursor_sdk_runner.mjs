@@ -50,48 +50,119 @@ async function readRequest() {
   return JSON.parse(raw);
 }
 
+function newCursorSdkDiagnostics() {
+  return {
+    preferred_sdk_version: EXPECTED_CURSOR_SDK_VERSION,
+    selected: null,
+    attempted_sources: [],
+    warnings: [],
+    proceeded_best_effort: false,
+    fatal_cause: null,
+  };
+}
+
+function addAttempt(diagnostics, attempt) {
+  const normalized = {
+    source: attempt.source,
+    location: attempt.location ?? null,
+    entrypoint: attempt.entrypoint ?? null,
+    package_json: attempt.package_json ?? null,
+    sdk_version: attempt.sdk_version ?? null,
+    global_root: attempt.global_root ?? null,
+    status: attempt.status,
+    error: attempt.error ? String(attempt.error) : null,
+  };
+  diagnostics.attempted_sources.push(normalized);
+  return normalized;
+}
+
 async function loadCursorSdk(cwd) {
+  const diagnostics = newCursorSdkDiagnostics();
   const configuredPath = process.env.CUELOOP_CURSOR_SDK_MODULE_PATH;
   if (configuredPath) {
+    const entrypoint = path.resolve(configuredPath);
+    const attempt = addAttempt(diagnostics, {
+      source: "env",
+      location: configuredPath,
+      entrypoint,
+      status: fs.existsSync(entrypoint) ? "resolved" : "invalid_path",
+      error: fs.existsSync(entrypoint) ? null : "path does not exist",
+    });
     try {
-      return await importCursorSdkFromPath(configuredPath, "env");
+      return await importCursorSdkFromPath(entrypoint, "env", diagnostics, attempt);
     } catch (configuredError) {
-      throw sdkLoadError(configuredError, null, null, null, "CUELOOP_CURSOR_SDK_MODULE_PATH is set but unusable");
+      attempt.status = attempt.status === "invalid_path" ? "invalid_path" : statusForImportError(configuredError);
+      attempt.error = String(configuredError?.message ?? configuredError);
+      throw sdkLoadError(configuredError, diagnostics, "invalid_module_path", `CUELOOP_CURSOR_SDK_MODULE_PATH is set but unusable: ${entrypoint}`);
     }
+  } else {
+    addAttempt(diagnostics, {
+      source: "env",
+      location: "CUELOOP_CURSOR_SDK_MODULE_PATH (unset)",
+      status: "not_found",
+      error: "environment variable is not set",
+    });
   }
 
-  const attempts = [];
   const requireFromCwd = createRequire(path.join(cwd, "package.json"));
   let workspaceResolved = null;
+  const workspaceAttempt = addAttempt(diagnostics, {
+    source: "workspace",
+    location: cwd,
+    status: "not_found",
+  });
   try {
     workspaceResolved = requireFromCwd.resolve("@cursor/sdk", { paths: [cwd] });
+    workspaceAttempt.entrypoint = path.resolve(workspaceResolved);
+    workspaceAttempt.status = "resolved";
   } catch (cwdResolveError) {
-    attempts.push(["workspace", cwdResolveError]);
+    workspaceAttempt.error = String(cwdResolveError?.message ?? cwdResolveError);
   }
   if (workspaceResolved) {
     try {
-      return await importCursorSdkFromPath(workspaceResolved, "workspace");
+      return await importCursorSdkFromPath(workspaceResolved, "workspace", diagnostics, workspaceAttempt);
     } catch (cwdImportError) {
-      throw sdkLoadError(cwdImportError, null, cwdImportError, null, "Workspace @cursor/sdk is unusable");
+      workspaceAttempt.status = statusForImportError(cwdImportError);
+      workspaceAttempt.error = String(cwdImportError?.message ?? cwdImportError);
+      throw sdkLoadError(cwdImportError, diagnostics, statusForFatal(cwdImportError), "Workspace @cursor/sdk is unusable");
     }
   }
 
-  for (const globalRoot of await discoverGlobalNpmRoots()) {
+  const roots = await discoverGlobalNpmRoots();
+  if (roots.length === 0) {
+    addAttempt(diagnostics, {
+      source: "global",
+      location: "global npm roots",
+      status: "not_found",
+      error: "no global npm root discovered",
+    });
+  }
+  for (const globalRoot of roots) {
     let globalResolved = null;
+    const globalAttempt = addAttempt(diagnostics, {
+      source: "global",
+      location: globalRoot,
+      global_root: globalRoot,
+      status: "not_found",
+    });
     try {
       globalResolved = resolveCursorSdkFromGlobalRoot(globalRoot);
+      globalAttempt.entrypoint = path.resolve(globalResolved);
+      globalAttempt.status = "resolved";
     } catch (globalResolveError) {
-      attempts.push([`global:${globalRoot}`, globalResolveError]);
+      globalAttempt.error = String(globalResolveError?.message ?? globalResolveError);
       continue;
     }
     try {
-      return await importCursorSdkFromPath(globalResolved, "global");
+      return await importCursorSdkFromPath(globalResolved, "global", diagnostics, globalAttempt, { globalRoot });
     } catch (globalImportError) {
-      throw sdkLoadError(globalImportError, null, null, globalImportError, `Global @cursor/sdk from ${globalRoot} is unusable`);
+      globalAttempt.status = statusForImportError(globalImportError);
+      globalAttempt.error = String(globalImportError?.message ?? globalImportError);
+      throw sdkLoadError(globalImportError, diagnostics, statusForFatal(globalImportError), `Global @cursor/sdk from ${globalRoot} is unusable`);
     }
   }
 
-  throw sdkLoadError(attempts[0]?.[1], null, attempts[0]?.[1], attempts.at(-1)?.[1]);
+  throw sdkLoadError(null, diagnostics, "missing_sdk", "Unable to load @cursor/sdk: package was not found");
 }
 
 async function discoverGlobalNpmRoots() {
@@ -116,12 +187,30 @@ function resolveCursorSdkFromGlobalRoot(globalRoot) {
   return requireFromGlobalRoot.resolve("@cursor/sdk", { paths: [globalRoot] });
 }
 
-async function importCursorSdkFromPath(entrypoint, source) {
+async function importCursorSdkFromPath(entrypoint, source, diagnostics, attempt, extra = {}) {
   const resolvedEntrypoint = path.resolve(entrypoint);
   const metadata = cursorSdkMetadata(resolvedEntrypoint);
+  if (attempt) {
+    attempt.entrypoint = resolvedEntrypoint;
+    attempt.package_json = metadata.packageJsonPath;
+    attempt.sdk_version = metadata.version;
+  }
+  const selected = {
+    source,
+    entrypoint: resolvedEntrypoint,
+    package_json: metadata.packageJsonPath,
+    sdk_version: metadata.version,
+    global_root: extra.globalRoot ?? null,
+  };
+  diagnostics.selected = selected;
   const sdk = normalizeCursorSdkModule(await import(pathToFileURL(resolvedEntrypoint).href));
+  if (attempt) {
+    attempt.status = "selected";
+  }
   const warning = cursorSdkVersionWarning(metadata);
   if (warning) {
+    diagnostics.warnings.push(warning);
+    diagnostics.proceeded_best_effort = true;
     emit({
       type: "system",
       subtype: "cursor_sdk_warning",
@@ -130,6 +219,9 @@ async function importCursorSdkFromPath(entrypoint, source) {
       preferred_sdk_version: EXPECTED_CURSOR_SDK_VERSION,
       sdk_entrypoint: resolvedEntrypoint,
       sdk_source: source,
+      proceeded_best_effort: true,
+      attempted_sources: diagnostics.attempted_sources,
+      diagnostics,
     });
   }
   return sdk;
@@ -191,25 +283,41 @@ function normalizeCursorSdkModule(moduleNamespace) {
   ];
   const sdk = candidates.find((candidate) => candidate?.Agent);
   if (!sdk) {
-    const error = new Error("Loaded @cursor/sdk module does not expose Agent");
+    const error = new Error("Loaded @cursor/sdk module does not expose required export Agent");
     error.name = "CursorSdkLoadError";
+    error.fatalCause = "incompatible_api";
     throw error;
   }
   return sdk;
 }
 
-function sdkLoadError(primaryError, directError, cwdError, globalError, prefix = "Unable to load @cursor/sdk") {
+function statusForImportError(error) {
+  if (error?.fatalCause === "incompatible_api" || String(error?.message ?? error).includes("does not expose")) {
+    return "incompatible_api";
+  }
+  return "import_failed";
+}
+
+function statusForFatal(error) {
+  return statusForImportError(error) === "incompatible_api" ? "incompatible_api" : "import_failed";
+}
+
+function attemptedSourcesSummary(diagnostics) {
+  return diagnostics.attempted_sources
+    .map((attempt) => `${attempt.source} ${attempt.location ?? "unknown"}${attempt.entrypoint ? ` -> ${attempt.entrypoint}` : ""} [${attempt.status}]`)
+    .join("; ");
+}
+
+function sdkLoadError(primaryError, diagnostics, fatalCause, prefix = "Unable to load @cursor/sdk") {
+  diagnostics.fatal_cause = fatalCause;
   const causeMessage = primaryError?.message ? `: ${primaryError.message}` : "";
+  const tried = attemptedSourcesSummary(diagnostics);
   const error = new Error(
-    `${prefix}${causeMessage}. Install @cursor/sdk in the target workspace (preferred/tested: \`npm install --save-exact @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}\`), install it globally, or set CUELOOP_CURSOR_SDK_MODULE_PATH to the SDK entrypoint.`,
+    `${prefix}${causeMessage}. Tried locations: ${tried}. Preferred/tested version: ${EXPECTED_CURSOR_SDK_VERSION}. Install @cursor/sdk in the target workspace, install it globally, or set CUELOOP_CURSOR_SDK_MODULE_PATH to a trusted SDK entrypoint.`,
   );
   error.name = "CursorSdkLoadError";
-  error.cause = {
-    primary: String(primaryError?.message ?? primaryError),
-    direct: String(directError?.message ?? directError),
-    cwd: String(cwdError?.message ?? cwdError),
-    global: String(globalError?.message ?? globalError),
-  };
+  error.fatal_cause = fatalCause;
+  error.diagnostics = diagnostics;
   return error;
 }
 
@@ -335,6 +443,8 @@ function normalizeError(error, context) {
     code: error?.code ?? error?.protoErrorCode,
     is_retryable: Boolean(error?.isRetryable),
     message: String(error?.message ?? error),
+    fatal_cause: error?.fatal_cause ?? error?.fatalCause,
+    diagnostics: error?.diagnostics,
   };
 }
 

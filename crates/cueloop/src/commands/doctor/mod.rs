@@ -30,6 +30,7 @@
 
 pub mod types;
 
+mod cursor_sdk_probe;
 mod git;
 mod lock;
 mod output;

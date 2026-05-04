@@ -2,50 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0089",
-      "status": "todo",
-      "title": "Improve Cursor SDK load diagnostics",
-      "description": "Make Cursor SDK load failures and warnings tell operators exactly which locations were tried, whether a global npm install was detected, which SDK version was found, what CueLoop's preferred/tested version is, and whether CueLoop proceeded best-effort. Version mismatch by itself must not be reported as a fatal missing-package error.",
-      "priority": "medium",
-      "tags": [
-        "maintenance",
-        "cursor",
-        "diagnostics",
-        "operator-experience",
-        "sdk"
-      ],
-      "scope": [
-        "crates/cueloop/assets/cursor_sdk_runner.mjs",
-        "crates/cueloop/src/commands/doctor/runner.rs",
-        "crates/cueloop/src/runner/error.rs",
-        "crates/cueloop/src/runner/execution/stream_events/cursor.rs",
-        "crates/cueloop/src/runner/execution/tests/",
-        "cargo test cursor"
-      ],
-      "evidence": [
-        "Observed failure text tells users to install @cursor/sdk@1.0.11 even when the likely local state is a globally installed newer SDK version.",
-        "Current diagnostics collapse missing package, version mismatch, global npm path mismatch, and invalid CUELOOP_CURSOR_SDK_MODULE_PATH into similar operator guidance.",
-        "User requirement: if @cursor/sdk is installed, CueLoop should try to work even when the version differs; diagnostics should show mismatch as warning context, not fatal root cause."
-      ],
-      "plan": [
-        "Define a stable Cursor SDK diagnostic payload with attempted sources, entrypoints, detected package versions, preferred/tested version, warnings, and final fatal cause when any.",
-        "Emit version mismatch as a non-fatal warning when required SDK exports/API shape are present, and include that warning in human logs and machine JSON.",
-        "Make fatal messages distinguish missing SDK, invalid module path, missing required export/API shape, unsupported Node, and SDK runtime failure.",
-        "Update doctor output to say when a global/workspace SDK was found and will be tried despite version drift.",
-        "Add assertions for user-visible messages for version drift, missing package, invalid entrypoint, and structurally incompatible SDK."
-      ],
-      "notes": [],
-      "request": "user-adjusted scan: Cursor SDK global install and version drift must be tolerated; bump preferred SDK to latest without exact-version runtime mandate",
-      "created_at": "2026-05-04T00:43:57.000000000Z",
-      "updated_at": "2026-05-04T00:50:00.000000000Z",
-      "depends_on": [],
-      "blocks": [],
-      "relates_to": [],
-      "custom_fields": {
-        "scan_agent": "scan-maintenance"
-      }
-    },
-    {
       "id": "RQ-0090",
       "status": "todo",
       "title": "Update Cursor SDK version and install guidance",
