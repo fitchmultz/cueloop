@@ -121,8 +121,10 @@ pub struct AgentConfig {
     /// Override the Node.js executable used for Cursor SDK local runner execution (default is
     /// "node" if None).
     ///
-    /// The Cursor runner uses a checked-in CueLoop Node bridge plus `@cursor/sdk@1.0.11`;
-    /// it no longer shells out to Cursor's legacy `agent` binary.
+    /// The Cursor runner uses a checked-in CueLoop Node bridge plus a usable workspace,
+    /// global, or explicitly configured `@cursor/sdk` install. CueLoop's preferred/tested
+    /// SDK version is `@cursor/sdk@1.0.12`; other versions are tried best-effort with a
+    /// warning. It no longer shells out to Cursor's legacy `agent` binary.
     pub cursor_sdk_node_bin: Option<String>,
 
     /// Deprecated legacy Cursor Agent CLI binary override.

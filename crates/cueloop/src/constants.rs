@@ -302,7 +302,7 @@ pub mod paths {
 /// Version constants for schemas and templates.
 pub mod versions {
     /// Cursor SDK package version CueLoop's local bridge is validated against.
-    pub const CURSOR_SDK_VERSION: &str = "1.0.11";
+    pub const CURSOR_SDK_VERSION: &str = "1.0.12";
 
     /// README template version.
     pub const README_VERSION: u32 = 10;

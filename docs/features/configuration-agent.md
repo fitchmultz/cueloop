@@ -48,7 +48,7 @@ Related feature docs:
 
 ## Runner Binary Overrides
 
-You can override CLI executable names/paths for runners (`*_bin` fields under `agent`). Cursor is the exception: `agent.cursor_sdk_node_bin` selects the Node.js executable for CueLoop's checked-in Cursor SDK bridge, and the trusted workspace must provide `@cursor/sdk@1.0.11` or `CUELOOP_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
+You can override CLI executable names/paths for runners (`*_bin` fields under `agent`). Cursor is the exception: `agent.cursor_sdk_node_bin` selects the Node.js executable for CueLoop's checked-in Cursor SDK bridge. The target workspace, global npm roots, or `CUELOOP_CURSOR_SDK_MODULE_PATH` must provide a usable `@cursor/sdk` entrypoint. CueLoop's preferred/tested version is `@cursor/sdk@1.0.12`; version drift is reported as a warning and tried best-effort.
 
 Operational rule: project-level binary overrides and project-level Cursor runner selection are execution-sensitive settings and require repository trust before project values are honored.
 

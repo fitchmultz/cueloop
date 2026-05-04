@@ -4,7 +4,7 @@
 // Responsibilities:
 // - Read one JSON runner request from stdin and invoke Cursor SDK run/resume APIs.
 // - Normalize Cursor SDK stream events into CueLoop's newline-delimited JSON protocol.
-// - Resolve @cursor/sdk from an explicit module path, the helper environment, or the workspace.
+// - Resolve @cursor/sdk from an explicit module path, the workspace, or global npm roots.
 //
 // Non-scope:
 // - Selecting CueLoop tasks, resolving runner configuration, or managing subprocess lifetimes.
@@ -24,7 +24,7 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_SETTING_SOURCES = ["project", "user", "plugins"];
-const EXPECTED_CURSOR_SDK_VERSION = "1.0.11";
+const EXPECTED_CURSOR_SDK_VERSION = "1.0.12";
 
 function emit(event) {
   process.stdout.write(`${JSON.stringify(event)}\n`);
@@ -54,46 +54,104 @@ async function loadCursorSdk(cwd) {
   const configuredPath = process.env.CUELOOP_CURSOR_SDK_MODULE_PATH;
   if (configuredPath) {
     try {
-      return await importCursorSdkFromPath(configuredPath);
+      return await importCursorSdkFromPath(configuredPath, "env");
     } catch (configuredError) {
-      throw sdkLoadError(configuredError);
+      throw sdkLoadError(configuredError, null, null, null, "CUELOOP_CURSOR_SDK_MODULE_PATH is set but unusable");
     }
   }
 
+  const attempts = [];
+  const requireFromCwd = createRequire(path.join(cwd, "package.json"));
+  let workspaceResolved = null;
   try {
-    const requireFromHelper = createRequire(import.meta.url);
-    const resolved = requireFromHelper.resolve("@cursor/sdk");
-    return await importCursorSdkFromPath(resolved);
-  } catch (directError) {
-    const requireFromCwd = createRequire(path.join(cwd, "package.json"));
+    workspaceResolved = requireFromCwd.resolve("@cursor/sdk", { paths: [cwd] });
+  } catch (cwdResolveError) {
+    attempts.push(["workspace", cwdResolveError]);
+  }
+  if (workspaceResolved) {
     try {
-      const resolved = requireFromCwd.resolve("@cursor/sdk", { paths: [cwd] });
-      return await importCursorSdkFromPath(resolved);
-    } catch (cwdError) {
-      throw sdkLoadError(cwdError, directError, cwdError);
+      return await importCursorSdkFromPath(workspaceResolved, "workspace");
+    } catch (cwdImportError) {
+      throw sdkLoadError(cwdImportError, null, cwdImportError, null, "Workspace @cursor/sdk is unusable");
     }
   }
+
+  for (const globalRoot of await discoverGlobalNpmRoots()) {
+    let globalResolved = null;
+    try {
+      globalResolved = resolveCursorSdkFromGlobalRoot(globalRoot);
+    } catch (globalResolveError) {
+      attempts.push([`global:${globalRoot}`, globalResolveError]);
+      continue;
+    }
+    try {
+      return await importCursorSdkFromPath(globalResolved, "global");
+    } catch (globalImportError) {
+      throw sdkLoadError(globalImportError, null, null, globalImportError, `Global @cursor/sdk from ${globalRoot} is unusable`);
+    }
+  }
+
+  throw sdkLoadError(attempts[0]?.[1], null, attempts[0]?.[1], attempts.at(-1)?.[1]);
 }
 
-async function importCursorSdkFromPath(entrypoint) {
+async function discoverGlobalNpmRoots() {
+  const roots = [];
+  if (process.env.CUELOOP_CURSOR_SDK_GLOBAL_ROOT) {
+    return [path.resolve(process.env.CUELOOP_CURSOR_SDK_GLOBAL_ROOT)];
+  }
+  try {
+    const { execFileSync } = await import("node:child_process");
+    const root = execFileSync("npm", ["root", "-g"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    if (root) roots.push(root);
+  } catch {}
+  return [...new Set(roots.map((root) => path.resolve(root)))];
+}
+
+function resolveCursorSdkFromGlobalRoot(globalRoot) {
+  const packageJson = path.join(globalRoot, "@cursor", "sdk", "package.json");
+  if (fs.existsSync(packageJson)) {
+    return createRequire(packageJson).resolve("./");
+  }
+  const requireFromGlobalRoot = createRequire(path.join(globalRoot, "package.json"));
+  return requireFromGlobalRoot.resolve("@cursor/sdk", { paths: [globalRoot] });
+}
+
+async function importCursorSdkFromPath(entrypoint, source) {
   const resolvedEntrypoint = path.resolve(entrypoint);
-  validateCursorSdkVersion(resolvedEntrypoint);
-  return normalizeCursorSdkModule(await import(pathToFileURL(resolvedEntrypoint).href));
+  const metadata = cursorSdkMetadata(resolvedEntrypoint);
+  const sdk = normalizeCursorSdkModule(await import(pathToFileURL(resolvedEntrypoint).href));
+  const warning = cursorSdkVersionWarning(metadata);
+  if (warning) {
+    emit({
+      type: "system",
+      subtype: "cursor_sdk_warning",
+      warning,
+      sdk_version: metadata.version,
+      preferred_sdk_version: EXPECTED_CURSOR_SDK_VERSION,
+      sdk_entrypoint: resolvedEntrypoint,
+      sdk_source: source,
+    });
+  }
+  return sdk;
 }
 
-function validateCursorSdkVersion(entrypoint) {
+function cursorSdkMetadata(entrypoint) {
   const packageJsonPath = findCursorSdkPackageJson(entrypoint);
   if (!packageJsonPath) {
-    throw new Error(
-      `Unable to find @cursor/sdk package metadata for ${entrypoint}; install @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}`,
-    );
+    return { packageJsonPath: null, version: null };
   }
   const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  if (pkg.version !== EXPECTED_CURSOR_SDK_VERSION) {
-    throw new Error(
-      `@cursor/sdk ${pkg.version ?? "unknown"} is unsupported; install @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}`,
-    );
+  return { packageJsonPath, version: pkg.version ?? null };
+}
+
+function cursorSdkVersionWarning(metadata) {
+  if (!metadata.version) {
+    return `Unable to find @cursor/sdk package version; CueLoop's preferred/tested version is ${EXPECTED_CURSOR_SDK_VERSION}; proceeding best-effort`;
   }
+  if (metadata.version !== EXPECTED_CURSOR_SDK_VERSION) {
+    return `@cursor/sdk ${metadata.version} differs from CueLoop's preferred/tested ${EXPECTED_CURSOR_SDK_VERSION}; proceeding best-effort`;
+  }
+  return null;
 }
 
 function findCursorSdkPackageJson(entrypoint) {
@@ -140,15 +198,17 @@ function normalizeCursorSdkModule(moduleNamespace) {
   return sdk;
 }
 
-function sdkLoadError(primaryError, directError, cwdError) {
+function sdkLoadError(primaryError, directError, cwdError, globalError, prefix = "Unable to load @cursor/sdk") {
+  const causeMessage = primaryError?.message ? `: ${primaryError.message}` : "";
   const error = new Error(
-    `Unable to load @cursor/sdk. Install it for the target workspace with \`npm install --save-exact @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}\`, or set CUELOOP_CURSOR_SDK_MODULE_PATH to the SDK entrypoint.`,
+    `${prefix}${causeMessage}. Install @cursor/sdk in the target workspace (preferred/tested: \`npm install --save-exact @cursor/sdk@${EXPECTED_CURSOR_SDK_VERSION}\`), install it globally, or set CUELOOP_CURSOR_SDK_MODULE_PATH to the SDK entrypoint.`,
   );
   error.name = "CursorSdkLoadError";
   error.cause = {
     primary: String(primaryError?.message ?? primaryError),
     direct: String(directError?.message ?? directError),
     cwd: String(cwdError?.message ?? cwdError),
+    global: String(globalError?.message ?? globalError),
   };
   return error;
 }

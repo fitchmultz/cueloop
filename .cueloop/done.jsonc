@@ -193,10 +193,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "gpt-5.4",
-        "runner_used": "codex",
+        "task_kind": "queue_shaping",
         "skill": "comprehensive-codebase-audit",
-        "task_kind": "queue_shaping"
+        "model_used": "gpt-5.4",
+        "runner_used": "codex"
       }
     },
     {
@@ -540,9 +540,9 @@
       "relates_to": [],
       "custom_fields": {
         "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "audit_finding": "HIGH: machine run loop does not guarantee a terminal machine summary on error paths"
       }
     },
     {
@@ -609,10 +609,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
         "source_report": "/tmp/cueloop-report.md",
-        "audit_finding": "MEDIUM: Stop After Current uses human CLI output instead of a machine contract"
+        "runner_used": "codex"
       }
     },
     {
@@ -688,8 +688,8 @@
       "custom_fields": {
         "audit_finding": "MEDIUM: native app execution controls are hardcoded and narrower than CLI capability sources",
         "model_used": "gpt-5.4",
-        "runner_used": "codex",
-        "source_report": "/tmp/cueloop-report.md"
+        "source_report": "/tmp/cueloop-report.md",
+        "runner_used": "codex"
       }
     },
     {
@@ -829,10 +829,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
         "source_report": "/tmp/cueloop-report.md",
-        "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "runner_used": "codex",
+        "audit_finding": "MEDIUM: app renders too many machine next steps as terminal instructions instead of actions",
+        "model_used": "gpt-5.4"
       }
     },
     {
@@ -890,10 +890,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app docs contain stale cross-surface statements",
-        "source_report": "/tmp/cueloop-report.md",
         "model_used": "gpt-5.4",
-        "runner_used": "codex"
+        "source_report": "/tmp/cueloop-report.md",
+        "runner_used": "codex",
+        "audit_finding": "LOW: app docs contain stale cross-surface statements"
       }
     },
     {
@@ -955,10 +955,10 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above",
+        "model_used": "gpt-5.4",
         "runner_used": "codex",
         "source_report": "/tmp/cueloop-report.md",
-        "model_used": "gpt-5.4"
+        "audit_finding": "LOW: app parity tracking is too coarse to catch the failures above"
       }
     },
     {
@@ -2399,11 +2399,11 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5",
         "runner_used": "pi",
-        "severity_reason": "parallel-mode task state/data integrity loss",
         "reported_command": "cueloop run loop --parallel 2",
-        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete"
+        "failure_mode": "gitignored coordinator queue.jsonc/done.jsonc not updated after parallel workers complete",
+        "severity_reason": "parallel-mode task state/data integrity loss",
+        "model_used": "openai-codex/gpt-5.5"
       }
     },
     {
@@ -2715,8 +2715,8 @@
         "RQ-0057"
       ],
       "custom_fields": {
-        "locked_trust_direction": "cueloop init creates or updates .cueloop/trust.jsonc by default; --check remains read-only.",
-        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically."
+        "locked_parallel_sync_direction": "interactive init scans and recommends additional ignored-file sync entries; non-interactive init does not broaden allowlist automatically.",
+        "locked_trust_direction": "cueloop init creates or updates .cueloop/trust.jsonc by default; --check remains read-only."
       }
     },
     {
@@ -3004,8 +3004,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5"
+        "model_used": "openai-codex/gpt-5.5",
+        "runner_used": "pi"
       }
     },
     {
@@ -3063,9 +3063,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3122,8 +3122,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high"
       }
     },
@@ -3180,8 +3180,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
+        "scan_agent": "scan-general",
         "runner_used": "pi"
       }
     },
@@ -3249,8 +3249,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general"
       }
     },
@@ -3386,9 +3386,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3449,9 +3449,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
+        "model_used": "openai-codex/gpt-5.5:high",
         "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3512,8 +3512,8 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "scan_agent": "scan-general",
         "runner_used": "pi",
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high"
       }
     },
@@ -3575,9 +3575,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:high",
         "scan_agent": "scan-general",
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:high"
+        "runner_used": "pi"
       }
     },
     {
@@ -3643,9 +3643,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "scan_agent": "scan-general",
         "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi",
-        "scan_agent": "scan-general"
+        "runner_used": "pi"
       }
     },
     {
@@ -3832,9 +3832,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "runner_used": "pi",
         "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:high",
-        "runner_used": "pi"
+        "model_used": "openai-codex/gpt-5.5:high"
       }
     },
     {
@@ -3887,9 +3887,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi",
-        "scan_agent": "scan-general",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "scan_agent": "scan-general"
       }
     },
     {
@@ -3944,9 +3944,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "scan_agent": "scan-general"
+        "scan_agent": "scan-general",
+        "runner_used": "pi"
       }
     },
     {
@@ -3995,9 +3995,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "scan_agent": "scan-general",
-        "runner_used": "pi",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "runner_used": "pi"
       }
     },
     {
@@ -4062,9 +4062,9 @@
       "blocks": [],
       "relates_to": [],
       "custom_fields": {
-        "runner_used": "pi",
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "source_feedback": "warden_task_decompose_feedback"
+        "source_feedback": "warden_task_decompose_feedback",
+        "runner_used": "pi"
       }
     },
     {
@@ -4121,8 +4121,8 @@
         "RQ-0077"
       ],
       "custom_fields": {
-        "model_used": "openai-codex/gpt-5.5:xhigh",
         "source_feedback": "warden_task_decompose_feedback",
+        "model_used": "openai-codex/gpt-5.5:xhigh",
         "runner_used": "pi"
       }
     },
@@ -4185,9 +4185,9 @@
         "RQ-0078"
       ],
       "custom_fields": {
-        "runner_used": "pi",
         "source_feedback": "warden_task_decompose_feedback",
-        "model_used": "openai-codex/gpt-5.5:xhigh"
+        "model_used": "openai-codex/gpt-5.5:xhigh",
+        "runner_used": "pi"
       }
     },
     {
@@ -4262,8 +4262,8 @@
       ],
       "custom_fields": {
         "model_used": "openai-codex/gpt-5.5:xhigh",
-        "source_feedback": "warden_task_decompose_feedback",
-        "runner_used": "pi"
+        "runner_used": "pi",
+        "source_feedback": "warden_task_decompose_feedback"
       }
     },
     {
@@ -4320,8 +4320,8 @@
         "RQ-0078"
       ],
       "custom_fields": {
-        "source_feedback": "warden_task_decompose_feedback",
         "model_used": "openai-codex/gpt-5.5:xhigh",
+        "source_feedback": "warden_task_decompose_feedback",
         "runner_used": "pi"
       }
     },
@@ -4635,6 +4635,69 @@
       "relates_to": [],
       "custom_fields": {
         "scan_agent": "scan-general"
+      }
+    },
+    {
+      "id": "RQ-0088",
+      "status": "done",
+      "title": "Let Cursor runner tolerate SDK version drift",
+      "description": "Make CueLoop's Cursor runner and doctor resolve @cursor/sdk from explicit, workspace, or global npm installs without failing fast solely because the installed SDK version differs from CueLoop's preferred/tested version. If the user has @cursor/sdk installed, runner=cursor model=composer-2 should try to work; version mismatches should become warnings/diagnostics unless the SDK is structurally unusable. Also update CueLoop's preferred Cursor SDK metadata to the latest available version so guidance and tests are current.",
+      "priority": "high",
+      "tags": [
+        "maintenance",
+        "cursor",
+        "sdk",
+        "module-resolution",
+        "version-tolerance",
+        "doctor"
+      ],
+      "scope": [
+        "crates/cueloop/assets/cursor_sdk_runner.mjs",
+        "crates/cueloop/src/commands/doctor/runner.rs",
+        "crates/cueloop/src/runner/execution/builtin_plugins/cursor.rs",
+        "crates/cueloop/src/constants.rs",
+        "crates/cueloop/src/contracts/config/agent.rs",
+        "docs/features/configuration-agent.md",
+        "docs/features/runners.md",
+        "docs/configuration/agent-and-runners.md",
+        "docs/configuration/migration-notes.md",
+        "doctor/runner Cursor SDK tests plus any bridge/helper regression tests",
+        "cargo test cursor_sdk"
+      ],
+      "evidence": [
+        "Observed failure: runner=cursor model=composer-2 reports Unable to load @cursor/sdk and instructs installing @cursor/sdk@1.0.11 or setting CUELOOP_CURSOR_SDK_MODULE_PATH.",
+        "User expectation: a globally installed @cursor/sdk, such as 1.0.12, should be accepted or at least attempted instead of rejected because CueLoop expects 1.0.11.",
+        "npm view @cursor/sdk version returned 1.0.12 on 2026-05-03, so CueLoop preferred/tested metadata should move from 1.0.11 to 1.0.12.",
+        "path: crates/cueloop/assets/cursor_sdk_runner.mjs :: loadCursorSdk currently checks CUELOOP_CURSOR_SDK_MODULE_PATH, helper-local package, then workspace package; validateCursorSdkVersion throws on any version mismatch before importing/using the SDK.",
+        "path: crates/cueloop/src/commands/doctor/runner.rs :: check_cursor_sdk_package currently resolves only CUELOOP_CURSOR_SDK_MODULE_PATH or workspace package, rejects wrong versions, and does not probe global npm roots.",
+        "path: docs/features/configuration-agent.md, docs/features/runners.md, docs/configuration/agent-and-runners.md, docs/configuration/migration-notes.md, crates/cueloop/src/contracts/config/agent.rs :: user guidance still describes pinned @cursor/sdk@1.0.11 installs."
+      ],
+      "plan": [
+        "Update preferred/tested Cursor SDK metadata from 1.0.11 to latest npm version 1.0.12 in Rust constants, embedded bridge metadata, comments, docs, and tests.",
+        "Centralize or carefully mirror resolution order across runtime bridge and doctor: CUELOOP_CURSOR_SDK_MODULE_PATH, trusted workspace @cursor/sdk, then global npm roots discovered via npm root -g / npm prefix -g where available.",
+        "Replace exact-version hard failure with best-effort compatibility: detect package metadata/version when present, warn/diagnose if it differs from preferred/tested 1.0.12, then import/probe SDK structure and proceed unless required Agent/export/API shape is missing.",
+        "Keep hard failures for true unusable states only: no package found, invalid env override/entrypoint, missing required Agent/export/API shape, unsupported Node, or runtime SDK call failure.",
+        "Make doctor distinguish success with preferred version, warning with version drift but usable SDK, and error for missing/structurally invalid SDK; avoid blocking states for version drift alone.",
+        "Add regression coverage for matching latest version, newer/different global version, older/different workspace version, env override precedence, missing SDK, and structurally invalid SDK across doctor and bridge load paths.",
+        "Run targeted cursor SDK tests, make agent-ci, and cueloop queue validate in the implementation phase."
+      ],
+      "notes": [
+        "Phase 1 planning only; no source/config/docs implementation changes were made.",
+        "Phase 2 may adapt file/test placement if repo reality differs, but must preserve version-drift tolerance and latest-preferred metadata.",
+        "Cursor SDK preferred metadata bumped to 1.0.12; runner and doctor now tolerate SDK version drift across env/workspace/global installs with warnings while preserving hard failures for missing or structurally unusable SDKs. Validation: node --check, bash -n smoke script, cargo cursor SDK tests, cueloop queue validate, make agent-ci."
+      ],
+      "request": "user-adjusted scan: Cursor SDK global install and version drift must be tolerated; bump preferred SDK to latest without exact-version runtime mandate",
+      "created_at": "2026-05-04T00:43:57.000000000Z",
+      "updated_at": "2026-05-04T02:27:12.813645000Z",
+      "completed_at": "2026-05-04T02:27:12.813645000Z",
+      "started_at": "2026-05-04T00:47:55.240570000Z",
+      "depends_on": [],
+      "blocks": [],
+      "relates_to": [],
+      "custom_fields": {
+        "runner_used": "pi",
+        "model_used": "openai-codex/gpt-5.5",
+        "scan_agent": "scan-maintenance"
       }
     }
   ]

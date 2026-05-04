@@ -3,7 +3,7 @@
 #
 # Requirements:
 # - `node` on PATH, or set CURSOR_SDK_NODE_BIN
-# - `@cursor/sdk@1.0.11` resolvable from WORKDIR, or set CUELOOP_CURSOR_SDK_MODULE_PATH
+# - `@cursor/sdk` resolvable from WORKDIR or global npm roots, or set CUELOOP_CURSOR_SDK_MODULE_PATH
 # - CURSOR_API_KEY exported in the environment
 #
 # Model: composer-2 only (project policy for this smoke script).
@@ -22,7 +22,7 @@ Smoke-tests CueLoop's Cursor SDK assumptions with a local run and resume.
 
 Requirements:
   - node on PATH, or CURSOR_SDK_NODE_BIN set to a Node 18+ executable
-  - @cursor/sdk@1.0.11 installed in WORKDIR, or CUELOOP_CURSOR_SDK_MODULE_PATH set
+  - @cursor/sdk installed in WORKDIR or globally, or CUELOOP_CURSOR_SDK_MODULE_PATH set
   - CURSOR_API_KEY exported
 
 Examples:
@@ -47,7 +47,7 @@ esac
 WORKDIR_INPUT="${1:-$(pwd)}"
 WORKDIR="$(cd "$WORKDIR_INPUT" && pwd -P)"
 MODEL="composer-2"
-EXPECTED_SDK_VERSION="1.0.11"
+PREFERRED_SDK_VERSION="1.0.12"
 BIN="${CURSOR_SDK_NODE_BIN:-node}"
 
 if ! command -v "$BIN" >/dev/null 2>&1; then
@@ -69,33 +69,79 @@ cleanup() {
 trap cleanup EXIT
 
 cat >"$SCRIPT" <<'JS'
+import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-async function loadSdk(cwd, expectedVersion) {
-  if (process.env.CUELOOP_CURSOR_SDK_MODULE_PATH) {
-    const configured = path.resolve(process.env.CUELOOP_CURSOR_SDK_MODULE_PATH);
-    assertSdkVersion(configured, expectedVersion);
-    return normalizeSdkModule(await import(pathToFileURL(configured).href));
+async function loadSdk(cwd, preferredVersion) {
+  const configured = process.env.CUELOOP_CURSOR_SDK_MODULE_PATH;
+  if (configured) {
+    return importSdk(path.resolve(configured), preferredVersion, "env");
   }
-  const requireFromCwd = createRequire(path.join(cwd, "package.json"));
-  const resolved = requireFromCwd.resolve("@cursor/sdk", { paths: [cwd] });
-  assertSdkVersion(resolved, expectedVersion);
-  return normalizeSdkModule(await import(pathToFileURL(resolved).href));
+
+  const attempts = [];
+  let workspaceResolved = null;
+  try {
+    const requireFromCwd = createRequire(path.join(cwd, "package.json"));
+    workspaceResolved = requireFromCwd.resolve("@cursor/sdk", { paths: [cwd] });
+  } catch (error) {
+    attempts.push(error);
+  }
+  if (workspaceResolved) {
+    return importSdk(workspaceResolved, preferredVersion, "workspace");
+  }
+
+  for (const root of globalRoots()) {
+    let globalResolved = null;
+    try {
+      globalResolved = resolveFromGlobalRoot(root);
+    } catch (error) {
+      attempts.push(error);
+      continue;
+    }
+    return importSdk(globalResolved, preferredVersion, "global");
+  }
+
+  throw new Error(`Unable to load @cursor/sdk from WORKDIR, global npm roots, or CUELOOP_CURSOR_SDK_MODULE_PATH. Preferred/tested version: @cursor/sdk@${preferredVersion}. Last error: ${attempts.at(-1)?.message ?? "none"}`);
 }
 
-function assertSdkVersion(entrypoint, expectedVersion) {
+async function importSdk(entrypoint, preferredVersion, source) {
+  const meta = sdkMetadata(entrypoint);
+  const sdk = normalizeSdkModule(await import(pathToFileURL(path.resolve(entrypoint)).href));
+  warnIfVersionDrift(meta.version, preferredVersion, source, entrypoint);
+  return sdk;
+}
+
+function globalRoots() {
+  const roots = [];
+  if (process.env.CUELOOP_CURSOR_SDK_GLOBAL_ROOT) return [path.resolve(process.env.CUELOOP_CURSOR_SDK_GLOBAL_ROOT)];
+  try {
+    const root = execFileSync("npm", ["root", "-g"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    if (root) roots.push(root);
+  } catch {}
+  return [...new Set(roots.map((root) => path.resolve(root)))];
+}
+
+function resolveFromGlobalRoot(root) {
+  const packageJson = path.join(root, "@cursor", "sdk", "package.json");
+  if (fs.existsSync(packageJson)) return createRequire(packageJson).resolve("./");
+  return createRequire(path.join(root, "package.json")).resolve("@cursor/sdk", { paths: [root] });
+}
+
+function sdkMetadata(entrypoint) {
   const packageJsonPath = findSdkPackageJson(entrypoint);
-  if (!packageJsonPath) {
-    throw new Error(`Unable to find @cursor/sdk package metadata for ${entrypoint}; install @cursor/sdk@${expectedVersion}`);
-  }
+  if (!packageJsonPath) return { version: null };
   const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-  if (pkg.version !== expectedVersion) {
-    throw new Error(`@cursor/sdk ${pkg.version ?? "unknown"} is unsupported; install @cursor/sdk@${expectedVersion}`);
-  }
+  return { version: pkg.version ?? null };
+}
+
+function warnIfVersionDrift(version, preferredVersion, source, entrypoint) {
+  if (version === preferredVersion) return;
+  const detected = version ?? "unknown";
+  console.error(`warning: @cursor/sdk ${detected} from ${source} differs from CueLoop's preferred/tested ${preferredVersion}; proceeding best-effort (${path.resolve(entrypoint)})`);
 }
 
 function findSdkPackageJson(entrypoint) {
@@ -151,8 +197,8 @@ function assistantText(event) {
 
 const cwd = process.argv[2];
 const model = process.argv[3];
-const expectedVersion = process.argv[4];
-const { Agent } = await loadSdk(cwd, expectedVersion);
+const preferredVersion = process.argv[4];
+const { Agent } = await loadSdk(cwd, preferredVersion);
 const agent = await Agent.create({
   apiKey: process.env.CURSOR_API_KEY,
   model: { id: model },
@@ -192,7 +238,7 @@ echo "== Node version"
 echo "== Cursor SDK local run + resume (model=$MODEL)"
 cd "$WORKDIR"
 set +e
-"$BIN" "$SCRIPT" "$WORKDIR" "$MODEL" "$EXPECTED_SDK_VERSION" >"$OUT" 2>"$ERR"
+"$BIN" "$SCRIPT" "$WORKDIR" "$MODEL" "$PREFERRED_SDK_VERSION" >"$OUT" 2>"$ERR"
 status=$?
 set -e
 if [[ "$status" -ne 0 ]]; then

@@ -27,7 +27,7 @@ Supported fields:
 - `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
   **Safety warning:** Disabling the CI gate skips CueLoop-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name.
-- `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). Cursor no longer uses the legacy `agent` binary; install the pinned SDK in a trusted workspace with `npm install --save-exact @cursor/sdk@1.0.11`, or set `CUELOOP_CURSOR_SDK_MODULE_PATH` to a trusted/global SDK entrypoint.
+- `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). Cursor no longer uses the legacy `agent` binary; install the preferred/tested SDK in a trusted workspace with `npm install --save-exact @cursor/sdk@1.0.12`, install `@cursor/sdk` globally, or set `CUELOOP_CURSOR_SDK_MODULE_PATH` to a trusted SDK entrypoint. Version drift is a warning unless the SDK is structurally unusable.
 - `claude_permission_mode`: `accept_edits` or `bypass_permissions`.
   **Safety warning:** `bypass_permissions` allows Claude to make edits without prompting for approval. Use with caution.
 - `runner_cli`: normalized runner CLI behavior (output/approval/sandbox/etc), with global defaults and optional per-runner overrides.

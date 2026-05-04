@@ -269,7 +269,7 @@
           },
           "cursor_sdk_node_bin": {
             "default": null,
-            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in CueLoop Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
+            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in CueLoop Node bridge plus a usable workspace,\nglobal, or explicitly configured `@cursor/sdk` install. CueLoop's preferred/tested\nSDK version is `@cursor/sdk@1.0.12`; other versions are tried best-effort with a\nwarning. It no longer shells out to Cursor's legacy `agent` binary.",
             "type": [
               "string",
               "null"
@@ -9131,7 +9131,7 @@
           },
           "cursor_sdk_node_bin": {
             "default": null,
-            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in CueLoop Node bridge plus `@cursor/sdk@1.0.11`;\nit no longer shells out to Cursor's legacy `agent` binary.",
+            "description": "Override the Node.js executable used for Cursor SDK local runner execution (default is\n\"node\" if None).\n\nThe Cursor runner uses a checked-in CueLoop Node bridge plus a usable workspace,\nglobal, or explicitly configured `@cursor/sdk` install. CueLoop's preferred/tested\nSDK version is `@cursor/sdk@1.0.12`; other versions are tried best-effort with a\nwarning. It no longer shells out to Cursor's legacy `agent` binary.",
             "type": [
               "string",
               "null"

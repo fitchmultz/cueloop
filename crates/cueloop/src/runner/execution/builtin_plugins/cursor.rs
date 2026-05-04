@@ -281,3 +281,131 @@ impl ResponseParser for CursorResponseParser {
         "cursor"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CURSOR_SDK_RUNNER;
+    use serde_json::json;
+    use std::process::Command;
+
+    fn node_available() -> bool {
+        Command::new("node")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    }
+
+    fn write_fake_sdk(root: &std::path::Path, version: &str) -> anyhow::Result<std::path::PathBuf> {
+        let sdk_dir = root.join("@cursor/sdk");
+        std::fs::create_dir_all(&sdk_dir)?;
+        std::fs::write(
+            sdk_dir.join("package.json"),
+            format!(
+                r#"{{"name":"@cursor/sdk","version":"{version}","type":"module","main":"index.js"}}"#
+            ),
+        )?;
+        std::fs::write(
+            sdk_dir.join("index.js"),
+            r#"
+export class Agent {
+  constructor(id = 'agent-1') { this.agentId = id; this.closed = false; }
+  static async create() { return new Agent(); }
+  static async resume(id) { return new Agent(id); }
+  async send() {
+    return {
+      id: 'run-1',
+      async *stream() {
+        yield { type: 'assistant', message: { content: [{ type: 'text', text: 'hello' }] } };
+      },
+      async wait() { return { status: 'finished', result: 'hello', id: 'run-1' }; }
+    };
+  }
+  async close() { this.closed = true; }
+}
+"#,
+        )?;
+        Ok(sdk_dir.join("index.js"))
+    }
+
+    fn run_helper(work_dir: &std::path::Path) -> anyhow::Result<std::process::Output> {
+        let helper = tempfile::NamedTempFile::with_suffix(".mjs")?;
+        std::fs::write(helper.path(), CURSOR_SDK_RUNNER)?;
+        let request = json!({
+            "operation": "run",
+            "cwd": work_dir,
+            "model": "composer-2",
+            "message": "hi"
+        });
+        let mut child = Command::new("node")
+            .arg(helper.path())
+            .current_dir(work_dir)
+            .env("CURSOR_API_KEY", "fake-key")
+            .env_remove("CUELOOP_CURSOR_SDK_MODULE_PATH")
+            .env_remove("CUELOOP_CURSOR_SDK_GLOBAL_ROOT")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()?;
+        use std::io::Write as _;
+        child
+            .stdin
+            .take()
+            .expect("helper stdin should be piped")
+            .write_all(serde_json::to_string(&request)?.as_bytes())?;
+        Ok(child.wait_with_output()?)
+    }
+
+    #[test]
+    fn cursor_sdk_runner_warns_but_runs_with_workspace_version_drift() -> anyhow::Result<()> {
+        if !node_available() {
+            return Ok(());
+        }
+        let temp = tempfile::TempDir::new()?;
+        std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
+        write_fake_sdk(&temp.path().join("node_modules"), "1.0.13")?;
+
+        let output = run_helper(temp.path())?;
+
+        assert!(
+            output.status.success(),
+            "stderr: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8(output.stdout)?;
+        assert!(
+            stdout.contains(r#""subtype":"cursor_sdk_warning""#),
+            "stdout: {stdout}"
+        );
+        assert!(
+            stdout.contains(r#""sdk_version":"1.0.13""#),
+            "stdout: {stdout}"
+        );
+        assert!(stdout.contains(r#""type":"result""#), "stdout: {stdout}");
+        Ok(())
+    }
+
+    #[test]
+    fn cursor_sdk_runner_fails_for_structurally_invalid_workspace_sdk() -> anyhow::Result<()> {
+        if !node_available() {
+            return Ok(());
+        }
+        let temp = tempfile::TempDir::new()?;
+        std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
+        let sdk_dir = temp.path().join("node_modules/@cursor/sdk");
+        std::fs::create_dir_all(&sdk_dir)?;
+        std::fs::write(
+            sdk_dir.join("package.json"),
+            r#"{"name":"@cursor/sdk","version":"1.0.12","type":"module","main":"index.js"}"#,
+        )?;
+        std::fs::write(sdk_dir.join("index.js"), "export const NotAgent = true;")?;
+
+        let output = run_helper(temp.path())?;
+
+        assert!(!output.status.success());
+        let stdout = String::from_utf8(output.stdout)?;
+        assert!(stdout.contains("does not expose Agent"), "stdout: {stdout}");
+        Ok(())
+    }
+}

@@ -273,7 +273,7 @@ Override runner binary paths in your config:
 }
 ```
 
-**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. The trusted target workspace must be able to resolve the pinned `@cursor/sdk` package (for example, via `npm install --save-exact @cursor/sdk@1.0.11`) or `CUELOOP_CURSOR_SDK_MODULE_PATH` must point to a trusted/global SDK entrypoint.
+**Note:** Cursor uses CueLoop's Node-based Cursor SDK bridge, not the legacy `agent` binary. The target workspace, global npm roots, or `CUELOOP_CURSOR_SDK_MODULE_PATH` must provide a usable `@cursor/sdk` entrypoint. CueLoop's preferred/tested version is `@cursor/sdk@1.0.12`; version drift is reported as a warning and tried best-effort.
 
 ### Configuration Precedence
 
