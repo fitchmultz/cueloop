@@ -24,7 +24,7 @@
 //! - Queue file is the source of truth for task ordering.
 //! - Runner execution produces valid task JSON output.
 //! - Template loading and merging happens before prompt rendering.
-//! - Lock acquisition is optional (controlled by acquire_lock parameter).
+//! - Queue locking is deferred until post-run normalization so child builders can insert tasks.
 
 use super::{TaskBuildOptions, resolve_task_build_settings};
 use crate::commands::run::PhaseType;
@@ -58,16 +58,6 @@ fn build_task_impl(
         opts.force,
         git::CUELOOP_QUEUE_ONLY_ALLOWED_PATHS,
     )?;
-
-    let _queue_lock = if acquire_lock {
-        Some(queue::acquire_queue_lock(
-            &resolved.repo_root,
-            "task",
-            opts.force,
-        )?)
-    } else {
-        None
-    };
 
     if opts.request.trim().is_empty() {
         bail!("Missing request: task requires a request description. Provide a non-empty request.");
@@ -230,6 +220,16 @@ fn build_task_impl(
             .unwrap_or(crate::contracts::GitRevertMode::Ask),
         None,
     )?;
+
+    let _queue_lock = if acquire_lock {
+        Some(queue::acquire_queue_lock(
+            &resolved.repo_root,
+            "task",
+            opts.force,
+        )?)
+    } else {
+        None
+    };
 
     let mut after = match queue::load_queue(&resolved.queue_path)
         .with_context(|| format!("read queue {}", resolved.queue_path.display()))

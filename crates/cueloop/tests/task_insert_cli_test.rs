@@ -237,3 +237,43 @@ fn task_insert_fails_cleanly_when_queue_lock_is_held() -> Result<()> {
     assert!(read_queue(dir.path())?.tasks.is_empty());
     Ok(())
 }
+
+#[test]
+fn task_insert_can_run_under_supervisor_queue_lock() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
+
+    let _lock = cueloop::queue::acquire_queue_lock(dir.path(), "run one", false)?;
+    let request_path = write_request(
+        dir.path(),
+        "supervised-insert.json",
+        vec![insert_spec("alpha", "Alpha")],
+    )?;
+
+    let (status, stdout, stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "task",
+            "insert",
+            "--format",
+            "json",
+            "--input",
+            request_path.to_str().unwrap(),
+        ],
+    );
+    anyhow::ensure!(
+        status.success(),
+        "task insert should succeed under supervisor task lock\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("Queue lock already held"),
+        "supervised task insert should not report lock contention\nstderr:\n{stderr}"
+    );
+
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["created_count"], 1);
+    assert_eq!(document["tasks"][0]["task"]["id"], "RQ-0001");
+    assert_eq!(read_queue(dir.path())?.tasks.len(), 1);
+    Ok(())
+}

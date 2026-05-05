@@ -27,7 +27,7 @@ pub fn handle(args: &TaskInsertArgs, force: bool, resolved: &config::Resolved) -
     let request = serde_json::from_str::<TaskInsertRequest>(&raw)
         .context("parse task insert request json")?;
 
-    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task insert", force)?;
+    let _queue_lock = queue::acquire_queue_lock(&resolved.repo_root, "task", force)?;
     let mut active = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = queue::optional_done_queue(&done, &resolved.done_path);
