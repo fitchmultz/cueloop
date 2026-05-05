@@ -1,55 +1,35 @@
-# CueLoopMac Agent Guide
+# AGENTS.md
 
 <!-- AGENTS ONLY: app-scoped guidance. Repo-wide rules live in ../AGENTS.md. -->
 
-Status: Active
-Owner: Maintainers
-Source of truth: this file for app-scoped guidance only; `../AGENTS.md` for
-repo-wide rules.
-Parent: `../AGENTS.md`
+## Purpose
 
-CueLoopMac is the native SwiftUI app for CueLoop. It must stay a thin, user-friendly
-surface over the Rust CLI and versioned `cueloop machine ...` JSON contracts.
+This file applies to `apps/**`. CueLoopMac is a native SwiftUI companion app that stays a thin, user-friendly surface over the Rust `cueloop` CLI and versioned `cueloop machine ...` JSON contracts. Follow `../AGENTS.md` for repo-wide rules.
 
-## Canonical App Rules
+## Repository map
 
-- Use `../AGENTS.md` for repository-wide CI, release, source-of-truth, cutover,
-  and documentation rules. Do not duplicate those rules here.
-- Native app workflows must use versioned machine contracts or shared JSON
-  command outputs. Do not parse human CLI output.
-- The Advanced Runner is diagnostic/debug tooling only. A CLI command is not
-  app-parity-complete just because it can be run there.
-- App-side task editing should use the canonical task mutation path rather than
-  field-by-field shellouts.
-- App behavior must preserve CLI parity while improving UX: guided inputs,
-  visible state, previews where supported, progress, success/error states,
-  recovery actions, keyboard access, and clear labels.
-- If a CLI feature changes, update the machine contract, CueLoopCore decoding,
-  native SwiftUI surface, tests, and docs together or record the explicit block
-  in the parity registry (`../crates/cueloop/src/cli/app_parity.rs`).
+- `apps/CueLoopMac/CueLoopCore/` — CLI client, machine-contract models, workspace/domain state, queue watching, persistence, health, and app services.
+- `apps/CueLoopMac/CueLoopMac/` — SwiftUI app shell, views, commands, settings, routing, and presentation state.
+- `apps/CueLoopMac/CueLoopCoreTests/`, `CueLoopMacTests/`, `CueLoopMacUITests/` — non-UI, app, and headed UI test targets.
+- `apps/CueLoopMac/CueLoopMac.xcodeproj/` — Xcode project. Avoid manual project churn unless target membership/settings really changed.
+- `apps/CueLoopMac/build/`, `apps/CueLoopMac/target/`, and `target/tmp/xcode-deriveddata/` — ignored build artifacts.
+- App/CLI parity registry: `../crates/cueloop/src/cli/app_parity.rs`.
 
-## Security Boundaries
+## Operating rules
 
-- CueLoopMac may execute only the validated CueLoop CLI path selected by the app or
-  user. Do not add alternate executable discovery paths, shell-string execution,
-  or GUI-controlled arbitrary command launch surfaces.
-- Workspace access is user-selected and workspace-scoped. Do not broaden file
-  reads/writes outside the active workspace except for documented CueLoop config,
-  cache, or app-support locations.
-- The GUI does not make direct network calls for CueLoop workflows. Networked
-  behavior must stay behind the CLI/machine contract or a documented app system
-  service with explicit owner approval.
-- Keep destructive or trust-changing operations visible and confirmed in the UI;
-  do not add hidden bypasses around CLI trust, config, or queue safeguards.
+- Use versioned machine-contract JSON or shared JSON outputs. Do not parse human CLI output for app workflows.
+- The Advanced Runner is diagnostic/debug tooling only; it does not make a CLI feature app-parity-complete.
+- App-side task editing should use the canonical task mutation path, not field-by-field shellouts.
+- When a CLI feature changes, update the machine contract, `CueLoopCore` decoding, SwiftUI surface, tests, and docs together. If blocked, record the explicit gap in `../crates/cueloop/src/cli/app_parity.rs`.
+- Keep CLI parity while improving UX: guided inputs, visible state, previews where supported, progress, success/error states, recovery actions, keyboard access, and clear labels.
+- Stop app-side exploration after you have identified the owning `Workspace`/CLI-client/view file, contract input/output, and validation path.
 
-## Canonical Build and Test Entry Points
+## Setup and commands
 
-Derived summary; `../docs/guides/ci-strategy.md` is the validation source of
-truth. Use Make targets from the repository root. They wrap Xcode with the
-required bundling, locks, derived-data policy, and deterministic smoke tests.
+Run from the repository root; Make wraps Xcode with the required bundling, locks, derived-data policy, and deterministic smoke tests.
 
 | Need | Command |
-|------|---------|
+| --- | --- |
 | Required app ship gate | `make macos-ci` |
 | Routed local gate | `make agent-ci` |
 | Build app | `make macos-build` |
@@ -58,63 +38,50 @@ required bundling, locks, derived-data policy, and deterministic smoke tests.
 | Re-run UI tests | `make macos-ui-retest` |
 | Capture headed UI artifacts | `make macos-test-ui-artifacts` |
 | Clean UI artifacts | `make macos-ui-artifacts-clean` |
+| Focused Settings contract | `make macos-test-settings-smoke` |
+| Focused workspace-routing contract | `make macos-test-workspace-routing-contract` |
 
-`scripts/cueloop-cli-bundle.sh` is the only CLI bundling/build entrypoint for
-Makefile, Xcode, and release consumers. Do not add standalone Cargo fallback
-logic inside Xcode project settings or app-specific scripts.
+`scripts/cueloop-cli-bundle.sh` is the single CLI bundling/build entrypoint for Makefile, Xcode, and release consumers. Do not add standalone Cargo fallback logic inside Xcode settings or app-specific scripts.
 
-## App Architecture Boundaries
+## Coding conventions
 
-- `CueLoopMacApp.swift` stays a thin shell. Menu commands live in
-  `CueLoopMacCommands.swift`, URL routing in `CueLoopMacApp+URLRouting.swift`,
-  bootstrap helpers in `CueLoopMacApp+Support.swift`, window root composition in
-  `WindowViewContainer.swift`, and UI-test window policy in
-  `WorkspaceWindowAnchor.swift`.
-- `Workspace.swift` is a `@MainActor` facade over domain owners and focused
-  `Workspace+...` files. Do not re-accumulate runner, persistence, task
-  mutation, recovery, or queue refresh logic in the root type.
-- `CueLoopCLIClient.swift` owns the core subprocess API only. Retry helpers,
-  recovery classification, health probing, and process lifecycle ownership live
-  in their dedicated companion files.
-- `CueLoopModels.swift` is a facade only. Keep CLI spec models, generic JSON
-  values, argument-building helpers, and task-domain models in dedicated
-  CueLoopCore files.
-- Task list/detail views should stay orchestration-focused. Put reusable
-  sections in `TaskListSections.swift` / `TaskDetailSections.swift` and dense
-  transient state in dedicated state owners.
+- Every Swift file starts with a purpose header covering responsibilities, non-scope, and invariants/assumptions.
+- Keep access control minimal and explicit: `private` for implementation details, internal by default, `public` only for real `CueLoopCore` framework exports.
+- Keep `CueLoopMacApp.swift` thin. Menu commands live in `CueLoopMacCommands.swift`, URL routing in `CueLoopMacApp+URLRouting.swift`, bootstrap helpers in `CueLoopMacApp+Support.swift`, window root composition in `WindowViewContainer.swift`, and UI-test window policy in `WorkspaceWindowAnchor.swift`.
+- `Workspace.swift` is a `@MainActor` facade over domain owners and focused `Workspace+...` files. Do not re-accumulate runner, persistence, task mutation, recovery, or queue refresh logic in the root type.
+- `CueLoopCLIClient.swift` owns the core subprocess API only. Retry, recovery classification, health probing, and lifecycle ownership live in companion files.
+- `CueLoopModels.swift` is a facade only. Keep CLI spec models, generic JSON values, argument builders, and task-domain models in dedicated `CueLoopCore` files.
+- Active-window navigation/task commands flow through focused scene values (`WorkspaceUIActions` / `WorkspaceWindowActions`). Unfocused menu, URL, and lifecycle surfaces route through `WorkspaceSceneRouter`.
+- Do not reintroduce process-wide `NotificationCenter` broadcasts for focused workspace actions.
+- Queue file watcher refreshes and CLI queue JSON decoding use `WorkspaceQueueSnapshotLoader`; publish only final state on the main actor.
+- Operational visibility flows through `WorkspaceOperationalHealth`. Workspace identity persistence uses `WorkspaceStateStore`; persistence failures surface as `PersistenceIssue`.
 
-## App State and Communication
+## Validation and done criteria
 
-- Active-window navigation/task commands flow through focused scene values
-  (`WorkspaceUIActions` / `WorkspaceWindowActions`).
-- Unfocused menu, URL, and app lifecycle surfaces route through
-  `WorkspaceSceneRouter`.
-- Do not reintroduce process-wide `NotificationCenter` broadcasts for focused
-  workspace actions.
-- Queue file watcher refreshes and CLI queue JSON decoding use
-  `WorkspaceQueueSnapshotLoader`; publish only final state on the main actor.
-- Operational visibility flows through `WorkspaceOperationalHealth` so watcher,
-  persistence, crash-report, and CLI health share one severity model.
-- Workspace identity persistence uses a single `.snapshot` payload per
-  workspace through `WorkspaceStateStore`; persistence failures must surface as
-  `PersistenceIssue`.
+App work is done when CLI/app behavior stays in parity, relevant UI/contract tests pass or have an explicit blocker, and user-facing state/errors are visible and recoverable.
 
-## Testing Conventions
+- Use `CueLoopCoreTestSupport` for temp workspaces, readiness polling, and cleanup assertions.
+- SwiftUI previews needing workspace URLs derive them from `PreviewWorkspaceSupport`.
+- UI tests must not write into the production app defaults domain; `--uitesting` launches use the dedicated test suite.
+- Normal UI-test launches should keep one visible workspace window; multiwindow tests should keep two. Avoid widths below the split-view practical minimum.
+- UI screenshot capture is opt-in through `CUELOOP_UI_SCREENSHOTS=1` or `CUELOOP_UI_SCREENSHOT_MODE`.
+- For visual UX changes, inspect the rendered app or preserve headed UI artifacts. If that cannot run, record why and what should be checked next.
 
-- Use `CueLoopCoreTestSupport` for temp workspaces, readiness polling, and cleanup
-  assertions.
-- SwiftUI previews that need workspace URLs derive them from
-  `PreviewWorkspaceSupport`.
-- UI tests must not write into the production app defaults domain. `--uitesting`
-  launches use the dedicated test suite.
-- Normal UI-test launches should keep one visible workspace window; multiwindow
-  tests should keep two. Avoid widths below the split-view practical minimum.
-- UI screenshot capture is opt-in through `CUELOOP_UI_SCREENSHOTS=1` or
-  `CUELOOP_UI_SCREENSHOT_MODE`.
+## Planning and large changes
 
-## File Headers and Style
+Use a short plan for changes that cross CLI machine contracts, `CueLoopCore`, SwiftUI, tests, and docs. Plan the contract first, then decoding/state ownership, then view behavior, then validation. Do not split parity work across hidden follow-ups unless the blocker is recorded in `app_parity.rs`.
 
-Every Swift file starts with a purpose header covering responsibilities,
-non-scope, and invariants/assumptions. Keep access control minimal and explicit:
-use `private` for implementation details, internal by default, and `public` only
-for real CueLoopCore framework exports.
+## Security and side effects
+
+- CueLoopMac may execute only the validated CueLoop CLI path selected by the app or user. Do not add alternate executable discovery paths, shell-string execution, or GUI-controlled arbitrary command launch surfaces.
+- Workspace access is user-selected and workspace-scoped. Do not broaden file reads/writes outside the active workspace except for documented CueLoop config, cache, or app-support locations.
+- The GUI does not make direct network calls for CueLoop workflows. Networked behavior must stay behind the CLI/machine contract or a documented app system service with explicit maintainer approval.
+- Keep destructive or trust-changing operations visible and confirmed in the UI; do not add hidden bypasses around CLI trust, config, or queue safeguards.
+
+## Progress updates and handoff
+
+For app changes, progress updates should name the affected surface (`CueLoopCore`, SwiftUI view, CLI contract, tests). Handoffs must include UI/contract validation, any visual evidence path, and any app-parity gaps.
+
+## Updating this file
+
+Keep this file limited to app-specific rules. Move repo-wide commands or policy back to `../AGENTS.md`. Update this file when app architecture ownership, machine-contract policy, or app validation commands change.

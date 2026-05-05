@@ -1,391 +1,95 @@
-# Repository Guidelines (CueLoop)
-
-CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue.
-
-This file provides fast-path guidance for contributors and agents. For deeper architectural detail, start with `docs/index.md` and `CONTRIBUTING.md`.
-Repo-wide source-of-truth, cutover, downstream sync, and validation rules live in `AGENTS.md` and `docs/guides/project-operating-constitution.md`.
-
----
-
-## Project Overview
-
-**CueLoop** is a Rust-based CLI tool that manages AI agent workflows through a structured JSON task queue. It orchestrates AI runners (Claude, Codex, OpenCode, Gemini, Kimi, Cursor, Pi) to execute tasks in phases (Plan → Implement → Review) with support for dependency management, parallel execution, and session recovery.
-
-### Key Features
-
-- **Task Queue Management**: JSON-based queue with task lifecycle (todo → doing → done)
-- **Multi-Phase Execution**: Configurable 1/2/3-phase workflows
-- **Multi-Runner Support**: Codex, OpenCode, Gemini, Claude, Cursor, Kimi, Pi
-- **Parallel Execution**: Run multiple tasks concurrently with direct-push integration
-- **Session Management**: Crash recovery and resumption
-- **Plugin System**: Extensible architecture for custom processors
-- **Webhooks**: HTTP event notifications for task events
-- **macOS App**: SwiftUI companion app (`apps/CueLoopMac/`)
-
----
-
-## Technology Stack
-
-| Component | Technology |
-|-----------|------------|
-| Language | Rust (Edition 2024) |
-| CLI Framework | clap 4.x with derive macros |
-| Serialization | serde, serde_json, serde_yaml |
-| Error Handling | anyhow + thiserror |
-| Logging | env_logger + log |
-| Build Tool | Cargo + Makefile |
-| Testing | Built-in test framework + insta (snapshots) + serial_test |
-| JSON Schema | schemars |
-| Time Handling | chrono, time |
-| Process Management | ctrlc, notify |
-
----
-
-## Project Structure
-
-```
-apps/
-  CueLoopMac/           # macOS SwiftUI app (thin client that shells out to the bundled cueloop CLI)
-crates/
-  cueloop/              # Primary Rust CLI crate
-    src/              # CLI commands, runner integration, queue management
-      cli/            # CLI argument parsing and command handlers
-      commands/       # Command implementations
-      contracts/      # Data types (Queue, Task, Config, etc.)
-      runner/         # Runner execution and session management
-      plugins/        # Plugin system
-      migration/      # Config/data migration system
-      testsupport/    # Test utilities
-      assets/         # Embedded assets
-    assets/prompts/   # Embedded prompt templates (worker/task builder/scan)
-    tests/            # Integration tests
-docs/                 # CLI + workflow + configuration docs
-schemas/              # Generated JSON schemas (committed)
-scripts/              # Maintenance + release helper scripts
-.cueloop/               # Repo-local runtime state
-  queue.jsonc         # Active tasks (source of truth)
-  done.jsonc          # Archived tasks
-  config.jsonc        # Project config (overrides global)
-  prompts/*.md        # Optional prompt overrides
-```
-
-### Module Organization
-
-**Core Modules** (`src/`):
-- `cli/` - CLI argument definitions and command routing
-- `commands/` - Command implementations
-- `contracts/` - Data structures (Queue, Task, Config, Session, etc.; `contracts/task.rs` facade with companions under `contracts/task/`)
-- `runner/` - Runner execution, session management, and phase orchestration
-- `plugins/` - Plugin discovery, registry, and execution
-- `migration/` - Config and data migration system
-
-**Utility Modules**:
-- `config.rs` - Configuration loading and resolution
-- `queue.rs` - Queue file operations
-- `lock.rs` - Queue file locking
-- `redaction/` - Sensitive data redaction (`mod.rs` facade with companions under `redaction/`)
-- `eta_calculator/` - ETA models, calculators, and formatting (`eta_calculator.rs` facade with companions under `eta_calculator/`)
-- `undo/` - Undo snapshot models and operations (`undo.rs` facade with companions under `undo/`)
-- `git/` - Git operations
-- `fsutil/` - Filesystem utilities (facade in `fsutil/mod.rs`)
-- `runutil/` - Runner execution, retry/revert, CI-gate, and managed subprocess helpers (facade in `runutil.rs`)
-- `timeutil.rs` - Time handling
-- `template/` - Prompt template loading (`loader/mod.rs` and `variables.rs` facades with companion files under `template/loader/` and `template/variables/`)
-- `agent/` - CLI agent argument parsing and override resolution (`resolve/mod.rs` facade with companions under `agent/resolve/`)
-- `prompts_internal/` - Internal prompt composition
-
----
-
-## Quick Start
-
-```bash
-# Before committing or merging, always run:
-make agent-ci
-```
+# AGENTS.md
 
-The required local gate is `make agent-ci`, which routes the current uncommitted diff to the right underlying tier.
+<!-- AGENTS ONLY: Rust source guidance for crates/cueloop/src/**. Repo-wide rules live in ../../../AGENTS.md. -->
 
----
+## Purpose
 
-## Development Workflow
+This file applies to `crates/cueloop/src/**`. The Rust crate implements the `cueloop` CLI, library contracts, runner orchestration, queue management, migrations, plugins, redaction, and app machine contracts. Follow `../../../AGENTS.md` for repo-wide rules.
 
-### Essential Commands
+## Repository map
 
-| Command | Purpose |
-|---------|---------|
-| `make agent-ci` | Required pre-commit gate — routes to the correct validation tier |
-| `make macos-ci` | macOS-only ship gate (Rust CI + Xcode build + Xcode tests) |
-| `make install` | Install `cueloop` to `~/.local/bin/cueloop` (or writable fallback) |
-| `make test` | Nextest workspace tests + cargo doc tests (auto-fallback if nextest missing) |
-| `make lint` | Run Clippy with `-D warnings` (warnings are errors) |
-| `make format` | Run `cargo fmt --all` |
-| `make type-check` | Run `cargo check --workspace --all-targets` |
-| `make generate` | Regenerate JSON schemas into `schemas/` |
-| `make update` | Upgrade direct Cargo requirements (`cargo upgrade --incompatible`) and refresh the lockfile (`cargo update`); use `make macos-ci` to verify the Swift/Xcode app because it has no external package manifest |
-| `make clean` | Remove build artifacts, logs, and most cache entries |
+- `bin/cueloop.rs` — executable entrypoint.
+- `cli/` — clap argument definitions, command routing, machine/app surfaces, and app-parity registry.
+- `commands/` — command implementations for run, queue, task, scan, prompt, plugin, doctor, daemon/watch, app, init, context, and PRD flows.
+- `contracts/` — queue, task, config, runner, and serialized data contracts.
+- `config/`, `queue/`, `lock/`, `session/` — core runtime state handling.
+- `runner/`, `runutil/` — runner execution, retries, CI gates, subprocess helpers, and phase/session behavior.
+- `migration/` — config/file/runtime migration registry and implementations.
+- `redaction/`, `output/`, `webhook/`, `plugins/`, `template/`, `prompts_internal/` — focused support domains.
+- `testsupport/` — reusable helpers for Rust unit/integration tests.
+- Integration tests are outside this scope at `crates/cueloop/tests/`.
 
-### Development Iteration
+## Operating rules
 
-```bash
-# Quick test cycle (not a substitute for `make agent-ci`)
-cargo test -p cueloop-agent-loop
-cargo run -p cueloop-agent-loop -- <command>
-cargo run -p cueloop-agent-loop -- queue validate
-```
+- Identify the owning module before editing. Do not add logic to a facade when a focused companion module already owns that concern.
+- Preserve CLI contracts: flags/help, machine JSON, schemas, queue/task formats, config precedence, and app parity.
+- Keep source files cohesive. Split only when it improves ownership or reviewability; do not create generic frameworks for one-off behavior.
+- When changing user-visible CLI/config/queue/machine behavior, update tests, docs, schemas, and app parity in the same change or record the explicit blocker.
+- Stop source exploration after the owning module, callers, contract tests, and validation command are clear.
 
----
+## Setup and commands
 
-## Build and Test Commands
+Run from the repository root.
 
-### Build
+| Need | Command |
+| --- | --- |
+| Required routed gate | `make agent-ci` |
+| Fast Rust gate | `make ci-fast` |
+| Full Rust release-shaped gate | `make ci` |
+| Format | `make format` |
+| Format check | `make format-check` |
+| Clippy lint | `make lint` |
+| Type check | `make type-check` |
+| Full Rust tests | `make test` |
+| Quick crate tests | `cargo test -p cueloop` |
+| Run local CLI | `cargo run -p cueloop -- <command>` |
+| Validate queue | `cargo run -p cueloop -- queue validate` |
+| Regenerate schemas | `make generate` |
+| Keep temp test dirs | `CUELOOP_CI_KEEP_TMP=1 make test` |
+| Update snapshots intentionally | `INSTA_UPDATE=always cargo test -p cueloop` |
 
-```bash
-# Release build (used by install)
-make build
+`make test` uses cargo-nextest when available and falls back to cargo test, then runs doc tests. Use `CUELOOP_CI_JOBS=4` on shared workstations.
 
-# Debug build
-cargo build -p cueloop-agent-loop
+## Coding conventions
 
-# Check only (fast)
-make type-check
-```
+- New or changed Rust source files MUST start with `//!` module docs stating responsibility, explicit non-scope, and invariants/assumptions.
+- Default to private APIs; prefer `pub(crate)` over `pub` unless the library contract needs export.
+- Use `anyhow::Result` for propagation and `thiserror` enums for matchable domain errors. Use `bail!` for quick returns and `.context(...)` at IO/process/config boundaries.
+- Avoid panics in runtime paths. Prefer typed validation or contextual errors.
+- Keep clap help, examples, and `docs/cli.md` in sync for user-facing commands/flags.
+- Configuration precedence is: CLI flags, `.cueloop/config.jsonc`, `~/.config/cueloop/config.jsonc`, schema defaults. `docs/configuration.md` is authoritative.
+- Session IDs are `{task_id}-p{phase}-{timestamp}` using Unix epoch seconds. Do not add a `cueloop-` prefix or pid suffix; phase resumes reuse the same session ID.
+- Queue order is execution order. Draft tasks are skipped unless `--include-draft` is set.
+- Prompt defaults live in `crates/cueloop/assets/prompts/`; project overrides live in `.cueloop/prompts/*.md`.
+- Breaking config/file format changes use the migration system under `migration/` and update docs.
 
-### Test
+## Validation and done criteria
 
-```bash
-# Full test suite (nextest workspace tests with fallback + cargo doc tests in isolated temp dirs)
-make test
+Rust source work is done when changed behavior has success and failure coverage, generated outputs are current, and the routed gate passes or the blocker is reported.
 
-# Quick unit tests only
-cargo test -p cueloop-agent-loop
+- Prefer unit tests near the changed code for pure logic.
+- Use `crates/cueloop/tests/` integration tests for CLI/filesystem/queue/config/runner-contract behavior.
+- Use `testsupport` helpers for temp workspaces, `git_init`, `cueloop_init`, queue fixtures, and CLI invocations.
+- Tests should isolate state in temp dirs. Use `--non-interactive` for `cueloop init` in tests. Use `serial_test` only for process-global state.
+- Regenerate `schemas/*.schema.json` with `make generate` after schema-producing contract changes.
+- Review and commit intentional snapshot changes only.
+- If validation fails, inspect the first failing command, fix owned regressions, and include exact failure evidence if blocked.
 
-# Include ignored tests
-cargo test -p cueloop-agent-loop -- --include-ignored
+## Planning and large changes
 
-# Update snapshots after intentional changes
-INSTA_UPDATE=always cargo test -p cueloop-agent-loop
+Use a short plan for work touching contracts, runner phases, queue formats, migrations, config, git publish behavior, redaction, app machine APIs, or parallel execution. Define the invariant and failure modes before editing. Do not land compatibility bridges without owner, review date, and cleanup path.
 
-# Keep temp directories for debugging
-CUELOOP_CI_KEEP_TMP=1 make test
-```
+## Security and side effects
 
-### Lint and Format
+- NEVER log, print, or commit raw secrets. Debug logs and raw safeguard dumps can contain unredacted runner output.
+- Use `RedactedString` and `redact_text()` for runner output before logging or copying into persisted notes.
+- Do not bypass queue locks, trust/config safeguards, destructive confirmations, or CI-gate enforcement without explicit maintainer direction.
+- Runtime artifacts under `.cueloop/cache/`, `.cueloop/logs/`, `.cueloop/lock/`, `.cueloop/workspaces/`, `.cueloop/undo/`, and `.cueloop/webhooks/` stay untracked.
 
-```bash
-# Format code
-make format
+## Progress updates and handoff
 
-# Run Clippy (warnings are errors)
-make lint
+For source changes, progress updates should name the affected contract/module and current validation state. Handoffs must include changed Rust modules, generated/docs updates, tests run, failed/skipped checks, and any app-parity or migration follow-up.
 
-# Type check
-make type-check
-```
+## Updating this file
 
----
-
-## Coding Standards
-
-### Rust Conventions
-
-- **Formatting**: `cargo fmt` + Clippy with `-D warnings` (CI treats warnings as errors)
-- **Visibility**: Keep APIs small; default to private, prefer `pub(crate)` over `pub`
-- **Cohesion**: Keep modules/files focused; split large files rather than growing grab-bags
-- **Facade modules**: Keep top-level runtime facades (`runner.rs`, `commands/run/parallel/worker.rs`, `commands/run/supervision/ci.rs`, `cli/task/batch.rs`) thin; move real logic into same-directory helper modules rather than rebuilding monoliths
-- **Documentation**: Every module/file MUST have module docs (`//!`) stating:
-  - What the file is responsible for
-  - What it explicitly does NOT handle
-  - Any invariants/assumptions callers must respect
-
-### Error Handling
-
-CueLoop uses a two-tier strategy: `anyhow` for general propagation, `thiserror` for domain-specific errors.
-
-| Scenario | Pattern | Example |
-|----------|---------|---------|
-| Propagating errors | `anyhow::Result<T>` | `fn foo() -> Result<T>` |
-| Quick error return | `bail!` | `bail!("invalid input")` |
-| Adding context | `.context()` | `.context("read config")` |
-| Matchable domain errors | `thiserror` | `RunnerError`, `GitError` |
-| CLI value parsers | `anyhow::Result` | `parse_phase()` |
-
-See `docs/error-handling.md` for full guidelines.
-
-### Security-Conscious Patterns
-
-- **Redaction**: Use `RedactedString` for runner output; apply `redact_text()` before logging
-- **Debug Logs**: Never commit debug logs (`.cueloop/logs/debug.log`); they contain raw unredacted output
-- **Secrets**: Never commit `.env` files or secrets to version control
-
----
-
-## Testing Instructions
-
-### Test Organization
-
-| Test Type | Location |
-|-----------|----------|
-| Unit tests | Inline via `#[cfg(test)]` in source files |
-| Integration tests | `crates/cueloop/tests/` |
-| Test utilities | `crates/cueloop/src/testsupport/` |
-
-### Integration Testing Pattern
-
-Use `testsupport` helpers for CLI tests:
-
-```rust
-let dir = test_support::temp_dir_outside_repo();
-test_support::git_init(dir.path())?;
-test_support::cueloop_init(dir.path())?;
-
-test_support::write_queue(dir.path(), &tasks)?;
-let (status, stdout, stderr) = test_support::run_in_dir(dir.path(), &["queue", "archive"]);
-anyhow::ensure!(status.success(), "...\nstdout:\n{stdout}\nstderr:\n{stderr}");
-```
-
-### Test Isolation
-
-- Tests run in isolated temp directories (`${TMPDIR:-/tmp}/cueloop-ci.*`)
-- Use `--non-interactive` flag when calling `cueloop init` in tests
-- Set `CUELOOP_CI_KEEP_TMP=1` to preserve temp directories for debugging
-- Use `serial_test` for tests that modify global state
-
----
-
-## Security Considerations
-
-### Sensitive Data Handling
-
-- **Redaction**: Built-in redaction masks API keys, tokens, AWS keys, SSH keys
-- **Debug Mode**: `--debug` flag writes raw (unredacted) output to `.cueloop/logs/debug.log`
-- **Safeguard Dumps**: Use redacted dumps by default; raw dumps require `CUELOOP_RAW_DUMP=1` (legacy `CUELOOP_RAW_DUMP=1` still accepted) or `--debug`
-
-### What to Never Commit
-
-- `.env` files (MUST be in `.gitignore`)
-- `.cueloop/logs/` directory
-- `*.bak` files in source directories
-- Debug logs or raw safeguard dumps
-
-### Environment Safety Checks
-
-The CI runs `check-env-safety` which fails if `.env` is tracked in git.
-
----
-
-## Git Hygiene
-
-- **Commit messages**: `RQ-####: <short summary>` (task id + summary)
-- **Do not commit** if `make agent-ci` is failing
-- **This repo is local-CI-first**; avoid adding remote CI (e.g., GitHub Actions) as a substitute for `make agent-ci`
-- **Keep secrets out of git/logs**: `.env` is for local use only and MUST remain untracked
-
----
-
-## Pull Request Guidelines
-
-- Include "what changed" + "how to verify" sections (expected: `make agent-ci`)
-- Call out breaking behavior explicitly and update docs/help accordingly
-- When working from an issue/PR, prefer `gh` for context:
-
-  ```bash
-  gh issue view <number>
-  gh pr view <number>
-  ```
-
----
-
-## Configuration
-
-Derived summary; `docs/configuration.md` is the configuration source of truth.
-
-Config precedence (highest to lowest):
-
-1. CLI flags
-2. Project config: `.cueloop/config.jsonc`
-3. Global config: `~/.config/cueloop/config.jsonc`
-4. Schema defaults: `schemas/config.schema.json`
-
-See `docs/configuration.md` for key fields (runner/model/phases/RepoPrompt toggles/CI gate settings).
-Runner/model configuration specifics live in `docs/configuration.md`; `README.md` is the product overview and first-workflow entry point.
-
----
-
-## Workflow Contracts
-
-### Queue and Prompts
-
-- **Queue is the source of truth**: `.cueloop/queue.jsonc` (active) and `.cueloop/done.jsonc` (archive)
-- **Task ordering**: Queue file order is execution order (top runs first). Draft tasks are skipped unless `--include-draft`
-- **Prompt composition**: Embedded defaults in `crates/cueloop/assets/prompts/`, overridden by `.cueloop/prompts/*.md`
-- **Planning cache**: Phase 1 plans are written to `.cueloop/cache/plans/<TASK_ID>.md`
-
-See `docs/workflow.md` and `docs/queue-and-tasks.md` for full contract and schema details.
-
-### Runner Session Handling
-
-CueLoop manages runner sessions explicitly for reliable crash recovery:
-
-**Session ID Format**: `{task_id}-p{phase}-{timestamp}`  
-**Example**: `RQ-0001-p2-1704153600`
-
-Note: `timestamp` is Unix epoch seconds. No `cueloop-` prefix; no pid suffix.
-
-**Key Behaviors**:
-- Each phase (1, 2, 3) generates its own unique session ID at phase start
-- Session IDs are passed to runners via `--session` flag (not `--continue`)
-- The same session ID is reused for all continue/resume operations within a phase
-
-**Implementation**: `crates/cueloop/src/commands/run/phases/mod.rs` (`generate_phase_session_id`)
-
-See `docs/workflow.md` for more details.
-
----
-
-## Migrations
-
-When making breaking changes to config keys or file formats, use the migration system:
-
-- **Migration registry**: `crates/cueloop/src/migration/registry.rs`
-- **Migration facades**: `crates/cueloop/src/migration/{config_migrations/,file_migrations/}`
-- **Migration types**: `ConfigKeyRename`, `ConfigKeyRemove`, `FileRename`, `ReadmeUpdate`
-- **History tracking**: `.cueloop/cache/migrations.jsonc` (auto-generated)
-- **CLI command**: `cueloop migrate` (check/list/apply)
-
-See `crates/cueloop/src/migration/mod.rs` for invariants/assumptions (idempotency, JSONC comment preservation, backups).
-
----
-
-## Documentation Maintenance
-
-When making changes, keep docs in sync:
-
-| Change Type | Files to Update |
-|-------------|-----------------|
-| Schema changes | `schemas/*.schema.json`, `docs/configuration.md` |
-| CLI changes | Help text/examples, `docs/cli.md` |
-| Queue/task fields | `docs/queue-and-tasks.md` |
-| Migrations | This file + migration module docs |
-
----
-
-## Non-Negotiables
-
-- **CI gate**: `make agent-ci` MUST pass before claiming completion, committing, or merging
-- **Source docs**: Every new/changed source file MUST have module docs (see [Coding Standards](#coding-standards))
-- **Test coverage**: All new/changed behavior must be covered (success + failure modes)
-- **Feature parity**: When changing user-visible workflows, maintain parity between the CLI and the macOS app; if parity is blocked, record the explicit blocked status in `crates/cueloop/src/cli/app_parity.rs` rather than creating unmanaged divergence
-- **CLI help**: User-facing commands/flags MUST have `--help` text with examples (keep `docs/cli.md` in sync)
-- **Secrets**: Never commit or print secrets; redact runner output before copying into `.cueloop/queue.jsonc` notes
-
----
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| CI failing | Run `make agent-ci`; first failing step is printed (common: formatting, Clippy warnings, tests) |
-| `.env tracked` error | Run `git rm --cached .env` and ensure `.env` is in `.gitignore` |
-| `Backup artifacts` error | Remove any `*.bak` files under `crates/cueloop/src/` |
-| Queue lock | Confirmed-dead PID locks auto-clear on acquisition; investigate `.cueloop/lock` before forcing active or indeterminate locks |
-| Runner issues | Verify runner binary is on `PATH` (e.g., `codex --help`) and check runner/model settings in config |
+Keep this file source-specific and concise. Update it when Rust module ownership, CLI/config/session contracts, validation commands, or migration rules change. Move repo-wide policy to `../../../AGENTS.md` instead of duplicating it here.
