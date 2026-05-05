@@ -1,26 +1,14 @@
-# CueLoop Roadmap
-Status: Active
+# CueLoop Roadmap Archive
+Status: Historical
 Owner: Maintainers
-Source of truth: this document for active roadmap sequencing
+Source of truth: current priorities are tracked outside this archived note; see [Decisions](decisions.md) for durable project decisions and [Project Operating Constitution](guides/project-operating-constitution.md) for operating rules.
 Parent: [CueLoop Documentation](index.md)
 
 
-Last updated: 2026-04-01
+This page preserves the April 2026 cleanup follow-up from `docs/audits/codebase-audit-2026-03-31.md`. It is not the active roadmap.
 
-This is the canonical near-term roadmap for active follow-up work.
-Source: comprehensive codebase audit (`docs/audits/codebase-audit-2026-03-31.md`)
+Archived item:
 
-## Active roadmap
+- Split the next cohesive production files from the legacy audit list when a nearby change makes the split useful: `commands/task/decompose/support.rs`, `commands/init/readme.rs`, and `commands/task/mod.rs`.
 
-### 1. Split next cohesive production files from the legacy audit list
-- `commands/task/decompose/support.rs`, `commands/init/readme.rs`, `commands/task/mod.rs`
-- Why: these remain useful cohesion/refactor candidates from the legacy audit, but file size alone is now advisory rather than a near-term hard gate.
-
----
-
-## Sequencing rules
-
-- Keep completed work out of this file.
-- Prefer one canonical operator path over wrappers, aliases, or repeated prose.
-- Prefer deleting dead wrappers before introducing new cleanup items in the same area.
-- Preserve the hardened runtime split boundaries (`runutil/execution`, `runutil/retry`, `runutil/shell`, queue prune, fsutil, eta_calculator, undo, and `contracts/task`) while refactoring adjacent modules.
+Keep new roadmap or planning detail out of this archive unless it is historical context for that audit item.

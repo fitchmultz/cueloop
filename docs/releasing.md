@@ -11,14 +11,14 @@ CueLoop releases now use an explicit verify-then-publish transaction model. `ver
 
 ```bash
 # Recommended preflight
-make release-verify VERSION=0.2.0
+make release-verify VERSION=<version>
 
 # Real release
-make release VERSION=0.2.0
+make release VERSION=<version>
 
 # Inspect or continue a release transaction
-scripts/release.sh verify 0.2.0
-scripts/release.sh reconcile 0.2.0
+scripts/release.sh verify <version>
+scripts/release.sh reconcile <version>
 ```
 
 ## Transaction Model
@@ -74,10 +74,10 @@ After `make release-verify` succeeds, expect release metadata files such as `VER
 If a remote step fails after local preparation, reconcile the same version explicitly:
 
 ```bash
-scripts/release.sh reconcile 0.2.0
+scripts/release.sh reconcile <version>
 ```
 
-The script reconciles from `target/release-transactions/v0.2.0/state.env` and continues at the next incomplete remote step. Verification snapshots remain under `target/release-verifications/v0.2.0/` as evidence of the prepared publish state.
+The script reconciles from `target/release-transactions/v<version>/state.env` and continues at the next incomplete remote step. Verification snapshots remain under `target/release-verifications/v<version>/` as evidence of the prepared publish state.
 
 If reconcile is resuming before crates.io publication, the transaction is still in the reversible portion of the flow. If crates.io publication already succeeded, finish the GitHub release publication immediately rather than treating that state as a normal pause point.
 

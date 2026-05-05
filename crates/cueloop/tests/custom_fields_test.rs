@@ -179,9 +179,11 @@ fn test_set_field_rejects_empty_key() -> Result<()> {
 
     let result = queue::set_field(&mut queue_file, "RQ-0001", "", "value", &now);
 
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string().to_lowercase();
-    assert!(err_msg.contains("missing") || err_msg.contains("key"));
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("custom field key cannot be empty"),
+        "expected empty custom-field key error, got: {err_msg}"
+    );
 
     Ok(())
 }
@@ -195,9 +197,11 @@ fn test_set_field_rejects_whitespace_in_key() -> Result<()> {
 
     let result = queue::set_field(&mut queue_file, "RQ-0001", "severity level", "high", &now);
 
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string().to_lowercase();
-    assert!(err_msg.contains("whitespace") || err_msg.contains("invalid"));
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("invalid key 'severity level' contains whitespace"),
+        "expected whitespace custom-field key error, got: {err_msg}"
+    );
 
     Ok(())
 }
@@ -252,9 +256,11 @@ fn test_queue_validate_rejects_empty_custom_field_key() -> Result<()> {
 
     let result = queue::validate_queue(&queue::load_queue(&queue_path)?, "RQ", 4);
 
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string().to_lowercase();
-    assert!(err_msg.contains("empty") || err_msg.contains("custom field"));
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("Empty custom field key: task RQ-0001 (index 0) has an empty key"),
+        "expected empty custom-field validation error, got: {err_msg}"
+    );
 
     Ok(())
 }
@@ -309,9 +315,12 @@ fn test_queue_validate_rejects_whitespace_in_custom_field_key() -> Result<()> {
 
     let result = queue::validate_queue(&queue::load_queue(&queue_path)?, "RQ", 4);
 
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string().to_lowercase();
-    assert!(err_msg.contains("whitespace") || err_msg.contains("invalid"));
+    let err_msg = result.unwrap_err().to_string();
+    assert!(
+        err_msg
+            .contains("Invalid custom field key: task RQ-0001 (index 0) has a key with whitespace"),
+        "expected whitespace custom-field validation error, got: {err_msg}"
+    );
 
     Ok(())
 }

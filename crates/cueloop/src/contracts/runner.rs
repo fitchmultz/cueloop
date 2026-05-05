@@ -25,8 +25,6 @@ use serde_json::json;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use crate::contracts::model::{Model, ReasoningEffort};
-
 pub(crate) const RUNNER_SCHEMA_DESCRIPTION: &str = concat!(
     "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. ",
     "Plugin runner IDs are also supported as non-empty strings."
@@ -345,29 +343,6 @@ impl RunnerCliOptionsPatch {
         }
         if other.unsupported_option_policy.is_some() {
             self.unsupported_option_policy = other.unsupported_option_policy;
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
-#[serde(default, deny_unknown_fields)]
-pub struct MergeRunnerConfig {
-    pub runner: Option<Runner>,
-    pub model: Option<Model>,
-    pub reasoning_effort: Option<ReasoningEffort>,
-}
-
-#[allow(dead_code)]
-impl MergeRunnerConfig {
-    pub fn merge_from(&mut self, other: Self) {
-        if other.runner.is_some() {
-            self.runner = other.runner;
-        }
-        if other.model.is_some() {
-            self.model = other.model;
-        }
-        if other.reasoning_effort.is_some() {
-            self.reasoning_effort = other.reasoning_effort;
         }
     }
 }

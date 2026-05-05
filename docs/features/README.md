@@ -115,7 +115,7 @@ Additional reference documentation:
 | **[Error Handling](../error-handling.md)** | Patterns and best practices |
 | **[Environment](../environment.md)** | Environment variables reference |
 | **[Tasks](./tasks.md)** | Task system index and focused task reference pages |
-| **[Queue and Tasks](../queue-and-tasks.md)** | Legacy combined queue and task reference |
+| **[Queue and Tasks](../queue-and-tasks.md)** | Combined queue and task reference |
 | **[Workflow](../workflow.md)** | High-level workflow documentation |
 | **[Releasing](../releasing.md)** | Release process documentation |
 

@@ -19,10 +19,9 @@ CueLoop is a Rust CLI for running AI agent loops against a structured JSON task 
 - [Machine Contract](machine-contract.md): versioned app/automation JSON API
 - [Project Operating Constitution](guides/project-operating-constitution.md): canonical project rules for source of truth, cutover, docs, UX, validation, and drift control
 - [Decisions](decisions.md): project-level decision log
-- [Roadmap](roadmap.md): canonical near-term execution order for active follow-up work
 - [Configuration](configuration.md): hub for config schema, precedence, trust, runners, queues, webhooks, plugins, and profiles
 - [PRD Specs](prd/cueloop-task-decompose.md): feature-level product requirements
-- [Queue and Tasks](queue-and-tasks.md): task model and queue semantics
+- [Queue](features/queue.md) and [Tasks](features/tasks.md): queue semantics and task model references
 - [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path
 - [CueLoop Dogfood Harness](guides/dogfood-cueloop.md): repeatable end-to-end fixture project with real three-phase runner execution
 - [Advanced Usage Guide](guides/advanced.md): power-user workflows, profiles, plugins, automation, and optimization
@@ -63,6 +62,7 @@ Use these when you want to validate a clone, understand the operational model, o
 - [Troubleshooting](troubleshooting.md)
 - [Support Policy](support-policy.md)
 - [Versioning Policy](versioning-policy.md)
+- [Roadmap Archive](roadmap.md)
 
 ## Maintainer Runbooks
 

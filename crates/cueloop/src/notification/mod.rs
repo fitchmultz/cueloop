@@ -216,8 +216,7 @@ fn effective_ui_active(ui_active: bool) -> bool {
 }
 
 fn should_suppress_notification_delivery(config: &NotificationConfig, ui_active: bool) -> bool {
-    let ui_active = effective_ui_active(ui_active);
-    ui_active || config.should_suppress(false)
+    config.should_suppress(effective_ui_active(ui_active))
 }
 
 fn should_deliver_notification(
@@ -242,7 +241,7 @@ fn should_deliver_notification(
     }
 
     if should_suppress_notification_delivery(config, ui_active) {
-        log::debug!("Notifications suppressed (UI active or globally disabled)");
+        log::debug!("Notifications suppressed by configuration or UI activity");
         return false;
     }
 
@@ -398,8 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn should_suppress_notification_delivery_when_ui_active_even_if_config_disables_activity_gate()
-    {
+    fn should_suppress_notification_delivery_respects_disabled_activity_gate() {
         let config = NotificationConfig {
             enabled: true,
             notify_on_complete: true,
@@ -412,7 +410,7 @@ mod tests {
             timeout_ms: 8000,
         };
 
-        assert!(should_suppress_notification_delivery(&config, true));
+        assert!(!should_suppress_notification_delivery(&config, true));
     }
 
     #[test]
@@ -472,7 +470,7 @@ mod tests {
             Some(NotificationType::WatchNewTasks),
             false
         ));
-        assert!(!should_deliver_notification(
+        assert!(should_deliver_notification(
             &config,
             Some(NotificationType::WatchNewTasks),
             true

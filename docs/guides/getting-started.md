@@ -5,13 +5,11 @@ Source of truth: this document for its stated scope
 Parent: [CueLoop Documentation](../index.md)
 
 
-Welcome to CueLoop! This guide will walk you through everything you need to know to get up and running with AI-powered task automation.
+This guide covers the longer onboarding path for installing CueLoop, initializing a project, creating a task, and running it through the local queue.
 
 ## What is CueLoop?
 
-CueLoop is a Rust-based CLI tool that manages AI agent loops with a structured JSON task queue. It orchestrates AI runners (Claude, Codex, OpenCode, Gemini, Cursor, Kimi, and Pi) to execute development tasks through a structured workflow.
-
-Think of CueLoop as your AI conductor—managing tasks, tracking progress, and ensuring quality through systematic phases of execution.
+CueLoop is a Rust CLI that runs AI agent loops against a structured JSON task queue. It can invoke Claude, Codex, OpenCode, Gemini, Cursor, Kimi, and Pi runners while keeping task state in `.cueloop/`.
 
 ---
 
@@ -88,7 +86,7 @@ cd your-project
 cueloop init
 ```
 
-`cueloop init` writes the `0.3` config contract with `"version": 2`, safe defaults, no automatic publish side effects, local repo trust in `.cueloop/trust.jsonc` for current repos (gitignored by init), and the current generated `.cueloop/README.md` guidance. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
+`cueloop init` writes the current `"version": 2` config contract with safe defaults, no automatic publish side effects, local repo trust in `.cueloop/trust.jsonc` for current repos (gitignored by init), and generated `.cueloop/README.md` guidance. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
 
 ### Interactive Wizard
 
@@ -455,7 +453,7 @@ A minimal effective configuration:
     "phases": 3,
     "ci_gate": {
       "enabled": true,
-      "argv": ["make", "ci"]
+      "argv": ["make", "agent-ci"]
     },
     "git_publish_mode": "off"
   },

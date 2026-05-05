@@ -23,66 +23,18 @@
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
 use anyhow::Result;
-use std::path::Path;
-use std::process::Command;
 
 mod test_support;
-
-fn git_init(dir: &Path) -> Result<()> {
-    let status = std::process::Command::new("git")
-        .current_dir(dir)
-        .args(["init", "--quiet"])
-        .status()?;
-    anyhow::ensure!(status.success(), "git init failed");
-
-    // Create a minimal gitignore
-    let gitignore_path = dir.join(".gitignore");
-    std::fs::write(
-        &gitignore_path,
-        ".cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n.cueloop/lock\n.cueloop/cache/\n.cueloop/logs/\n",
-    )?;
-
-    Ok(())
-}
-
-fn cueloop_init(dir: &Path) -> Result<()> {
-    let output = Command::new(test_support::cueloop_bin())
-        .current_dir(dir)
-        .env_remove("RUST_LOG")
-        .args(["init", "--force", "--non-interactive"])
-        .output()?;
-
-    anyhow::ensure!(
-        output.status.success(),
-        "cueloop init failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
-}
-
-fn run_in_dir(dir: &Path, args: &[&str]) -> (std::process::ExitStatus, String, String) {
-    let output = Command::new(test_support::cueloop_bin())
-        .current_dir(dir)
-        .env_remove("RUST_LOG")
-        .args(args)
-        .output()
-        .expect("failed to execute cueloop binary");
-    (
-        output.status,
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        String::from_utf8_lossy(&output.stderr).to_string(),
-    )
-}
 
 #[test]
 fn plugin_init_scaffold_default_and_validate() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Run plugin init
     let (status, stdout, stderr) =
-        run_in_dir(temp_dir.path(), &["plugin", "init", "acme.test_plugin"]);
+        test_support::run_in_dir(temp_dir.path(), &["plugin", "init", "acme.test_plugin"]);
     assert!(status.success(), "plugin init failed: {}", stderr);
     assert!(
         stdout.contains("Created plugin acme.test_plugin"),
@@ -106,7 +58,7 @@ fn plugin_init_scaffold_default_and_validate() -> Result<()> {
     );
 
     // Validate the plugin
-    let (status, stdout, stderr) = run_in_dir(
+    let (status, stdout, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &["plugin", "validate", "--id", "acme.test_plugin"],
     );
@@ -122,11 +74,11 @@ fn plugin_init_scaffold_default_and_validate() -> Result<()> {
 #[test]
 fn plugin_init_dry_run_writes_nothing() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Run plugin init with --dry-run
-    let (status, stdout, stderr) = run_in_dir(
+    let (status, stdout, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &["plugin", "init", "dry.plugin", "--dry-run"],
     );
@@ -146,25 +98,25 @@ fn plugin_init_dry_run_writes_nothing() -> Result<()> {
 #[test]
 fn plugin_init_rejects_invalid_id_with_path_separator() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Test forward slash
-    let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "foo/bar"]);
+    let (status, _, stderr) =
+        test_support::run_in_dir(temp_dir.path(), &["plugin", "init", "foo/bar"]);
     assert!(!status.success(), "should fail with forward slash in id");
     assert!(
-        stderr.contains("path separators") || stderr.contains("path"),
-        "expected path separator error, got: {}",
-        stderr
+        stderr.contains("plugin id must not contain path separators"),
+        "expected path separator error, got: {stderr}"
     );
 
     // Test backslash
-    let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "foo\\bar"]);
+    let (status, _, stderr) =
+        test_support::run_in_dir(temp_dir.path(), &["plugin", "init", "foo\\bar"]);
     assert!(!status.success(), "should fail with backslash in id");
     assert!(
-        stderr.contains("path separators") || stderr.contains("path"),
-        "expected path separator error, got: {}",
-        stderr
+        stderr.contains("plugin id must not contain path separators"),
+        "expected path separator error, got: {stderr}"
     );
 
     Ok(())
@@ -173,24 +125,26 @@ fn plugin_init_rejects_invalid_id_with_path_separator() -> Result<()> {
 #[test]
 fn plugin_init_target_exists_requires_force() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // First init should succeed
-    let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "exists.test"]);
+    let (status, _, stderr) =
+        test_support::run_in_dir(temp_dir.path(), &["plugin", "init", "exists.test"]);
     assert!(status.success(), "first init failed: {}", stderr);
 
     // Second init without --force should fail
-    let (status, _, stderr) = run_in_dir(temp_dir.path(), &["plugin", "init", "exists.test"]);
+    let (status, _, stderr) =
+        test_support::run_in_dir(temp_dir.path(), &["plugin", "init", "exists.test"]);
     assert!(!status.success(), "second init should fail without --force");
     assert!(
-        stderr.contains("already exists") || stderr.contains("force"),
-        "expected 'already exists' error, got: {}",
-        stderr
+        stderr.contains("Plugin directory already exists")
+            && stderr.contains("Use --force to overwrite"),
+        "expected existing-plugin force guidance, got: {stderr}"
     );
 
     // Third init with --force should succeed
-    let (status, stdout, stderr) = run_in_dir(
+    let (status, stdout, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &["plugin", "init", "exists.test", "--force"],
     );
@@ -206,23 +160,20 @@ fn plugin_init_target_exists_requires_force() -> Result<()> {
 #[test]
 fn plugin_init_global_scope_requires_home() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Run with HOME removed from environment
-    let output = Command::new(test_support::cueloop_bin())
-        .current_dir(temp_dir.path())
+    let output = test_support::cueloop_command(temp_dir.path())
         .env_remove("HOME")
-        .env_remove("RUST_LOG")
         .args(["plugin", "init", "x.y", "--scope", "global"])
         .output()?;
 
     assert!(!output.status.success(), "should fail without HOME");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("HOME") || stderr.to_lowercase().contains("home environment variable"),
-        "expected HOME error, got: {}",
-        stderr
+        stderr.contains("HOME environment variable not set"),
+        "expected HOME error, got: {stderr}"
     );
 
     Ok(())
@@ -231,11 +182,11 @@ fn plugin_init_global_scope_requires_home() -> Result<()> {
 #[test]
 fn plugin_init_with_runner_only() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Run with --with-runner only
-    let (status, _stdout, stderr) = run_in_dir(
+    let (status, _stdout, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &["plugin", "init", "runner.only", "--with-runner"],
     );
@@ -264,11 +215,11 @@ fn plugin_init_with_runner_only() -> Result<()> {
 #[test]
 fn plugin_init_with_processor_only() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Run with --with-processor only
-    let (status, _stdout, stderr) = run_in_dir(
+    let (status, _stdout, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &["plugin", "init", "processor.only", "--with-processor"],
     );
@@ -297,15 +248,15 @@ fn plugin_init_with_processor_only() -> Result<()> {
 #[test]
 fn plugin_init_custom_path() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Create a custom directory
     let custom_dir = temp_dir.path().join("custom_plugins");
     std::fs::create_dir_all(&custom_dir)?;
 
     // Run with --path
-    let (status, _, stderr) = run_in_dir(
+    let (status, _, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &[
             "plugin",
@@ -332,11 +283,11 @@ fn plugin_init_custom_path() -> Result<()> {
 #[test]
 fn plugin_init_with_custom_metadata() -> Result<()> {
     let temp_dir = test_support::temp_dir_outside_repo();
-    git_init(temp_dir.path())?;
-    cueloop_init(temp_dir.path())?;
+    test_support::git_init(temp_dir.path())?;
+    test_support::cueloop_init(temp_dir.path())?;
 
     // Run with custom metadata
-    let (status, _, stderr) = run_in_dir(
+    let (status, _, stderr) = test_support::run_in_dir(
         temp_dir.path(),
         &[
             "plugin",

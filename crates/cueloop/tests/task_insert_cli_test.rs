@@ -230,7 +230,10 @@ fn task_insert_fails_cleanly_when_queue_lock_is_held() -> Result<()> {
         !status.success(),
         "task insert unexpectedly succeeded while lock held"
     );
-    assert!(stderr.contains("queue") || stderr.contains("lock"));
+    assert!(
+        stderr.contains("Queue lock already held"),
+        "expected queue lock contention error, got: {stderr}"
+    );
     assert!(read_queue(dir.path())?.tasks.is_empty());
     Ok(())
 }

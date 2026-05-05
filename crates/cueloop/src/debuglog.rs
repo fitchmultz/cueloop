@@ -21,7 +21,7 @@
 use anyhow::{Context, Result, anyhow, bail};
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{Arc, Mutex, OnceLock};
 
 /// Maximum size of debug.log before rotation (10MB).
@@ -35,9 +35,6 @@ const LOG_FILE_NAME: &str = "debug.log";
 
 #[derive(Debug)]
 pub struct DebugLog {
-    /// Stored for debugging/diagnostic purposes; currently unused but useful for future extensions
-    #[allow(dead_code)]
-    log_path: PathBuf,
     file: Mutex<std::fs::File>,
 }
 
@@ -65,7 +62,6 @@ impl DebugLog {
             .with_context(|| format!("open debug log file: {}", log_path.display()))?;
 
         Ok(Self {
-            log_path,
             file: Mutex::new(file),
         })
     }

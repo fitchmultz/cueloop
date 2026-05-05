@@ -282,11 +282,6 @@ pub fn cueloop_init(dir: &Path) -> Result<()> {
     run_cueloop_init_cli(dir)
 }
 
-/// Initialize a CueLoop project by invoking the real CLI.
-pub fn cueloop_init_cli(dir: &Path) -> Result<()> {
-    run_cueloop_init_cli(dir)
-}
-
 /// Seed `.cueloop/` from a cached template while preserving files already written by the test.
 pub fn seed_cueloop_dir(dir: &Path) -> Result<()> {
     let target = dir.join(".cueloop");

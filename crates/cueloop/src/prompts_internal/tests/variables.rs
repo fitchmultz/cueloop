@@ -18,6 +18,52 @@
 //! config paths follow dot notation.
 
 use super::*;
+use std::ffi::OsString;
+use std::sync::{Mutex, MutexGuard, OnceLock};
+
+fn env_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct EnvVarGuard {
+    name: &'static str,
+    original: Option<OsString>,
+    _lock: MutexGuard<'static, ()>,
+}
+
+impl EnvVarGuard {
+    fn remove(name: &'static str) -> Self {
+        let lock = env_lock().lock().expect("env lock");
+        let original = std::env::var_os(name);
+        unsafe { std::env::remove_var(name) };
+        Self {
+            name,
+            original,
+            _lock: lock,
+        }
+    }
+
+    fn set(name: &'static str, value: &str) -> Self {
+        let lock = env_lock().lock().expect("env lock");
+        let original = std::env::var_os(name);
+        unsafe { std::env::set_var(name, value) };
+        Self {
+            name,
+            original,
+            _lock: lock,
+        }
+    }
+}
+
+impl Drop for EnvVarGuard {
+    fn drop(&mut self) {
+        match &self.original {
+            Some(value) => unsafe { std::env::set_var(self.name, value) },
+            None => unsafe { std::env::remove_var(self.name) },
+        }
+    }
+}
 
 #[test]
 fn ensure_no_unresolved_placeholders_passes_when_none_remain() -> Result<()> {
@@ -55,7 +101,7 @@ fn unresolved_placeholders_returns_sorted_unique() {
 #[test]
 fn expand_variables_expands_env_var_with_default() -> Result<()> {
     let var_name = "CUELOOP_TEST_DEFAULT_VAR";
-    unsafe { std::env::remove_var(var_name) };
+    let _env = EnvVarGuard::remove(var_name);
     let template = format!("Value: ${{{}:-default_value}}", var_name);
     let config = default_config();
     let result = expand_variables(&template, &config)?;
@@ -68,9 +114,8 @@ fn expand_variables_expands_env_var_when_set() -> Result<()> {
     let var_name = "CUELOOP_TEST_SET_VAR";
     let template = format!("Value: ${{{}:-default}}", var_name);
     let config = default_config();
-    unsafe { std::env::set_var(var_name, "actual_value") };
+    let _env = EnvVarGuard::set(var_name, "actual_value");
     let result = expand_variables(&template, &config)?;
-    unsafe { std::env::remove_var(var_name) };
     assert_eq!(result, "Value: actual_value");
     Ok(())
 }

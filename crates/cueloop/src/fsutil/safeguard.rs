@@ -32,7 +32,7 @@ use super::temp::create_cueloop_temp_dir;
 pub fn safeguard_text_dump_redacted(label: &str, content: &str) -> Result<PathBuf> {
     use crate::redaction::redact_text;
     let redacted_content = redact_text(content);
-    safeguard_text_dump_internal(label, &redacted_content, true)
+    safeguard_text_dump_internal(label, &redacted_content)
 }
 
 /// Writes a safeguard dump with raw (non-redacted) content.
@@ -63,7 +63,7 @@ pub fn safeguard_text_dump(label: &str, content: &str, is_debug_mode: bool) -> R
         );
     }
 
-    safeguard_text_dump_internal(label, content, false)
+    safeguard_text_dump_internal(label, content)
 }
 
 fn raw_dump_env_enabled() -> bool {
@@ -71,7 +71,7 @@ fn raw_dump_env_enabled() -> bool {
         .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"))
 }
 
-fn safeguard_text_dump_internal(label: &str, content: &str, _is_redacted: bool) -> Result<PathBuf> {
+fn safeguard_text_dump_internal(label: &str, content: &str) -> Result<PathBuf> {
     let temp_dir = create_cueloop_temp_dir(label)?;
     let output_path = temp_dir.path().join("output.txt");
     fs::write(&output_path, content)
