@@ -66,7 +66,7 @@ pub(crate) fn prepare_run_one_context(
 
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     let warnings = queue::validate_queue_set(
         &queue_file,
         Some(&done),

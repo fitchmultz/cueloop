@@ -40,7 +40,7 @@ impl<'a> BatchContext<'a> {
             queue_file: queue::load_queue(&resolved.queue_path)?,
             done_file: queue::load_queue_or_default(&resolved.done_path)?,
             now: timeutil::now_utc_rfc3339()?,
-            max_depth: resolved.config.queue.max_dependency_depth.unwrap_or(10),
+            max_depth: resolved.queue_max_dependency_depth(),
         })
     }
 

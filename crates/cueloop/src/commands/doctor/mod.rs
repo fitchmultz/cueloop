@@ -112,21 +112,32 @@ pub(crate) fn derive_doctor_blocking_state(
         return None;
     }
 
-    let active = crate::queue::load_queue(&resolved.queue_path).ok()?;
+    match derive_queue_blocking_state(resolved) {
+        Ok(blocking) => blocking,
+        Err(err) => {
+            log::debug!("Doctor could not derive queue blocking state: {err:#}");
+            None
+        }
+    }
+}
+
+fn derive_queue_blocking_state(
+    resolved: &config::Resolved,
+) -> anyhow::Result<Option<BlockingState>> {
+    let active = crate::queue::load_queue(&resolved.queue_path)?;
     let done = if resolved.done_path.exists() {
-        Some(crate::queue::load_queue(&resolved.done_path).ok()?)
+        Some(crate::queue::load_queue(&resolved.done_path)?)
     } else {
         None
     };
 
-    crate::queue::operations::queue_runnability_report(
+    Ok(crate::queue::operations::queue_runnability_report(
         &active,
         done.as_ref(),
         RunnableSelectionOptions::new(false, false),
-    )
-    .ok()?
+    )?
     .summary
-    .blocking
+    .blocking)
 }
 
 pub(crate) fn derive_check_blocking_state(checks: &[CheckResult]) -> Option<BlockingState> {

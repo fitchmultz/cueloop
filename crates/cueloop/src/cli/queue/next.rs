@@ -97,7 +97,7 @@ pub(crate) fn handle(resolved: &Resolved, args: QueueNextArgs) -> Result<()> {
     }
 
     // No runnable task - get next available ID
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     let next_id = queue::next_id_across(
         &queue_file,
         done_ref,

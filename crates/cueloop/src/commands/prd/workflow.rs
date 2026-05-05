@@ -90,7 +90,7 @@ pub fn create_from_prd(
     } else {
         TaskStatus::Todo
     };
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     let tasks = if opts.multi {
         generate_multi_tasks(

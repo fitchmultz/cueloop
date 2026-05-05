@@ -39,7 +39,7 @@ pub fn handle(args: &TaskSplitArgs, force: bool, resolved: &config::Resolved) ->
 
     let status: TaskStatus = args.status.unwrap_or(TaskStatusArg::Draft).into();
     let now = timeutil::now_utc_rfc3339()?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     // Load queue (source task must be in active queue)
     let queue_file = queue::load_queue(&resolved.queue_path)?;

@@ -60,17 +60,11 @@ pub(crate) use issue::{
     normalize_issue_metadata_list, parse_issue_number,
 };
 pub use lfs::{check_lfs_health, filter_modified_lfs_files, has_lfs, list_lfs_files};
-// PR-related functions kept for potential non-parallel use, but unused in direct-push mode
-#[allow(unused_imports)]
-pub(crate) use pr::{
-    MergeState, PrInfo, PrLifecycle, check_gh_available, create_pr, merge_pr, pr_lifecycle_status,
-    pr_merge_status,
-};
+pub(crate) use pr::check_gh_available;
 pub use status::{
     ensure_paths_unchanged, ignored_paths, is_path_ignored, is_path_tracked, snapshot_paths,
     status_paths, status_porcelain,
 };
-// NEW: workspace-based isolation (clone workspaces).
 pub(crate) use workspace::{
     WorkspaceSpec, create_workspace_at, origin_urls, remove_workspace, workspace_root,
 };

@@ -41,7 +41,7 @@ pub(super) fn generate_task_id(resolved: &Resolved) -> Result<String> {
         None
     };
 
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     crate::queue::next_id_across(
         &active_queue,
         done_queue.as_ref(),

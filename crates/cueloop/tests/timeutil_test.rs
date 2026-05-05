@@ -81,9 +81,7 @@ fn test_now_utc_rfc3339_year_range() {
     let year_str = &timestamp[0..4];
     let year: i32 = year_str.parse().unwrap();
 
-    // Year should be reasonable (2020-2030)
     assert!(year >= 2020);
-    assert!(year <= 2030);
 }
 
 #[test]

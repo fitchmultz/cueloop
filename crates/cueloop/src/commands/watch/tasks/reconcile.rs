@@ -29,39 +29,6 @@ use crate::commands::watch::identity::{
 use crate::commands::watch::types::DetectedComment;
 use crate::contracts::{QueueFile, Task, TaskStatus};
 
-#[cfg(test)]
-use crate::commands::watch::types::WatchOptions;
-#[cfg(test)]
-use crate::config::Resolved;
-#[cfg(test)]
-use crate::queue::{load_queue, save_queue};
-#[cfg(test)]
-use crate::timeutil;
-#[cfg(test)]
-use anyhow::{Context, Result};
-
-#[cfg(test)]
-#[allow(dead_code)]
-pub(crate) fn reconcile_watch_tasks(
-    resolved: &Resolved,
-    detected_comments: &[DetectedComment],
-    processed_files: &[PathBuf],
-    _opts: &WatchOptions,
-) -> Result<Vec<String>> {
-    let mut queue = load_queue(&resolved.queue_path)
-        .with_context(|| format!("load queue {}", resolved.queue_path.display()))?;
-    let now = timeutil::now_utc_rfc3339_or_fallback();
-    let closed =
-        reconcile_watch_tasks_in_queue(&mut queue, detected_comments, processed_files, &now);
-
-    if !closed.is_empty() {
-        save_queue(&resolved.queue_path, &queue)
-            .with_context(|| format!("save queue {}", resolved.queue_path.display()))?;
-    }
-
-    Ok(closed)
-}
-
 pub(super) fn reconcile_watch_tasks_in_queue(
     queue: &mut QueueFile,
     detected_comments: &[DetectedComment],

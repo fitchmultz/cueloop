@@ -35,10 +35,6 @@ pub(crate) enum PluginScope {
 pub(crate) struct DiscoveredPlugin {
     pub scope: PluginScope,
     pub plugin_dir: PathBuf,
-    /// Path to the plugin.json manifest file.
-    /// Kept for error messages and debugging.
-    #[allow(dead_code)]
-    pub manifest_path: PathBuf,
     pub manifest: PluginManifest,
 }
 
@@ -98,7 +94,6 @@ pub(crate) fn discover_plugins(
             let discovered = DiscoveredPlugin {
                 scope,
                 plugin_dir,
-                manifest_path,
                 manifest,
             };
 
@@ -142,36 +137,24 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn discover_finds_nothing_in_empty_repo() {
         let tmp = TempDir::new().unwrap();
-        let discovered = discover_plugins(tmp.path()).unwrap();
+        let fake_home = tmp.path().join("home");
+        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
         assert!(discovered.is_empty());
     }
 
     #[test]
+    #[serial]
     fn discover_finds_current_project_plugin() {
         let tmp = TempDir::new().unwrap();
+        let fake_home = tmp.path().join("home");
         let plugin_dir = tmp.path().join(".cueloop/plugins/my.plugin");
         std::fs::create_dir_all(&plugin_dir).unwrap();
         write_manifest(&plugin_dir, "my.plugin").unwrap();
 
-        let discovered = discover_plugins(tmp.path()).unwrap();
-        assert_eq!(discovered.len(), 1);
-        assert!(discovered.contains_key("my.plugin"));
-        assert_eq!(
-            discovered.get("my.plugin").unwrap().scope,
-            PluginScope::Project
-        );
-    }
-
-    #[test]
-    fn discover_falls_back_to_legacy_project_plugin() {
-        let tmp = TempDir::new().unwrap();
-        let plugin_dir = tmp.path().join(".cueloop/plugins/my.plugin");
-        std::fs::create_dir_all(&plugin_dir).unwrap();
-        write_manifest(&plugin_dir, "my.plugin").unwrap();
-
-        let discovered = discover_plugins(tmp.path()).unwrap();
+        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
         assert_eq!(discovered.len(), 1);
         assert!(discovered.contains_key("my.plugin"));
         assert_eq!(
@@ -199,40 +182,6 @@ mod tests {
         let got = discovered.get("shared.plugin").unwrap();
         assert_eq!(got.scope, PluginScope::Project);
         assert_eq!(got.manifest.name, "project-plugin");
-    }
-
-    #[test]
-    #[serial]
-    fn current_roots_override_legacy_roots_with_same_scope() {
-        let tmp = TempDir::new().unwrap();
-        let fake_home = tmp.path().join("home");
-        let legacy_global_plugin = fake_home.join(".config/cueloop/plugins/shared.plugin");
-        let current_global_plugin = fake_home.join(".config/cueloop/plugins/shared.plugin");
-        std::fs::create_dir_all(&legacy_global_plugin).unwrap();
-        std::fs::create_dir_all(&current_global_plugin).unwrap();
-        write_manifest_named(&legacy_global_plugin, "shared.plugin", "legacy-global").unwrap();
-        write_manifest_named(&current_global_plugin, "shared.plugin", "current-global").unwrap();
-
-        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
-
-        assert_eq!(discovered.len(), 1);
-        let got = discovered.get("shared.plugin").unwrap();
-        assert_eq!(got.scope, PluginScope::Global);
-        assert_eq!(got.manifest.name, "current-global");
-
-        let legacy_project_plugin = tmp.path().join(".cueloop/plugins/shared.plugin");
-        let current_project_plugin = tmp.path().join(".cueloop/plugins/shared.plugin");
-        std::fs::create_dir_all(&legacy_project_plugin).unwrap();
-        std::fs::create_dir_all(&current_project_plugin).unwrap();
-        write_manifest_named(&legacy_project_plugin, "shared.plugin", "legacy-project").unwrap();
-        write_manifest_named(&current_project_plugin, "shared.plugin", "current-project").unwrap();
-
-        let discovered = with_home(&fake_home, || discover_plugins(tmp.path())).unwrap();
-
-        assert_eq!(discovered.len(), 1);
-        let got = discovered.get("shared.plugin").unwrap();
-        assert_eq!(got.scope, PluginScope::Project);
-        assert_eq!(got.manifest.name, "current-project");
     }
 
     fn with_home<T>(home: &Path, f: impl FnOnce() -> T) -> T {

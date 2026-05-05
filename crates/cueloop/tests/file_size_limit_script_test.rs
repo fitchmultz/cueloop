@@ -5,7 +5,7 @@
 //!
 //! Responsibilities:
 //! - Validate help output and argument error behavior.
-//! - Validate pass/warn/fail outcomes for small, soft-limit, and hard-limit files.
+//! - Validate pass/advisory/review/fail outcomes and reasoned fail allowlists.
 //! - Validate exclude behavior for machine-owned/generated paths and configurable excludes.
 //! - Validate that untracked monitored files are included in policy checks.
 //!
@@ -80,6 +80,7 @@ fn init_temp_repo() -> TempDir {
 
     copy_repo_file(&root, repo_path, "scripts/check-file-size-limits.sh");
     copy_repo_file(&root, repo_path, "scripts/lib/file_size_limits.py");
+    copy_repo_file(&root, repo_path, "scripts/file-size-allowlist.txt");
 
     write_file(&repo_path.join("README.md"), "# Temp repo\n");
 
@@ -148,11 +149,11 @@ fn check_file_size_limits_passes_when_all_files_are_within_limits() {
 }
 
 #[test]
-fn check_file_size_limits_warns_on_soft_limit_without_failing() {
+fn check_file_size_limits_reports_soft_advisory_without_failing() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
-    write_lines(&repo_path.join("docs/guides/large.md"), 801);
+    write_lines(&repo_path.join("docs/guides/large.md"), 1501);
 
     let output = run_check_script(repo_path, &[]);
     let (stdout, stderr) = output_text(&output);
@@ -160,24 +161,49 @@ fn check_file_size_limits_warns_on_soft_limit_without_failing() {
     assert_eq!(
         output.status.code(),
         Some(0),
-        "expected soft-limit warning to stay non-blocking\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected soft advisory to stay non-blocking\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
-        stdout.contains("WARN: soft file-size limit exceeded:"),
-        "missing soft warning header\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        stdout.contains("ADVISORY: soft file-size threshold exceeded:"),
+        "missing soft advisory header\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
         stdout.contains("docs/guides/large.md"),
-        "expected offender path in soft warning\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected offender path in soft advisory\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 }
 
 #[test]
-fn check_file_size_limits_fails_on_hard_limit_violation() {
+fn check_file_size_limits_reports_review_threshold_without_failing() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
-    write_lines(&repo_path.join("crates/cueloop/src/huge.rs"), 1001);
+    write_lines(&repo_path.join("crates/cueloop/src/review.rs"), 3001);
+
+    let output = run_check_script(repo_path, &[]);
+    let (stdout, stderr) = output_text(&output);
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "expected review threshold to stay non-blocking\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.contains("WARN: review file-size threshold exceeded:"),
+        "missing review warning header\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.contains("crates/cueloop/src/review.rs"),
+        "expected offender path in review warning\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+}
+
+#[test]
+fn check_file_size_limits_fails_on_fail_threshold_violation() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_lines(&repo_path.join("crates/cueloop/src/huge.rs"), 5001);
 
     let output = run_check_script(repo_path, &[]);
     let (stdout, stderr) = output_text(&output);
@@ -185,15 +211,68 @@ fn check_file_size_limits_fails_on_hard_limit_violation() {
     assert_eq!(
         output.status.code(),
         Some(1),
-        "expected hard-limit failure\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected fail-threshold failure\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
-        stdout.contains("ERROR: hard file-size limit exceeded:"),
-        "missing hard-error header\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        stdout.contains("ERROR: fail file-size threshold exceeded:"),
+        "missing fail-error header\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
         stdout.contains("crates/cueloop/src/huge.rs"),
-        "expected offender path in hard error\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "expected offender path in fail error\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+}
+
+#[test]
+fn check_file_size_limits_allows_fail_threshold_with_reasoned_allowlist() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_lines(&repo_path.join("crates/cueloop/src/huge.rs"), 5001);
+    write_file(
+        &repo_path.join("scripts/file-size-allowlist.txt"),
+        "crates/cueloop/src/huge.rs | test fixture intentionally exceeds fail threshold\n",
+    );
+
+    let output = run_check_script(repo_path, &[]);
+    let (stdout, stderr) = output_text(&output);
+
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "expected reasoned allowlist to avoid failure\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.contains("ALLOWLISTED: fail file-size threshold exceeded:"),
+        "missing allowlisted header\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stdout.contains("test fixture intentionally exceeds fail threshold"),
+        "expected allowlist reason in output\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+}
+
+#[test]
+fn check_file_size_limits_rejects_allowlist_entries_without_reasons() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_file(
+        &repo_path.join("scripts/file-size-allowlist.txt"),
+        "crates/cueloop/src/huge.rs\n",
+    );
+
+    let output = run_check_script(repo_path, &[]);
+    let (stdout, stderr) = output_text(&output);
+
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "expected malformed allowlist to be a usage/config error\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("allowlist entries must use 'glob | reason'"),
+        "expected allowlist format error\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
 }
 
@@ -202,7 +281,7 @@ fn check_file_size_limits_ignores_default_generated_path_excludes() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
-    write_lines(&repo_path.join("schemas/config.schema.json"), 1500);
+    write_lines(&repo_path.join("schemas/config.schema.json"), 5001);
 
     let output = run_check_script(repo_path, &[]);
     let (stdout, stderr) = output_text(&output);
@@ -223,8 +302,8 @@ fn check_file_size_limits_ignores_default_runtime_bookkeeping_excludes() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
-    write_lines(&repo_path.join(".cueloop/done.jsonc"), 1500);
-    write_lines(&repo_path.join(".cueloop/done.jsonc"), 1500);
+    write_lines(&repo_path.join(".cueloop/done.jsonc"), 5001);
+    write_lines(&repo_path.join(".cueloop/done.jsonc"), 5001);
 
     let output = run_check_script(repo_path, &[]);
     let (stdout, stderr) = output_text(&output);
@@ -250,7 +329,7 @@ fn check_file_size_limits_includes_untracked_monitored_files() {
     let repo_path = temp_repo.path();
 
     let untracked_path = repo_path.join("scratch/oversized.md");
-    write_lines(&untracked_path, 1001);
+    write_lines(&untracked_path, 5001);
 
     let git_status = Command::new("git")
         .args(["status", "--porcelain"])
@@ -269,7 +348,7 @@ fn check_file_size_limits_includes_untracked_monitored_files() {
     assert_eq!(
         output.status.code(),
         Some(1),
-        "untracked oversized markdown should fail\nstdout:\n{stdout}\nstderr:\n{stderr}"
+        "untracked fail-threshold markdown should fail\nstdout:\n{stdout}\nstderr:\n{stderr}"
     );
     assert!(
         stdout.contains("scratch/oversized.md"),
@@ -282,7 +361,7 @@ fn check_file_size_limits_supports_configurable_exclude_glob() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
 
-    write_lines(&repo_path.join("generated/manual-long.md"), 1001);
+    write_lines(&repo_path.join("generated/manual-long.md"), 5001);
 
     let output = run_check_script(repo_path, &["--exclude-glob", "generated/**"]);
     let (stdout, stderr) = output_text(&output);

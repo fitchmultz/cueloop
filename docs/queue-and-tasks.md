@@ -204,9 +204,9 @@ CueLoop validates task dependencies on queue operations to ensure correctness an
 These validation failures prevent queue operations and must be fixed:
 
 - **Self-dependency**: A task cannot depend on itself.
-- **Missing dependency**: Referenced task ID must exist in `queue.json` or `done.json`.
+- **Missing dependency**: Referenced task ID must exist in `.cueloop/queue.jsonc` or `.cueloop/done.jsonc`.
 - **Circular dependency**: Dependency graph must be acyclic (DAG).
-- **Invalid terminal status**: `done.json` must only contain tasks with `done` or `rejected` status.
+- **Invalid terminal status**: `.cueloop/done.jsonc` must only contain tasks with `done` or `rejected` status.
 
 ### Relationship Validation
 
@@ -214,7 +214,7 @@ CueLoop also validates task relationships (`blocks`, `relates_to`, `duplicates`)
 
 **Hard Errors (blocking):**
 - **Self-reference**: A task cannot block, relate to, or duplicate itself.
-- **Missing target**: Referenced task ID must exist in `queue.json` or `done.json`.
+- **Missing target**: Referenced task ID must exist in `.cueloop/queue.jsonc` or `.cueloop/done.jsonc`.
 - **Circular blocking**: Blocking relationships must form a DAG (no cycles).
 
 **Warnings (non-blocking):**
@@ -342,7 +342,7 @@ Validation warnings are logged during queue operations. Review them with `cueloo
 
 CueLoop enforces unique task IDs across **both** `.cueloop/queue.jsonc` **AND** `.cueloop/done.jsonc`. Duplicate IDs will cause validation errors and block most queue operations.
 
-> **Important:** Completed task IDs in `done.json` remain "claimed" and are included in uniqueness checks. Even though tasks are archived, their IDs cannot be reused for new tasks to prevent collisions with historical references.
+> **Important:** Completed task IDs in `.cueloop/done.jsonc` remain "claimed" and are included in uniqueness checks. Even though tasks are archived, their IDs cannot be reused for new tasks to prevent collisions with historical references.
 
 ### Duplicate Task ID Errors
 
@@ -356,7 +356,7 @@ This error occurs when the same task ID exists in both the active queue and the 
 
 ### Fixing ID Collisions
 
-**Important:** Do not delete tasks to resolve collisions. Instead, update the ID of the task in `queue.json` to the next available unique ID.
+**Important:** Do not delete tasks to resolve collisions. Instead, update the ID of the task in `.cueloop/queue.jsonc` to the next available unique ID.
 
 **Steps to fix:**
 
@@ -366,7 +366,7 @@ This error occurs when the same task ID exists in both the active queue and the 
    ```bash
    cueloop queue next-id
    ```
-4. Update the task ID in `queue.json` to the next available ID
+4. Update the task ID in `.cueloop/queue.jsonc` to the next available ID
 5. Re-run validation to confirm:
    ```bash
    cueloop queue validate
@@ -374,7 +374,7 @@ This error occurs when the same task ID exists in both the active queue and the 
 
 **Example:**
 
-If `RQ-0452` exists in both `done.json` (completed task about "Fix Kimi runner") and `queue.json` (new task about "Add feature X"), the fix is to change the queue task's ID to `RQ-0453` (or whatever `next-id` returns).
+If `RQ-0452` exists in both `.cueloop/done.jsonc` (completed task about "Fix Kimi runner") and `.cueloop/queue.jsonc` (new task about "Add feature X"), the fix is to change the queue task's ID to `RQ-0453` (or whatever `next-id` returns).
 
 ### Prevention
 

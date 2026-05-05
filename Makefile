@@ -136,7 +136,7 @@ help:
 	@echo "  make publish-check # Run cargo package review + crates.io dry-run for $(CARGO_PACKAGE_NAME)"
 	@echo "  make release-verify VERSION=x.y.z # Mutating local preflight: prepares the exact release snapshot that make release will publish"
 	@echo "  make check-repo-safety # Fast required-files + env/runtime + secret checks"
-	@echo "  make check-file-size-limits # Enforce warn-on-soft/fail-on-hard file-size guardrail"
+	@echo "  make check-file-size-limits # Report file-size advisories and fail only extreme unallowlisted files"
 	@echo ""
 	@echo "Resource knobs (optional):"
 	@echo "  RUST_JOBS=4         # Example Rust/nextest job cap for shared workstations (default 8)"

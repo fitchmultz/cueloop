@@ -167,7 +167,7 @@ fn complete_task_directly(
     // Use "task" label to enable shared lock mode, allowing this command to work
     // concurrently with a supervising process (like `cueloop run loop`).
     // This matches the behavior of `cueloop task build`.
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     let custom_fields_patch = build_custom_fields_patch_from_env();
 
     queue::with_locked_queue_mutation(
@@ -243,7 +243,7 @@ fn handle_terminal_status(
         || {
             let queue_file = queue::load_queue(&resolved.queue_path)?;
             let now = timeutil::now_utc_rfc3339()?;
-            let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+            let max_depth = resolved.queue_max_dependency_depth();
             let task_ids = resolved_status_task_ids(&queue_file, args)?;
             let notes = args.note.as_deref().map(|note| vec![note.to_string()]);
             let notes = notes.as_deref().unwrap_or(&[]);

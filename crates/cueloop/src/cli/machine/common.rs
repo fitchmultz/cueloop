@@ -401,7 +401,7 @@ pub(super) fn queue_paths(resolved: &config::Resolved) -> MachineQueuePaths {
 }
 
 pub(super) fn queue_max_dependency_depth(resolved: &config::Resolved) -> u8 {
-    resolved.config.queue.max_dependency_depth.unwrap_or(10)
+    resolved.queue_max_dependency_depth()
 }
 
 #[cfg(test)]

@@ -12,9 +12,9 @@ Source: comprehensive codebase audit (`docs/audits/codebase-audit-2026-03-31.md`
 
 ## Active roadmap
 
-### 1. Split next 3 production files in 400–500 LOC range
+### 1. Split next cohesive production files from the legacy audit list
 - `commands/task/decompose/support.rs`, `commands/init/readme.rs`, `commands/task/mod.rs`
-- Why: these are now the largest remaining non-test Rust files still near the hard limit, and each has obvious structural split seams without requiring behavior changes.
+- Why: these remain useful cohesion/refactor candidates from the legacy audit, but file size alone is now advisory rather than a near-term hard gate.
 
 ---
 

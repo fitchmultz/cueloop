@@ -13,6 +13,8 @@ CueLoop is a Rust CLI for running AI agent loops against a structured JSON task 
 - [Evaluator Path](guides/evaluator-path.md): fastest reviewer-friendly path through install, queue inspection, and local verification
 - [Architecture Overview](architecture.md): components, data/control flow, trust boundaries
 - [Quick Start](quick-start.md): install, initialize, create first task, run it
+- [Getting Started](guides/getting-started.md): longer guided onboarding path
+- [Feature Guides](features/README.md): feature-specific workflows and references
 - [CLI Reference](cli.md): command map + high-value workflows
 - [Machine Contract](machine-contract.md): versioned app/automation JSON API
 - [Project Operating Constitution](guides/project-operating-constitution.md): canonical project rules for source of truth, cutover, docs, UX, validation, and drift control

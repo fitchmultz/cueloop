@@ -4,7 +4,7 @@
 //! - Expose the config layer, resolution, trust, and validation APIs from one module.
 //!
 //! Responsibilities:
-//! - Resolve configuration from defaults, legacy/current global config, and active project config.
+//! - Resolve configuration from defaults, global config, and active project config.
 //! - Load and parse JSONC config files via `load_layer`.
 //! - Merge configuration layers via `ConfigLayer` and `apply_layer`.
 //! - Validate configuration values (version, paths, numeric ranges, runner binaries).
@@ -24,7 +24,8 @@
 //! Invariants/assumptions:
 //! - Config version must be 2; unsupported versions are rejected.
 //! - Paths are resolved relative to repo root unless absolute.
-//! - Global config resolves from `~/.config/cueloop/config.jsonc` with legacy `~/.config/cueloop/config.jsonc` fallback.
+//! - Global config resolves from `$XDG_CONFIG_HOME/cueloop/config.jsonc`, defaulting to
+//!   `~/.config/cueloop/config.jsonc`.
 //! - Project config resolves from `.cueloop/config.jsonc`.
 //! - Config layers are applied in this order: defaults, global, then project.
 //! - `save_layer` creates parent directories automatically if needed.
@@ -71,4 +72,13 @@ pub struct Resolved {
     pub id_width: usize,
     pub global_config_path: Option<PathBuf>,
     pub project_config_path: Option<PathBuf>,
+}
+
+impl Resolved {
+    pub(crate) fn queue_max_dependency_depth(&self) -> u8 {
+        self.config
+            .queue
+            .max_dependency_depth
+            .unwrap_or(crate::constants::queue::DEFAULT_MAX_DEPENDENCY_DEPTH)
+    }
 }

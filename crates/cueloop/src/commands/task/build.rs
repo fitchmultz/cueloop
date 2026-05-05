@@ -122,7 +122,7 @@ fn build_task_impl(
     } else {
         Some(&done)
     };
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     queue::validate_queue_set(
         &before,
         done_ref,

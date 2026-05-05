@@ -99,11 +99,47 @@ concrete reproducible failure is reported.
 
 Review date, if any: None.
 
+## 2026-05-04: Relax file-size gate to advisories plus extreme-file fail threshold
+
+Decision: Replace raw 800/1000 LOC warn/fail behavior with a less noisy policy:
+soft advisory above 1,500 LOC, review advisory above 3,000 LOC, and blocking
+failure only above 5,000 LOC unless covered by a reasoned allowlist entry in
+`scripts/file-size-allowlist.txt`.
+
+Date: 2026-05-04
+
+Owner: Maintainers
+
+Context: The previous raw line-count gate produced noisy warnings on cohesive
+files and made 1,000 LOC feel like a universal correctness boundary even when
+reviewability, cohesion, and complexity were acceptable.
+
+Chosen option: Keep a lightweight visibility guardrail, but make normal large
+files advisory-only. Fail only on extreme human-authored files and permit tracked
+allowlist entries using `glob | reason` when keeping a file intact is justified.
+
+Rejected options: Delete the guardrail entirely; keep 800/1000 LOC thresholds;
+make 3,000 LOC blocking by default.
+
+Reason: Raw LOC alone should not block normal work, but the repository still
+benefits from preventing accidental monster files and documenting exceptional
+cases.
+
+Expected consequences: `make ci-docs`, `make ci-fast`, and `make agent-ci` stop
+nagging on moderately large files while still surfacing cleanup candidates and
+blocking unreviewed files above 5,000 LOC.
+
+Follow-up actions: Split large files when it improves cohesion; keep allowlist
+entries rare and remove them when the reason expires.
+
+Review date, if any: None.
+
 ## 2026-04-26: Enforce repository file-size policy in local CI tiers
 
 Decision: Enforce CueLoop's documented file-size policy through a deterministic
 local guardrail (`scripts/check-file-size-limits.sh`) wired into both
-`make ci-docs` and `make ci-fast`.
+`make ci-docs` and `make ci-fast`. This decision was superseded by the
+2026-05-04 threshold update above.
 
 Date: 2026-04-26
 

@@ -56,7 +56,7 @@ pub fn handle(args: &TaskMutateArgs, force: bool, resolved: &config::Resolved) -
         &now,
         &resolved.id_prefix,
         resolved.id_width,
-        resolved.config.queue.max_dependency_depth.unwrap_or(10),
+        resolved.queue_max_dependency_depth(),
     )?;
 
     if !args.dry_run {

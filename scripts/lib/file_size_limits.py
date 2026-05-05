@@ -5,16 +5,17 @@ Responsibilities:
 - Discover tracked and untracked non-ignored files when git metadata is present.
 - Fall back to deterministic repository walking when git metadata is unavailable.
 - Apply explicit include/exclude policy with configurable extra exclude globs.
-- Report soft-limit and hard-limit offenders with actionable path/line details.
+- Report advisory, review, and fail-threshold offenders with actionable path/line details.
+- Honor a reasoned fail-threshold allowlist for exceptional large files.
 Scope:
 - Read-only policy verification only; this script never rewrites repository files.
 Usage:
 - python3 scripts/lib/file_size_limits.py /path/to/repo
 - python3 scripts/lib/file_size_limits.py /path/to/repo --exclude-glob 'docs/generated/**'
-- python3 scripts/lib/file_size_limits.py /path/to/repo --soft-limit 850 --hard-limit 1100
+- python3 scripts/lib/file_size_limits.py /path/to/repo --soft-limit 1500 --review-limit 3000 --fail-limit 5000
 Invariants/assumptions:
-- AGENTS.md remains the canonical threshold policy unless maintainers supersede it.
-- Hard-limit violations are blocking; soft-limit violations are reported non-blocking.
+- Maintainer policy is soft advisory at 1500 LOC, review advisory at 3000 LOC, and blocking fail at 5000 LOC unless allowlisted.
+- Advisory and review threshold violations are reported non-blocking.
 """
 
 from __future__ import annotations
@@ -28,8 +29,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-SOFT_LIMIT_DEFAULT = 800
-HARD_LIMIT_DEFAULT = 1000
+SOFT_LIMIT_DEFAULT = 1500
+REVIEW_LIMIT_DEFAULT = 3000
+FAIL_LIMIT_DEFAULT = 5000
+DEFAULT_ALLOWLIST_REL_PATH = "scripts/file-size-allowlist.txt"
 
 INCLUDE_SUFFIXES = {
     ".md",
@@ -43,13 +46,6 @@ INCLUDE_BASENAMES = {"AGENTS.md", "Makefile"}
 DEFAULT_EXCLUDE_GLOBS = (
     ".git/**",
     "target/**",
-    ".cueloop/done.jsonc",
-    ".cueloop/queue.jsonc",
-    ".cueloop/config.jsonc",
-    ".cueloop/cache/**",
-    ".cueloop/workspaces/**",
-    ".cueloop/lock/**",
-    ".cueloop/logs/**",
     ".cueloop/done.jsonc",
     ".cueloop/queue.jsonc",
     ".cueloop/config.jsonc",
@@ -71,6 +67,13 @@ EXTRA_EXCLUDE_ENV_VAR = "CUELOOP_FILE_SIZE_EXCLUDE_GLOBS"
 class Offender:
     rel_path: str
     line_count: int
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class AllowlistEntry:
+    pattern: str
+    reason: str
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,9 +82,9 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Exit codes:\n"
-            "  0  no hard-limit violations (soft-limit warnings may still be reported)\n"
-            "  1  one or more hard-limit violations found\n"
-            "  2  usage or argument error"
+            "  0  no fail-threshold violations (advisories may still be reported)\n"
+            "  1  one or more fail-threshold violations found\n"
+            "  2  usage, argument, or allowlist error"
         ),
     )
     parser.add_argument(
@@ -94,13 +97,35 @@ def parse_args() -> argparse.Namespace:
         "--soft-limit",
         type=int,
         default=SOFT_LIMIT_DEFAULT,
-        help=f"Soft line-count threshold (default: {SOFT_LIMIT_DEFAULT})",
+        help=f"Soft advisory line-count threshold (default: {SOFT_LIMIT_DEFAULT})",
+    )
+    parser.add_argument(
+        "--review-limit",
+        type=int,
+        default=REVIEW_LIMIT_DEFAULT,
+        help=f"Review advisory line-count threshold (default: {REVIEW_LIMIT_DEFAULT})",
+    )
+    parser.add_argument(
+        "--fail-limit",
+        type=int,
+        default=FAIL_LIMIT_DEFAULT,
+        help=f"Blocking fail line-count threshold (default: {FAIL_LIMIT_DEFAULT})",
     )
     parser.add_argument(
         "--hard-limit",
         type=int,
-        default=HARD_LIMIT_DEFAULT,
-        help=f"Hard line-count threshold (default: {HARD_LIMIT_DEFAULT})",
+        dest="fail_limit",
+        help="Deprecated alias for --fail-limit; kept for older scripts.",
+    )
+    parser.add_argument(
+        "--allowlist",
+        type=Path,
+        default=None,
+        help=(
+            "Fail-threshold allowlist file. Defaults to "
+            f"{DEFAULT_ALLOWLIST_REL_PATH} when that file exists. "
+            "Each non-comment line must be: glob | reason."
+        ),
     )
     parser.add_argument(
         "--exclude-glob",
@@ -232,15 +257,63 @@ def count_lines(path: Path) -> int:
     return data.count(b"\n") + (0 if data.endswith(b"\n") else 1)
 
 
+def parse_allowlist_file(path: Path) -> list[AllowlistEntry]:
+    entries: list[AllowlistEntry] = []
+    for index, raw_line in enumerate(path.read_text().splitlines(), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "|" not in line:
+            raise ValueError(
+                f"{path}:{index}: allowlist entries must use 'glob | reason'"
+            )
+        pattern, reason = [part.strip() for part in line.split("|", 1)]
+        if not pattern or not reason:
+            raise ValueError(
+                f"{path}:{index}: allowlist entries require both glob and reason"
+            )
+        entries.append(AllowlistEntry(pattern=normalize_rel_path(pattern), reason=reason))
+    return entries
+
+
+def load_allowlist(repo_root: Path, requested_path: Path | None) -> list[AllowlistEntry]:
+    allowlist_path = requested_path
+    if allowlist_path is None:
+        default_path = repo_root / DEFAULT_ALLOWLIST_REL_PATH
+        if not default_path.exists():
+            return []
+        allowlist_path = default_path
+    elif not allowlist_path.is_absolute():
+        allowlist_path = repo_root / allowlist_path
+
+    if not allowlist_path.exists():
+        raise ValueError(f"allowlist file does not exist: {allowlist_path}")
+    if not allowlist_path.is_file():
+        raise ValueError(f"allowlist path is not a file: {allowlist_path}")
+
+    return parse_allowlist_file(allowlist_path)
+
+
+def allowlist_reason(rel_path: str, allowlist: Sequence[AllowlistEntry]) -> str | None:
+    for entry in allowlist:
+        if fnmatch.fnmatchcase(rel_path, entry.pattern):
+            return entry.reason
+    return None
+
+
 def classify_offenders(
     repo_root: Path,
     rel_paths: Sequence[str],
     soft_limit: int,
-    hard_limit: int,
+    review_limit: int,
+    fail_limit: int,
     exclude_patterns: Sequence[str],
-) -> tuple[list[Offender], list[Offender], int]:
+    allowlist: Sequence[AllowlistEntry],
+) -> tuple[list[Offender], list[Offender], list[Offender], list[Offender], int]:
     soft_offenders: list[Offender] = []
-    hard_offenders: list[Offender] = []
+    review_offenders: list[Offender] = []
+    fail_offenders: list[Offender] = []
+    allowlisted_fail_offenders: list[Offender] = []
     checked_files = 0
 
     for rel_path in rel_paths:
@@ -258,30 +331,56 @@ def classify_offenders(
             continue
 
         checked_files += 1
-        if line_count > hard_limit:
-            hard_offenders.append(Offender(rel_path=rel_path, line_count=line_count))
+        if line_count > fail_limit:
+            reason = allowlist_reason(rel_path, allowlist)
+            if reason:
+                allowlisted_fail_offenders.append(
+                    Offender(rel_path=rel_path, line_count=line_count, reason=reason)
+                )
+            else:
+                fail_offenders.append(Offender(rel_path=rel_path, line_count=line_count))
+        elif line_count > review_limit:
+            review_offenders.append(Offender(rel_path=rel_path, line_count=line_count))
         elif line_count > soft_limit:
             soft_offenders.append(Offender(rel_path=rel_path, line_count=line_count))
 
-    soft_offenders.sort(key=lambda item: (-item.line_count, item.rel_path))
-    hard_offenders.sort(key=lambda item: (-item.line_count, item.rel_path))
-    return soft_offenders, hard_offenders, checked_files
+    for offenders in (
+        soft_offenders,
+        review_offenders,
+        fail_offenders,
+        allowlisted_fail_offenders,
+    ):
+        offenders.sort(key=lambda item: (-item.line_count, item.rel_path))
+    return (
+        soft_offenders,
+        review_offenders,
+        fail_offenders,
+        allowlisted_fail_offenders,
+        checked_files,
+    )
 
 
-def print_offenders(label: str, offenders: Sequence[Offender]) -> None:
+def print_offenders(label: str, offenders: Sequence[Offender], include_reason: bool = False) -> None:
     print(label)
     for offender in offenders:
-        print(f"  {offender.line_count:>5}  {offender.rel_path}")
+        suffix = f"  # {offender.reason}" if include_reason and offender.reason else ""
+        print(f"  {offender.line_count:>5}  {offender.rel_path}{suffix}")
 
 
 def main() -> int:
     args = parse_args()
 
-    if args.soft_limit <= 0 or args.hard_limit <= 0:
-        print("ERROR: --soft-limit and --hard-limit must be positive integers", file=sys.stderr)
+    if args.soft_limit <= 0 or args.review_limit <= 0 or args.fail_limit <= 0:
+        print(
+            "ERROR: --soft-limit, --review-limit, and --fail-limit must be positive integers",
+            file=sys.stderr,
+        )
         return 2
-    if args.soft_limit >= args.hard_limit:
-        print("ERROR: --soft-limit must be less than --hard-limit", file=sys.stderr)
+    if args.soft_limit >= args.review_limit:
+        print("ERROR: --soft-limit must be less than --review-limit", file=sys.stderr)
+        return 2
+    if args.review_limit >= args.fail_limit:
+        print("ERROR: --review-limit must be less than --fail-limit", file=sys.stderr)
         return 2
 
     repo_root = Path(args.repo_root).resolve()
@@ -295,33 +394,56 @@ def main() -> int:
     )
 
     try:
+        allowlist = load_allowlist(repo_root, args.allowlist)
         rel_paths = discover_candidate_paths(repo_root)
-    except RuntimeError as err:
+    except (RuntimeError, ValueError) as err:
         print(f"ERROR: {err}", file=sys.stderr)
         return 2
 
-    soft_offenders, hard_offenders, checked_files = classify_offenders(
+    (
+        soft_offenders,
+        review_offenders,
+        fail_offenders,
+        allowlisted_fail_offenders,
+        checked_files,
+    ) = classify_offenders(
         repo_root=repo_root,
         rel_paths=rel_paths,
         soft_limit=args.soft_limit,
-        hard_limit=args.hard_limit,
+        review_limit=args.review_limit,
+        fail_limit=args.fail_limit,
         exclude_patterns=exclude_patterns,
+        allowlist=allowlist,
     )
 
     print(
         "Checked "
-        f"{checked_files} files (soft>{args.soft_limit}, hard>{args.hard_limit})"
+        f"{checked_files} files "
+        f"(soft>{args.soft_limit}, review>{args.review_limit}, fail>{args.fail_limit})"
     )
 
     if soft_offenders:
-        print_offenders("WARN: soft file-size limit exceeded:", soft_offenders)
-        print("WARN: soft-limit offenders are non-blocking but should be split.")
+        print_offenders("ADVISORY: soft file-size threshold exceeded:", soft_offenders)
+        print("ADVISORY: soft offenders are non-blocking cleanup candidates.")
 
-    if hard_offenders:
-        print_offenders("ERROR: hard file-size limit exceeded:", hard_offenders)
+    if review_offenders:
+        print_offenders("WARN: review file-size threshold exceeded:", review_offenders)
+        print("WARN: review offenders are non-blocking but should be split or justified.")
+
+    if allowlisted_fail_offenders:
+        print_offenders(
+            "ALLOWLISTED: fail file-size threshold exceeded:",
+            allowlisted_fail_offenders,
+            include_reason=True,
+        )
+        print("ALLOWLISTED: entries are non-blocking while their reasons remain valid.")
+
+    if fail_offenders:
+        print_offenders("ERROR: fail file-size threshold exceeded:", fail_offenders)
+        print("ERROR: split these files or add a reasoned allowlist entry.")
         return 1
 
-    if not soft_offenders:
+    if not (soft_offenders or review_offenders or allowlisted_fail_offenders):
         print("OK: file-size limits within policy")
 
     return 0

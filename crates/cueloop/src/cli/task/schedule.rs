@@ -43,7 +43,7 @@ pub fn handle(args: &TaskScheduleArgs, force: bool, resolved: &config::Resolved)
 
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     // Handle clear operation
     let value = if args.clear {

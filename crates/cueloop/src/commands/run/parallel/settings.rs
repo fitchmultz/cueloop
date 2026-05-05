@@ -37,29 +37,18 @@ pub(crate) struct ParallelRunOptions {
     pub force: bool,
 }
 
-#[allow(dead_code)]
 pub(crate) struct ParallelSettings {
     pub(crate) workers: u8,
     pub(crate) workspace_root: PathBuf,
-    pub(crate) max_push_attempts: u8,
-    pub(crate) push_backoff_ms: Vec<u64>,
-    pub(crate) workspace_retention_hours: u32,
 }
 
 pub(crate) fn resolve_parallel_settings(
     resolved: &config::Resolved,
     opts: &ParallelRunOptions,
 ) -> Result<ParallelSettings> {
-    let cfg = &resolved.config.parallel;
     Ok(ParallelSettings {
         workers: opts.workers,
         workspace_root: git::workspace_root(&resolved.repo_root, &resolved.config),
-        max_push_attempts: cfg.max_push_attempts.unwrap_or(50),
-        push_backoff_ms: cfg
-            .push_backoff_ms
-            .clone()
-            .unwrap_or_else(default_push_backoff_ms),
-        workspace_retention_hours: cfg.workspace_retention_hours.unwrap_or(24),
     })
 }
 

@@ -49,7 +49,7 @@ pub fn write_task_decomposition(
     let mut active = queue::load_queue(&resolved.queue_path)?;
     let done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = done_queue_ref(&done, &resolved.done_path);
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     validate_queue_set(&active, done_ref, resolved, max_depth)
         .context("validate queue set before task decompose write")?;
 

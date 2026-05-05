@@ -107,7 +107,7 @@ pub fn validate_queue_done_semantics(_repo_root: &Path, resolved: &Resolved) -> 
     let done_path = resolved.done_path.clone();
 
     let queue = queue::load_queue(&queue_path).context("load queue for validation")?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     let done = if done_path.exists() {
         Some(queue::load_queue(&done_path).context("load done for validation")?)
     } else {

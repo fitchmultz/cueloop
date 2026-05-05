@@ -1,0 +1,12 @@
+# CueLoop file-size fail-threshold allowlist.
+#
+# Purpose: Permit rare human-authored files above the 5000 LOC fail threshold
+# when splitting would be riskier or less clear than keeping the file intact.
+#
+# Format:
+#   glob | reason
+#
+# Rules:
+# - Reasons must be specific and current.
+# - Prefer splitting files below the fail threshold over adding entries here.
+# - Remove entries when the file is split or the reason no longer applies.

@@ -94,7 +94,7 @@ pub(crate) fn reconcile_successful_workers(
         done.tasks.push(terminal);
     }
 
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     queue::validate_queue_set(
         &active,
         Some(&done),

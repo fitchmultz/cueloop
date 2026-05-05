@@ -39,7 +39,7 @@ CueLoop is a Rust CLI for running AI agent loops against a structured JSON task 
 - **Public-readiness gate**: Use `make pre-public-check` before making broad visibility changes
 - **Resource controls**: Prefer `CUELOOP_CI_JOBS` / `CUELOOP_XCODE_JOBS` caps on shared workstations
 - **Minimal APIs**: Default to private; prefer `pub(crate)` over `pub`
-- **Small files**: Target <500 LOC; hard limit at 1,000 LOC (must split)
+- **Small files**: Prefer cohesive files; file-size gate is advisory at 1,500 LOC, review advisory at 3,000 LOC, and blocking only above 5,000 LOC unless reasoned allowlisted
 - **Explicit over implicit**: Prefer explicit, minimal usage patterns
 - **Verify before done**: Test coverage required for all new/changed behavior
 - **CI source of truth**: Local `make agent-ci` / `make release-gate` is canonical; do not treat GitHub Actions as a substitute gate

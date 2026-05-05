@@ -26,7 +26,6 @@ mod gitignored;
 mod runtime;
 
 use crate::config;
-use crate::git;
 use anyhow::{Context, Result};
 use std::path::Path;
 
@@ -53,32 +52,6 @@ pub(crate) fn sync_cueloop_state(resolved: &config::Resolved, workspace_path: &P
     sync_gitignored(resolved, workspace_path)?;
 
     Ok(())
-}
-
-/// Commit any pending changes in the workspace after a failure.
-/// Returns true if changes were committed, false if there were no changes.
-#[allow(dead_code)]
-pub(crate) fn commit_failure_changes(workspace_path: &Path, task_id: &str) -> Result<bool> {
-    let status = git::status_porcelain(workspace_path)?;
-    if status.trim().is_empty() {
-        return Ok(false);
-    }
-
-    let message = format!("WIP: {} (failed run)", task_id);
-    match git::commit_all(workspace_path, &message) {
-        Ok(()) => Ok(true),
-        Err(err) => match err {
-            git::GitError::NoChangesToCommit => Ok(false),
-            _ => Err(err.into()),
-        },
-    }
-}
-
-/// Ensure the current branch in the workspace is pushed to upstream.
-#[allow(dead_code)]
-pub(crate) fn ensure_branch_pushed(workspace_path: &Path) -> Result<()> {
-    git::push_upstream_with_rebase(workspace_path)
-        .with_context(|| "push branch to upstream (auto-rebase on rejection)")
 }
 
 fn sync_worker_bookkeeping_files(resolved: &config::Resolved, workspace_path: &Path) -> Result<()> {

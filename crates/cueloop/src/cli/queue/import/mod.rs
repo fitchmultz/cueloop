@@ -91,7 +91,7 @@ pub(crate) fn handle(resolved: &Resolved, force: bool, args: QueueImportArgs) ->
     };
 
     let now = crate::timeutil::now_utc_rfc3339_or_fallback();
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     let (mut queue_file, done_file) = crate::queue::load_and_validate_queues(resolved, true)?;
     let done_ref = done_file

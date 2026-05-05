@@ -232,7 +232,7 @@ pub(crate) fn post_run_supervise(
             .context("Ensuring task is marked Done (clean repo) failed")?;
         }
 
-        let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+        let max_depth = resolved.queue_max_dependency_depth();
         let report = queue::archive_terminal_tasks(
             &resolved.queue_path,
             &resolved.done_path,

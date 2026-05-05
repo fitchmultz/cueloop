@@ -22,7 +22,7 @@
 use anyhow::{Result, anyhow};
 use std::fmt;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 use crate::fsutil;
@@ -36,9 +36,6 @@ use crate::contracts::{ClaudePermissionMode, Model, ReasoningEffort};
 pub(super) struct RunnerCommandBuilder {
     cmd: Command,
     bin: String,
-    /// Working directory for the command. Kept for debugging/error messages.
-    #[allow(dead_code)]
-    work_dir: PathBuf,
     stdin_payload: Option<Vec<u8>>,
     // We hold these to ensure temp files/dirs persist until the command is built and executed.
     // The caller receives these and must drop them only after execution completes.
@@ -55,7 +52,6 @@ impl RunnerCommandBuilder {
         Self {
             cmd,
             bin: bin.to_string(),
-            work_dir: work_dir.to_path_buf(),
             stdin_payload: None,
             temp_resources: Vec::new(),
         }

@@ -52,7 +52,7 @@ fn validate_loaded_queues_with_warning_logging(
         None
     };
 
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     let warnings = validation::validate_queue_set(
         queue_file,
         done_ref,

@@ -48,7 +48,7 @@ pub fn handle_relate(
 
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     let relation = args.relation.trim().to_lowercase();
     let edit_key = match relation.as_str() {
@@ -143,7 +143,7 @@ pub fn handle_blocks(
 
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     // Get existing blocks
     let task = queue_file
@@ -210,7 +210,7 @@ pub fn handle_mark_duplicate(
 
     let mut queue_file = queue::load_queue(&resolved.queue_path)?;
     let now = timeutil::now_utc_rfc3339()?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     queue::apply_task_edit(
         &mut queue_file,

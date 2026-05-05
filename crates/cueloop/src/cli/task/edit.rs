@@ -100,7 +100,7 @@ pub fn handle_edit(args: &TaskEditArgs, force: bool, resolved: &config::Resolved
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = queue::optional_done_queue(&done_file, &resolved.done_path);
     let now = timeutil::now_utc_rfc3339()?;
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     // Resolve task IDs from explicit list or tag filter
     let task_ids = resolve_task_ids(&queue_file, &args.task_ids, &args.tag_filter)?;

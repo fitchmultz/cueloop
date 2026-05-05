@@ -737,9 +737,9 @@ mod tests {
             .lock()
             .expect("cursor SDK env lock poisoned");
         let _module_path = EnvGuard::unset("CUELOOP_CURSOR_SDK_MODULE_PATH");
-        let _global_root = EnvGuard::unset("CUELOOP_CURSOR_SDK_GLOBAL_ROOT");
-        let empty_bin = tempfile::TempDir::new()?;
-        let _path = EnvGuard::set("PATH", empty_bin.path());
+        let empty_global_root = tempfile::TempDir::new()?;
+        let _global_root =
+            EnvGuard::set("CUELOOP_CURSOR_SDK_GLOBAL_ROOT", empty_global_root.path());
 
         let temp = tempfile::TempDir::new()?;
         std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;

@@ -206,9 +206,6 @@ mod tests {
         super::ParallelSettings {
             workers: 2,
             workspace_root: repo_root.join("workspaces"),
-            max_push_attempts: 5,
-            push_backoff_ms: vec![500, 2000, 5000, 10000],
-            workspace_retention_hours: 24,
         }
     }
 

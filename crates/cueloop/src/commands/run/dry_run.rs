@@ -53,7 +53,7 @@ pub fn dry_run_one(
     let include_draft = agent_overrides.include_draft.unwrap_or(false);
 
     // Match run-time validation behavior without mutating anything.
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
     let warnings = queue::validate_queue_set(
         &queue_file,
         done_ref,

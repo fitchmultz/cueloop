@@ -63,7 +63,7 @@ Docs/community-only gate is `make ci-docs`:
 
 - `check-env-safety` (runs required-file + secret checks everywhere, and adds tracked runtime/local-only file validation when git metadata is available)
 - `check-backup-artifacts`
-- `check-file-size-limits` (warns on files over the soft limit; fails on files over the hard limit)
+- `check-file-size-limits` (reports file-size advisories and fails only unallowlisted files over the fail threshold)
 - repo-wide markdown link scan
 - documented session-cache path guard
 
@@ -79,9 +79,10 @@ Fast Rust/CLI gate is `make ci-fast`:
 
 File-size guard behavior:
 
-- Policy is sourced from `AGENTS.md` (`target <500`, soft `~800`, hard `1000` LOC).
-- Soft-limit offenders are always printed as actionable warnings and do not fail the gate.
-- Hard-limit offenders fail the gate with explicit line counts and relative paths.
+- Policy is sourced from `AGENTS.md`: soft advisory above 1,500 LOC, review advisory above 3,000 LOC, and fail threshold above 5,000 LOC.
+- Soft and review offenders are actionable, non-blocking advisories.
+- Fail-threshold offenders fail the gate with explicit line counts and relative paths unless covered by `scripts/file-size-allowlist.txt`.
+- Allowlist entries must use `glob | reason`; keep reasons specific and remove entries when no longer needed.
 - Excludes are intentionally narrow and focused on machine-owned/generated surfaces (for example `schemas/*.json`, `*.xcodeproj/project.pbxproj`, and `.cueloop/{queue,done,config}.jsonc`), not broad source-tree bypasses.
 
 ## Lower-Level Gates

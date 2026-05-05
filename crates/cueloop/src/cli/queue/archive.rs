@@ -44,7 +44,7 @@ pub(crate) fn handle(resolved: &Resolved, force: bool, args: QueueArchiveArgs) -
         crate::undo::create_undo_snapshot(resolved, "queue archive")?;
     }
 
-    let max_depth = resolved.config.queue.max_dependency_depth.unwrap_or(10);
+    let max_depth = resolved.queue_max_dependency_depth();
 
     if args.dry_run {
         // Dry-run: compute what would be archived without modifying files

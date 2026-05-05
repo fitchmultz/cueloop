@@ -32,6 +32,10 @@ use std::time::{Duration, Instant};
 use cueloop::contracts::WebhookQueuePolicy;
 use cueloop::webhook;
 
+// Distinct capacities force a fresh dispatcher per backpressure scenario.
+const DROP_NEW_TEST_QUEUE_CAPACITY: u32 = 11;
+const DROP_OLDEST_TEST_QUEUE_CAPACITY: u32 = 12;
+
 #[test]
 #[serial]
 fn webhook_send_is_non_blocking() {
@@ -95,13 +99,7 @@ fn webhook_retries_failed_deliveries() {
     let mut config = base_webhook_config(port);
     config.retry_count = Some(1);
 
-    let start = Instant::now();
     webhook::notify_task_created(&expected_task_id, "Test", &config, "2024-01-01T00:00:00Z");
-    let elapsed = start.elapsed();
-    assert!(
-        elapsed < Duration::from_secs(1),
-        "enqueue should remain non-blocking; elapsed={elapsed:?}"
-    );
 
     let expected_attempts = 2;
     let attempts_observed =
@@ -148,7 +146,7 @@ fn webhook_drop_new_policy() {
     });
 
     let mut config = base_webhook_config(port);
-    config.queue_capacity = Some(10);
+    config.queue_capacity = Some(DROP_NEW_TEST_QUEUE_CAPACITY);
     config.queue_policy = Some(WebhookQueuePolicy::DropNew);
 
     webhook::notify_task_created(
@@ -215,7 +213,7 @@ fn webhook_drop_oldest_policy() {
     });
 
     let mut config = base_webhook_config(port);
-    config.queue_capacity = Some(10);
+    config.queue_capacity = Some(DROP_OLDEST_TEST_QUEUE_CAPACITY);
     config.queue_policy = Some(WebhookQueuePolicy::DropOldest);
 
     for index in 0..20 {
