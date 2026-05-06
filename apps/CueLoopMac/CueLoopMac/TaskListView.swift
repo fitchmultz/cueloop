@@ -45,7 +45,8 @@ struct TaskListView: View {
                 TaskListWhatsNextCard(task: nextTask) {
                     handleTaskSelection(taskID: nextTask.id, modifierFlags: NSEvent.modifierFlags)
                 }
-                    .padding(.horizontal, 16)
+                    .padding(.leading, 96)
+                    .padding(.trailing, 16)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
             }
@@ -55,11 +56,13 @@ struct TaskListView: View {
                     await workspace.loadTasks()
                 }
             }
-                .padding(.horizontal, 16)
+                .padding(.leading, 96)
+                .padding(.trailing, 16)
                 .padding(.bottom, 12)
 
             TaskListExternalUpdateBanner(isVisible: transientState.isExternalUpdateBannerVisible)
-                .padding(.horizontal, 16)
+                .padding(.leading, 96)
+                .padding(.trailing, 16)
                 .padding(.top, transientState.isExternalUpdateBannerVisible ? 8 : 0)
 
             TaskListContent(
@@ -77,7 +80,8 @@ struct TaskListView: View {
                 onOpenSelectedTask: openFocusedTaskIfPossible,
                 onNavigate: navigateTask(direction:tasks:)
             )
-                .padding(.horizontal, 16)
+                .padding(.leading, 96)
+                .padding(.trailing, 16)
                 .padding(.bottom, 16)
         }
         .background(.clear)
