@@ -31,16 +31,8 @@ struct TaskExecutionPresetSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            ViewThatFits(in: .horizontal) {
-                FlowLayout(spacing: 8) {
-                    presetButtons
-                }
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        presetButtons
-                    }
-                }
-                .scrollIndicators(.hidden)
+            LazyVGrid(columns: presetColumns, alignment: .leading, spacing: 8) {
+                presetButtons
             }
 
             if activeExecutionPreset == nil, draftTask.agent != nil {
@@ -62,6 +54,10 @@ struct TaskExecutionPresetSection: View {
                 }
             )
         }
+    }
+
+    private var presetColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 190, maximum: 280), spacing: 8, alignment: .topLeading)]
     }
 
     private var activeExecutionPreset: CueLoopTaskExecutionPreset? {

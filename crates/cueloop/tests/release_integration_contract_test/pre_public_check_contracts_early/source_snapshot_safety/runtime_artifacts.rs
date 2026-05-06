@@ -138,6 +138,8 @@ fn agent_ci_succeeds_outside_git_via_source_snapshot_safety_mode() {
             "agent-ci",
         ])
         .env("PATH", combined_path)
+        .env_remove("CUELOOP_AGENT_CI_FORCE_MACOS")
+        .env_remove("CUELOOP_AGENT_CI_MIN_TIER")
         .current_dir(repo_root)
         .output()
         .expect("run make agent-ci outside git worktree");

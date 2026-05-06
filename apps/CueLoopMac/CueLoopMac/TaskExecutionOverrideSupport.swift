@@ -208,15 +208,16 @@ struct TaskExecutionPresetButton: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(preset.displayName)
                     .font(.caption.weight(.semibold))
+                    .lineLimit(1)
                 Text(preset.description)
                     .font(.caption2)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(isActive ? Color.white : Color.primary)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .frame(minWidth: 160, idealWidth: 180, maxWidth: 220, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isActive ? Color.accentColor : Color(NSColor.windowBackgroundColor).opacity(0.35))

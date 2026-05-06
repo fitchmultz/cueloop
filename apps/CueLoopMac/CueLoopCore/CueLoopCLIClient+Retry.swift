@@ -29,7 +29,7 @@ public extension CueLoopCLIClient {
         arguments: [String],
         currentDirectoryURL: URL? = nil,
         environment: [String: String] = [:],
-        maxOutputSize: Int? = nil,
+        maxOutputSize: Int? = CueLoopCLIClient.defaultCollectedOutputLimit,
         retryConfiguration: RetryConfiguration = .default,
         onRetry: RetryProgressHandler? = nil
     ) async throws -> CollectedOutput {

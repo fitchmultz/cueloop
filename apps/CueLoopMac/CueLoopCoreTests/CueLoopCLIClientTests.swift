@@ -136,6 +136,24 @@ final class CueLoopCLIClientTests: CueLoopCoreTestCase {
         XCTAssertTrue(collected.stderr.contains("output exceeded maximum size"))
     }
 
+    func test_runAndCollectWithRetry_appliesDefaultOutputLimit() async throws {
+        let tempDir = try Self.makeTempDir(prefix: "cueloop-client-retry-collected-limit-")
+        defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
+
+        let script = """
+            #!/bin/sh
+            /usr/bin/perl -e 'print "x" x (20 * 1024 * 1024)'
+            """
+        let scriptURL = try CueLoopMockCLITestSupport.makeExecutableScript(in: tempDir, body: script)
+        let client = try CueLoopCLIClient(executableURL: scriptURL)
+
+        let collected = try await client.runAndCollectWithRetry(arguments: [])
+
+        XCTAssertEqual(collected.status.code, 0)
+        XCTAssertLessThanOrEqual(collected.stdout.count, CueLoopCLIClient.defaultCollectedOutputLimit + (64 * 1024))
+        XCTAssertTrue(collected.stderr.contains("output exceeded maximum size"))
+    }
+
     func test_currentDirectoryURL_used() async throws {
         let tempDir = try Self.makeTempDir(prefix: "cueloop-client-cwd-")
         defer { CueLoopCoreTestSupport.assertRemoved(tempDir) }
