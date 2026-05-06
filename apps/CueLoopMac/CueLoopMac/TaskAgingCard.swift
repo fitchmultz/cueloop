@@ -83,6 +83,7 @@ struct AgingRow: View {
                     .frame(width: 8, height: 8)
                 Text(label)
                     .font(.caption)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             
             Spacer()
@@ -90,6 +91,7 @@ struct AgingRow: View {
             Text(threshold)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: true, vertical: false)
             
             Text("\(count)")
                 .font(.caption)

@@ -36,6 +36,8 @@ public final class WorkspaceInsightsState: ObservableObject {
 
 public extension Workspace {
     func loadAnalytics(timeRange: TimeRange = .sevenDays) async {
+        await awaitPendingRepositoryActivityIfNeeded()
+        guard !isShutDown, !Task.isCancelled else { return }
         let repositoryContext = currentRepositoryContext()
         let previousState = insightsState.analytics
         insightsState.analytics.timeRange = timeRange
