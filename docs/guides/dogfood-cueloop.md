@@ -23,7 +23,7 @@ The default run uses:
 - fixture location: `target/dogfood-cueloop/<timestamp>/cueloop-dogfood-fixture`
 - report: `target/dogfood-cueloop/<timestamp>/report.md`
 
-Use `--skip-real-agent` for a fast non-runner check of fixture creation, `cueloop init`, config/doctor/prompt preview, queue/task surfaces, machine queue read, and run dry-run.
+Use `--skip-real-agent` for a fast non-runner check of fixture creation, `cueloop init`, config/doctor/prompt preview, queue/task surfaces, machine queue read, and run dry-run. The `pi`/`zai/glm-5.1` pairing is a disposable dogfood/test-workspace convention for real agent launches; do not change this repository's root `.cueloop/config.jsonc` just to enforce it.
 
 ## What It Covers
 
