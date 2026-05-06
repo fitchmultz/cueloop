@@ -142,6 +142,19 @@ struct WorkspaceView: View {
             detailColumn()
                 .navigationSplitViewColumnWidth(min: 450, ideal: 550, max: .infinity)
         }
+        .overlay(alignment: .top) {
+            titlebarDividerMask
+        }
+    }
+
+    private var titlebarDividerMask: some View {
+        Rectangle()
+            .fill(.bar)
+            .frame(height: 42)
+            .frame(maxWidth: .infinity)
+            .zIndex(10)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder

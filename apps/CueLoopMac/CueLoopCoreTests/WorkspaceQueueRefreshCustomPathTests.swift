@@ -304,6 +304,11 @@ extension WorkspaceQueueRefreshTests {
         XCTAssertNil(workspace.taskState.nextRunnableTaskID)
         XCTAssertFalse(workspace.diagnosticsState.showErrorRecovery)
         XCTAssertEqual(workspace.taskState.tasksErrorMessage, Workspace.missingConfiguredQueueMessage(for: missingQueueURL))
+        XCTAssertEqual(workspace.diagnosticsState.operationalSummary.severity, .error)
+        XCTAssertEqual(workspace.diagnosticsState.operationalSummary.title, "Queue file missing")
+        XCTAssertEqual(workspace.diagnosticsState.operationalSummary.subtitle, Workspace.missingConfiguredQueueMessage(for: missingQueueURL))
+        XCTAssertEqual(workspace.diagnosticsState.operationalSummary.primaryIssue?.source, .queue)
+        XCTAssertEqual(workspace.diagnosticsState.queueIssue?.source, .queue)
 
         let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)
         XCTAssertTrue(commandLog.contains("machine workspace overview"))

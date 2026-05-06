@@ -153,6 +153,16 @@ final class WorkspaceWindowRegistry {
         liveEntries().map(\.window)
     }
 
+    func workspaceWindowSnapshots() -> [(window: NSWindow, workspaceIDs: [UUID], activeWorkspaceID: UUID?)] {
+        liveEntries().map { item in
+            (
+                window: item.window,
+                workspaceIDs: item.entry.workspaceIDs,
+                activeWorkspaceID: item.entry.activeWorkspaceID
+            )
+        }
+    }
+
     func preferredActiveWorkspaceID() -> UUID? {
         liveEntries().first(where: { $0.entry.activeWorkspaceID != nil })?.entry.activeWorkspaceID
     }
@@ -216,13 +226,47 @@ final class MainWindowService {
     }
 
     func closeStackedDuplicateWorkspaceWindows() {
+        closeDuplicateRegisteredWorkspaceWindows()
+        closeStackedWorkspaceWindowsByFrame()
+    }
+
+    func closeStackedWorkspaceWindowsByFrame() {
         let groupedWindows = Dictionary(grouping: visibleWorkspaceWindowCandidates(), by: duplicateStackKey(for:))
         for windows in groupedWindows.values where windows.count > 1 {
             for window in windows.sorted(by: workspaceWindowSort).dropFirst() {
-                WorkspaceWindowRegistry.shared.unregister(window: window)
-                window.close()
+                closeWorkspaceWindow(window)
             }
         }
+    }
+
+    private func closeDuplicateRegisteredWorkspaceWindows() {
+        let snapshots = WorkspaceWindowRegistry.shared.workspaceWindowSnapshots()
+            .filter { $0.window.isVisible && !$0.window.isMiniaturized }
+            .compactMap { snapshot -> (key: String, window: NSWindow)? in
+                guard let key = registeredDuplicateKey(for: snapshot) else { return nil }
+                return (key, snapshot.window)
+            }
+
+        let groupedWindows = Dictionary(grouping: snapshots, by: \.key)
+        for snapshots in groupedWindows.values where snapshots.count > 1 {
+            for snapshot in snapshots.map(\.window).sorted(by: workspaceWindowSort).dropFirst() {
+                closeWorkspaceWindow(snapshot)
+            }
+        }
+    }
+
+    private func registeredDuplicateKey(
+        for snapshot: (window: NSWindow, workspaceIDs: [UUID], activeWorkspaceID: UUID?)
+    ) -> String? {
+        guard !snapshot.workspaceIDs.isEmpty else { return nil }
+        let workspaceIDs = snapshot.workspaceIDs.map(\.uuidString).joined(separator: ",")
+        let activeWorkspaceID = snapshot.activeWorkspaceID?.uuidString ?? "none"
+        return "registered|active=\(activeWorkspaceID)|tabs=\(workspaceIDs)"
+    }
+
+    private func closeWorkspaceWindow(_ window: NSWindow) {
+        WorkspaceWindowRegistry.shared.unregister(window: window)
+        window.close()
     }
 
     private func workspaceWindows() -> [NSWindow] {

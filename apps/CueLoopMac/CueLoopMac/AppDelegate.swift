@@ -133,6 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         for window in NSApplication.shared.windows {
             normalizeWindow(window)
         }
+        MainWindowService.shared.closeStackedWorkspaceWindowsByFrame()
     }
 
     private func scheduleLaunchStabilization(after nanoseconds: UInt64) {
