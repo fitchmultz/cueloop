@@ -19,6 +19,7 @@
  */
 
 import AppKit
+import CueLoopCore
 import XCTest
 
 @testable import CueLoopMac
@@ -52,6 +53,32 @@ final class WorkspaceWindowCleanupTests: XCTestCase {
         let indexesToClose = MainWindowService.shared.duplicateWorkspaceWindowIndexesToCloseForTesting([first, second])
 
         XCTAssertTrue(indexesToClose.isEmpty)
+    }
+
+    func testURLOpenDeduplicatesExistingWorkspacesForSameDirectory() throws {
+        let manager = WorkspaceManager.shared
+        for workspace in manager.workspaces {
+            manager.closeWorkspace(workspace)
+        }
+        defer {
+            for workspace in manager.workspaces {
+                manager.closeWorkspace(workspace)
+            }
+        }
+
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("url-open-dedup-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let first = manager.createWorkspace(workingDirectory: directory, bootstrapRepositoryStateOnInit: false)
+        let duplicate = manager.createWorkspace(workingDirectory: directory, bootstrapRepositoryStateOnInit: false)
+        XCTAssertNotEqual(first.id, duplicate.id)
+        XCTAssertEqual(manager.workspaces.filter { $0.matchesWorkingDirectory(directory) }.count, 2)
+
+        CueLoopURLRouter.openWorkspace(at: directory)
+
+        let matchingWorkspaces = manager.workspaces.filter { $0.matchesWorkingDirectory(directory) }
+        XCTAssertEqual(matchingWorkspaces.map(\.id), [first.id])
     }
 
     private func candidate(

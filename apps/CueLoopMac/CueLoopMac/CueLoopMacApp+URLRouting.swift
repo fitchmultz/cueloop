@@ -80,7 +80,9 @@ enum CueLoopURLRouter {
             return
         }
 
-        if let existingWorkspace = WorkspaceManager.shared.workspaces.first(where: { $0.matchesWorkingDirectory(workspaceURL) }) {
+        let matchingWorkspaces = WorkspaceManager.shared.workspaces.filter { $0.matchesWorkingDirectory(workspaceURL) }
+        if let existingWorkspace = preferredWorkspaceForURLOpen(from: matchingWorkspaces) {
+            closeDuplicateWorkspaces(matchingWorkspaces, keeping: existingWorkspace.id)
             revealWorkspaceAfterEnsuringWindow(existingWorkspace.id)
             CueLoopLogger.shared.info("Activated existing workspace: \(path)", category: .workspace)
             return
@@ -97,6 +99,33 @@ enum CueLoopURLRouter {
         let workspace = WorkspaceManager.shared.createWorkspace(workingDirectory: workspaceURL)
         revealWorkspaceAfterEnsuringWindow(workspace.id)
         CueLoopLogger.shared.info("Created new workspace from URL: \(path)", category: .workspace)
+    }
+
+    private static func preferredWorkspaceForURLOpen(from workspaces: [Workspace]) -> Workspace? {
+        guard !workspaces.isEmpty else { return nil }
+
+        if let registeredWorkspaceID = WorkspaceWindowRegistry.shared.preferredActiveWorkspaceID(),
+           let registeredWorkspace = workspaces.first(where: { $0.id == registeredWorkspaceID }) {
+            return registeredWorkspace
+        }
+
+        if let focusedWorkspace = WorkspaceManager.shared.focusedWorkspace,
+           let matchingFocusedWorkspace = workspaces.first(where: { $0.id == focusedWorkspace.id }) {
+            return matchingFocusedWorkspace
+        }
+
+        if let lastActiveWorkspaceID = WorkspaceManager.shared.lastActiveWorkspaceID,
+           let lastActiveWorkspace = workspaces.first(where: { $0.id == lastActiveWorkspaceID }) {
+            return lastActiveWorkspace
+        }
+
+        return workspaces.first
+    }
+
+    private static func closeDuplicateWorkspaces(_ workspaces: [Workspace], keeping workspaceID: UUID) {
+        for workspace in workspaces where workspace.id != workspaceID && !workspace.runState.isExecutionActive {
+            WorkspaceManager.shared.closeWorkspace(workspace)
+        }
     }
 
     static func bootstrapWorkspaceForURLOpen() -> Workspace? {
