@@ -137,7 +137,7 @@ struct WorkspaceView: View {
                 .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 250)
         } content: {
             contentColumn()
-                .navigationSplitViewColumnWidth(min: 280, ideal: 420, max: .infinity)
+                .navigationSplitViewColumnWidth(min: 280, ideal: 400, max: 420)
         } detail: {
             detailColumn()
                 .navigationSplitViewColumnWidth(min: 450, ideal: 550, max: .infinity)

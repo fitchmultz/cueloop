@@ -228,13 +228,13 @@ public enum CueLoopTaskExecutionPreset: String, CaseIterable, Sendable, Identifi
     public var displayName: String {
         switch self {
         case .codexDeep:
-            return "Codex Deep"
+            return "Deep"
         case .codexBalanced:
-            return "Codex Balanced"
+            return "Balanced"
         case .kimiFast:
-            return "Codex Fast"
+            return "Fast"
         case .hybridCodexKimi:
-            return "Codex Phased"
+            return "Phased"
         case .inheritFromConfig:
             return "Inherit Config"
         }
@@ -243,13 +243,13 @@ public enum CueLoopTaskExecutionPreset: String, CaseIterable, Sendable, Identifi
     public var description: String {
         switch self {
         case .codexDeep:
-            return "High-reasoning Codex with full 3-phase flow."
+            return "High reasoning with the configured runner/model."
         case .codexBalanced:
-            return "Codex with medium effort and a 2-phase flow."
+            return "Medium reasoning and a 2-phase flow using config."
         case .kimiFast:
-            return "Codex with low reasoning and a 1-phase flow."
+            return "Low reasoning and a 1-phase flow using config."
         case .hybridCodexKimi:
-            return "Codex with phase-specific effort tuning across the 3-phase flow."
+            return "Phase-specific effort tuning using the configured runner/model."
         case .inheritFromConfig:
             return "Remove task overrides and use .cueloop/config.jsonc."
         }
@@ -259,24 +259,18 @@ public enum CueLoopTaskExecutionPreset: String, CaseIterable, Sendable, Identifi
         switch self {
         case .codexDeep:
             return CueLoopTaskAgent(
-                runner: "codex",
-                model: "gpt-5.4",
                 modelEffort: "high",
                 phases: 3,
                 iterations: 1
             )
         case .codexBalanced:
             return CueLoopTaskAgent(
-                runner: "codex",
-                model: "gpt-5.4",
                 modelEffort: "medium",
                 phases: 2,
                 iterations: 1
             )
         case .kimiFast:
             return CueLoopTaskAgent(
-                runner: "codex",
-                model: "gpt-5.4",
                 modelEffort: "low",
                 phases: 1,
                 iterations: 1
@@ -286,21 +280,9 @@ public enum CueLoopTaskExecutionPreset: String, CaseIterable, Sendable, Identifi
                 phases: 3,
                 iterations: 1,
                 phaseOverrides: CueLoopTaskPhaseOverrides(
-                    phase1: CueLoopTaskPhaseOverride(
-                        runner: "codex",
-                        model: "gpt-5.4",
-                        reasoningEffort: "high"
-                    ),
-                    phase2: CueLoopTaskPhaseOverride(
-                        runner: "codex",
-                        model: "gpt-5.4",
-                        reasoningEffort: "medium"
-                    ),
-                    phase3: CueLoopTaskPhaseOverride(
-                        runner: "codex",
-                        model: "gpt-5.4",
-                        reasoningEffort: "medium"
-                    )
+                    phase1: CueLoopTaskPhaseOverride(reasoningEffort: "high"),
+                    phase2: CueLoopTaskPhaseOverride(reasoningEffort: "medium"),
+                    phase3: CueLoopTaskPhaseOverride(reasoningEffort: "medium")
                 )
             )
         case .inheritFromConfig:

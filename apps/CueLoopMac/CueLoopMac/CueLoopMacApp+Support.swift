@@ -214,6 +214,17 @@ final class MainWindowService {
         openMainWindowHandler()
         return true
     }
+
+    func closeStackedDuplicateWorkspaceWindows() {
+        let groupedWindows = Dictionary(grouping: visibleWorkspaceWindowCandidates(), by: duplicateStackKey(for:))
+        for windows in groupedWindows.values where windows.count > 1 {
+            for window in windows.sorted(by: workspaceWindowSort).dropFirst() {
+                WorkspaceWindowRegistry.shared.unregister(window: window)
+                window.close()
+            }
+        }
+    }
+
     private func workspaceWindows() -> [NSWindow] {
         let registeredWorkspaceWindows = WorkspaceWindowRegistry.shared.workspaceWindows()
         if !registeredWorkspaceWindows.isEmpty {
@@ -229,13 +240,60 @@ final class MainWindowService {
 
         return NSApp.windows
             .filter(isFallbackPrimaryWindowCandidate)
-            .sorted { $0.windowNumber < $1.windowNumber }
+            .sorted(by: workspaceWindowSort)
+    }
+
+    private func visibleWorkspaceWindowCandidates() -> [NSWindow] {
+        let registeredWindows = WorkspaceWindowRegistry.shared.workspaceWindows()
+        let fallbackWindows = NSApp.windows.filter(isFallbackPrimaryWindowCandidate)
+        return uniqueWorkspaceWindows(registeredWindows + fallbackWindows)
+            .filter { $0.isVisible && !$0.isMiniaturized }
+            .sorted(by: workspaceWindowSort)
+    }
+
+    private func uniqueWorkspaceWindows(_ windows: [NSWindow]) -> [NSWindow] {
+        var seenWindowNumbers = Set<Int>()
+        return windows.filter { window in
+            seenWindowNumbers.insert(window.windowNumber).inserted
+        }
+    }
+
+    private func duplicateStackKey(for window: NSWindow) -> String {
+        let frame = window.frame.integral
+        return [
+            window.title,
+            String(Int(frame.origin.x)),
+            String(Int(frame.origin.y)),
+            String(Int(frame.size.width)),
+            String(Int(frame.size.height))
+        ].joined(separator: "|")
+    }
+
+    private func workspaceWindowSort(_ lhs: NSWindow, _ rhs: NSWindow) -> Bool {
+        let lhsPriority = workspaceWindowPriority(lhs)
+        let rhsPriority = workspaceWindowPriority(rhs)
+        if lhsPriority != rhsPriority {
+            return lhsPriority < rhsPriority
+        }
+        return lhs.windowNumber < rhs.windowNumber
+    }
+
+    private func workspaceWindowPriority(_ window: NSWindow) -> Int {
+        if window.isKeyWindow { return 0 }
+        if window.isMainWindow { return 1 }
+        if window.isVisible { return 2 }
+        return 3
     }
 
     private func isFallbackPrimaryWindowCandidate(_ window: NSWindow) -> Bool {
         guard !SettingsWindowService.shared.isSettingsWindow(window) else { return false }
-        guard window.canBecomeKey else { return false }
         guard !window.isMiniaturized else { return false }
+        guard window.identifier?.rawValue.contains("AppWindow") == true
+            || window.title == "CueLoopMac"
+            || window.contentViewController != nil
+        else {
+            return false
+        }
         return true
     }
 }
