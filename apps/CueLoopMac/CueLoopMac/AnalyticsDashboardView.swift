@@ -95,26 +95,52 @@ struct AnalyticsDashboardView: View {
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Analytics Dashboard")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                headerTitle
 
-                Text("Track productivity, queue health, and failure modes by section.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Spacer(minLength: 12)
+
+                headerControls
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 12) {
+                headerTitle
 
+                HStack(spacing: 8) {
+                    headerControls
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .padding()
+    }
+
+    private var headerTitle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Analytics Dashboard")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            Text("Track productivity, queue health, and failure modes by section.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var headerControls: some View {
+        HStack(spacing: 8) {
             Picker("Time Range", selection: selectedTimeRangeBinding) {
                 ForEach(TimeRange.allCases) { range in
                     Text(range.displayName).tag(range)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 280)
+            .frame(maxWidth: 280)
 
             Button {
                 Task { @MainActor in
@@ -127,11 +153,10 @@ struct AnalyticsDashboardView: View {
             .disabled(workspace.insightsState.analytics.isLoading)
             .accessibilityLabel("Refresh analytics")
         }
-        .padding()
     }
 
     private var metricsRow: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 16) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 136), spacing: 16)], spacing: 16) {
             metricCard(
                 title: "Total Completed",
                 value: workspace.insightsState.analytics.productivitySummaryValue.map { String($0.totalCompleted) } ?? placeholderValue(for: workspace.insightsState.analytics.productivitySummaryRenderState),
@@ -183,15 +208,12 @@ struct AnalyticsDashboardView: View {
     }
 
     private var secondaryMetrics: some View {
-        HStack(alignment: .top, spacing: 20) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 16)], alignment: .leading, spacing: 16) {
             PriorityDistributionCard(tasks: workspace.taskState.tasks)
-                .frame(maxWidth: .infinity)
 
             TaskAgingCard(tasks: workspace.taskState.tasks)
-                .frame(maxWidth: .infinity)
 
             velocityDetailsCard
-                .frame(maxWidth: .infinity)
         }
     }
 
