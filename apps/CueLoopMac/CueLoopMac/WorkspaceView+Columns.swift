@@ -105,7 +105,8 @@ extension WorkspaceView {
     func queueContentColumn() -> some View {
         VStack(spacing: 0) {
             viewModeToolbar()
-                .padding(.horizontal, 16)
+                .padding(.leading, 96)
+                .padding(.trailing, 16)
                 .padding(.vertical, 8)
 
             Divider()
@@ -138,8 +139,6 @@ extension WorkspaceView {
     @ViewBuilder
     func viewModeToolbar() -> some View {
         HStack {
-            Spacer()
-
             Picker("View Mode", selection: taskViewModeBinding) {
                 ForEach(TaskViewMode.allCases, id: \.self) { mode in
                     Label(mode.rawValue, systemImage: mode.icon)
@@ -148,7 +147,7 @@ extension WorkspaceView {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 240)
+            .frame(maxWidth: .infinity)
             .help("Switch between List, Kanban, and Graph view (⌘⇧K)")
             .accessibilityLabel("Task view mode")
             .accessibilityIdentifier("task-view-mode-picker")
