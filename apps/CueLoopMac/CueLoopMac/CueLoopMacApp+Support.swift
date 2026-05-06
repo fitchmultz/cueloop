@@ -200,6 +200,26 @@ final class WorkspaceWindowRegistry {
     }
 }
 
+
+struct WorkspaceWindowDuplicateCandidate: Equatable {
+    let index: Int
+    let title: String
+    let frame: NSRect
+    let priority: Int
+    let order: Int
+
+    var stackKey: String {
+        let integralFrame = frame.integral
+        return [
+            title,
+            String(Int(integralFrame.origin.x)),
+            String(Int(integralFrame.origin.y)),
+            String(Int(integralFrame.size.width)),
+            String(Int(integralFrame.size.height))
+        ].joined(separator: "|")
+    }
+}
+
 @MainActor
 final class MainWindowService {
     static let shared = MainWindowService()
@@ -231,12 +251,15 @@ final class MainWindowService {
     }
 
     func closeStackedWorkspaceWindowsByFrame() {
-        let groupedWindows = Dictionary(grouping: visibleWorkspaceWindowCandidates(), by: duplicateStackKey(for:))
-        for windows in groupedWindows.values where windows.count > 1 {
-            for window in windows.sorted(by: workspaceWindowSort).dropFirst() {
-                closeWorkspaceWindow(window)
-            }
+        for window in duplicateWorkspaceWindowsToClose(in: visibleWorkspaceWindowCandidates()) {
+            closeWorkspaceWindow(window)
         }
+    }
+
+    func duplicateWorkspaceWindowIndexesToCloseForTesting(
+        _ candidates: [WorkspaceWindowDuplicateCandidate]
+    ) -> [Int] {
+        duplicateWorkspaceWindowIndexesToClose(in: candidates)
     }
 
     private func closeDuplicateRegisteredWorkspaceWindows() {
@@ -267,6 +290,32 @@ final class MainWindowService {
     private func closeWorkspaceWindow(_ window: NSWindow) {
         WorkspaceWindowRegistry.shared.unregister(window: window)
         window.close()
+    }
+
+    private func duplicateWorkspaceWindowsToClose(in windows: [NSWindow]) -> [NSWindow] {
+        let candidates = windows.enumerated().map { offset, window in
+            WorkspaceWindowDuplicateCandidate(
+                index: offset,
+                title: window.title,
+                frame: window.frame,
+                priority: workspaceWindowPriority(window),
+                order: window.windowNumber
+            )
+        }
+        return duplicateWorkspaceWindowIndexesToClose(in: candidates).map { windows[$0] }
+    }
+
+    private func duplicateWorkspaceWindowIndexesToClose(
+        in candidates: [WorkspaceWindowDuplicateCandidate]
+    ) -> [Int] {
+        let groupedCandidates = Dictionary(grouping: candidates, by: \.stackKey)
+        return groupedCandidates.values.flatMap { candidates -> [Int] in
+            guard candidates.count > 1 else { return [] }
+            return candidates
+                .sorted(by: workspaceWindowCandidateSort)
+                .dropFirst()
+                .map(\.index)
+        }
     }
 
     private func workspaceWindows() -> [NSWindow] {
@@ -302,17 +351,6 @@ final class MainWindowService {
         }
     }
 
-    private func duplicateStackKey(for window: NSWindow) -> String {
-        let frame = window.frame.integral
-        return [
-            window.title,
-            String(Int(frame.origin.x)),
-            String(Int(frame.origin.y)),
-            String(Int(frame.size.width)),
-            String(Int(frame.size.height))
-        ].joined(separator: "|")
-    }
-
     private func workspaceWindowSort(_ lhs: NSWindow, _ rhs: NSWindow) -> Bool {
         let lhsPriority = workspaceWindowPriority(lhs)
         let rhsPriority = workspaceWindowPriority(rhs)
@@ -327,6 +365,16 @@ final class MainWindowService {
         if window.isMainWindow { return 1 }
         if window.isVisible { return 2 }
         return 3
+    }
+
+    private func workspaceWindowCandidateSort(
+        _ lhs: WorkspaceWindowDuplicateCandidate,
+        _ rhs: WorkspaceWindowDuplicateCandidate
+    ) -> Bool {
+        if lhs.priority != rhs.priority {
+            return lhs.priority < rhs.priority
+        }
+        return lhs.order < rhs.order
     }
 
     private func isFallbackPrimaryWindowCandidate(_ window: NSWindow) -> Bool {
