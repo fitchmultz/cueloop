@@ -51,7 +51,14 @@ macos-install-app: macos-build
 	echo "→ Installing CueLoopMac.app to $$dest_bundle"; \
 	rm -rf "$$dest_bundle"; \
 	ditto "$$app_bundle" "$$dest_bundle"; \
-	/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f "$$dest_bundle" >/dev/null 2>&1 || true; \
+	lsregister="/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister"; \
+	for stale_bundle in "$$HOME"/Library/Developer/Xcode/DerivedData/*/Build/Products/*/CueLoopMac.app; do \
+		if [ -d "$$stale_bundle" ] && [ "$$stale_bundle" != "$$dest_bundle" ]; then \
+			"$$lsregister" -u "$$stale_bundle" >/dev/null 2>&1 || true; \
+		fi; \
+	done; \
+	"$$lsregister" -f -R -trusted "$$dest_bundle" >/dev/null 2>&1 || true; \
+	swift -e 'import CoreServices; _ = LSSetDefaultHandlerForURLScheme("cueloop" as CFString, "com.mitchfultz.cueloop" as CFString)' >/dev/null 2>&1 || true; \
 	echo "  ✓ CueLoopMac.app installed"
 
 macos-test: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
