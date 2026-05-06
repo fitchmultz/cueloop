@@ -22,6 +22,11 @@
 import CueLoopCore
 import SwiftUI
 
+enum WorkspaceColumnLayout {
+    static let sidebarSafeContentLeadingInset: CGFloat = 150
+    static let contentTrailingInset: CGFloat = 16
+}
+
 @MainActor
 extension WorkspaceView {
     @ViewBuilder
@@ -105,8 +110,8 @@ extension WorkspaceView {
     func queueContentColumn() -> some View {
         VStack(spacing: 0) {
             viewModeToolbar()
-                .padding(.leading, 96)
-                .padding(.trailing, 16)
+                .padding(.leading, WorkspaceColumnLayout.sidebarSafeContentLeadingInset)
+                .padding(.trailing, WorkspaceColumnLayout.contentTrailingInset)
                 .padding(.vertical, 8)
 
             Divider()
