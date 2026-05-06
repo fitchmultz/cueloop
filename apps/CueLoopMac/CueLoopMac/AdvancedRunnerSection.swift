@@ -28,25 +28,54 @@ import CueLoopCore
 @MainActor
 struct AdvancedRunnerContentColumn: View {
     @ObservedObject var workspace: Workspace
+    @ObservedObject private var commandState: WorkspaceCommandState
     let navTitle: (String) -> String
+
+    init(workspace: Workspace, navTitle: @escaping (String) -> String) {
+        self.workspace = workspace
+        self._commandState = ObservedObject(wrappedValue: workspace.commandState)
+        self.navTitle = navTitle
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerSection()
-                .padding(16)
+                .padding(.top, 16)
+                .padding(.bottom, 16)
+                .padding(.leading, 32)
+                .padding(.trailing, 16)
 
             Divider()
 
             commandList()
         }
         .task { @MainActor in
-            guard workspace.commandState.cliSpec == nil else { return }
-            guard !workspace.commandState.cliSpecIsLoading else { return }
-            await workspace.loadCLISpec()
+            await loadCLISpecIfNeeded()
         }
-        .onChange(of: workspace.commandState.advancedSelectedCommandID) { _, _ in
+        .onChange(of: workspace.identityState.retargetRevision) { _, _ in
+            Task { @MainActor in
+                await loadCLISpecIfNeeded()
+            }
+        }
+        .onChange(of: commandState.advancedSelectedCommandID) { _, _ in
             workspace.resetAdvancedInputs()
         }
+    }
+
+    private func loadCLISpecIfNeeded() async {
+        guard commandState.cliSpec == nil else { return }
+        if commandState.cliSpecIsLoading {
+            for _ in 0..<20 {
+                guard !Task.isCancelled else { return }
+                guard commandState.cliSpec == nil else { return }
+                guard commandState.cliSpecIsLoading else { break }
+
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        guard commandState.cliSpec == nil else { return }
+        guard !commandState.cliSpecIsLoading else { return }
+        await workspace.loadCLISpec()
     }
 
     @ViewBuilder
@@ -54,47 +83,9 @@ struct AdvancedRunnerContentColumn: View {
         VStack(alignment: .leading, spacing: 12) {
             WorkingDirectoryHeader(workspace: workspace)
 
-            HStack(spacing: 16) {
-                Toggle("No Color", isOn: Binding(
-                    get: { workspace.commandState.advancedIncludeNoColor },
-                    set: { workspace.commandState.advancedIncludeNoColor = $0 }
-                ))
-                    .toggleStyle(.switch)
+            advancedOptionsBar()
 
-                Toggle("Show Hidden", isOn: Binding(
-                    get: { workspace.commandState.advancedShowHiddenCommands },
-                    set: { workspace.commandState.advancedShowHiddenCommands = $0 }
-                ))
-                    .toggleStyle(.switch)
-
-                Toggle("Hidden Args", isOn: Binding(
-                    get: { workspace.commandState.advancedShowHiddenArgs },
-                    set: { workspace.commandState.advancedShowHiddenArgs = $0 }
-                ))
-                    .toggleStyle(.switch)
-
-                Spacer()
-
-                if workspace.commandState.cliSpecIsLoading {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .symbolEffect(.rotate, isActive: true)
-                        .frame(width: 14, height: 14)
-                        .accessibilityLabel("Loading command specification")
-                }
-
-                Button(action: {
-                    Task { @MainActor in
-                        await workspace.loadCLISpec()
-                    }
-                }) {
-                    Label("Reload", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(GlassButtonStyle())
-            }
-
-            if let err = workspace.commandState.cliSpecErrorMessage {
+            if let err = commandState.cliSpecErrorMessage {
                 Text(err)
                     .foregroundStyle(.red)
                     .font(.system(.caption))
@@ -104,14 +95,89 @@ struct AdvancedRunnerContentColumn: View {
     }
 
     @ViewBuilder
+    private func advancedOptionsBar() -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                advancedOptionToggles()
+                Spacer(minLength: 8)
+                cliSpecLoadingIndicator()
+                reloadButton()
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    advancedOptionToggles()
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: 8) {
+                    cliSpecLoadingIndicator()
+                    reloadButton()
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func advancedOptionToggles() -> some View {
+        HStack(spacing: 12) {
+            Toggle("No Color", isOn: Binding(
+                get: { commandState.advancedIncludeNoColor },
+                set: { commandState.advancedIncludeNoColor = $0 }
+            ))
+            .toggleStyle(.switch)
+            .fixedSize(horizontal: true, vertical: false)
+
+            Toggle("Show Hidden", isOn: Binding(
+                get: { commandState.advancedShowHiddenCommands },
+                set: { commandState.advancedShowHiddenCommands = $0 }
+            ))
+            .toggleStyle(.switch)
+            .fixedSize(horizontal: true, vertical: false)
+
+            Toggle("Hidden Args", isOn: Binding(
+                get: { commandState.advancedShowHiddenArgs },
+                set: { commandState.advancedShowHiddenArgs = $0 }
+            ))
+            .toggleStyle(.switch)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    @ViewBuilder
+    private func cliSpecLoadingIndicator() -> some View {
+        if commandState.cliSpecIsLoading {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .symbolEffect(.rotate, isActive: true)
+                .frame(width: 14, height: 14)
+                .accessibilityLabel("Loading command specification")
+        }
+    }
+
+    private func reloadButton() -> some View {
+        Button(action: {
+            Task { @MainActor in
+                await workspace.loadCLISpec()
+            }
+        }) {
+            Label("Reload", systemImage: "arrow.clockwise")
+        }
+        .buttonStyle(GlassButtonStyle())
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    @ViewBuilder
     private func commandList() -> some View {
         let commands = filteredCommands()
 
         List(
             commands,
             selection: Binding(
-                get: { workspace.commandState.advancedSelectedCommandID },
-                set: { workspace.commandState.advancedSelectedCommandID = $0 }
+                get: { commandState.advancedSelectedCommandID },
+                set: { commandState.advancedSelectedCommandID = $0 }
             )
         ) { cmd in
             VStack(alignment: .leading, spacing: 2) {
@@ -125,12 +191,13 @@ struct AdvancedRunnerContentColumn: View {
                 }
             }
             .tag(cmd.id)
+            .listRowInsets(EdgeInsets(top: 4, leading: 32, bottom: 4, trailing: 8))
         }
         .listStyle(.plain)
         .searchable(
             text: Binding(
-                get: { workspace.commandState.advancedSearchText },
-                set: { workspace.commandState.advancedSearchText = $0 }
+                get: { commandState.advancedSearchText },
+                set: { commandState.advancedSearchText = $0 }
             ),
             placement: .toolbar
         )
@@ -139,7 +206,7 @@ struct AdvancedRunnerContentColumn: View {
 
     private func filteredCommands() -> [CueLoopCLICommandSpec] {
         let commands = workspace.advancedCommands()
-        let query = workspace.commandState.advancedSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = commandState.advancedSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return commands }
 
         return commands.filter { cmd in
