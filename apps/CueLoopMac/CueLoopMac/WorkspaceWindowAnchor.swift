@@ -207,6 +207,8 @@ struct WorkspaceWindowAnchor: NSViewRepresentable {
         window.collectionBehavior.insert(.moveToActiveSpace)
         window.tabbingMode = .disallowed
         window.titlebarSeparatorStyle = .none
+        window.titlebarAppearsTransparent = false
+        window.backgroundColor = .windowBackgroundColor
     }
 
     private func stabilizeVisiblePlacement(for window: NSWindow) {
