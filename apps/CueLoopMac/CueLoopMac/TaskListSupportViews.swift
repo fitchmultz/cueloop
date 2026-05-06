@@ -23,38 +23,30 @@ struct TaskListWhatsNextCard: View {
     let task: CueLoopTask
     let onSelect: () -> Void
 
+    private var taskBadges: some View {
+        HStack {
+            TaskStatusBadge(status: task.status)
+
+            if !task.tags.isEmpty {
+                TaskTagChips(tags: Array(task.tags.prefix(3)))
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("What's Next", systemImage: "sparkles")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-
-                Spacer()
-
-                TaskPriorityBadge(priority: task.priority)
-            }
+            Label("What's Next", systemImage: "sparkles")
+                .font(.headline)
+                .foregroundStyle(.primary)
 
             Text(task.title)
                 .font(.system(.body, design: .default))
                 .lineLimit(2)
 
-            HStack {
-                TaskStatusBadge(status: task.status)
-
-                if !task.tags.isEmpty {
-                    TaskTagChips(tags: Array(task.tags.prefix(3)))
-                }
-
-                Spacer()
-
-                Text(task.id)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospaced()
-            }
+            taskBadges
         }
         .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.accentColor.opacity(0.1))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -101,6 +93,67 @@ struct TaskListFilterControls: View {
         )
     }
 
+    private var filterPickers: some View {
+        HStack(spacing: 12) {
+            Picker("Status", selection: statusFilterBinding) {
+                Text("All Status")
+                    .tag(nil as CueLoopTaskStatus?)
+                ForEach(CueLoopTaskStatus.allCases, id: \.self) { status in
+                    Text(status.displayName)
+                        .tag(status as CueLoopTaskStatus?)
+                }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+            .accessibilityLabel("Filter by Status")
+
+            Picker("Priority", selection: priorityFilterBinding) {
+                Text("All Priorities")
+                    .tag(nil as CueLoopTaskPriority?)
+                ForEach(CueLoopTaskPriority.allCases, id: \.self) { priority in
+                    Text(priority.displayName)
+                        .tag(priority as CueLoopTaskPriority?)
+                }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+            .accessibilityLabel("Filter by Priority")
+        }
+    }
+
+    private var sortControls: some View {
+        HStack(spacing: 12) {
+            Picker("Sort", selection: sortOptionBinding) {
+                ForEach(Workspace.TaskSortOption.allCases, id: \.self) { option in
+                    Text(option.rawValue)
+                        .tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+            .accessibilityLabel("Sort tasks")
+
+            Button(action: { workspace.taskState.taskSortAscending.toggle() }) {
+                Image(systemName: workspace.taskState.taskSortAscending ? "arrow.up" : "arrow.down")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Toggle sort direction")
+            .accessibilityHint("Currently sorted \(workspace.taskState.taskSortAscending ? "ascending" : "descending")")
+
+            Divider()
+                .frame(height: 20)
+
+            Button(action: onRefresh) {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .disabled(workspace.taskState.tasksLoading)
+            .accessibilityLabel("Refresh task list")
+        }
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             HStack {
@@ -124,61 +177,17 @@ struct TaskListFilterControls: View {
             .background(.tertiary.opacity(0.1))
             .clipShape(.rect(cornerRadius: 8))
 
-            HStack(spacing: 12) {
-                Picker("Status", selection: statusFilterBinding) {
-                    Text("All Status")
-                        .tag(nil as CueLoopTaskStatus?)
-                    ForEach(CueLoopTaskStatus.allCases, id: \.self) { status in
-                        Text(status.displayName)
-                            .tag(status as CueLoopTaskStatus?)
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    filterPickers
+                    Spacer(minLength: 8)
+                    sortControls
                 }
-                .pickerStyle(.menu)
-                .fixedSize()
-                .accessibilityLabel("Filter by Status")
 
-                Picker("Priority", selection: priorityFilterBinding) {
-                    Text("All Priorities")
-                        .tag(nil as CueLoopTaskPriority?)
-                    ForEach(CueLoopTaskPriority.allCases, id: \.self) { priority in
-                        Text(priority.displayName)
-                            .tag(priority as CueLoopTaskPriority?)
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    filterPickers
+                    sortControls
                 }
-                .pickerStyle(.menu)
-                .fixedSize()
-                .accessibilityLabel("Filter by Priority")
-
-                Spacer()
-
-                Picker("Sort", selection: sortOptionBinding) {
-                    ForEach(Workspace.TaskSortOption.allCases, id: \.self) { option in
-                        Text(option.rawValue)
-                            .tag(option)
-                    }
-                }
-                .pickerStyle(.menu)
-                .fixedSize()
-                .accessibilityLabel("Sort tasks")
-
-                Button(action: { workspace.taskState.taskSortAscending.toggle() }) {
-                    Image(systemName: workspace.taskState.taskSortAscending ? "arrow.up" : "arrow.down")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Toggle sort direction")
-                .accessibilityHint("Currently sorted \(workspace.taskState.taskSortAscending ? "ascending" : "descending")")
-
-                Divider()
-                    .frame(height: 20)
-
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .disabled(workspace.taskState.tasksLoading)
-                .accessibilityLabel("Refresh task list")
             }
         }
     }

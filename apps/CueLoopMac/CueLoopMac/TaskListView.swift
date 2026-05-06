@@ -45,8 +45,8 @@ struct TaskListView: View {
                 TaskListWhatsNextCard(task: nextTask) {
                     handleTaskSelection(taskID: nextTask.id, modifierFlags: NSEvent.modifierFlags)
                 }
-                    .padding(.leading, 96)
-                    .padding(.trailing, 16)
+                    .padding(.leading, WorkspaceColumnLayout.sidebarSafeContentLeadingInset)
+                    .padding(.trailing, WorkspaceColumnLayout.contentTrailingInset)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
             }
@@ -56,13 +56,13 @@ struct TaskListView: View {
                     await workspace.loadTasks()
                 }
             }
-                .padding(.leading, 96)
-                .padding(.trailing, 16)
+                .padding(.leading, WorkspaceColumnLayout.sidebarSafeContentLeadingInset)
+                .padding(.trailing, WorkspaceColumnLayout.contentTrailingInset)
                 .padding(.bottom, 12)
 
             TaskListExternalUpdateBanner(isVisible: transientState.isExternalUpdateBannerVisible)
-                .padding(.leading, 96)
-                .padding(.trailing, 16)
+                .padding(.leading, WorkspaceColumnLayout.sidebarSafeContentLeadingInset)
+                .padding(.trailing, WorkspaceColumnLayout.contentTrailingInset)
                 .padding(.top, transientState.isExternalUpdateBannerVisible ? 8 : 0)
 
             TaskListContent(
@@ -80,8 +80,8 @@ struct TaskListView: View {
                 onOpenSelectedTask: openFocusedTaskIfPossible,
                 onNavigate: navigateTask(direction:tasks:)
             )
-                .padding(.leading, 96)
-                .padding(.trailing, 16)
+                .padding(.leading, WorkspaceColumnLayout.sidebarSafeContentLeadingInset)
+                .padding(.trailing, WorkspaceColumnLayout.contentTrailingInset)
                 .padding(.bottom, 16)
         }
         .background(.clear)
