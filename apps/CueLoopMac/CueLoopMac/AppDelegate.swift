@@ -42,6 +42,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Disable automatic window tabbing globally
         NSWindow.allowsAutomaticWindowTabbing = false
 
+        guard !CueLoopAppDefaults.isUnitTesting else {
+            return
+        }
+
         configureWindowObservers()
         UITestingWorkspaceOpenBridge.shared.configureIfNeeded()
         SettingsSmokeContractRunner.shared.configureIfNeeded()
@@ -69,17 +73,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard !CueLoopAppDefaults.isUnitTesting else { return false }
         guard !flag else { return false }
         return MainWindowService.shared.revealOrOpenPrimaryWindow()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        guard !CueLoopAppDefaults.isUnitTesting else { return }
         for url in urls {
             CueLoopURLRouter.handle(url)
         }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        guard !CueLoopAppDefaults.isUnitTesting else { return }
         stabilizeExistingWindows()
     }
 

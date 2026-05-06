@@ -32,18 +32,24 @@ struct CueLoopMacApp: App {
 
     init() {
         _ = CueLoopAppDefaults.prepareForLaunch()
-        CrashReporter.shared.install()
+        if !CueLoopAppDefaults.isUnitTesting {
+            CrashReporter.shared.install()
+        }
     }
 
     var body: some Scene {
         WindowGroup(id: "main") {
-            WindowViewContainer()
-                .background(
-                    VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
-                        .ignoresSafeArea()
-                )
-                .preferredColorScheme(appearance.preferredColorScheme)
-                .background(MainWindowOpenActionRegistrar())
+            if CueLoopAppDefaults.isUnitTesting {
+                EmptyView()
+            } else {
+                WindowViewContainer()
+                    .background(
+                        VisualEffectView(material: .windowBackground, blendingMode: .behindWindow)
+                            .ignoresSafeArea()
+                    )
+                    .preferredColorScheme(appearance.preferredColorScheme)
+                    .background(MainWindowOpenActionRegistrar())
+            }
         }
         .restorationBehavior(.disabled)
         .windowStyle(.hiddenTitleBar)

@@ -112,7 +112,7 @@ public enum CueLoopAppDefaults {
         contractMode == .workspaceRouting
     }
 
-    static var isUnitTesting: Bool {
+    public static var isUnitTesting: Bool {
         guard !isUITesting, !isMacOSContract else { return false }
         let environment = ProcessInfo.processInfo.environment
         return environment["XCTestConfigurationFilePath"] != nil
