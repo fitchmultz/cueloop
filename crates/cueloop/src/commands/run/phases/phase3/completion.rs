@@ -169,7 +169,22 @@ fn apply_followups_if_present_for_finalization(
     resolved: &config::Resolved,
     task_id: &str,
 ) -> Result<Option<queue::FollowupApplyReport>> {
-    queue::apply_default_followups_if_present_with_removal(resolved, task_id, true)
+    match queue::dry_run_default_followups_if_present(resolved, task_id)? {
+        None => Ok(None),
+        Some(queue::FollowupDryRunOutcome::Valid(_report)) => {
+            queue::apply_default_followups_if_present_with_removal(resolved, task_id, true)
+        }
+        Some(queue::FollowupDryRunOutcome::Invalid(err)) => {
+            let proposal_path = queue::default_followups_path(&resolved.repo_root, task_id);
+            log::warn!(
+                "Skipping invalid follow-up proposal {} for {} during Phase 3 finalization; leaving it in place and continuing the run. Repair with `cueloop task followups apply --task {} --dry-run`. Error: {err:#}",
+                proposal_path.display(),
+                task_id,
+                task_id
+            );
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]
@@ -313,5 +328,106 @@ mod tests {
         let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?;
         assert!(report.is_none(), "expected no-op without proposal file");
         Ok(())
+    }
+
+    #[test]
+    fn apply_followups_for_finalization_leaves_invalid_proposal_and_continues() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_for_repo(temp.path().to_path_buf());
+        std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
+
+        queue::save_queue(
+            &resolved.queue_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![],
+            },
+        )?;
+        queue::save_queue(
+            &resolved.done_path,
+            &QueueFile {
+                version: 1,
+                tasks: vec![done_task("RQ-0001")],
+            },
+        )?;
+
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_doc = invalid_dependency_proposal_doc();
+        std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal_doc)?)?;
+
+        let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?;
+
+        assert!(report.is_none(), "invalid proposal should be skipped");
+        assert!(
+            proposal_path.exists(),
+            "invalid proposal should be left for repair"
+        );
+        let queue_after = queue::load_queue(&resolved.queue_path)?;
+        assert!(
+            queue_after.tasks.is_empty(),
+            "invalid proposal should not mutate the queue"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn apply_followups_for_finalization_propagates_bookkeeping_load_errors() -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_for_repo(temp.path().to_path_buf());
+        std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
+
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_doc = invalid_dependency_proposal_doc();
+        std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal_doc)?)?;
+
+        let err = apply_followups_if_present_for_finalization(&resolved, "RQ-0001").unwrap_err();
+
+        assert!(
+            format!("{err:#}").contains("load queue"),
+            "bookkeeping load failures should not be downgraded to invalid proposal warnings: {err:#}"
+        );
+        assert!(proposal_path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn apply_followups_for_finalization_prioritizes_bookkeeping_errors_over_parse_errors()
+    -> Result<()> {
+        let temp = TempDir::new()?;
+        let resolved = resolved_for_repo(temp.path().to_path_buf());
+        std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
+
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        std::fs::write(&proposal_path, "{ invalid json")?;
+
+        let err = apply_followups_if_present_for_finalization(&resolved, "RQ-0001").unwrap_err();
+
+        assert!(
+            format!("{err:#}").contains("load queue"),
+            "bookkeeping load failures should not be hidden by parse errors: {err:#}"
+        );
+        assert!(proposal_path.exists());
+        Ok(())
+    }
+
+    fn invalid_dependency_proposal_doc() -> serde_json::Value {
+        serde_json::json!({
+            "version": "followups@v1",
+            "source_task_id": "RQ-0001",
+            "tasks": [
+                {
+                    "key": "followup-doc",
+                    "title": "Write follow-up documentation",
+                    "description": "Capture actionable follow-up guidance.",
+                    "priority": "medium",
+                    "tags": ["docs"],
+                    "scope": ["docs/"],
+                    "evidence": ["review findings"],
+                    "plan": ["draft", "review"],
+                    "depends_on_keys": ["missing-local-key"],
+                    "independence_rationale": "Independent documentation follow-up."
+                }
+            ]
+        })
     }
 }

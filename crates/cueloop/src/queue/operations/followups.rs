@@ -19,11 +19,13 @@
 //! - All `depends_on_keys` references must point at proposal-local keys.
 //! - Source-task provenance uses the existing `request` and `relates_to` task fields.
 
+use std::fmt;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow, bail};
+use serde::de::{self, Visitor};
 use serde::{Deserialize, Serialize};
 
 use crate::config::Resolved;
@@ -35,10 +37,12 @@ use crate::queue::operations::{
 use crate::{jsonc, queue};
 
 const FOLLOWUPS_VERSION: u8 = 1;
+const FOLLOWUPS_SCHEMA_ID: &str = "followups@v1";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FollowupProposalDocument {
+    #[serde(deserialize_with = "deserialize_followups_version")]
     pub version: u8,
     pub source_task_id: String,
     pub tasks: Vec<FollowupTaskProposal>,
@@ -71,6 +75,12 @@ pub struct FollowupApplyReport {
     pub source_task_id: String,
     pub proposal_path: String,
     pub created_tasks: Vec<FollowupCreatedTask>,
+}
+
+#[derive(Debug)]
+pub enum FollowupDryRunOutcome {
+    Valid(FollowupApplyReport),
+    Invalid(anyhow::Error),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -130,6 +140,51 @@ pub fn apply_default_followups_if_present_with_removal(
 
 pub fn remove_default_followups_proposal_if_present(repo_root: &Path, task_id: &str) -> Result<()> {
     remove_applied_proposal(&default_followups_path(repo_root, task_id))
+}
+
+pub fn dry_run_default_followups_if_present(
+    resolved: &Resolved,
+    task_id: &str,
+) -> Result<Option<FollowupDryRunOutcome>> {
+    let source_task_id = normalize_required(task_id, "task id")?;
+    let path = default_followups_path(&resolved.repo_root, source_task_id);
+    let raw = match fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(err) => {
+            return Err(err).with_context(|| format!("read follow-up proposal {}", path.display()));
+        }
+    };
+    let mut active = queue::load_queue(&resolved.queue_path)
+        .with_context(|| format!("load queue {}", resolved.queue_path.display()))?;
+    let done = queue::load_queue_or_default(&resolved.done_path)
+        .with_context(|| format!("load done {}", resolved.done_path.display()))?;
+    let done_ref = queue::optional_done_queue(&done, &resolved.done_path);
+    let now = crate::timeutil::now_utc_rfc3339()?;
+
+    let document = match jsonc::parse_jsonc::<FollowupProposalDocument>(
+        &raw,
+        &format!("follow-up proposal {}", path.display()),
+    ) {
+        Ok(document) => document,
+        Err(err) => return Ok(Some(FollowupDryRunOutcome::Invalid(err))),
+    };
+
+    match apply_followups_in_memory(
+        &mut active,
+        done_ref,
+        &document,
+        source_task_id,
+        &path,
+        &now,
+        &resolved.id_prefix,
+        resolved.id_width,
+        resolved.queue_max_dependency_depth(),
+        true,
+    ) {
+        Ok(report) => Ok(Some(FollowupDryRunOutcome::Valid(report))),
+        Err(err) => Ok(Some(FollowupDryRunOutcome::Invalid(err))),
+    }
 }
 
 pub fn apply_followups_file(
@@ -250,6 +305,59 @@ fn read_followups_document(path: &Path) -> Result<FollowupProposalDocument> {
         &raw,
         &format!("follow-up proposal {}", path.display()),
     )
+}
+
+fn deserialize_followups_version<'de, D>(deserializer: D) -> std::result::Result<u8, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    struct FollowupsVersionVisitor;
+
+    impl<'de> Visitor<'de> for FollowupsVersionVisitor {
+        type Value = u8;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(
+                formatter,
+                "numeric version {FOLLOWUPS_VERSION} or schema id \"{FOLLOWUPS_SCHEMA_ID}\""
+            )
+        }
+
+        fn visit_u64<E>(self, value: u64) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            u8::try_from(value).map_err(|_| unsupported_followups_version_error::<E>(&value))
+        }
+
+        fn visit_i64<E>(self, value: i64) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            u8::try_from(value).map_err(|_| unsupported_followups_version_error::<E>(&value))
+        }
+
+        fn visit_str<E>(self, value: &str) -> std::result::Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            match value.trim() {
+                FOLLOWUPS_SCHEMA_ID => Ok(FOLLOWUPS_VERSION),
+                other => Err(unsupported_followups_version_error::<E>(&other)),
+            }
+        }
+    }
+
+    deserializer.deserialize_any(FollowupsVersionVisitor)
+}
+
+fn unsupported_followups_version_error<E>(version: &dyn fmt::Display) -> E
+where
+    E: de::Error,
+{
+    E::custom(format!(
+        "unsupported followups proposal version {version}; expected {FOLLOWUPS_VERSION} or \"{FOLLOWUPS_SCHEMA_ID}\""
+    ))
 }
 
 fn validate_document_header<'a>(

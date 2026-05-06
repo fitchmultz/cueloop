@@ -48,6 +48,8 @@ Do not stop just because only those paths changed. If any unrelated path is alre
 - The active task remains yours; do not create follow-ups as a substitute for finishing current scope.
 - Create follow-up proposals only for independent out-of-scope work, newly discovered work, or tasks whose purpose is discovery/queue shaping.
 - Use `.cueloop/cache/followups/{{TASK_ID}}.json` for proposed follow-up tasks. Do not manually edit queue/done JSON for follow-ups.
+- Proposal schema is exact: top-level `version` is numeric `1` (not `"followups@v1"`), `source_task_id` is `{{TASK_ID}}`, and `tasks` is an array.
+- Follow-up `key` values are proposal-local slugs such as `docs-hierarchy`; `depends_on_keys` may reference only keys defined in the same proposal, not existing queue task IDs.
 - Exploratory/audit/scan tasks should materialize actionable queue growth when useful work is found, not a report handoff unless the task explicitly asks for a report.
 
 # Validation Rules

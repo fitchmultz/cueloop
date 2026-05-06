@@ -59,6 +59,26 @@ fn parse_proposal(value: serde_json::Value) -> FollowupProposalDocument {
     serde_json::from_value(value).expect("valid proposal")
 }
 
+#[test]
+fn parse_followups_accepts_schema_id_version_alias() {
+    let mut value = proposal_json("RQ-0001");
+    value["version"] = serde_json::json!("followups@v1");
+
+    let proposal = parse_proposal(value);
+
+    assert_eq!(proposal.version, 1);
+}
+
+#[test]
+fn parse_followups_rejects_unknown_schema_id_version() {
+    let mut value = proposal_json("RQ-0001");
+    value["version"] = serde_json::json!("followups@v2");
+
+    let err = serde_json::from_value::<FollowupProposalDocument>(value).unwrap_err();
+
+    assert!(format!("{err:#}").contains("expected 1 or \"followups@v1\""));
+}
+
 fn resolved_for(root: &Path) -> config::Resolved {
     config::Resolved {
         config: Config::default(),

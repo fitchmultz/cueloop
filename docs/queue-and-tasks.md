@@ -157,9 +157,9 @@ cueloop task followups apply --task RQ-0135
 cueloop task followups apply --task RQ-0135 --dry-run --format json
 ```
 
-Apply allocates real task IDs, maps `depends_on_keys`, inherits `request` from the source task, adds `relates_to: ["<source_task_id>"]`, timestamps the tasks, validates the queue, creates undo for CLI applies, and removes the proposal after a successful non-dry-run apply.
+Apply allocates real task IDs, maps `depends_on_keys`, inherits `request` from the source task, adds `relates_to: ["<source_task_id>"]`, timestamps the tasks, validates the queue, creates undo for CLI applies, and removes the proposal after a successful non-dry-run apply. The canonical `version` value is numeric `1`; `followups@v1` names the proposal contract, not the JSON `version` value. Proposal `key` values are local slugs, and `depends_on_keys` can reference only keys declared in the same proposal file.
 
-Follow-ups are for independent work or queue-shaping tasks. They must not replace completing the active task's current scope. Reports remain opt-in: create a report only when the user explicitly asked for one or when the report is the deliverable.
+Follow-ups are for independent work or queue-shaping tasks. They must not replace completing the active task's current scope. Reports remain opt-in: create a report only when the user explicitly asked for one or when the report is the deliverable. Normal run finalization treats an invalid proposal as repairable follow-up metadata: it logs a warning, leaves the proposal file in place, and continues finalization instead of failing the whole run loop.
 
 ## Atomic Task Insertion for Agents and Scripts
 

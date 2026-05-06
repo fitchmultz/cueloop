@@ -12,6 +12,7 @@ Complete these in order.
 2. Follow-up proposals
    - follow-ups cannot substitute for finishing the active task's current scope.
    - Create `.cueloop/cache/followups/{{TASK_ID}}.json` only for independent out-of-scope work or explicit discovery/queue-shaping deliverables.
+   - Proposal schema: top-level `version` is numeric `1`; use local slug `key` values; `depends_on_keys` references only keys in the same proposal.
    - `RUN_MODE=normal`: apply proposals with `cueloop task followups apply --task {{TASK_ID}}` before terminal bookkeeping.
    - `RUN_MODE=parallel-worker`: do not apply the proposal; leave the artifact for coordinator integration.
    - If there is no independent follow-up work, skip the artifact.

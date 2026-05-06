@@ -41,6 +41,11 @@ fn default_worker_prompt_includes_followup_ownership_guard() -> Result<()> {
     assert!(prompt.contains("QUEUE FOLLOW-UP DISCIPLINE"));
     assert!(prompt.contains("not create follow-ups as a substitute"));
     assert!(prompt.contains(".cueloop/cache/followups/{{TASK_ID}}.json"));
+    assert!(prompt.contains("top-level `version` is numeric `1`"));
+    assert!(prompt.contains("not `\"followups@v1\"`"));
+    assert!(
+        prompt.contains("depends_on_keys` may reference only keys defined in the same proposal")
+    );
     assert!(prompt.contains("not a report handoff"));
     Ok(())
 }
