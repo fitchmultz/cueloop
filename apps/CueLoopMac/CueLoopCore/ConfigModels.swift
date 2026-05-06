@@ -435,6 +435,12 @@ public struct MachineParallelWorkersControl: Codable, Sendable, Equatable {
     public let max: UInt8
     public let defaultMissingValue: UInt8
 
+    public init(min: UInt8, max: UInt8, defaultMissingValue: UInt8) {
+        self.min = min
+        self.max = max
+        self.defaultMissingValue = defaultMissingValue
+    }
+
     private enum CodingKeys: String, CodingKey {
         case min
         case max

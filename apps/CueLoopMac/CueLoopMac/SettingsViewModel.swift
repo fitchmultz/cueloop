@@ -193,6 +193,12 @@ enum SettingsProjectConfigWriter {
     }
 }
 
+struct SettingsRunnerChoice: Identifiable, Equatable {
+    let id: String
+    let value: String
+    let displayName: String
+}
+
 @MainActor
 @Observable
 final class SettingsViewModel {
@@ -225,19 +231,18 @@ final class SettingsViewModel {
     private var isApplyingLoadedValues = false
 
     // MARK: - Constants
-    let availableRunners = ConfigRunner.allCases
     let availablePhases = ConfigPhases.allCases
     let availableEfforts = ConfigReasoningEffort.allCases
 
-    // Common model options per runner
-    let commonModels: [String: [String]] = [
+    // Fallback model suggestions used only before machine execution controls are loaded.
+    private let fallbackCommonModels: [String: [String]] = [
         "claude": ["sonnet", "opus", "haiku"],
         "codex": ["gpt-5.4", "gpt-5.3-codex", "gpt-5.3-codex-spark", "gpt-5.3"],
         "opencode": ["default"],
-        "gemini": ["gemini-2.0-flash", "gemini-1.5-pro"],
+        "gemini": ["gemini-3-pro-preview"],
         "cursor": ["default"],
-        "kimi": ["kimi-code/kimi-for-coding"],
-        "pi": ["default"]
+        "kimi": ["kimi-for-coding"],
+        "pi": ["gpt-5.3"]
     ]
 
     // MARK: - Initialization
@@ -357,13 +362,41 @@ final class SettingsViewModel {
 
     // MARK: - Helpers
 
+    var runnerChoices: [SettingsRunnerChoice] {
+        let machineRunners = workspace.runState.currentRunnerConfig?.executionControls?.runners ?? []
+        let configuredRunner = runner.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var choices: [SettingsRunnerChoice]
+        if machineRunners.isEmpty {
+            choices = ConfigRunner.allCases.map {
+                SettingsRunnerChoice(id: $0.rawValue, value: $0.rawValue, displayName: $0.displayName)
+            }
+        } else {
+            choices = machineRunners.map {
+                SettingsRunnerChoice(id: $0.id, value: $0.id, displayName: $0.displayName)
+            }
+        }
+
+        if !configuredRunner.isEmpty, !choices.contains(where: { $0.value == configuredRunner }) {
+            choices.append(
+                SettingsRunnerChoice(
+                    id: configuredRunner,
+                    value: configuredRunner,
+                    displayName: "Configured: \(configuredRunner)"
+                )
+            )
+        }
+
+        return choices
+    }
+
     var suggestedModels: [String] {
-        commonModels[runner] ?? ["default"]
+        modelSuggestions(for: runner)
     }
 
     func handleRunnerChanged(to newValue: String) {
         guard !isApplyingLoadedValues else { return }
-        if let firstModel = commonModels[newValue]?.first, model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if let firstModel = modelSuggestions(for: newValue).first, model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             model = firstModel
         }
         scheduleSave()
@@ -390,6 +423,27 @@ final class SettingsViewModel {
         suppressWhenActive = true
 
         scheduleSave()
+    }
+
+    private func modelSuggestions(for runnerID: String) -> [String] {
+        if let machineRunner = machineRunnerOption(for: runnerID) {
+            if !machineRunner.allowedModels.isEmpty {
+                return machineRunner.allowedModels
+            }
+            if let defaultModel = machineRunner.defaultModel?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !defaultModel.isEmpty {
+                return [defaultModel]
+            }
+            return []
+        }
+
+        return fallbackCommonModels[runnerID] ?? []
+    }
+
+    private func machineRunnerOption(for runnerID: String) -> MachineRunnerOption? {
+        let normalizedRunnerID = runnerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedRunnerID.isEmpty else { return nil }
+        return workspace.runState.currentRunnerConfig?.executionControls?.runners.first { $0.id == normalizedRunnerID }
     }
 
     private func applyResolvedConfig(_ config: CueLoopConfig) {

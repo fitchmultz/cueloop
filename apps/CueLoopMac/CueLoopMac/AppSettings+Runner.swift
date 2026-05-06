@@ -33,7 +33,7 @@ struct RunnerSettingsTab: View {
                         .foregroundStyle(.secondary)
 
                     FlexibleChoiceRow(
-                        options: viewModel.availableRunners.map { ($0.rawValue, $0.displayName) },
+                        options: viewModel.runnerChoices.map { ($0.value, $0.displayName) },
                         selection: $viewModel.runner
                     ) { newValue in
                         viewModel.handleRunnerChanged(to: newValue)
