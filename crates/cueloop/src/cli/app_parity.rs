@@ -232,6 +232,9 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
         ],
         &[
             "apps/CueLoopMac/CueLoopCoreTests/ConfigModelsTests.swift::test_decode_machineConfigResolve_includesWebhookUrlPolicyFields",
+            "apps/CueLoopMac/CueLoopMacTests/SettingsViewModelTests.swift::testSettingsUsesMachineAdvertisedRunnerOptionsAndPiModelDefault",
+            "apps/CueLoopMac/CueLoopMacTests/SettingsViewModelTests.swift::testSettingsKeepsConfiguredUnknownRunnerSelectable",
+            "apps/CueLoopMac/CueLoopMacTests/SettingsViewModelTests.swift::testSettingsUsesMachineAllowedModelsForPluginRunner",
         ],
         &["Unknown configured runner values must remain visible instead of being coerced away."],
     ),
@@ -254,6 +257,7 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
         ],
         &[
             "apps/CueLoopMac/CueLoopCoreTests/ConfigModelsTests.swift::test_decode_machineConfigResolve_includesWebhookUrlPolicyFields",
+            "apps/CueLoopMac/CueLoopMacTests/SettingsViewModelTests.swift::testRunnerChangeUsesNewRunnerSuggestionsBeforeBindingSettles",
         ],
         &[
             "The app must preserve machine-reported maxima such as 255 rather than truncating to old menu caps.",
