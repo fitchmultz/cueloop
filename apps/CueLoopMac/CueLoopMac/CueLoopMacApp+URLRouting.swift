@@ -26,6 +26,8 @@ import CueLoopCore
 
 @MainActor
 enum CueLoopURLRouter {
+    private static var duplicateWindowCleanupTasks: [Task<Void, Never>] = []
+
     static func handle(_ url: URL) {
         guard isSupportedScheme(url.scheme) else {
             CueLoopLogger.shared.info("Received URL with unexpected scheme: \(url.scheme ?? "nil")", category: .lifecycle)
@@ -141,5 +143,17 @@ enum CueLoopURLRouter {
         MainWindowService.shared.revealOrOpenPrimaryWindow()
         WorkspaceManager.shared.scheduleWorkspaceReveal(workspaceID)
         CueLoopMacPresentationRuntime.activateApplicationIfAllowed()
+        scheduleStackedDuplicateWindowCleanup()
+    }
+
+    private static func scheduleStackedDuplicateWindowCleanup() {
+        duplicateWindowCleanupTasks.forEach { $0.cancel() }
+        duplicateWindowCleanupTasks = [250_000_000, 900_000_000].map { delay in
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(delay))
+                guard !Task.isCancelled else { return }
+                MainWindowService.shared.closeStackedDuplicateWorkspaceWindows()
+            }
+        }
     }
 }

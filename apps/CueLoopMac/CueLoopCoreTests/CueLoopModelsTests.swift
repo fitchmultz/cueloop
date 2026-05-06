@@ -446,19 +446,19 @@ final class CueLoopModelsTests: CueLoopCoreTestCase {
         XCTAssertEqual(normalized?.phaseOverrides?.phase2?.model, "kimi-code/kimi-for-coding")
     }
 
-    func test_executionPreset_codexDeep_values() throws {
+    func test_executionPreset_deep_inheritsRunnerAndModelFromConfig() throws {
         let agent = try XCTUnwrap(CueLoopTaskExecutionPreset.codexDeep.agentOverride)
-        XCTAssertEqual(agent.runner, "codex")
-        XCTAssertEqual(agent.model, "gpt-5.4")
+        XCTAssertNil(agent.runner)
+        XCTAssertNil(agent.model)
         XCTAssertEqual(agent.modelEffort, "high")
         XCTAssertEqual(agent.phases, 3)
         XCTAssertEqual(agent.iterations, 1)
     }
 
-    func test_executionPreset_kimiFast_values() throws {
+    func test_executionPreset_fast_inheritsRunnerAndModelFromConfig() throws {
         let agent = try XCTUnwrap(CueLoopTaskExecutionPreset.kimiFast.agentOverride)
-        XCTAssertEqual(agent.runner, "codex")
-        XCTAssertEqual(agent.model, "gpt-5.4")
+        XCTAssertNil(agent.runner)
+        XCTAssertNil(agent.model)
         XCTAssertEqual(agent.modelEffort, "low")
         XCTAssertEqual(agent.phases, 1)
         XCTAssertEqual(agent.iterations, 1)
@@ -478,8 +478,6 @@ final class CueLoopModelsTests: CueLoopCoreTestCase {
 
     func test_executionPreset_matchingPreset_returnsNil_forCustomAgent() {
         let custom = CueLoopTaskAgent(
-            runner: "codex",
-            model: "gpt-5.4",
             modelEffort: "xhigh",
             phases: 2,
             iterations: 4
