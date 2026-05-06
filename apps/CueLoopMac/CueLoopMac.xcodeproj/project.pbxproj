@@ -12,6 +12,7 @@
 		0A91540F767F0B72B29548E4 /* RunControlSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4605921734E20A09AA113523 /* RunControlSection.swift */; };
 		0D895B7046CFDB71021376D8 /* WorkspaceManager+Restoration.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E0879001AE71A6C4482AB6 /* WorkspaceManager+Restoration.swift */; };
 		0E79247BA9CA0CD4E3C36057 /* CoordinatorDiagnosticsPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C57151B564DA7D16A332774 /* CoordinatorDiagnosticsPersistenceTests.swift */; };
+		0E79247BA9CA0CD4E3C36058 /* SettingsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C57151B564DA7D16A332775 /* SettingsViewModelTests.swift */; };
 		0F5CF3F1723144EA83490033 /* CueLoopCLIExecutableLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE8951D88274919856E798A /* CueLoopCLIExecutableLocator.swift */; };
 		0FFC498DAD0AE8456CBC8A74 /* AnalyticsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BB33D4574BC2AE48AE95A5 /* AnalyticsSection.swift */; };
 		11223344556677889900AABB /* GraphModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFF001122334455 /* GraphModels.swift */; };
@@ -406,6 +407,7 @@
 		88A3280F3774A438F9AF9EA5 /* CueLoopMacUILaunchAndTaskFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CueLoopMacUILaunchAndTaskFlowTests.swift; sourceTree = "<group>"; };
 		8B900514A511EC3E3539F2AA /* ElapsedTimeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ElapsedTimeView.swift; sourceTree = "<group>"; };
 		8C57151B564DA7D16A332774 /* CoordinatorDiagnosticsPersistenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CueLoopMacTests/CoordinatorDiagnosticsPersistenceTests.swift; sourceTree = SOURCE_ROOT; };
+		8C57151B564DA7D16A332775 /* SettingsViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CueLoopMacTests/SettingsViewModelTests.swift; sourceTree = SOURCE_ROOT; };
 		8D78AE2B0A8821C361BC7247 /* DependencyGraphCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyGraphCanvasView.swift; sourceTree = "<group>"; };
 		8FDE5AEE63017EB9E3B311E0 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
 		8FDE5AEE63017EB9E3B311E1 /* PreviewWorkspaceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewWorkspaceSupport.swift; sourceTree = "<group>"; };
@@ -814,6 +816,7 @@
 			isa = PBXGroup;
 			children = (
 				8C57151B564DA7D16A332774 /* CoordinatorDiagnosticsPersistenceTests.swift */,
+				8C57151B564DA7D16A332775 /* SettingsViewModelTests.swift */,
 			);
 			name = CueLoopMacTests;
 			sourceTree = "<group>";
@@ -1159,6 +1162,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E79247BA9CA0CD4E3C36057 /* CoordinatorDiagnosticsPersistenceTests.swift in Sources */,
+				0E79247BA9CA0CD4E3C36058 /* SettingsViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
