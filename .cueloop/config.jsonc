@@ -9,20 +9,20 @@
     },
     "git_publish_mode": "commit_and_push",
     "runner": "pi",
-    "model": "zai/glm-5.1",
+    "model": "openai-codex/gpt-5.5",
     "reasoning_effort": "medium",
     "phases": 3,
     "phase_overrides": {
       "phase1": {
-        "model": "zai/glm-5.1",
+        "model": "openai-codex/gpt-5.5",
         "reasoning_effort": "medium"
       },
       "phase2": {
-        "model": "zai/glm-5.1",
+        "model": "openai-codex/gpt-5.5",
         "reasoning_effort": "medium"
       },
       "phase3": {
-        "model": "zai/glm-5.1",
+        "model": "openai-codex/gpt-5.5",
         "reasoning_effort": "medium"
       }
     }
