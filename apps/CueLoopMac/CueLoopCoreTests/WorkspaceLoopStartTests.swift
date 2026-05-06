@@ -389,4 +389,76 @@ final class WorkspaceLoopStartTests: WorkspacePerformanceTestCase {
         XCTAssertTrue(commandLog.contains("--no-color machine run loop --resume --max-tasks 0 --parallel 3"))
         XCTAssertFalse(commandLog.contains("--parallel 2"))
     }
+
+    func test_startLoop_clampsParallelWorkersToMachineAdvertisedMaximum() async throws {
+        var workspace: Workspace!
+        let fixture = try CueLoopMockCLITestSupport.makeFixture(
+            prefix: "cueloop-workspace-loop-parallel-maximum-six",
+            scriptName: "mock-cueloop-loop-parallel-maximum-six",
+            seedQueueTasks: []
+        )
+        defer { CueLoopCoreTestSupport.shutdownAndRemove(fixture.rootURL, workspace) }
+        let commandLogURL = fixture.rootURL.appendingPathComponent("command-log-maximum.txt", isDirectory: false)
+
+        let executionControls = MachineExecutionControls(
+            runners: CueLoopMockCLITestSupport.defaultExecutionControls.runners,
+            reasoningEfforts: CueLoopMockCLITestSupport.defaultExecutionControls.reasoningEfforts,
+            parallelWorkers: MachineParallelWorkersControl(
+                min: 3,
+                max: 6,
+                defaultMissingValue: 3
+            )
+        )
+        let configResolveURL = try CueLoopMockCLITestSupport.writeJSONDocument(
+            CueLoopMockCLITestSupport.configResolveDocument(
+                workspaceURL: fixture.workspaceURL,
+                agent: AgentConfig(model: "model-test", iterations: 2),
+                executionControls: executionControls
+            ),
+            in: fixture.rootURL,
+            name: "config-resolve-maximum-six.json"
+        )
+
+        let script = """
+            #!/bin/sh
+            printf '%s\\n' "$*" >> "\(commandLogURL.path)"
+
+            case "$*" in
+              *"--no-color machine config resolve"*)
+              cat "\(configResolveURL.path)"
+              exit 0
+              ;;
+              *"--no-color machine run loop --resume --max-tasks 0 --parallel 6"*)
+              echo '{"version":3,"kind":"run_started","task_id":"RQ-LOOP-PARALLEL-MAXIMUM","phase":null,"message":null,"payload":null}'
+              echo '{"version":2,"task_id":null,"exit_code":0,"outcome":"completed"}'
+              exit 0
+              ;;
+            esac
+
+            echo "unexpected args: $*" 1>&2
+            exit 64
+            """
+        let scriptURL = try CueLoopMockCLITestSupport.makeExecutableScript(
+            in: fixture.rootURL,
+            name: fixture.scriptURL.lastPathComponent,
+            body: script
+        )
+        let client = try CueLoopCLIClient(executableURL: scriptURL)
+        workspace = CueLoopMockCLITestSupport.makeWorkspaceWithoutInitialRefresh(
+            workingDirectoryURL: fixture.workspaceURL,
+            client: client
+        )
+        await workspace.loadRunnerConfiguration(retryConfiguration: .minimal)
+
+        workspace.startLoop(parallelWorkers: 42)
+
+        let loopFinished = await WorkspacePerformanceTestSupport.waitFor(timeout: 2.0) {
+            !workspace.isRunning && workspace.lastExitStatus?.code == 0
+        }
+        XCTAssertTrue(loopFinished)
+
+        let commandLog = try String(contentsOf: commandLogURL, encoding: .utf8)
+        XCTAssertTrue(commandLog.contains("--no-color machine run loop --resume --max-tasks 0 --parallel 6"))
+        XCTAssertFalse(commandLog.contains("--parallel 42"))
+    }
 }

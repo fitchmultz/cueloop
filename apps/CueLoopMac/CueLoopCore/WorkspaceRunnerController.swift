@@ -251,13 +251,21 @@ final class WorkspaceRunnerController {
         let minimumParallelWorkers = Int(
             workspace.runState.currentRunnerConfig?.executionControls?.parallelWorkers.min ?? 2
         )
+        let maximumParallelWorkers = Swift.max(
+            minimumParallelWorkers,
+            Int(workspace.runState.currentRunnerConfig?.executionControls?.parallelWorkers.max ?? UInt8.max)
+        )
 
         var arguments = ["--no-color", "machine", "run", "loop", "--resume", "--max-tasks", "0"]
         if shouldForceDirtyRepo {
             arguments.append("--force")
         }
-        if let requestedParallelWorkers, requestedParallelWorkers >= minimumParallelWorkers {
-            arguments.append(contentsOf: ["--parallel", String(requestedParallelWorkers)])
+        if let requestedParallelWorkers {
+            let boundedParallelWorkers = Swift.min(
+                Swift.max(requestedParallelWorkers, minimumParallelWorkers),
+                maximumParallelWorkers
+            )
+            arguments.append(contentsOf: ["--parallel", String(boundedParallelWorkers)])
         }
         run(arguments: arguments)
     }
