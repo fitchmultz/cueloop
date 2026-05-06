@@ -50,6 +50,7 @@ public struct WorkspaceOperationalIssue: Identifiable, Equatable, Sendable {
     public enum Source: String, Sendable {
         case cli
         case watcher
+        case queue
         case workspacePersistence
         case appPersistence
         case workspaceRouting
@@ -262,6 +263,31 @@ public extension WorkspaceOperationalIssue {
             message: details.1,
             recoverySuggestion: details.2,
             timestamp: status.lastChecked
+        )
+    }
+
+    static func missingQueueFile(_ queueURL: URL) -> WorkspaceOperationalIssue {
+        WorkspaceOperationalIssue(
+            id: "queue.missing.\(queueURL.path)",
+            source: .queue,
+            severity: .error,
+            title: "Queue file missing",
+            message: Workspace.missingConfiguredQueueMessage(for: queueURL),
+            recoverySuggestion: "Initialize this workspace with `cueloop init`, restore the configured queue file, or update the queue path in `.cueloop/config.jsonc`.",
+            timestamp: Date()
+        )
+    }
+
+    static func queueLoadFailure(_ recoveryError: RecoveryError) -> WorkspaceOperationalIssue {
+        let workspacePath = recoveryError.workspaceURL?.path ?? "unknown-workspace"
+        return WorkspaceOperationalIssue(
+            id: "queue.load.\(recoveryError.category.rawValue).\(workspacePath)",
+            source: .queue,
+            severity: .error,
+            title: recoveryError.category.displayName,
+            message: recoveryError.message,
+            recoverySuggestion: recoveryError.suggestions.first ?? recoveryError.category.guidanceMessage,
+            timestamp: recoveryError.timestamp
         )
     }
 

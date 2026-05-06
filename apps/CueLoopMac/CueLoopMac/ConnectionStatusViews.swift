@@ -98,6 +98,8 @@ struct OperationalStatusBannerView: View {
             return "terminal.fill"
         case .watcher:
             return "dot.scope.display"
+        case .queue:
+            return "list.bullet.rectangle.portrait.fill"
         case .workspacePersistence, .appPersistence:
             return "internaldrive.fill.badge.exclamationmark"
         case .workspaceRouting:

@@ -64,6 +64,7 @@ struct WindowViewContainer: View {
                                 } else {
                                     WorkspaceWindowRegistry.shared.register(window: resolvedWindow)
                                 }
+                                scheduleStackedWindowCleanup()
                             }
                         )
                     )
@@ -138,5 +139,12 @@ struct WindowViewContainer: View {
             return state.workspaceIDs.first
         }
         return state.workspaceIDs[state.selectedTabIndex]
+    }
+
+    private func scheduleStackedWindowCleanup() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            MainWindowService.shared.closeStackedWorkspaceWindowsByFrame()
+        }
     }
 }

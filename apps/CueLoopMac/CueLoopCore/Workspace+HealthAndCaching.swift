@@ -35,6 +35,7 @@ public final class WorkspaceDiagnosticsState: ObservableObject {
     @Published public var persistenceIssue: PersistenceIssue?
     @Published public var navigationPersistenceIssue: PersistenceIssue?
     @Published public var watcherHealth: QueueWatcherHealth
+    @Published public var queueIssue: WorkspaceOperationalIssue?
     @Published public var revealHealth: WorkspaceRevealHealth?
     @Published public var operationalIssues: [WorkspaceOperationalIssue] = []
     @Published public var operationalSummary: WorkspaceOperationalSummary = .healthy
@@ -195,6 +196,10 @@ public extension Workspace {
 
         if let watcherIssue = WorkspaceOperationalIssue.fromWatcherHealth(diagnosticsState.watcherHealth) {
             issues.append(watcherIssue)
+        }
+
+        if let queueIssue = diagnosticsState.queueIssue {
+            issues.append(queueIssue)
         }
 
         if let revealIssue = diagnosticsState.revealHealth.flatMap(WorkspaceOperationalIssue.fromRevealHealth) {

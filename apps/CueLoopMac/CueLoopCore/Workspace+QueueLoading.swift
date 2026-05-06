@@ -159,6 +159,7 @@ public extension Workspace {
             )
             diagnosticsState.lastRecoveryError = recoveryError
             diagnosticsState.showErrorRecovery = true
+            diagnosticsState.queueIssue = .queueLoadFailure(recoveryError)
             taskState.tasksErrorMessage = recoveryError.message
             taskState.nextRunnableTaskID = nil
             runState.clearQueueBlockingState()
@@ -166,6 +167,7 @@ public extension Workspace {
             runState.runnerConfigErrorMessage = recoveryError.message
             runState.refreshOperatorStateForDisplay()
             stopFileWatching()
+            refreshOperationalHealth()
             return .failed
         }
     }
@@ -177,6 +179,15 @@ public extension Workspace {
             taskState.tasksErrorMessage = "CLI client not available."
             taskState.nextRunnableTaskID = nil
             runState.clearQueueBlockingState()
+            diagnosticsState.queueIssue = WorkspaceOperationalIssue(
+                id: "queue.client-missing.\(repositoryContext.workingDirectoryURL.path)",
+                source: .queue,
+                severity: .error,
+                title: "Queue unavailable",
+                message: "CLI client not available.",
+                recoverySuggestion: "Reinstall CueLoop or restore the bundled CLI binary."
+            )
+            refreshOperationalHealth()
             return
         }
 
@@ -200,7 +211,9 @@ public extension Workspace {
             taskState.tasksErrorMessage = recoveryError.message
             diagnosticsState.showErrorRecovery = true
             diagnosticsState.lastRecoveryError = recoveryError
+            diagnosticsState.queueIssue = .queueLoadFailure(recoveryError)
             runState.refreshOperatorStateForDisplay()
+            refreshOperationalHealth()
             return
         case .missingConfiguredQueueFile(let queueURL):
             guard isCurrentRepositoryContext(repositoryContext) else { return }
@@ -211,6 +224,8 @@ public extension Workspace {
             taskState.tasksErrorMessage = Self.missingConfiguredQueueMessage(for: queueURL)
             diagnosticsState.showErrorRecovery = false
             diagnosticsState.lastRecoveryError = nil
+            diagnosticsState.queueIssue = .missingQueueFile(queueURL)
+            refreshOperationalHealth()
             return
         }
 
@@ -222,6 +237,8 @@ public extension Workspace {
                 taskState.tasksErrorMessage = nil
                 diagnosticsState.showErrorRecovery = false
                 diagnosticsState.lastRecoveryError = nil
+                diagnosticsState.queueIssue = nil
+                self.refreshOperationalHealth()
             },
             handleMissingClient: { [taskState] in
                 taskState.tasksErrorMessage = "CLI client not available."
@@ -382,6 +399,8 @@ extension Workspace {
         )
         sanitizeRunControlSelection()
         taskState.tasksErrorMessage = nil
+        diagnosticsState.queueIssue = nil
+        refreshOperationalHealth()
     }
 
     func validateWorkspaceOverviewDocument(_ document: MachineWorkspaceOverviewDocument) throws {
