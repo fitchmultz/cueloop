@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Cursor runner model aliases now map OpenAI Codex-prefixed CueLoop model names to Cursor SDK model IDs instead of falling back to `composer-2`.
+- Reworked the public README into an outcome-first evaluator path with early visual proof, a no-runner smoke path, and clearer local-first positioning.
+
+### Fixed
+
+- `cueloop doctor` now detects configured Make targets defined in included Makefile fragments instead of falsely reporting the CI gate as missing.
+- `cueloop scan` safeguard dumps are redacted by default after runner-output parse/validation failures; raw dumps now require explicit debug/raw-dump opt-in.
 
 ## [0.5.0] - 2026-05-03
 

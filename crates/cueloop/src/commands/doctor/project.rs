@@ -24,7 +24,11 @@
 use crate::commands::doctor::types::{CheckResult, DoctorReport};
 use crate::config;
 use crate::contracts::{BlockingReason, BlockingState, BlockingStatus};
-use std::fs;
+use std::{
+    collections::HashSet,
+    fs,
+    path::{Path, PathBuf},
+};
 
 fn doctor_ci_blocked(
     pattern: &str,
@@ -86,7 +90,7 @@ fn check_ci_gate_prerequisites(report: &mut DoctorReport, resolved: &config::Res
         ));
         match fs::read_to_string(&makefile_path) {
             Ok(content) => {
-                if make_target_exists(&content, target) {
+                if make_target_exists(&makefile_path, &content, target) {
                     report.add(CheckResult::success(
                         "project",
                         "ci_target",
@@ -164,12 +168,82 @@ fn ci_gate_make_target(resolved: &config::Resolved) -> Option<String> {
         .or_else(|| Some("ci".to_string()))
 }
 
-fn make_target_exists(content: &str, target: &str) -> bool {
-    let needle = format!("{target}:");
-    content
-        .lines()
-        .map(str::trim_start)
-        .any(|line| line.starts_with(&needle))
+fn make_target_exists(makefile_path: &Path, content: &str, target: &str) -> bool {
+    let mut visited = HashSet::new();
+    if let Ok(canonical_path) = fs::canonicalize(makefile_path) {
+        visited.insert(canonical_path);
+    }
+    make_target_exists_in_content(makefile_path, content, target, &mut visited)
+}
+
+fn make_target_exists_in_file(
+    makefile_path: &Path,
+    target: &str,
+    visited: &mut HashSet<PathBuf>,
+) -> bool {
+    let Ok(canonical_path) = fs::canonicalize(makefile_path) else {
+        return false;
+    };
+    if !visited.insert(canonical_path) {
+        return false;
+    }
+    let Ok(content) = fs::read_to_string(makefile_path) else {
+        return false;
+    };
+    make_target_exists_in_content(makefile_path, &content, target, visited)
+}
+
+fn make_target_exists_in_content(
+    makefile_path: &Path,
+    content: &str,
+    target: &str,
+    visited: &mut HashSet<PathBuf>,
+) -> bool {
+    content.lines().any(|line| {
+        let line = line.trim_start();
+        make_line_defines_target(line, target)
+            || make_include_paths(line).iter().any(|include_path| {
+                let include_path = makefile_path
+                    .parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .join(include_path);
+                make_target_exists_in_file(&include_path, target, visited)
+            })
+    })
+}
+
+fn make_line_defines_target(line: &str, target: &str) -> bool {
+    if line.starts_with('#') {
+        return false;
+    }
+    let Some((target_list, after_colon)) = line.split_once(':') else {
+        return false;
+    };
+    if after_colon.trim_start().starts_with('=') || target_list.contains('=') {
+        return false;
+    }
+    target_list
+        .split_whitespace()
+        .any(|candidate| candidate == target)
+}
+
+fn make_include_paths(line: &str) -> Vec<PathBuf> {
+    if line.starts_with('#') {
+        return Vec::new();
+    }
+    let Some(rest) = line
+        .strip_prefix("include ")
+        .or_else(|| line.strip_prefix("-include "))
+        .or_else(|| line.strip_prefix("sinclude "))
+    else {
+        return Vec::new();
+    };
+
+    rest.split_whitespace()
+        .take_while(|part| !part.starts_with('#'))
+        .filter(|part| !part.contains('$'))
+        .map(PathBuf::from)
+        .collect()
 }
 
 /// Check if `.cueloop/logs/` is in repo root `.gitignore`.
@@ -259,4 +333,37 @@ pub(crate) fn check_gitignore_runtime_logs(
     }
 
     report.add(result);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_target_exists_reads_included_makefiles() -> anyhow::Result<()> {
+        let temp = tempfile::TempDir::new()?;
+        let makefile_path = temp.path().join("Makefile");
+        let mk_dir = temp.path().join("mk");
+        fs::create_dir_all(&mk_dir)?;
+        fs::write(&makefile_path, "include mk/ci.mk\n")?;
+        fs::write(
+            mk_dir.join("ci.mk"),
+            ".PHONY: agent-ci\nagent-ci:\n\t@echo ok\n",
+        )?;
+
+        let content = fs::read_to_string(&makefile_path)?;
+        assert!(make_target_exists(&makefile_path, &content, "agent-ci"));
+        Ok(())
+    }
+
+    #[test]
+    fn make_target_exists_ignores_variable_assignments() -> anyhow::Result<()> {
+        let temp = tempfile::TempDir::new()?;
+        let makefile_path = temp.path().join("Makefile");
+        fs::write(&makefile_path, "agent-ci := not-a-target\n")?;
+
+        let content = fs::read_to_string(&makefile_path)?;
+        assert!(!make_target_exists(&makefile_path, &content, "agent-ci"));
+        Ok(())
+    }
 }

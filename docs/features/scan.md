@@ -692,14 +692,12 @@ cueloop queue import --format json --input audit-findings.json
 | No tasks generated | Agent found no issues | Try broader focus or different mode |
 | Too many low-value tasks | Focus too broad | Narrow focus prompt |
 
-### Debug Mode
+### Troubleshooting dumps and debug logging
 
-Enable debug mode for troubleshooting:
-```bash
-cueloop scan --mode maintenance --debug "debug scan"
-```
+If scan fails **after** the runner finishes (for example, reloading or validating the queue), CueLoop may write a **redacted** copy of runner stdout to a safeguard dump path included in the error text.
 
-This saves raw (unredacted) output to `.cueloop/logs/debug.log` for investigation.
+- For **raw** safeguard dumps (secrets may be written to disk), set `CUELOOP_RAW_DUMP=1` or `CUELOOP_RAW_DUMP=true` when running `cueloop scan`. (API callers can set `ScanOptions.is_debug_mode` instead.)
+- For raw runner stream capture in `.cueloop/logs/debug.log`, use `cueloop run ... --debug` (scan does not accept `--debug` today).
 
 ---
 

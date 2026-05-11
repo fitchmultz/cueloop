@@ -21,6 +21,7 @@
 //! - Queue/done files are the source of truth for task ordering and status.
 //! - Runner execution requires stream-json output for parsing.
 //! - Permission/approval defaults come from config unless overridden at CLI.
+//! - Scan error safeguard dumps are redacted by default; raw dumps require `ScanOptions::is_debug_mode` and/or `CUELOOP_RAW_DUMP`.
 
 use crate::cli::scan::ScanMode;
 use crate::commands::run::PhaseType;
@@ -29,22 +30,9 @@ use crate::contracts::{
     RunnerCliOptionsPatch,
 };
 use crate::{config, fsutil, git, prompts, queue, runner, runutil, timeutil};
-use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Global flag indicating if debug mode is enabled.
-/// This is set by the CLI when `--debug` flag is used.
-static DEBUG_MODE: AtomicBool = AtomicBool::new(false);
-
-/// Set the global debug mode flag.
-pub fn set_debug_mode(enabled: bool) {
-    DEBUG_MODE.store(enabled, Ordering::SeqCst);
-}
-
-/// Check if debug mode is enabled.
-fn is_debug_mode() -> bool {
-    DEBUG_MODE.load(Ordering::SeqCst)
-}
 use anyhow::{Context, Result};
+use std::path::PathBuf;
 
 pub struct ScanOptions {
     pub focus: String,
@@ -58,6 +46,9 @@ pub struct ScanOptions {
     pub git_revert_mode: GitRevertMode,
     /// How to handle queue locking (acquire vs already-held by caller).
     pub lock_mode: ScanLockMode,
+    /// When true, error safeguard dumps may write raw runner stdout (see `fsutil::safeguard_text_dump`).
+    /// `cueloop scan` does not parse `--debug` yet; callers that need raw dumps set this explicitly.
+    pub is_debug_mode: bool,
     /// Optional output handler for streaming scan output.
     pub output_handler: Option<runner::OutputHandler>,
     /// Optional revert prompt handler for interactive UIs.
@@ -78,6 +69,23 @@ struct ScanRunnerSettings {
     cursor: Option<crate::contracts::CursorRunnerConfig>,
     runner_cli: runner::ResolvedRunnerCliOptions,
     permission_mode: Option<ClaudePermissionMode>,
+}
+
+/// Writes runner stdout to a safeguard dump; raw when `is_debug_mode` or `CUELOOP_RAW_DUMP` is set, else redacted.
+fn safeguard_scan_runner_stdout(
+    label: &str,
+    stdout: &str,
+    is_debug_mode: bool,
+) -> Result<(PathBuf, &'static str)> {
+    let raw_env = std::env::var(crate::constants::paths::ENV_RAW_DUMP)
+        .is_ok_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
+    if is_debug_mode {
+        fsutil::safeguard_text_dump(label, stdout, true).map(|path| (path, "raw"))
+    } else if raw_env {
+        fsutil::safeguard_text_dump(label, stdout, false).map(|path| (path, "raw"))
+    } else {
+        fsutil::safeguard_text_dump_redacted(label, stdout).map(|path| (path, "redacted"))
+    }
 }
 
 fn resolve_scan_runner_settings(
@@ -257,9 +265,10 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         Ok(queue) => queue,
         Err(err) => {
             let mut safeguard_msg = String::new();
-            match fsutil::safeguard_text_dump_redacted("scan_error", &output.stdout) {
-                Ok(path) => {
-                    let dump_type = if is_debug_mode() { "raw" } else { "redacted" };
+            let dump_result =
+                safeguard_scan_runner_stdout("scan_error", &output.stdout, opts.is_debug_mode);
+            match dump_result {
+                Ok((path, dump_type)) => {
                     safeguard_msg = format!("\n({dump_type} stdout saved to {})", path.display());
                 }
                 Err(e) => {
@@ -303,9 +312,13 @@ pub fn run_scan(resolved: &config::Resolved, opts: ScanOptions) -> Result<()> {
         }
         Err(err) => {
             let mut safeguard_msg = String::new();
-            match fsutil::safeguard_text_dump_redacted("scan_validation_error", &output.stdout) {
-                Ok(path) => {
-                    let dump_type = if is_debug_mode() { "raw" } else { "redacted" };
+            let dump_result = safeguard_scan_runner_stdout(
+                "scan_validation_error",
+                &output.stdout,
+                opts.is_debug_mode,
+            );
+            match dump_result {
+                Ok((path, dump_type)) => {
                     safeguard_msg = format!("\n({dump_type} stdout saved to {})", path.display());
                 }
                 Err(e) => {

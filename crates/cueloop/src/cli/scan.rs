@@ -96,6 +96,8 @@ pub fn handle_scan(args: ScanArgs, force: bool) -> Result<()> {
             } else {
                 scan_cmd::ScanLockMode::Acquire
             },
+            // `scan` has no `--debug` flag yet; wire through when scan gains parity with `run --debug`.
+            is_debug_mode: false,
             output_handler: None,
             revert_prompt: None,
         },

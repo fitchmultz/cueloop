@@ -1,68 +1,71 @@
 # CueLoop
 
+CueLoop helps developers turn one-off AI coding requests into a local, reviewable task loop: queue the work in repo-local JSONC files, track it through Git when shared mode is used, run it through Codex/Claude/Gemini/Pi-style agents, and require explicit review plus local checks before completion.
+
 [![crates.io](https://img.shields.io/crates/v/cueloop.svg)](https://crates.io/crates/cueloop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop)](https://docs.rs/cueloop)
 [![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/cueloop)](https://github.com/fitchmultz/cueloop/releases)
 
-CueLoop is a local-first AI coding workflow tool with a Rust CLI and a SwiftUI macOS app, both built around a structured task queue stored in your repository.
+![CueLoop three-phase agent workflow](docs/assets/images/2026-02-07-workflow-3phase.png)
 
-The primary executable and Cargo package are both `cueloop`. Repositories use `.cueloop/` for runtime state.
+## What you are seeing
 
-Teams use CueLoop when ad-hoc AI coding stops being enough and they need a repeatable way to turn requests into queued work, run that work through Codex/Claude/Gemini-style agents, and keep the result reviewable with local files, local CI, and explicit task history instead of hidden SaaS state.
+A task starts as repo-local queue data, moves through supervised planning, implementation, and review phases, then is accepted only after CueLoop updates the queue and runs the configured local gate. The important part is not the runner brand; it is that the workflow stays inspectable in your repository instead of disappearing into chat history or hidden SaaS state.
 
-## Reviewer Path
+You can inspect the current CLI without configuring an external model runner. Core commands include:
 
-If you are evaluating the repo quickly and want the fastest high-signal path:
+```text
+Commands:
+  queue     Inspect and manage the task queue
+  config    Inspect and manage CueLoop configuration
+  run       Run CueLoop supervisor (executes queued tasks)
+  task      Create and build tasks from freeform requests
+  scan      Scan repository for new tasks and focus areas
+  ...
 
-1. Read the product overview in this README.
-2. Run the no-runner-required verification flow in [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md).
-3. Skim the command map in [docs/cli.md](docs/cli.md).
-4. Use [docs/guides/evaluator-path.md](docs/guides/evaluator-path.md) for a short "what to try, what to expect" walkthrough.
-
-That path is intentionally local-first and does not require configuring Codex/Claude/Gemini before you can validate the repo.
-
-## What CueLoop Is For
-
-CueLoop is designed for engineering teams that want repeatable, auditable AI-assisted development workflows.
-
-It provides:
-
-- A structured task queue with explicit lifecycle and dependency links
-- Multi-runner execution (`codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, `pi`)
-- Supervised 1/2/3-phase execution (plan, implement, review)
-- Parallel execution with workspace isolation
-- Guardrails around queue validity, retries, session recovery, and local CI gates
-
-### Non-goals
-
-- Hosted SaaS orchestration (CueLoop is local-first)
-- Hidden black-box state (queue and done files are plain JSONC in `.cueloop/`)
-- Replacing your existing developer tooling; CueLoop integrates with it
-
-## Core Operating Model
-
-CueLoop centers on an operator-started run loop over repo-local tasks:
-
-1. Tasks live in `.cueloop/queue.jsonc` and completed work is archived to `.cueloop/done.jsonc` by default.
-2. A human starts `cueloop run one`, `cueloop run loop`, or `cueloop run loop --parallel <N>`.
-3. CueLoop invokes the configured runner through supervised one-, two-, or three-phase execution.
-4. In three-phase mode, Phase 3 reviews the implementation, resolves issues, and records completion.
-5. The configured CI gate runs before task completion and before automatic publish behavior.
-6. Post-run supervision validates queue state, archives the task, and commits or pushes according to `git_publish_mode`.
-7. Parallel mode applies the same task-sized workflow in isolated worker workspaces, then integrates completed workers back to the target branch.
-
-## Architecture at a Glance
-
-```mermaid
-flowchart LR
-  APP["macOS App<br>SwiftUI"] -->|shells out| CLI["cueloop CLI<br>Rust"]
-  CLI -->|reads/writes| QUEUE[.cueloop/queue.jsonc]
-  CLI -->|reads/writes| DONE[.cueloop/done.jsonc]
-  CLI -->|reads| CONFIG[.cueloop/config.jsonc]
-  CLI -->|spawns| RUNNERS["Runner CLIs<br>Codex / Claude / Gemini / OpenCode / Cursor / Kimi / Pi"]
+Common first commands:
+  cueloop init                         Bootstrap CueLoop in this repo
+  cueloop queue list                   See queued work
+  cueloop task "Fix the flaky test"    Create a task from a request
+  cueloop run one                      Run the next task
+  ...
 ```
 
-## Install
+## Who this is for
+
+CueLoop is for developers and small teams who already use AI coding agents but need the surrounding workflow to be repeatable:
+
+- evaluators who want a local-first agent orchestration project they can verify quickly
+- maintainers who want AI-generated work to move through the same queue, review, and CI path as human work
+- agent-heavy teams that want to swap runners without rewriting their repo workflow
+- macOS users who want a local app view over the same CLI behavior
+
+## The problem
+
+Ad-hoc AI coding works until the team needs to answer basic delivery questions:
+
+- What work is queued, blocked, running, or done?
+- Which agent ran it, with which local checks, and what happened next?
+- Can another developer resume the work from files in the repo?
+- Can we run more than one task without corrupting the branch?
+- Can we change from one agent runner to another without changing the process?
+
+CueLoop’s answer is a plain-file task queue, a supervised runner loop, and local validation gates that remain visible to Git and normal developer tools.
+
+## What CueLoop does
+
+| Problem | Capability | Proof / where to inspect |
+| --- | --- | --- |
+| AI work gets trapped in chat history | Stores active and completed work in repo-local `.cueloop/queue.jsonc` and `.cueloop/done.jsonc` JSONC files | `cueloop queue list`, `cueloop queue validate`, [Queue docs](docs/features/queue.md) |
+| Different agent CLIs have different knobs | Normalizes runner selection across `codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, and `pi` | `cueloop runner list`, [CLI reference](docs/cli.md) |
+| “Agent finished” is not enough quality control | Supports one-, two-, and three-phase execution: plan, implement, review/complete | `cueloop run one --phases 3`, [Architecture overview](docs/architecture.md) |
+| Local CI and queue state drift out of sync | Runs configured gates before completion and validates queue/done state after runs | `make agent-ci`, [CI strategy](docs/guides/ci-strategy.md) |
+| Parallel agent work can damage the base repo | Uses isolated worker workspaces for parallel execution and an integration loop for completed workers | `cueloop run loop --parallel <N>`, [Architecture overview](docs/architecture.md#sequence-parallel-worker-lifecycle) |
+| A GUI can become a second source of truth | The SwiftUI macOS app shells out to the same `cueloop` CLI and machine contract | `apps/CueLoopMac/`, [Machine contract](docs/machine-contract.md) |
+
+## Fastest way to see it work
+
+### 1. Install the CLI
 
 From crates.io:
 
@@ -70,11 +73,7 @@ From crates.io:
 cargo install cueloop
 ```
 
-This installs the `cueloop` executable.
-
-From source:
-
-> GNU Make >= 4 is required for project targets. On macOS, install via `brew install make` and use `gmake` unless GNU Make is already your default `make`.
+From this repository:
 
 ```bash
 git clone https://github.com/fitchmultz/cueloop cueloop
@@ -83,164 +82,127 @@ make install
 # macOS/Homebrew GNU Make users: gmake install
 ```
 
-## Supported Platforms & Toolchain
+### 2. Run the no-runner smoke path
 
-- Supported OS: macOS and Linux
-- Rust toolchain: pinned by `rust-toolchain.toml` (for deterministic fmt/clippy/test behavior)
-- SwiftUI app: macOS only (`apps/CueLoopMac/`)
-
-## Quick Start
-
-```bash
-# 1) Initialize in your repo
-cueloop init
-
-# 2) Inspect the default-safe profile
-cueloop config profiles
-
-# 3) Add a task
-cueloop task "Stabilize flaky queue integration test"
-
-# 4) Execute one task with the recommended safe profile
-cueloop run one --profile safe
-
-# 5) Inspect queue state
-cueloop queue list
-```
-
-`cueloop init` defaults to the safe path: non-aggressive approvals, no automatic git publish, parallel execution kept opt-in, and local repo trust created in `.cueloop/trust.jsonc`.
-Interactive init also lets you choose shared-vs-local queue tracking and opt into additional ignored local files for parallel worker sync; non-interactive init keeps the deterministic `.env*` sync default only.
-Use `--profile power-user` only when you explicitly want the higher-blast-radius behavior, including commit_and_push automation.
-On macOS, app-launched runs remain noninteractive: the app can supervise and disclose safety posture, but interactive approvals are still terminal-only.
-
-If you do not want to configure a runner yet, use the smoke-test flow instead of `cueloop run one`.
-That gives you a deterministic way to verify the CLI and repo health without any external model setup.
-
-## End-to-End Example
-
-Here is a concrete repo workflow for a team using Codex or Claude Code in a normal feature branch:
-
-```bash
-# install CueLoop in your application repo
-cargo install cueloop
-cd your-service
-cueloop init
-
-# turn a real request into queued work
-cueloop task "Add retry coverage for webhook delivery failures"
-
-# inspect the task CueLoop just created
-cueloop queue list
-cueloop queue show RQ-0001
-
-# let your configured runner plan, implement, and review the task
-cueloop run one --profile safe --phases 3
-
-# verify the repo is still healthy and the task moved forward
-cueloop queue list
-cueloop doctor
-```
-
-What this gives the team: one tracked queue, one explicit task lifecycle, one local verification path, and the flexibility to swap runners without changing the repo workflow.
-
-## Local Smoke Test (5 minutes)
-
-No external runner setup required:
+This path verifies the CLI and queue model without first wiring up Codex, Claude, Gemini, or another runner:
 
 ```bash
 cueloop init
 cueloop --help
-cueloop help-all
-cueloop run one --help
-cueloop scan --help
-cueloop queue list
-cueloop queue graph
 cueloop queue validate
-cueloop doctor
-make agent-ci
+cueloop queue explain
+cueloop run one --help
 ```
 
-Expected signals:
+Expected result: CueLoop creates or refreshes `.cueloop/` runtime files, command help is available, and queue commands print the current local task state.
 
-- Help and queue commands succeed
-- `cueloop doctor` exits successfully
-- `make agent-ci` completes with passing checks for the current dependency surface
-- Source snapshots without `.git/` fall back to `make release-gate` (`macos-ci` on macOS with Xcode, otherwise `ci`)
+For a reviewer-friendly script, use [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md). For a short evaluation route through the repo, use [docs/guides/evaluator-path.md](docs/guides/evaluator-path.md).
 
-Full scripted version: [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md)
+### 3. Try one real task loop
 
-## Security & Data Handling
+After choosing a runner/profile:
 
-CueLoop is local-first, but selected runner CLIs may transmit prompts/context to external APIs depending on your runner configuration.
+```bash
+cueloop task "Add retry coverage for webhook delivery failures"
+cueloop queue list
+cueloop queue show <created-task-id>
+cueloop run one --profile safe --phases 3
+cueloop queue validate
+```
 
-- Do not place secrets in task text, notes, or tracked config
-- Keep runtime artifacts local (`.cueloop/cache/`, `.cueloop/logs/`, `.cueloop/workspaces/`, `.cueloop/undo/`, `.cueloop/webhooks/`)
-- Use `make pre-public-check` before public release windows
+Use the task ID printed by `cueloop task` or `cueloop queue list`. That demonstrates the core loop: request → queue item → supervised agent phases → local validation → queue update.
 
-Security references:
+## How it works
 
-- [SECURITY.md](SECURITY.md)
-- [Security Model](docs/security-model.md)
+CueLoop centers on an operator-started loop over repository-local tasks.
 
-## Known Limitations
+```mermaid
+flowchart LR
+  APP["macOS App<br>SwiftUI"] -->|shells out| CLI["cueloop CLI<br>Rust"]
+  CLI -->|reads/writes| QUEUE[".cueloop/queue.jsonc"]
+  CLI -->|reads/writes| DONE[".cueloop/done.jsonc"]
+  CLI -->|reads| CONFIG[".cueloop/config.jsonc"]
+  CLI -->|spawns| RUNNERS["Runner CLIs<br>Codex / Claude / Gemini / OpenCode / Cursor / Kimi / Pi"]
+```
 
-- Quality/speed depend on selected runner model and prompts
-- UI tests are intentionally not part of default `make macos-ci` (headed interaction)
-- Parallel execution is experimental and introduces additional branch/workspace complexity in very large repos
+1. Tasks live in `.cueloop/queue.jsonc`; terminal tasks are archived to `.cueloop/done.jsonc`.
+2. A human starts `cueloop run one`, `cueloop run loop`, or `cueloop run loop --parallel <N>`.
+3. CueLoop resolves config, selected profile, runner overrides, queue state, and safety checks.
+4. The runner executes one, two, or three supervised phases.
+5. CueLoop runs the configured local gate before completion and before any configured publish behavior.
+6. Queue/done state is validated, archived, and finalized according to config.
+7. The macOS app uses the same CLI/machine surfaces rather than a separate workflow engine.
 
-## Versioning & Compatibility
+Deeper design notes live in [docs/architecture.md](docs/architecture.md), and command behavior lives in [docs/cli.md](docs/cli.md).
 
-CueLoop follows semantic versioning for the product and the `cueloop` crate/package.
+## Current limits and safety posture
 
-- Minor/patch releases preserve existing behavior unless explicitly documented
-- Breaking CLI/config behavior changes are called out in changelog and migration notes
+- CueLoop is local-first orchestration, not hosted SaaS. Runner CLIs may still send prompts/context to their external services depending on your runner configuration.
+- The safe onboarding path avoids automatic git publishing. Higher-blast-radius profiles such as power-user automation are opt-in.
+- Parallel execution is available but experimental; use it only when branch policy and workspace isolation are understood.
+- macOS UI tests are intentionally outside the default `make macos-ci` gate because they require headed interaction.
+- CueLoop does not replace your existing test/build tools; it calls your configured local gate.
 
-Details: [docs/versioning-policy.md](docs/versioning-policy.md)
+Security references: [SECURITY.md](SECURITY.md) and [docs/security-model.md](docs/security-model.md).
+
+## Project map
+
+| Path | Purpose |
+| --- | --- |
+| `crates/cueloop/` | Primary Rust 2024 crate and `cueloop` executable |
+| `crates/cueloop/src/` | CLI, queue, runner, config, migration, plugin, redaction, and support modules |
+| `crates/cueloop/tests/` | Rust integration tests and shared test support |
+| `apps/CueLoopMac/` | SwiftUI macOS app that delegates behavior to the bundled CLI |
+| `docs/` | Product docs, architecture, CLI reference, configuration, security, release, and evaluator guides |
+| `schemas/*.schema.json` | Generated JSON schemas; refresh with `make generate` when sources change |
+| `.cueloop/` | Repo-local task queue, done archive, config, prompt overrides, and runtime artifacts |
+| `Makefile`, `mk/` | Canonical local build, test, release, and verification entrypoints |
+
+## Development and verification
+
+Run commands from the repository root. GNU Make >= 4 is required; on macOS install Homebrew Make and use `gmake` if Apple `make` is first on `PATH`.
+
+```bash
+# Required everyday gate for normal changes
+make agent-ci
+
+# Fast docs/community gate
+make ci-docs
+
+# Full Rust release-shaped gate
+make ci
+
+# macOS app gate
+make macos-ci
+
+# Final release/platform gate
+make release-gate
+```
+
+`make agent-ci` routes based on the current local diff. Use [docs/guides/ci-strategy.md](docs/guides/ci-strategy.md) for the full gate map.
 
 ## Documentation
 
-Start here:
+Start with:
 
-- [Documentation Index](docs/index.md)
-- [Evaluator Path](docs/guides/evaluator-path.md)
-- [Architecture Overview](docs/architecture.md)
-- [Quick Start](docs/quick-start.md)
-- [Local Smoke Test](docs/guides/local-smoke-test.md)
-- [CLI Reference](docs/cli.md)
+- [Documentation index](docs/index.md)
+- [Evaluator path](docs/guides/evaluator-path.md)
+- [Quick start](docs/quick-start.md)
+- [Local smoke test](docs/guides/local-smoke-test.md)
+- [CLI reference](docs/cli.md)
 - [Configuration](docs/configuration.md)
-- [Project Operating Constitution](docs/guides/project-operating-constitution.md)
-- [Decisions](docs/decisions.md)
+- [Architecture overview](docs/architecture.md)
 - [Troubleshooting](docs/troubleshooting.md)
-- [CI and Test Strategy](docs/guides/ci-strategy.md)
-- [Public Readiness Checklist](docs/guides/public-readiness.md)
+- [Versioning policy](docs/versioning-policy.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
 
-Policies:
+## Versioning and license
 
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- [SECURITY.md](SECURITY.md)
-- [CHANGELOG.md](CHANGELOG.md)
+CueLoop follows semantic versioning for the product and the `cueloop` crate/package. Breaking CLI or config behavior changes are called out in the changelog and migration notes.
 
-## Repository Runtime State
+License: MIT.
 
-This repository may keep small sanitized runtime state for reproducible examples and documentation.
-In most consumer repositories, `.cueloop/` is project-local runtime state managed by `cueloop init`, including the generated `.cueloop/README.md` guidance file that is intended for agents and operators. Use `cueloop migrate runtime-dir --check` before applying supported runtime-state migrations.
+## Next action
 
-## Development
-
-```bash
-# Required everyday gate
-make agent-ci
-
-# Heaviest final gate before release/publication
-make release-gate
-
-# Public-readiness audit
-make pre-public-check
-```
-
-`make agent-ci` is the command most contributors and agents should use by default. The lower-level targets (`ci-docs`, `ci-fast`, `ci`, `macos-ci`) still exist, but they are mainly the implementation details behind that router and explicit power-user escape hatches.
-
-## License
-
-MIT
+If you are evaluating CueLoop, run the [Evaluator Path](docs/guides/evaluator-path.md). If you are ready to try it in a repo, install the CLI and run the no-runner smoke path above first.

@@ -80,6 +80,7 @@ fn scan_opts() -> ScanOptions {
         repoprompt_tool_injection: false,
         git_revert_mode: GitRevertMode::Ask,
         lock_mode: ScanLockMode::Held,
+        is_debug_mode: false,
         output_handler: None,
         revert_prompt: None,
     }

@@ -34,6 +34,7 @@ fn base_scan_options() -> scan_cmd::ScanOptions {
         repoprompt_tool_injection: false,
         git_revert_mode: GitRevertMode::Ask,
         lock_mode: scan_cmd::ScanLockMode::Acquire,
+        is_debug_mode: false,
         output_handler: None,
         revert_prompt: None,
     }
