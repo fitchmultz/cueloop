@@ -4,7 +4,7 @@ CueLoop helps developers turn one-off AI coding requests into a local, reviewabl
 
 [![crates.io](https://img.shields.io/crates/v/cueloop.svg)](https://crates.io/crates/cueloop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop)](https://docs.rs/cueloop)
-[![GitHub Release](https://img.shields.io/github/v/release/fitchmultz/cueloop)](https://github.com/fitchmultz/cueloop/releases)
+[![GitHub release v0.6.0](https://img.shields.io/badge/release-v0.6.0-blue)](https://github.com/fitchmultz/cueloop/releases/tag/v0.6.0)
 
 ![CueLoop three-phase agent workflow](docs/assets/images/2026-02-07-workflow-3phase.png)
 
@@ -62,6 +62,10 @@ CueLoop’s answer is a plain-file task queue, a supervised runner loop, and loc
 | Local CI and queue state drift out of sync | Runs configured gates before completion and validates queue/done state after runs | `make agent-ci`, [CI strategy](docs/guides/ci-strategy.md) |
 | Parallel agent work can damage the base repo | Uses isolated worker workspaces for parallel execution and an integration loop for completed workers | `cueloop run loop --parallel <N>`, [Architecture overview](docs/architecture.md#sequence-parallel-worker-lifecycle) |
 | A GUI can become a second source of truth | The SwiftUI macOS app shells out to the same `cueloop` CLI and machine contract | `apps/CueLoopMac/`, [Machine contract](docs/machine-contract.md) |
+
+## Why not just use Codex or Claude Code directly?
+
+CueLoop does not replace agent CLIs. It wraps them in a local task loop: queue, phase, validate, review, and archive work so agent output does not disappear into chat history or hidden SaaS state.
 
 ## Fastest way to see it work
 
