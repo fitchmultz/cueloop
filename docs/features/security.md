@@ -372,22 +372,28 @@ cueloop run one --force
 
 ## CI Gate
 
-The CI gate is a validation step that runs before commits are finalized, ensuring code quality and preventing broken changes.
+The CI gate is an **optional** CueLoop-managed validation subprocess. When `agent.ci_gate.enabled` is `true`, CueLoop runs the configured **argv-only** command after Phase 2 implementation and again before task completion (and before any configured automatic publish), which helps catch broken changes before they land. When the gate is disabled (the default: `enabled` omitted or `false`), task phases and completion still proceed; only the subprocess is skipped, and prompts should note that configured CI validation was skipped.
 
-### How It Works
+Canonical semantics, argv-only rules, and safety notes: [Agent and runners](../configuration/agent-and-runners.md).
+
+Interactive `cueloop init` can opt in and record `argv` for your project check; non-interactive init leaves the gate off (same as bundled defaults: `enabled: false` with a placeholder `argv` such as `["make","ci"]` that is not executed until you enable the gate).
+
+### How It Works (when enabled)
 
 ```
 Phase 2 (Implementation)
     ↓
 [Apply changes]
     ↓
-[Run CI gate command]
+[Run CI gate argv command]
     ↓
 Success → Continue to Phase 3
 Failure → Stop and report errors
 ```
 
-### Configuration
+When disabled, the subprocess step is skipped; implementation, review, and configured git behavior are unchanged except that CueLoop does not run your argv command for you.
+
+### Configuration example (opt-in)
 
 ```json
 {
@@ -402,16 +408,17 @@ Failure → Stop and report errors
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `ci_gate.enabled` | `false` | Enable/disable CI gate |
-| `ci_gate.argv` | `["make", "ci"]` | Direct argv command to run for validation |
+| `ci_gate.enabled` | `false` (including when omitted) | When `false`, CueLoop does not launch the CI subprocess; phases and handoff still run. |
+| `ci_gate.argv` | `["make", "ci"]` in bundled defaults (used only when enabled) | Direct argv command for validation (no shell); override per repository (for example `["make","agent-ci"]` here). |
 
 ### CI Gate Execution
 
-The CI gate runs:
+The CI gate subprocess runs only when enabled:
+
 1. After Phase 2 implementation (before Phase 3)
 2. After Phase 3 review (before completion)
 
-When the CI gate fails:
+When the CI gate fails (when enabled):
 - Task stops for review
 - Changes are NOT automatically reverted
 - User can fix issues and retry

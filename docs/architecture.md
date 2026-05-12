@@ -23,7 +23,7 @@ CueLoop's primary product loop is an operator-started run over explicit repo-loc
 1. Tasks are selected from `.cueloop/queue.jsonc`.
 2. The run engine executes one, two, or three supervised phases through the configured runner.
 3. Phase 3, when enabled, performs the review/completion pass before the task is accepted.
-4. The CI gate runs before completion and before any configured automatic publish behavior.
+4. When `agent.ci_gate` is enabled, the CI gate subprocess runs before completion and before any configured automatic publish behavior; when disabled, CueLoop skips that subprocess only.
 5. Post-run supervision validates queue/done state, archives terminal tasks, and finalizes git according to `git_publish_mode`.
 6. Parallel mode runs task-sized workers in isolated workspaces and uses an integration loop to rebase, validate, and push completed work back to the target branch.
 

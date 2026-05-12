@@ -33,13 +33,13 @@ The phase system is CueLoop's core execution model, designed to balance automati
 │                              ↓                                          │
 │  Phase 2: Implementation + CI                                           │
 │  ├── Agent implements the plan from Phase 1                             │
-│  ├── CI gate runs (configured command; this repo uses make agent-ci)    │
+│  ├── CI gate runs when enabled (e.g. make agent-ci in this repo)        │
 │  └── Stops BEFORE completion (manual review opportunity)                │
 │                              ↓                                          │
 │  Phase 3: Review + Completion                                           │
 │  ├── Agent reviews diff for quality/safety                              │
 │  ├── Task must be marked done/rejected                                  │
-│  ├── CI gate runs again                                                 │
+│  ├── CI gate runs again when enabled                                    │
 │  └── Git commit/push if enabled                                         │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘

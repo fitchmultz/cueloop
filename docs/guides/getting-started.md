@@ -747,7 +747,7 @@ cueloop prd create requirements.md
 4. **Archive regularly**: Keep your queue clean with `cueloop queue archive`
 5. **Run doctor**: Check `cueloop doctor` if something seems off
 6. **Version control**: Keep your `.cueloop/` directory in git
-7. **CI gate**: Always ensure the configured CI gate passes before considering work done (`make agent-ci` in this repo)
+7. **CI gate**: When `agent.ci_gate.enabled` is true, ensure the configured argv command passes before considering work done (`make agent-ci` in this repo). When the gate is off, CueLoop still completes tasks; run your own checks (for example `make agent-ci`) before you merge or publish, or enable the gate in config or via interactive `cueloop init`.
 
 ### Getting Help
 
