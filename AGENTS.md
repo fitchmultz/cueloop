@@ -108,6 +108,18 @@ Final handoff format:
 - Risks, skipped checks, or `[VERIFY]` items
 - Next steps only when a real follow-up remains
 
+## Cursor Cloud specific instructions
+
+This is a Rust-only CLI project on Linux (the SwiftUI macOS app cannot build here). All `macos-*` Make targets are out of scope.
+
+- **Rust toolchain**: Pinned to 1.95.0 via `rust-toolchain.toml`; `rustup` auto-resolves it. Components: `rustfmt`, `clippy`.
+- **cargo-nextest**: Required for `make test` (it falls back to `cargo test` without it, but nextest is preferred). Installed via `cargo install cargo-nextest --locked`.
+- **git default branch**: Must be `main` (`git config --global init.defaultBranch main`), otherwise several integration tests that create temp repos will fail with `fatal: 'origin/main' is not a commit`.
+- **Pre-existing test failures**: Two `doctor_contract_test` tests (`doctor_auto_fix_repairs_invalid_queue` and `doctor_passes_in_clean_env`) fail because they expect the `pi` runner binary on PATH. These are environment-dependent and do not indicate a code regression.
+- **No external services**: No Docker, databases, or network services needed. The entire build/test/lint workflow is self-contained.
+- **Key commands**: See the `## Setup and commands` table above. For day-to-day work: `make lint`, `make format-check`, `make test`, `cargo build -p cueloop`, and `make ci-fast`.
+- **Quick CLI iteration**: `cargo run -p cueloop -- <command>` from the repo root, or build once with `cargo build -p cueloop` and use `target/debug/cueloop`.
+
 ## Updating this file
 
 Keep this file concise and repo-specific. Update it when commands, paths, invariants, or source-of-truth docs change. Put materially different subdirectory guidance in a nested `AGENTS.md`/`AGENTS.override.md`; do not bloat the root. Remove stale instructions rather than adding exceptions. Do not store model choice, reasoning effort, sandbox, or approval policy here.
