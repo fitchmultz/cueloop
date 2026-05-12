@@ -55,7 +55,7 @@ Moved to [Task Schema and Field Reference](task-schema.md#per-task-agent-configu
 
 ## Task Creation
 
-Moved to [Task Operations](task-operations.md#task-creation). That page owns direct creation, task builder, templates, refactor scans, imports, clone workflows, and app entry points.
+Moved to [Task Operations](task-operations.md#task-creation). That page owns direct creation, task builder, `cueloop machine task create` / `build` for agents and automation, templates, refactor scans, imports, clone workflows, and app entry points. Versioned request and response shapes are specified in [Machine Contract](../machine-contract.md).
 
 ## Task Editing
 

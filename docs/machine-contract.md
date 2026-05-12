@@ -293,8 +293,8 @@ Structured task creation for agents and apps: read a `MachineTaskCreateRequest` 
 The request includes:
 - `version` (must match the supported create request version, currently `1`)
 - `title` (required, non-empty after trim)
-- optional `description`, `tags`, `scope`
-- `priority` as the same string values the human CLI accepts for task priority
+- optional `description`, `tags`, and `scope` (`tags` / `scope` may be omitted and default to empty lists)
+- `priority` (required): same string values the human CLI accepts for task priority (parsed into the internal priority enum)
 - optional `template` and `target` for template-guided creation
 
 **Without `template`:** the handler acquires the queue lock, allocates the next id across the active queue and done archive, appends a single new `todo` task from the provided fields, creates an undo snapshot, saves the queue, and returns the new `Task`.

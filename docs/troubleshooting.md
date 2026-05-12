@@ -7,6 +7,22 @@ Parent: [CueLoop Documentation](index.md)
 
 Purpose: provide fast resolution paths for common setup and CI failures.
 
+## `cueloop machine ...` failures (agents and automation)
+
+Symptoms:
+
+- Scripts parse stderr as plain text but CueLoop emitted JSON.
+- Pipelines expect JSON on stdout but see nothing or human-oriented messages.
+- `machine task create` / `build` / `insert` / `mutate` report empty input.
+
+Fixes:
+
+- On failure **before** the success document is printed, stderr carries a structured `machine_error` document (`version`, `code`, `message`, optional `detail`, `retryable`). Decode that JSON instead of grepping English phrases. See [Machine Contract](machine-contract.md#machine-command-failures-machine_error-version-1).
+- Successful machine commands print **pretty JSON on stdout only** (no log lines mixed in). For `machine task build`, runner chatter must not appear on machine stdout; if your wrapper captures fd 1 and fd 2 together, split streams.
+- JSON requests are read from `--input <path>` **or stdin** when `--input` is omitted; empty stdin fails fast with a clear error.
+
+If mutations fail with queue lock errors, use `cueloop machine queue unlock-inspect` and the human `cueloop queue unlock` path as documented in the machine contract and [CLI Reference](cli.md).
+
 ## GNU Make Errors on macOS
 
 Symptom: Makefile errors about GNU Make version.

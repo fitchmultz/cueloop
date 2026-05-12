@@ -4,6 +4,7 @@ Owner: Maintainers
 Source of truth: this document for agent-oriented CueLoop usage
 Parent: [CueLoop Documentation](../index.md)
 
+For request/response JSON shapes and version fields, use [Machine Contract](../machine-contract.md). For how machine create/build relate to human `task` commands, see [Task Operations](../features/task-operations.md#machine-task-create-and-build-agents-and-automation).
 
 CueLoop has different defaults for human operators and already-running coding agents.
 
@@ -38,13 +39,13 @@ cueloop machine task done RQ-0001 --note "Verified with make agent-ci"
 cueloop machine task reject RQ-0001 --note "Rejected because ..."
 ```
 
-Structured task creation (append one `todo` task with queue lock and undo; optional `template` instead runs the task-builder runner and must yield exactly one task; stdout is `MachineTaskCreateDocument`):
+Structured task creation (append one `todo` task with queue lock and undo; optional `template` instead runs the task-builder runner and must yield exactly one task; stdout is `MachineTaskCreateDocument`). Omit `--input` to read the JSON request from stdin instead of a file.
 
 ```bash
 cueloop machine task create --input task-create.json
 ```
 
-AI-assisted task drafting via the task-builder runner (stdout is `MachineTaskBuildDocument` only; same runner stack as `cueloop task build`):
+AI-assisted task drafting via the task-builder runner (stdout is `MachineTaskBuildDocument` only; same runner stack as `cueloop task build`). Same stdin rule as create when `--input` is omitted.
 
 ```bash
 cueloop machine task build --input task-build-request.json

@@ -13,6 +13,7 @@ This page shows how operators create and mutate CueLoop tasks from the CLI and t
 - [Task Lifecycle and Priority](task-lifecycle.md) — statuses, lifecycle timestamps, runnability basics, and priority semantics.
 - [Task Relationships](task-relationships.md) — dependency, blocking, relation, duplicate, and hierarchy semantics.
 - [Queue](queue.md) — queue file operations, ordering, archive, repair, import/export, and locks.
+- [Machine Contract](../machine-contract.md) — versioned JSON for `cueloop machine task create`, `build`, and other machine surfaces used by agents and the macOS app.
 
 ---
 
@@ -24,6 +25,8 @@ This page shows how operators create and mutate CueLoop tasks from the CLI and t
 |--------|---------|----------|
 | Direct CLI | `cueloop task "description"` | Quick task creation |
 | Task Builder | `cueloop task build "description"` | AI-assisted task generation |
+| Machine create | `cueloop machine task create --input …` | Append one `todo` task (or template-guided single task) with stable JSON I/O for agents and automation |
+| Machine build | `cueloop machine task build --input …` | Same task-builder stack as `task build`; stdout is only the versioned `MachineTaskBuildDocument` |
 | Template | `cueloop task template build <name>` | From predefined template |
 | Refactor Scan | `cueloop task refactor` | Auto-generate from large files |
 | Import | `cueloop queue import` | Bulk import from CSV/JSON |
@@ -59,6 +62,22 @@ cueloop task build "Add feature" --template feature --strict-templates
 ```
 
 The task builder uses the prompt at `.cueloop/prompts/task_builder.md` (or embedded default) to guide AI task generation.
+
+### Machine task create and build (agents and automation)
+
+For coding agents, CI, and other callers that need **only JSON on stdout** and structured failures on stderr, use the machine commands. They read a JSON request from `--input <path>` **or from stdin** when `--input` is omitted (stdin must be non-empty JSON).
+
+```bash
+cueloop machine task create --input task-create.json
+cueloop machine task build --input task-build-request.json
+# Optional: pipe a request document
+printf '%s' '{"version":1,"title":"Fix flaky test","priority":"normal"}' | cueloop machine task create
+```
+
+- **Create:** Request fields match `MachineTaskCreateRequest` in the crate contracts (`version`, `title`, `priority`, optional `description` / `tags` / `scope`, optional `template` / `target`). Without `template`, CueLoop acquires the queue lock, appends one new `todo` task, creates undo, and prints `MachineTaskCreateDocument`. With `template`, the task-builder runner runs with `strict_templates: true` and must produce exactly one task.
+- **Build:** Request fields match `MachineTaskBuildRequest` (`version`, `request` prompt, optional template hints, `strict_templates`, `estimated_minutes`, etc.). CLI flags from `AgentArgs` (for example `--runner`, `--model`, `--effort`) apply the same way as on other machine runner surfaces.
+
+Authoritative wire format and response fields: [Machine Contract](../machine-contract.md#machine-task-create-version-1) and [Machine Contract](../machine-contract.md#machine-task-build-version-1). JSON Schemas: `cueloop machine schema` (keys `task_create_request`, `task_create`, `task_build_request`, `task_build`).
 
 ### Template-Based Creation
 
