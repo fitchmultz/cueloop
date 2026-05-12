@@ -239,7 +239,7 @@ These commands are now first-class continuation tools. They explain whether CueL
 If `cueloop run loop` stops on queue validation, start with `cueloop queue repair --dry-run` to preview recoverable fixes, apply them with `cueloop queue repair`, and optionally confirm the result with `cueloop queue validate`.
 
 `cueloop task insert --format json`, `cueloop task mutate --format json`, and `cueloop task decompose --format json` emit versioned JSON documents suitable for automation.
-Machine clients should prefer `cueloop machine task show`, lifecycle commands (`start`, `status`, `done`, `reject`), `task insert`, `task mutate`, and `task followups apply` for stable JSON and structured errors.
+Machine clients should prefer `cueloop machine task show`, lifecycle commands (`start`, `status`, `done`, `reject`), deterministic `task create`, runner-backed `task build` when they intentionally invoke the task-builder, `task insert`, `task mutate`, and `task followups apply` for stable JSON and structured errors.
 `cueloop task followups apply` and `cueloop machine task followups apply` consume `.cueloop/cache/followups/<TASK_ID>.json`, validate the proposal, create undo, insert generated tasks into the queue, and record continuation state in the same family as task mutate/decompose. Follow-up proposals use numeric top-level `"version": 1`; `followups@v1` is the contract name, not the canonical JSON version value.
 
 ### Machine API
@@ -252,6 +252,8 @@ cueloop machine queue repair --dry-run
 cueloop machine queue undo --dry-run
 cueloop machine config resolve
 cueloop machine doctor report
+cueloop machine task create --input task-create.json
+cueloop machine task build --input task-build-request.json
 cueloop machine task insert --input task-insert.json
 cueloop machine task mutate --input request.json
 cueloop machine task show RQ-0001
