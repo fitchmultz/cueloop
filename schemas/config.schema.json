@@ -13,7 +13,7 @@
             "make",
             "ci"
           ],
-          "enabled": true
+          "enabled": false
         },
         "claude_bin": "claude",
         "claude_permission_mode": "accept_edits",
@@ -526,7 +526,7 @@
           }
         },
         "enabled": {
-          "description": "Enable or disable the CI gate entirely.",
+          "description": "Enable or disable the CI gate entirely. When omitted, the gate stays **disabled** (CueLoop does not run a CI subprocess).",
           "type": [
             "boolean",
             "null"

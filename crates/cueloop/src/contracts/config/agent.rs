@@ -33,7 +33,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct CiGateConfig {
-    /// Enable or disable the CI gate entirely.
+    /// Enable or disable the CI gate entirely. When omitted, the gate stays **disabled** (CueLoop does not run a CI subprocess).
     pub enabled: Option<bool>,
 
     /// Direct argv execution. The first item is the program and remaining items are arguments.
@@ -42,7 +42,7 @@ pub struct CiGateConfig {
 
 impl CiGateConfig {
     pub fn is_enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
+        self.enabled.unwrap_or(false)
     }
 
     pub fn display_string(&self) -> String {
@@ -239,14 +239,14 @@ impl AgentConfig {
         self.ci_gate
             .as_ref()
             .map(CiGateConfig::is_enabled)
-            .unwrap_or(true)
+            .unwrap_or(false)
     }
 
     pub fn ci_gate_display_string(&self) -> String {
         self.ci_gate
             .as_ref()
             .map(CiGateConfig::display_string)
-            .unwrap_or_else(|| "make ci".to_string())
+            .unwrap_or_else(|| "disabled".to_string())
     }
 
     pub fn merge_from(&mut self, other: Self) {

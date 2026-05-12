@@ -292,6 +292,8 @@ fn init_with_wizard_answers_creates_configured_files() -> Result<()> {
         phases: 2,
         queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
         parallel_ignored_file_allowlist: vec!["local-tool.json".to_string()],
+        ci_gate_enabled: true,
+        ci_gate_argv: Some(vec!["make".to_string(), "test".to_string()]),
         create_first_task: true,
         first_task_title: Some("Test task".to_string()),
         first_task_description: Some("Test description".to_string()),
@@ -319,6 +321,11 @@ fn init_with_wizard_answers_creates_configured_files() -> Result<()> {
     assert_eq!(
         cfg.parallel.ignored_file_allowlist,
         Some(vec!["local-tool.json".to_string()])
+    );
+    assert!(cfg.agent.ci_gate_enabled());
+    assert_eq!(
+        cfg.agent.ci_gate.as_ref().and_then(|g| g.argv.as_ref()),
+        Some(&vec!["make".to_string(), "test".to_string()])
     );
 
     let queue = crate::queue::load_queue(&resolved.queue_path)?;
@@ -353,6 +360,8 @@ fn write_config_merges_parallel_allowlist_into_existing_config() -> Result<()> {
             "local-b.json".to_string(),
             "local-a.json".to_string(),
         ],
+        ci_gate_enabled: false,
+        ci_gate_argv: None,
         create_first_task: false,
         first_task_title: None,
         first_task_description: None,

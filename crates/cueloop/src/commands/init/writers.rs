@@ -163,12 +163,27 @@ pub fn write_config(
         let runner_str = format!("{:?}", answers.runner).to_lowercase();
         let model_str = answers.model.clone();
 
+        let ci_gate = if answers.ci_gate_enabled {
+            serde_json::json!({
+                "enabled": true,
+                "argv": answers
+                    .ci_gate_argv
+                    .as_ref()
+                    .expect("wizard must set ci_gate_argv when ci_gate_enabled is true")
+            })
+        } else {
+            serde_json::json!({
+                "enabled": false
+            })
+        };
+
         let mut config_json = serde_json::json!({
             "version": 2,
             "agent": {
                 "runner": runner_str,
                 "model": model_str,
-                "phases": answers.phases
+                "phases": answers.phases,
+                "ci_gate": ci_gate
             }
         });
         if !answers.parallel_ignored_file_allowlist.is_empty() {

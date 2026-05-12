@@ -132,6 +132,19 @@ fn validate_config_allows_missing_ci_gate_shape_when_disabled() {
 }
 
 #[test]
+fn config_default_disables_ci_gate() {
+    let cfg = Config::default();
+    assert!(!cfg.agent.ci_gate_enabled());
+    let gate = cfg
+        .agent
+        .ci_gate
+        .as_ref()
+        .expect("default config includes structured ci_gate");
+    assert_eq!(gate.enabled, Some(false));
+    assert_eq!(gate.argv, Some(vec!["make".to_string(), "ci".to_string()]));
+}
+
+#[test]
 fn validate_config_rejects_shell_launcher_argv_without_shell_mode() {
     let mut cfg = Config::default();
     cfg.agent.ci_gate = Some(crate::contracts::CiGateConfig {

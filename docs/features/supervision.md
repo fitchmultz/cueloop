@@ -16,7 +16,7 @@ CueLoop's supervision system provides human-in-the-loop oversight for CI gate en
 The supervision system orchestrates the post-execution workflow after an AI runner completes a task. It serves as the quality gate between task implementation and task completion, handling:
 
 **Core Responsibilities:**
-- **CI Gate Enforcement**: Running the configured CI command (`make ci` fallback; this repo config uses `make agent-ci`) to validate changes
+- **CI Gate Enforcement**: When `agent.ci_gate.enabled` is true, running the configured argv-only CI command (for example `make ci`, or `make agent-ci` in this repository) to validate changes before completion
 - **Git State Management**: Committing, pushing, and reverting changes based on outcomes
 - **Queue Updates**: Marking tasks as done, archiving completed work, and managing task lifecycle
 - **Session Resumption**: Coordinating continue/resume cycles for CI failure recovery
@@ -50,8 +50,8 @@ The CI gate is CueLoop's primary quality enforcement mechanism. It runs after ta
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `ci_gate.enabled` | `true` | Enable/disable the CI gate entirely |
-| `ci_gate.argv` | `["make", "ci"]` | Direct argv command to run for validation (this repo overrides it to `["make", "agent-ci"]`) |
+| `ci_gate.enabled` | `false` | Enable/disable the CI gate entirely (interactive `cueloop init` can turn this on and capture `argv`) |
+| `ci_gate.argv` | `["make", "ci"]` in bundled defaults (unused while disabled) | Direct argv command to run for validation when the gate is enabled (this repo overrides it to `["make", "agent-ci"]`) |
 
 ### Command Execution
 
