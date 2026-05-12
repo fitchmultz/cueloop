@@ -18,6 +18,16 @@ brew install make
 gmake agent-ci
 ```
 
+## `make agent-ci` Tier Looks Wrong
+
+Symptom: you expected `make ci` or `make macos-ci` but saw `noop`, `ci-docs`, or `ci-fast` (or the opposite).
+
+Fixes:
+
+- Routing uses **only** the current uncommitted working tree (unstaged, staged, and untracked paths). Commits already on your branch do **not** affect the choice.
+- From the repo root, inspect the classifier: `bash scripts/agent-ci-surface.sh --target` and `bash scripts/agent-ci-surface.sh --reason`.
+- After editing `scripts/agent-ci-surface.sh` or `scripts/lib/release_policy.sh`, run `cargo test -p cueloop --test agent_ci_surface_contract_test` and extend that file if routing rules change. Full behavior is documented in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
+
 ## `make agent-ci` Fails on Env Safety
 
 Symptom: tracked env file detected.

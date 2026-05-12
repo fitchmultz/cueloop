@@ -1,23 +1,15 @@
-//! Agent CI surface classifier contract tests.
+//! Contract tests for the agent CI surface classifier (`scripts/agent-ci-surface.sh`).
 //!
-//! Purpose:
-//! - Agent CI surface classifier contract tests.
+//! Responsibility: assert representative working-tree patterns map to the expected
+//! `make agent-ci` tiers (`noop`, `ci-docs`, `ci-fast`, `ci`, `macos-ci`) using the
+//! same shell entrypoint as production.
 //!
-//! Responsibilities:
-//! - Verify the classifier reasons about the current uncommitted working tree.
-//! - Guard representative path routing for `noop`, `ci-docs`, `ci-fast`, `ci`, and `macos-ci`.
+//! Non-scope: executing Makefile targets; exhaustive coverage of every branch in
+//! `scripts/lib/release_policy.sh`.
 //!
-//! Not handled here:
-//! - Executing the Makefile targets selected by the classifier.
-//! - Exhaustive path-matrix testing for every policy branch.
-//!
-//!
-//! Usage:
-//! - Used through the crate module tree or integration test harness.
-//!
-//! Invariants/assumptions:
-//! - The classifier script and shared shell libs live at stable repo-relative paths.
-//! - Git is available locally for temporary repository setup.
+//! Invariants/assumptions: `scripts/agent-ci-surface.sh`, `scripts/lib/cueloop-shell.sh`,
+//! and `scripts/lib/release_policy.sh` are copied from this repo into a minimal temp
+//! git worktree; `git` is on `PATH`.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
