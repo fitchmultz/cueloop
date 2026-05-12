@@ -28,6 +28,17 @@ Fixes:
 - From the repo root, inspect the classifier: `bash scripts/agent-ci-surface.sh --target` and `bash scripts/agent-ci-surface.sh --reason`.
 - After editing `scripts/agent-ci-surface.sh` or `scripts/lib/release_policy.sh`, run `cargo test -p cueloop --test agent_ci_surface_contract_test` and extend that file if routing rules change. Full behavior is documented in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
 
+## Workspace `target/debug` Unchanged After `make agent-ci`
+
+Symptom: `make agent-ci` finished successfully, but `target/debug/cueloop` (or other default `target/` outputs) look stale.
+
+Explanation: `make agent-ci` runs the routed tier with `CUELOOP_CARGO_MODE=agent`, so Cargo uses `CUELOOP_CARGO_TARGET_DIR` under `target/agents/$(AGENT_ID)/` (default `AGENT_ID=manual`) instead of the normal workspace `target/` tree. That isolates agent/CI runs from interactive builds (see root `Makefile` and [`docs/guides/ci-strategy.md`](guides/ci-strategy.md#principles)).
+
+Fixes:
+
+- For day-to-day CLI iteration, use `cargo build -p cueloop` / `cargo run -p cueloop -- …`, or invoke `make ci-fast` / `make ci` directly (they default to `CUELOOP_CARGO_MODE=local`).
+- To inspect binaries produced by `agent-ci`, look under `target/agents/manual/` unless you set `AGENT_ID` (see `make help`).
+
 ## `make agent-ci` Fails on Env Safety
 
 Symptom: tracked env file detected.
