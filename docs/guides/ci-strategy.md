@@ -45,6 +45,7 @@ Optional environment (see `make help`):
 - `CUELOOP_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.
 - `CUELOOP_AGENT_CI_MIN_TIER=ci-fast|ci|macos-ci` — raise the selected gate to at least that tier (for example `macos-ci` before merge).
 - `CUELOOP_XCODE_CLEAN_DERIVED_DATA=1` — delete the target's Xcode derived data under `target/tmp/xcode-deriveddata` before `macos-build`, `macos-test`, UI bundle prep, or `macos-ci`. Default local behavior keeps DerivedData for normal incremental Xcode builds.
+- `CUELOOP_CARGO_MODE=local|agent` — defaults to `local` when you invoke `make ci-fast`, `make ci`, or `make macos-ci` directly, so Cargo uses the normal workspace `target/` tree. The `agent-ci` recipe sets `CUELOOP_CARGO_MODE=agent` for the nested Make invocation so the routed tier builds under `target/agents/$(AGENT_ID)/` (default `AGENT_ID=manual`), isolating artifacts from interactive worktrees; when `sccache` is on `PATH`, agent mode may also set `RUSTC_WRAPPER` (see root `Makefile`).
 
 ### `make ci` on macOS and `macos-ci` dependency graph
 

@@ -118,6 +118,11 @@ check-env-safety → check-backup-artifacts → check-file-size-limits → rust-
 
 Optional cold or offline prep: `make deps` runs `cargo fetch --locked` after toolchain/version checks; it is not part of the default `ci-fast` / `ci` graphs.
 
+### Rust dependencies
+
+- **`make update`** runs `cargo update` and refreshes `Cargo.lock` to the latest versions **compatible with existing `Cargo.toml` requirements**. Bumping minimum versions of direct dependencies is still an explicit manifest edit; the target does not rewrite requirement ranges for you.
+- After lockfile refreshes, run the routed gate (`make agent-ci`) and consider `make security-audit` for release-facing work (see [`AGENTS.md`](AGENTS.md)).
+
 Run required gate with:
 
 ```bash
