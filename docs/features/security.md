@@ -432,6 +432,7 @@ This ensures:
 - Code passes all checks
 - Tests pass
 - Build succeeds
+- `install-verify` checks that the release CLI runs (`--help`) from a **temporary** install directory only; it does not write to `$(BIN_DIR)`, `~/.local/bin`, or other user-global locations (explicit `make install` still performs a real install when you want one)
 
 ### Security Benefits
 
