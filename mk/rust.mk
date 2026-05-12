@@ -4,7 +4,7 @@
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.
 # Invariants/Assumptions: The including Makefile defines CUELOOP_ENV_RESET, release stamp variables, toolchain variables, shell flags, and shared resource knobs first.
 
-$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CRATE_SOURCE_FILES)
+$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CLI_INPUT_FILES)
 	@mkdir -p "$(CUELOOP_STAMP_DIR)"
 	@echo "→ Release build..."
 	@$(CUELOOP_ENV_RESET); scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path >/dev/null
@@ -233,6 +233,27 @@ release-artifacts:
 
 pre-public-check:
 	@scripts/pre-public-check.sh
+
+build-cache-doctor:
+	@echo "→ Build cache diagnostics..."; \
+	printf '  RUSTC_WRAPPER=%s\n' "$${RUSTC_WRAPPER:-}"; \
+	printf '  CARGO_TARGET_DIR=%s\n' "$${CARGO_TARGET_DIR:-}"; \
+	printf '  CARGO_INCREMENTAL=%s\n' "$${CARGO_INCREMENTAL:-}"; \
+	printf '  CUELOOP_XCODE_CLEAN_DERIVED_DATA=%s\n' "$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)"; \
+	printf '  XCODE_DERIVED_DATA_ROOT=%s\n' "$(XCODE_DERIVED_DATA_ROOT)"; \
+	for path in target target/debug target/debug/deps target/debug/.fingerprint target/debug/incremental target/agents target/tmp target/tmp/xcode-deriveddata; do \
+		if [ -e "$$path" ]; then \
+			size="$$(du -sh "$$path" 2>/dev/null | awk '{print $$1}')"; \
+			entries="$$(python3 -c 'import os,sys; print(sum(1 for _ in os.scandir(sys.argv[1])))' "$$path" 2>/dev/null || printf 'n/a')"; \
+			printf '  %-32s size=%-8s entries=%s\n' "$$path" "$$size" "$$entries"; \
+		else \
+			printf '  %-32s missing\n' "$$path"; \
+		fi; \
+	done; \
+	if command -v sccache >/dev/null 2>&1; then \
+		echo "  sccache:"; \
+		sccache --show-stats | sed -n '1,28p' | sed 's/^/    /'; \
+	fi
 
 clean: clean-temp
 	@cargo clean

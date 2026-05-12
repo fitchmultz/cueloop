@@ -73,6 +73,15 @@ If macOS prompts for password/Touch ID before a UI run, that is the system appro
 
 If an interrupted run strands `target/tmp/locks/xcodebuild.lock`, rerun the same target. CueLoop now removes stale project-owned Xcode build locks automatically once the recorded owner PID is gone, and it keeps waiting only for live holders.
 
+Symptom: Xcode or `make macos-build` looks stuck, shows a stale bundled CLI, or you suspect corrupted DerivedData under `target/tmp/xcode-deriveddata`.
+
+Fixes:
+
+- Default Make targets **reuse** Xcode DerivedData for faster incremental builds. To wipe the tree for that lane before running it, either set `CUELOOP_XCODE_CLEAN_DERIVED_DATA=1` for one invocation or use an explicit clean wrapper: `make macos-build-clean`, `make macos-test-clean`, `make macos-ci-clean`, `make macos-ui-build-for-testing-clean`, or `make macos-test-window-shortcuts-clean`.
+- For a broader cold reset of temp outputs (stamp + all default DerivedData locations), use `make clean-temp` (see [`docs/guides/ci-strategy.md`](guides/ci-strategy.md#cleaning-targettmp)).
+- To inspect Cargo and default Xcode cache paths (sizes and entry counts), run `make build-cache-doctor`.
+- When iterating **only** in Xcode, the “Build and Bundle CueLoop” run script consults `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` so Swift-only edits do not re-bundle the CLI; if Rust or bundling scripts changed and Xcode did not pick it up, run a clean build lane above or touch the inputs the xcfilelist tracks.
+
 For gate choice, shared-workstation caps, and preserved UI evidence capture, use [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
 
 ## Need Visual Evidence from UI Tests

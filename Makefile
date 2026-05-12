@@ -46,10 +46,11 @@ CUELOOP_XCODE_JOBS ?= 0
 CUELOOP_STAMP_DIR ?= target/tmp/stamps
 CUELOOP_RELEASE_BUILD_STAMP := $(CUELOOP_STAMP_DIR)/cueloop-release-build.stamp
 # Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `cueloop-cli-bundle.sh`.
-CUELOOP_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh
-CUELOOP_CRATE_SOURCE_FILES := $(shell find crates -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) 2>/dev/null | LC_ALL=C sort)
-# Set to 1 to keep Xcode derived data between runs (faster local iteration; less pristine than default).
-CUELOOP_XCODE_KEEP_DERIVED_DATA ?= 0
+CUELOOP_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh scripts/lib/cueloop-shell.sh
+CUELOOP_CLI_INPUT_FILES := $(shell find crates/cueloop -type f \( -path '*/src/*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' -o -path '*/assets/*' \) 2>/dev/null | LC_ALL=C sort)
+# Default local Xcode builds/tests to normal incremental DerivedData reuse.
+# Set CUELOOP_XCODE_CLEAN_DERIVED_DATA=1, or run explicit *-clean targets, when a fresh Xcode build tree is required.
+CUELOOP_XCODE_CLEAN_DERIVED_DATA ?= 0
 # Internal ship-gate toggle: reuse one derived-data tree across macos-build/test/contracts.
 CUELOOP_XCODE_REUSE_SHIP_DERIVED_DATA ?= 0
 # Prefer the rustup-managed pinned toolchain from rust-toolchain.toml when present.
@@ -100,9 +101,9 @@ MAKEFLAGS += --no-builtin-rules
 .PHONY: help install install-verify macos-install-app update security-audit lint lint-fix format format-check type-check clean clean-temp test generate docs build ci ci-fast ci-docs deps \
 	rust-toolchain-check rust-toolchain-drift-check \
 	changelog changelog-preview changelog-check version-check version-sync publish-check release release-verify release-artifacts pre-commit pre-public-check release-gate \
-	profile-ship-gate profile-ship-gate-clean agent-ci check-env-safety check-backup-artifacts check-file-size-limits check-repo-safety macos-preflight macos-build macos-test macos-ci macos-test-ui \
-	macos-ui-build-for-testing macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
-	macos-test-window-shortcuts macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean
+	profile-ship-gate profile-ship-gate-clean agent-ci build-cache-doctor check-env-safety check-backup-artifacts check-file-size-limits check-repo-safety macos-preflight macos-build macos-build-clean macos-test macos-test-clean macos-ci macos-ci-clean macos-test-ui \
+	macos-ui-build-for-testing macos-ui-build-for-testing-clean macos-ui-retest macos-test-ui-artifacts macos-ui-artifacts-clean \
+	macos-test-window-shortcuts macos-test-window-shortcuts-clean macos-test-contracts macos-test-settings-smoke macos-test-workspace-routing-contract coverage coverage-clean
 help:
 	@echo "Everyday commands:"
 	@echo "  make agent-ci    # Required pre-commit gate: routes from the current local diff"
@@ -119,6 +120,8 @@ help:
 	@echo "  make coverage     # Generate code coverage report (requires cargo-llvm-cov)"
 	@echo "  make coverage-clean  # Remove coverage artifacts"
 	@echo "  make macos-test-window-shortcuts # Run focused multi-window shortcut UI regressions"
+	@echo "  make macos-build-clean / macos-test-clean / macos-ci-clean # Clean Xcode DerivedData, then run target"
+	@echo "  make build-cache-doctor # Inspect Cargo/Xcode cache state and suspicious target growth"
 	@echo "  make macos-test-contracts # Run deterministic non-XCTest macOS contract checks"
 	@echo "  make macos-test-settings-smoke # Run noninteractive Settings open-path contract coverage"
 	@echo "  make macos-test-workspace-routing-contract # Run noninteractive workspace routing contract coverage"
@@ -151,7 +154,7 @@ help:
 	@echo "  CUELOOP_UI_SCREENSHOT_MODE=timeline # off|checkpoints|timeline (for macos-ui-retest debugging)"
 	@echo "  CUELOOP_UI_ONLY_TESTING=CueLoopMacUITests/CueLoopMacUILaunchAndTaskFlowTests/test_createNewTask_viaQuickCreate # Target macOS UI retests"
 	@echo "  CUELOOP_UI_ARTIFACTS_ROOT=target/ui-artifacts # Export root for visual artifacts"
-	@echo "  CUELOOP_XCODE_KEEP_DERIVED_DATA=1 # Keep Xcode incremental caches (default 0 = clean derived data per gate)"
+	@echo "  CUELOOP_XCODE_CLEAN_DERIVED_DATA=1 # Delete the target's Xcode DerivedData before building (default 0 = incremental)"
 	@echo "  CUELOOP_AGENT_CI_MIN_TIER=macos-ci|ci|ci-fast # Floor for agent-ci routing (optional)"
 	@echo "  CUELOOP_AGENT_CI_FORCE_MACOS=1 # Always run macos-ci from agent-ci"
 

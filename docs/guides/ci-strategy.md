@@ -43,7 +43,7 @@ Optional environment (see `make help`):
 
 - `CUELOOP_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.
 - `CUELOOP_AGENT_CI_MIN_TIER=ci-fast|ci|macos-ci` — raise the selected gate to at least that tier (for example `macos-ci` before merge).
-- `CUELOOP_XCODE_KEEP_DERIVED_DATA=1` — skip deleting Xcode derived data under `target/tmp/xcode-deriveddata` for `macos-build` / default `macos-test` (faster local iteration; default remains clean derived data per run).
+- `CUELOOP_XCODE_CLEAN_DERIVED_DATA=1` — delete the target's Xcode derived data under `target/tmp/xcode-deriveddata` before `macos-build`, `macos-test`, UI bundle prep, or `macos-ci`. Default local behavior keeps DerivedData for normal incremental Xcode builds.
 
 ### `make ci` on macOS and `macos-ci` dependency graph
 
@@ -51,9 +51,9 @@ Optional environment (see `make help`):
 
 ### Release build stamp and bundling
 
-- The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, `scripts/cueloop-cli-bundle.sh`, or tracked Rust sources under `crates/**` are newer than the stamp (no unconditional `FORCE` rebuild).
+- The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, the CLI bundling shell scripts, or CLI inputs under `crates/cueloop/src`, `crates/cueloop/assets`, `crates/cueloop/Cargo.toml`, or `crates/cueloop/build.rs` are newer than the stamp (no unconditional `FORCE` rebuild).
 - `install` copies from `target/release/cueloop` after the stamp recipe runs, avoiding a second `cueloop-cli-bundle.sh` invocation in the same gate.
-- Xcode’s “Build and Bundle CueLoop” phase copies `target/release/cueloop` into the app bundle for **Release** when that binary already exists; otherwise it falls back to `cueloop-cli-bundle.sh` (for example Debug builds or cold Xcode-only builds).
+- Xcode’s “Build and Bundle CueLoop” phase runs through `cueloop-cli-bundle.sh` and uses `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` for dependency analysis, so Xcode does not rerun the phase on unrelated Swift-only no-op builds but still reruns when Rust CLI source, embedded prompt/runner assets, manifests, or bundling scripts change.
 
 ### Cleaning `target/tmp`
 
@@ -182,7 +182,7 @@ Defaults:
 
 - `CUELOOP_CI_JOBS=0` lets cargo/nextest use tool-managed parallelism for fastest local iteration.
 - `CUELOOP_XCODE_JOBS=0` keeps xcodebuild on tool-managed parallelism by default; set `CUELOOP_XCODE_JOBS=4` on shared workstations when you need a cap.
-- `CUELOOP_XCODE_KEEP_DERIVED_DATA=0` deletes Xcode derived data for `macos-build` / default `macos-test` before building (reproducible; slower when iterating).
+- `CUELOOP_XCODE_CLEAN_DERIVED_DATA=0` keeps Xcode DerivedData for normal incremental local builds. Set `CUELOOP_XCODE_CLEAN_DERIVED_DATA=1` or run an explicit `*-clean` target when you need to force a fresh Xcode build tree.
 - Set either value explicitly (for example `CUELOOP_CI_JOBS=4`) on shared workstations.
 
 ## Demo automation readiness exception
