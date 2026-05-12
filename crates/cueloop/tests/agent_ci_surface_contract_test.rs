@@ -265,6 +265,28 @@ fn classifier_routes_makefile_macos_build_edit_to_macos_ci() {
 }
 
 #[test]
+fn classifier_routes_makefile_bundle_script_mention_without_macos_targets_to_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_file(
+        &repo_path.join("Makefile"),
+        "help:\n\t@echo ok\n\n# scripts/cueloop-cli-bundle.sh (Makefile-only mention)\n",
+    );
+
+    assert_eq!(run_classifier(repo_path, "--target"), "ci");
+    let reason = run_classifier(repo_path, "--reason");
+    assert!(
+        reason.contains("release-shaped"),
+        "expected Rust release gate routing; got: {reason}"
+    );
+    assert!(
+        !reason.contains("macOS ship"),
+        "Makefile-only bundle script mentions should not escalate to macOS ship gate; got: {reason}"
+    );
+}
+
+#[test]
 fn classifier_routes_ci_router_script_to_ci_fast() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
