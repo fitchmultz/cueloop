@@ -95,13 +95,13 @@ Lower-level gate reference (mostly implementation detail / power-user material):
 Docs-only gate (`ci-docs`) pipeline:
 
 ```
-check-env-safety → check-backup-artifacts
+check-env-safety → check-backup-artifacts → check-file-size-limits → docs/community scan
 ```
 
 Fast gate (`ci-fast`) pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format-check → lint → test
+check-env-safety → check-backup-artifacts → check-file-size-limits → rust-toolchain-check → version-check → format-check → lint → test
 ```
 
 Full Rust release gate (`ci`) adds:
@@ -113,8 +113,10 @@ build → generate → install-verify
 Canonical full `make ci` pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format-check → lint → test → build → generate → install-verify
+check-env-safety → check-backup-artifacts → check-file-size-limits → rust-toolchain-check → version-check → format-check → lint → test → build → generate → install-verify
 ```
+
+Optional cold or offline prep: `make deps` runs `cargo fetch --locked` after toolchain/version checks; it is not part of the default `ci-fast` / `ci` graphs.
 
 Run required gate with:
 
