@@ -38,6 +38,19 @@ cueloop machine task done RQ-0001 --note "Verified with make agent-ci"
 cueloop machine task reject RQ-0001 --note "Rejected because ..."
 ```
 
+Structured task creation (append one `todo` task with queue lock and undo; optional `template` instead runs the task-builder runner and must yield exactly one task; stdout is `MachineTaskCreateDocument`):
+
+```bash
+cueloop machine task create --input task-create.json
+```
+
+AI-assisted task drafting via the task-builder runner (stdout is `MachineTaskBuildDocument` only; same runner stack as `cueloop task build`):
+
+```bash
+cueloop machine task build --input task-build-request.json
+# Optional overrides mirror other machine runner surfaces, e.g. --runner, --model, --effort
+```
+
 Atomic queue shaping:
 
 ```bash
@@ -96,7 +109,11 @@ cueloop task build ...
 cueloop task decompose ...
 cueloop task update ...
 cueloop scan ...
+cueloop machine task build ...
+cueloop machine task decompose ...
 ```
+
+`cueloop machine task create` uses the task-builder runner only when the JSON request includes `template`; omit `template` for a pure queue append with no runner.
 
 Use them only when the user explicitly asks CueLoop to run or plan work through another runner.
 
