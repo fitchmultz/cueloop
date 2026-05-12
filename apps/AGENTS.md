@@ -12,6 +12,7 @@ This file applies to `apps/**`. CueLoopMac is a native SwiftUI companion app tha
 - `apps/CueLoopMac/CueLoopMac/` — SwiftUI app shell, views, commands, settings, routing, and presentation state.
 - `apps/CueLoopMac/CueLoopCoreTests/`, `CueLoopMacTests/`, `CueLoopMacUITests/` — non-UI, app, and headed UI test targets.
 - `apps/CueLoopMac/CueLoopMac.xcodeproj/` — Xcode project. Avoid manual project churn unless target membership/settings really changed.
+- `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` — committed input list for Xcode’s “Build and Bundle CueLoop” phase so Swift-only edits do not re-run the CLI bundle when Rust sources, embedded assets, manifests, or bundling scripts are unchanged; update it when those inputs change (release integration tests assert it stays aligned with `crates/cueloop`).
 - `apps/CueLoopMac/build/`, `apps/CueLoopMac/target/`, and `target/tmp/xcode-deriveddata/` — ignored build artifacts.
 - App/CLI parity registry: `../crates/cueloop/src/cli/app_parity.rs`.
 
@@ -33,13 +34,17 @@ Run from the repository root; Make wraps Xcode with the required bundling, locks
 | Required app ship gate | `make macos-ci` |
 | Routed local gate | `make agent-ci` |
 | Build app | `make macos-build` |
+| Build app (fresh Xcode DerivedData for this lane) | `make macos-build-clean` |
 | Non-UI app tests | `make macos-test` |
+| Non-UI app tests (fresh DerivedData first) | `make macos-test-clean` |
+| Full macOS ship gate (fresh shared DerivedData first) | `make macos-ci-clean` |
 | Build UI-test bundles once | `make macos-ui-build-for-testing` |
 | Re-run UI tests | `make macos-ui-retest` |
 | Capture headed UI artifacts | `make macos-test-ui-artifacts` |
 | Clean UI artifacts | `make macos-ui-artifacts-clean` |
 | Focused Settings contract | `make macos-test-settings-smoke` |
 | Focused workspace-routing contract | `make macos-test-workspace-routing-contract` |
+| Cache / DerivedData diagnostics | `make build-cache-doctor` |
 
 `scripts/cueloop-cli-bundle.sh` is the single CLI bundling/build entrypoint for Makefile, Xcode, and release consumers. Do not add standalone Cargo fallback logic inside Xcode settings or app-specific scripts.
 
