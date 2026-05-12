@@ -37,12 +37,13 @@ Related feature docs:
     "phases": 3,
     "reasoning_effort": "medium",
     "ci_gate": {
-      "enabled": true,
-      "argv": ["make", "ci"]
+      "enabled": false
     }
   }
 }
 ```
+
+Start with the CI gate off until you have a repo-local argv command you trust; enable it when you are ready for CueLoop to enforce that check before completion.
 
 ---
 
@@ -79,8 +80,8 @@ Treat permissive modes (`yolo`, bypass-style approvals, publish-on-run) as high-
 
 `agent.ci_gate` is the execution validation gate.
 
-- Keep `enabled: true` unless you have a documented temporary exception.
-- `ci_gate.argv` is argv-only (no shell-string launchers like `sh -c`).
+- Defaults keep `enabled` **false** until you configure a command; interactive `cueloop init` can enable it and capture `argv`.
+- When `enabled` is true, set `ci_gate.argv` to a direct executable argv (no shell-string launchers like `sh -c`).
 
 Canonical details: [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
 

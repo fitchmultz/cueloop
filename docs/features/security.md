@@ -402,7 +402,7 @@ Failure → Stop and report errors
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `ci_gate.enabled` | `true` | Enable/disable CI gate |
+| `ci_gate.enabled` | `false` | Enable/disable CI gate |
 | `ci_gate.argv` | `["make", "ci"]` | Direct argv command to run for validation |
 
 ### CI Gate Execution

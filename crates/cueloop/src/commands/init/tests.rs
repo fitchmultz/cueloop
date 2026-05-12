@@ -391,6 +391,8 @@ fn init_with_wizard_answers_creates_configured_files() -> anyhow::Result<()> {
         phases: 2,
         queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
         parallel_ignored_file_allowlist: Vec::new(),
+        ci_gate_enabled: false,
+        ci_gate_argv: None,
         create_first_task: true,
         first_task_title: Some("Test task".to_string()),
         first_task_description: Some("Test description".to_string()),
@@ -426,6 +428,7 @@ fn init_with_wizard_answers_creates_configured_files() -> anyhow::Result<()> {
     let cfg: Config = serde_json::from_str(&cfg_raw)?;
     assert_eq!(cfg.agent.runner, Some(crate::contracts::Runner::Codex));
     assert_eq!(cfg.agent.phases, Some(2));
+    assert!(!cfg.agent.ci_gate_enabled());
 
     let queue = crate::queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue.tasks.len(), 1);

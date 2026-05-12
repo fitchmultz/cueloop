@@ -65,7 +65,7 @@ cueloop init --non-interactive
 
 `cueloop init` creates or updates local repository trust (`.cueloop/trust.jsonc`), refreshes the generated runtime README, and adds the trust file to `.gitignore`. Use `cueloop config trust init` only for trust-only repair in an already-initialized repo.
 
-Interactive init can select extra ignored files for parallel workers; manual additions belong in trusted `parallel.ignored_file_allowlist` and follow the small-file allowlist contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync).
+Interactive init can optionally enable the CI gate and record argv for your check command (defaults stay off in non-interactive init). It can also select extra ignored files for parallel workers; manual additions belong in trusted `parallel.ignored_file_allowlist` and follow the small-file allowlist contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync).
 
 ### Create and Run
 

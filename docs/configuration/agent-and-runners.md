@@ -24,7 +24,7 @@ Supported fields:
   **Parallel workers:** Parallel workers inherit this setting inside each workspace. Parallel execution remains experimental.
 - `session_timeout_hours`: session timeout in hours for crash recovery (default: `24`). Sessions older than this threshold are considered stale and require explicit user confirmation to resume. Set to a higher value if you want to allow resuming sessions after longer periods.
 - `runner_retry`: runner invocation retry/backoff configuration for transient failure handling. See [`agent.runner_retry`](#agentrunner_retry) below.
-- `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported.
+- `ci_gate`: structured CI gate config. Use `argv` only; shell-string execution is unsupported. Omitted `enabled` is treated as **false**, so CueLoop does not run a CI subprocess until you opt in. Interactive `cueloop init` asks whether to enable the gate and records your argv.
   **Safety warning:** Disabling the CI gate skips CueLoop-managed validation before completion/publish, which may allow broken code to be pushed. This does not disable the task run itself.
 - `claude_bin`, `codex_bin`, `opencode_bin`, `gemini_bin`, `kimi_bin`, `pi_bin`: override built-in runner executable path/name.
 - `cursor_sdk_node_bin`: override the Node.js executable used by CueLoop's Cursor SDK bridge (default: `node`). It selects Node only; see [Cursor SDK setup](#cursor-sdk-setup) for SDK resolution, install paths, and version-drift behavior.

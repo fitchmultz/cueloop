@@ -185,7 +185,7 @@ impl Default for Config {
                 repoprompt_plan_required: Some(false),
                 repoprompt_tool_injection: Some(false),
                 ci_gate: Some(CiGateConfig {
-                    enabled: Some(true),
+                    enabled: Some(false),
                     argv: Some(vec!["make".to_string(), "ci".to_string()]),
                 }),
                 git_revert_mode: Some(GitRevertMode::Ask),

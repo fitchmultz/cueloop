@@ -292,13 +292,13 @@ CueLoop uses a structured **3-phase workflow** to ensure quality. Understanding 
 **Phase 2: Implementation**
 - The AI executes the cached plan
 - Changes are applied to the codebase
-- The configured CI gate (`make agent-ci` in this repo) runs automatically
+- When the CI gate is enabled in config, the configured command runs (for example `make agent-ci` in this repository); otherwise CueLoop skips that subprocess and prompts still remind you what verification was skipped
 - If CI fails, the AI attempts to fix issues
 
 **Phase 3: Review**
 - The AI reviews all changes against quality standards
 - Any flagged issues are addressed
-- Final CI gate verification
+- When the CI gate is enabled, it runs again before completion
 - Task is marked complete
 
 ### Phase Mode Comparison

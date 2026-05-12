@@ -170,7 +170,7 @@ This prevents headless automation from silently discarding or duplicating interr
     "repo_trusted": true,
     "dirty_repo": false,
     "git_publish_mode": "off",
-    "ci_gate_enabled": true,
+    "ci_gate_enabled": false,
     "git_revert_mode": "ask",
     "parallel_configured": false,
     "execution_interactivity": "noninteractive_streaming",

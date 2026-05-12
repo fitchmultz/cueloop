@@ -7,6 +7,7 @@
 //! - Display welcome screen and collect user preferences.
 //! - Guide users through runner, model, phase, and queue-tracking selection.
 //! - Let users opt into explicit ignored-file sync entries for parallel workers.
+//! - Optionally enable the CI gate and capture argv for the configured check command.
 //! - Optionally create a first task during setup.
 //!
 //! Not handled here:
@@ -22,7 +23,7 @@
 //! - User inputs are validated before returning WizardAnswers.
 
 use crate::commands::init::parallel_sync;
-use crate::config;
+use crate::config::{self, CiGateArgvIssue, detect_ci_gate_argv_issue};
 use crate::contracts::{Runner, TaskPriority};
 use anyhow::{Context, Result};
 use dialoguer::{Confirm, Input, MultiSelect, Select};
@@ -50,6 +51,10 @@ pub struct WizardAnswers {
     pub queue_tracking_mode: QueueTrackingMode,
     /// Explicit ignored local files selected for parallel worker sync.
     pub parallel_ignored_file_allowlist: Vec<String>,
+    /// Whether to run the configured CI gate before completing tasks.
+    pub ci_gate_enabled: bool,
+    /// `argv` for [`crate::contracts::CiGateConfig`] when `ci_gate_enabled` is true.
+    pub ci_gate_argv: Option<Vec<String>>,
     /// Whether to create a first task.
     pub create_first_task: bool,
     /// Title for the first task (if created).
@@ -68,6 +73,8 @@ impl Default for WizardAnswers {
             phases: 3,
             queue_tracking_mode: QueueTrackingMode::TrackedShared,
             parallel_ignored_file_allowlist: Vec::new(),
+            ci_gate_enabled: false,
+            ci_gate_argv: None,
             create_first_task: false,
             first_task_title: None,
             first_task_description: None,
@@ -131,6 +138,8 @@ pub fn run_wizard(repo_root: &Path) -> Result<WizardAnswers> {
     let queue_tracking_mode = select_queue_tracking_mode(repo_root)?;
     let parallel_ignored_file_allowlist = select_parallel_sync_allowlist(repo_root)?;
 
+    let (ci_gate_enabled, ci_gate_argv) = select_ci_gate()?;
+
     // First task creation
     let create_first_task = Confirm::new()
         .with_prompt("Would you like to create your first task now?")
@@ -179,6 +188,8 @@ pub fn run_wizard(repo_root: &Path) -> Result<WizardAnswers> {
         phases,
         queue_tracking_mode,
         parallel_ignored_file_allowlist,
+        ci_gate_enabled,
+        ci_gate_argv,
         create_first_task,
         first_task_title,
         first_task_description,
@@ -332,6 +343,62 @@ fn select_phases() -> Result<u8> {
     })
 }
 
+/// Ask whether to enable the CI gate and collect argv when enabled.
+fn select_ci_gate() -> Result<(bool, Option<Vec<String>>)> {
+    println!();
+    println!(
+        "{}",
+        colored::Colorize::bright_black(
+            "CI gate: CueLoop can run a single argv-only command before completing tasks (no shell; use a wrapper script for complex pipelines)."
+        )
+    );
+
+    let enable = Confirm::new()
+        .with_prompt("Enable CI gate checks before task completion?")
+        .default(false)
+        .interact()
+        .context("failed to get CI gate confirmation")?;
+
+    if !enable {
+        return Ok((false, None));
+    }
+
+    loop {
+        let line: String = Input::new()
+            .with_prompt("CI command (program and arguments, e.g. make ci or npm test)")
+            .default("make ci".to_string())
+            .allow_empty(false)
+            .interact_text()
+            .context("failed to read CI command")?;
+
+        let argv = match shlex::split(&line) {
+            Some(parts) if !parts.is_empty() => parts,
+            _ => {
+                eprintln!(
+                    "Could not parse that into argv tokens. Use a direct command such as `make ci` or `./scripts/ci.sh`."
+                );
+                continue;
+            }
+        };
+
+        if let Some(issue) = detect_ci_gate_argv_issue(&argv) {
+            let hint = match issue {
+                CiGateArgvIssue::EmptyArgv => "Enter at least one token (the program name).",
+                CiGateArgvIssue::EmptyEntry => "Argv entries must not be empty or whitespace-only.",
+                CiGateArgvIssue::ShellLauncher => {
+                    "Shell wrappers like `sh -c` are not supported; point argv at a script instead."
+                }
+            };
+            eprintln!(
+                "CI argv rejected ({hint}). See docs/configuration/agent-and-runners.md for agent.ci_gate."
+            );
+            continue;
+        }
+
+        return Ok((true, Some(argv)));
+    }
+}
+
 fn runtime_dir_name(repo_root: &Path) -> String {
     config::project_runtime_dir(repo_root)
         .file_name()
@@ -442,6 +509,18 @@ fn print_summary(repo_root: &Path, answers: &WizardAnswers) {
         );
     }
 
+    if answers.ci_gate_enabled {
+        let cmd = answers
+            .ci_gate_argv
+            .as_ref()
+            .map(|argv| argv.join(" "))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "(unset)".to_string());
+        println!("CI gate: {}", colored::Colorize::bright_green(cmd.as_str()));
+    } else {
+        println!("CI gate: {}", colored::Colorize::bright_black("disabled"));
+    }
+
     if answers.create_first_task {
         if let Some(ref title) = answers.first_task_title {
             println!(
@@ -508,6 +587,8 @@ mod tests {
             QueueTrackingMode::TrackedShared
         );
         assert!(answers.parallel_ignored_file_allowlist.is_empty());
+        assert!(!answers.ci_gate_enabled);
+        assert!(answers.ci_gate_argv.is_none());
         assert!(!answers.create_first_task);
         assert!(answers.first_task_title.is_none());
         assert!(answers.first_task_description.is_none());
