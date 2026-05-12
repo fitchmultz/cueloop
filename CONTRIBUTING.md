@@ -223,7 +223,7 @@ make coverage-clean
 ```
 
 The coverage target generates:
-- **HTML Report**: `target/coverage/html/index.html` (opens automatically on macOS)
+- **HTML Report**: `target/coverage/html/index.html` — `make coverage` echoes this path when the run finishes; open it manually in a browser. The Makefile does not launch a platform viewer, which keeps Linux and headless environments predictable (see `mk/coverage.mk` and `docs/guides/ci-strategy.md`).
 - **JSON Data**: `target/coverage/coverage.json` (machine-readable coverage data)
 
 #### Interpreting Results

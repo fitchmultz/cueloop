@@ -84,6 +84,20 @@ Fixes:
 
 For gate choice, shared-workstation caps, and preserved UI evidence capture, use [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
 
+## `make coverage` Fails (Missing Tools)
+
+Symptom: `make coverage` exits with `cargo-llvm-cov not found` (or missing `jq` only affects formatted terminal summaries).
+
+Fix:
+
+```bash
+cargo install cargo-llvm-cov
+# On macOS you may also need:
+rustup component add llvm-tools-preview
+```
+
+Coverage is optional and outside the default `make agent-ci` graph. HTML is written under `target/coverage/html/`; the recipe prints the path to open manually (see `mk/coverage.mk` and [`CONTRIBUTING.md`](../CONTRIBUTING.md)).
+
 ## Need Visual Evidence from UI Tests
 
 Symptom: UI run appears noisy/flaky but tests still pass, and you need inspectable visuals.
