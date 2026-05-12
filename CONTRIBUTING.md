@@ -16,7 +16,7 @@ Thank you for your interest in contributing to CueLoop! This document provides g
 
 ```bash
 # Clone the repository
-git clone https://github.com/mitchfultz/cueloop
+git clone https://github.com/fitchmultz/cueloop
 cd cueloop
 
 # Install locally
@@ -156,7 +156,7 @@ make pre-public-check
 We follow standard Rust conventions with additional project-specific requirements:
 
 - **Formatting**: `cargo fmt` (enforced by CI)
-- **Linting**: `cargo clippy --workspace --all-targets -- -D warnings` (warnings treated as errors)
+- **Linting**: `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings` (warnings treated as errors; `make lint` is the supported entrypoint)
 - **Visibility**: Default to private; prefer `pub(crate)` over `pub` unless cross-crate use is required
 - **Errors**: Use descriptive error types (`thiserror`) and `Result<T, E>` over panics
 - **Cohesion**: Keep modules/files focused; split large files rather than growing grab-bags
