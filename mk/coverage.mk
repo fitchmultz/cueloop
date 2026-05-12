@@ -14,7 +14,7 @@ coverage:
 		echo "ERROR: cargo-llvm-cov not found."; \
 		echo ""; \
 		echo "Install with:"; \
-		echo "  cargo install cargo-llvm-cov"; \
+		echo "  cargo install cargo-llvm-cov --locked"; \
 		echo ""; \
 		echo "On macOS, you may also need:"; \
 		echo "  rustup component add llvm-tools-preview"; \

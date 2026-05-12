@@ -49,6 +49,50 @@ Follow-up actions: None.
 
 Review date, if any: None.
 
+## 2026-05-12: Keep `make update` scoped to compatible Cargo.lock refreshes
+
+Decision: `make update` runs `cargo update` to refresh the lockfile to the latest **semver-compatible** versions allowed by existing `Cargo.toml` requirements. Bumping minimum supported versions of direct dependencies remains an explicit `Cargo.toml` edit plus validation, not something the update recipe does implicitly.
+
+Date: 2026-05-12
+
+Owner: Maintainers
+
+Context: Unbounded or surprising lockfile drift makes bisects, agent loops, and release review harder to reason about. Contributors sometimes assumed `make update` might apply requirement bumps the way a major dependency migration would.
+
+Chosen option: Keep `cargo update` as the sole `make update` behavior and print clear post-run notes that direct requirement bumps are manual `Cargo.toml` changes (implementation: `mk/rust.mk` `update` target).
+
+Rejected options: Remove `make update`; fold automatic requirement bumps into the recipe; add a second target that silently widens version constraints.
+
+Reason: Compatible-only refresh is predictable, reversible with Git, and matches Cargo’s contract for `cargo update` without widening the dependency policy surface in Make.
+
+Expected consequences: Routine lockfile maintenance stays one command; intentional API or MSRV-driven upgrades stay visible in manifest diffs and release notes.
+
+Follow-up actions: None.
+
+Review date, if any: None.
+
+## 2026-05-12: Do not auto-open HTML coverage reports
+
+Decision: After `make coverage` succeeds, print the report paths and stop. Do not invoke `xdg-open`, `open`, or other platform viewers from the Makefile.
+
+Date: 2026-05-12
+
+Owner: Maintainers
+
+Context: Opening a browser from Make is surprising on headless Linux agents, breaks predictable automation logs, and couples validation to a graphical session.
+
+Chosen option: Emit the HTML and JSON locations and instruct the operator to open `target/coverage/html/index.html` manually when they want a visual report (`mk/coverage.mk`).
+
+Rejected options: Auto-open on macOS only; detect DISPLAY/WAYLAND_DISPLAY and branch; add a `COVERAGE_OPEN=1` knob in the first iteration.
+
+Reason: Manual open keeps local, CI, and agent environments aligned on one behavior without new configuration.
+
+Expected consequences: Contributors follow the echoed path or their editor’s preview; documentation references the same contract.
+
+Follow-up actions: None.
+
+Review date, if any: None.
+
 ## 2026-04-27: Align CueLoop's source-build MSRV with the pinned Rust toolchain
 
 Decision: Treat the repo-local `rust-toolchain.toml` channel as CueLoop's source-build Rust baseline and keep the CLI crate's `rust-version` aligned to the same minor Rust release.
