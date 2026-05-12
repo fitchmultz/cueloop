@@ -310,6 +310,71 @@ fn cli_parses_machine_task_insert_input() {
 }
 
 #[test]
+fn cli_parses_machine_task_lifecycle_commands() {
+    let cli = Cli::try_parse_from([
+        "cueloop",
+        "machine",
+        "task",
+        "done",
+        "RQ-0001",
+        "--note",
+        "verified",
+        "--dry-run",
+    ])
+    .expect("parse");
+    match cli.command {
+        Command::Machine(args) => match args.command {
+            machine::MachineCommand::Task(args) => match args.command {
+                machine::MachineTaskCommand::Done(args) => {
+                    assert_eq!(args.task_id, "RQ-0001");
+                    assert_eq!(args.notes, vec!["verified"]);
+                    assert!(args.dry_run);
+                }
+                _ => panic!("expected machine task done command"),
+            },
+            _ => panic!("expected machine task command"),
+        },
+        _ => panic!("expected machine command"),
+    }
+}
+
+#[test]
+fn cli_parses_machine_task_followups_apply() {
+    let cli = Cli::try_parse_from([
+        "cueloop",
+        "machine",
+        "task",
+        "followups",
+        "apply",
+        "--task",
+        "RQ-0001",
+        "--input",
+        "followups.json",
+        "--dry-run",
+    ])
+    .expect("parse");
+    match cli.command {
+        Command::Machine(args) => match args.command {
+            machine::MachineCommand::Task(args) => match args.command {
+                machine::MachineTaskCommand::Followups(args) => match args.command {
+                    machine::MachineTaskFollowupsCommand::Apply(args) => {
+                        assert_eq!(args.task, "RQ-0001");
+                        assert_eq!(
+                            args.input.as_deref(),
+                            Some(std::path::Path::new("followups.json"))
+                        );
+                        assert!(args.dry_run);
+                    }
+                },
+                _ => panic!("expected machine task followups command"),
+            },
+            _ => panic!("expected machine task command"),
+        },
+        _ => panic!("expected machine command"),
+    }
+}
+
+#[test]
 fn cli_parses_run_one_id() {
     let cli = Cli::try_parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]).expect("parse");
     match cli.command {

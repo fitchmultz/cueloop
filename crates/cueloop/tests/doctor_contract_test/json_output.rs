@@ -137,8 +137,9 @@ fn doctor_json_output_with_failed_check() -> Result<()> {
         json["blocking"].is_object(),
         "should include top-level blocking state"
     );
-    assert_eq!(json["blocking"]["reason"]["kind"], "ci_blocked");
-    assert_eq!(json["blocking"]["reason"]["pattern"], "makefile_missing");
+    assert_eq!(json["blocking"]["reason"]["kind"], "runner_recovery");
+    assert_eq!(json["blocking"]["reason"]["scope"], "queue");
+    assert_eq!(json["blocking"]["reason"]["reason"], "queue_missing");
 
     Ok(())
 }

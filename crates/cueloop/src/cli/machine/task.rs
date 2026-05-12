@@ -39,9 +39,12 @@ use crate::commands::task as task_cmd;
 use crate::config;
 use crate::contracts::{
     MACHINE_DECOMPOSE_VERSION, MACHINE_TASK_BUILD_VERSION, MACHINE_TASK_CREATE_VERSION,
-    MACHINE_TASK_MUTATION_VERSION, MachineDecomposeDocument, MachineTaskBuildDocument,
-    MachineTaskBuildRequest, MachineTaskBuildResult, MachineTaskCreateDocument,
-    MachineTaskCreateRequest, MachineTaskMutationDocument, RunnerCliOptionsPatch, Task,
+    MACHINE_TASK_FOLLOWUPS_VERSION, MACHINE_TASK_LIFECYCLE_VERSION, MACHINE_TASK_MUTATION_VERSION,
+    MACHINE_TASK_SHOW_VERSION, MachineContinuationAction, MachineContinuationSummary,
+    MachineDecomposeDocument, MachineTaskBuildDocument, MachineTaskBuildRequest,
+    MachineTaskBuildResult, MachineTaskCreateDocument, MachineTaskCreateRequest,
+    MachineTaskFollowupsDocument, MachineTaskLifecycleDocument, MachineTaskLocation,
+    MachineTaskMutationDocument, MachineTaskShowDocument, RunnerCliOptionsPatch, Task,
     TaskInsertDocument, TaskInsertRequest, TaskStatus,
 };
 use crate::queue;
@@ -115,6 +118,62 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             }
             print_json(&build_task_mutation_document(&report, args.dry_run)?)
         }
+        MachineTaskCommand::Show(args) => print_json(&show_task(&resolved, &args.task_id)?),
+        MachineTaskCommand::Start(args) => print_json(&update_task_lifecycle(
+            &resolved,
+            &args.task_id,
+            TaskStatus::Doing,
+            &args.notes,
+            args.dry_run,
+            force,
+        )?),
+        MachineTaskCommand::Done(args) => print_json(&update_task_lifecycle(
+            &resolved,
+            &args.task_id,
+            TaskStatus::Done,
+            &args.notes,
+            args.dry_run,
+            force,
+        )?),
+        MachineTaskCommand::Reject(args) => print_json(&update_task_lifecycle(
+            &resolved,
+            &args.task_id,
+            TaskStatus::Rejected,
+            &args.notes,
+            args.dry_run,
+            force,
+        )?),
+        MachineTaskCommand::Status(args) => {
+            let status = parse_task_status(&args.status)?;
+            print_json(&update_task_lifecycle(
+                &resolved,
+                &args.task_id,
+                status,
+                &args.notes,
+                args.dry_run,
+                force,
+            )?)
+        }
+        MachineTaskCommand::Followups(args) => match args.command {
+            crate::cli::machine::args::MachineTaskFollowupsCommand::Apply(args) => {
+                let _queue_lock = queue::acquire_queue_lock(
+                    &resolved.repo_root,
+                    "machine task followups apply",
+                    force,
+                )?;
+                let report = queue::apply_followups_file(
+                    &resolved,
+                    &queue::FollowupApplyOptions {
+                        task_id: args.task.as_str(),
+                        input_path: args.input.as_deref(),
+                        dry_run: args.dry_run,
+                        create_undo: true,
+                        remove_proposal: true,
+                    },
+                )?;
+                print_json(&build_task_followups_document(&report, args.dry_run)?)
+            }
+        },
         MachineTaskCommand::Decompose(args) => {
             if let Some(checkpoint_id) = args.from_preview.as_deref() {
                 validate_machine_from_preview_args(&args)?;
@@ -187,6 +246,221 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             ))
         }
     }
+}
+
+fn show_task(resolved: &config::Resolved, task_id: &str) -> Result<MachineTaskShowDocument> {
+    let queue_file = queue::load_queue(&resolved.queue_path)?;
+    if let Some(task) = queue_file.tasks.iter().find(|task| task.id == task_id) {
+        return Ok(MachineTaskShowDocument {
+            version: MACHINE_TASK_SHOW_VERSION,
+            task_id: task_id.to_string(),
+            location: MachineTaskLocation::Active,
+            task: task.clone(),
+        });
+    }
+
+    let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+    if let Some(task) = done_file.tasks.iter().find(|task| task.id == task_id) {
+        return Ok(MachineTaskShowDocument {
+            version: MACHINE_TASK_SHOW_VERSION,
+            task_id: task_id.to_string(),
+            location: MachineTaskLocation::Done,
+            task: task.clone(),
+        });
+    }
+
+    bail!("Task {task_id} was not found in the active queue or done archive.")
+}
+
+fn update_task_lifecycle(
+    resolved: &config::Resolved,
+    task_id: &str,
+    status: TaskStatus,
+    notes: &[String],
+    dry_run: bool,
+    force: bool,
+) -> Result<MachineTaskLifecycleDocument> {
+    let terminal = matches!(status, TaskStatus::Done | TaskStatus::Rejected);
+    if dry_run {
+        let queue_file = queue::load_queue(&resolved.queue_path)?;
+        let mut task = queue_file
+            .tasks
+            .iter()
+            .find(|task| task.id == task_id)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Task {task_id} was not found in the active queue."))?;
+        let now = timeutil::now_utc_rfc3339()?;
+        apply_lifecycle_preview(&mut task, status, notes, &now);
+        return Ok(build_task_lifecycle_document(
+            task_id,
+            status,
+            notes,
+            Some(task),
+            terminal,
+            true,
+        ));
+    }
+
+    if terminal {
+        queue::with_locked_queue_mutation(
+            resolved,
+            "machine task lifecycle",
+            format!("machine task {} {}", status, task_id),
+            force,
+            || {
+                let now = timeutil::now_utc_rfc3339()?;
+                queue::complete_task(
+                    &resolved.queue_path,
+                    &resolved.done_path,
+                    task_id,
+                    status,
+                    &now,
+                    notes,
+                    &resolved.id_prefix,
+                    resolved.id_width,
+                    resolved.queue_max_dependency_depth(),
+                    None,
+                )
+            },
+        )?;
+        let done_file = queue::load_queue_or_default(&resolved.done_path)?;
+        let task = done_file
+            .tasks
+            .iter()
+            .find(|task| task.id == task_id)
+            .cloned();
+        return Ok(build_task_lifecycle_document(
+            task_id, status, notes, task, true, false,
+        ));
+    }
+
+    let mut updated_task = None;
+    queue::with_locked_queue_mutation(
+        resolved,
+        "machine task lifecycle",
+        format!("machine task {} {}", status, task_id),
+        force,
+        || {
+            let mut queue_file = queue::load_queue(&resolved.queue_path)?;
+            let now = timeutil::now_utc_rfc3339()?;
+            let note = joined_note(notes);
+            let result = queue::operations::batch_set_status(
+                &mut queue_file,
+                &[task_id.to_string()],
+                status,
+                &now,
+                note.as_deref(),
+                false,
+            )?;
+            if result.has_failures() {
+                bail!("task status update failed for {task_id}");
+            }
+            updated_task = queue_file
+                .tasks
+                .iter()
+                .find(|task| task.id == task_id)
+                .cloned();
+            queue::save_queue(&resolved.queue_path, &queue_file)
+        },
+    )?;
+
+    Ok(build_task_lifecycle_document(
+        task_id,
+        status,
+        notes,
+        updated_task,
+        false,
+        false,
+    ))
+}
+
+fn apply_lifecycle_preview(task: &mut Task, status: TaskStatus, notes: &[String], now: &str) {
+    task.status = status;
+    task.updated_at = Some(now.to_string());
+    if status == TaskStatus::Doing && task.started_at.is_none() {
+        task.started_at = Some(now.to_string());
+    }
+    if matches!(status, TaskStatus::Done | TaskStatus::Rejected) {
+        task.completed_at = Some(now.to_string());
+    }
+    task.notes.extend(notes.iter().cloned());
+}
+
+fn joined_note(notes: &[String]) -> Option<String> {
+    let joined = notes
+        .iter()
+        .map(|note| note.trim())
+        .filter(|note| !note.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    if joined.is_empty() {
+        None
+    } else {
+        Some(joined)
+    }
+}
+
+fn build_task_lifecycle_document(
+    task_id: &str,
+    status: TaskStatus,
+    notes: &[String],
+    task: Option<Task>,
+    archived: bool,
+    dry_run: bool,
+) -> MachineTaskLifecycleDocument {
+    let verb = if dry_run { "would be" } else { "has been" };
+    MachineTaskLifecycleDocument {
+        version: MACHINE_TASK_LIFECYCLE_VERSION,
+        dry_run,
+        task_id: task_id.to_string(),
+        status: status.as_str().to_string(),
+        task,
+        notes: notes.to_vec(),
+        archived,
+        continuation: MachineContinuationSummary {
+            headline: format!("Task {task_id} {verb} marked {status}."),
+            detail: if archived {
+                "Terminal task lifecycle updates move the task into the done archive.".to_string()
+            } else {
+                "Non-terminal task lifecycle updates keep the task in the active queue.".to_string()
+            },
+            blocking: None,
+            next_steps: vec![MachineContinuationAction {
+                title: "Validate queue".to_string(),
+                command: "cueloop machine queue validate".to_string(),
+                detail: "Confirm queue and archive state after the lifecycle update.".to_string(),
+            }],
+        },
+    }
+}
+
+fn build_task_followups_document(
+    report: &queue::FollowupApplyReport,
+    dry_run: bool,
+) -> Result<MachineTaskFollowupsDocument> {
+    Ok(MachineTaskFollowupsDocument {
+        version: MACHINE_TASK_FOLLOWUPS_VERSION,
+        dry_run,
+        report: serde_json::to_value(report)?,
+        continuation: MachineContinuationSummary {
+            headline: if dry_run {
+                "Follow-up application preview is ready.".to_string()
+            } else {
+                "Follow-up proposal has been applied.".to_string()
+            },
+            detail: format!(
+                "{} follow-up task(s) for {}.",
+                report.created_tasks.len(),
+                report.source_task_id
+            ),
+            blocking: None,
+            next_steps: vec![MachineContinuationAction {
+                title: "Validate queue".to_string(),
+                command: "cueloop machine queue validate".to_string(),
+                detail: "Confirm inserted follow-up tasks and dependency edges.".to_string(),
+            }],
+        },
+    })
 }
 
 fn validate_machine_from_preview_args(

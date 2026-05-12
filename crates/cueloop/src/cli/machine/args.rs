@@ -131,6 +131,18 @@ pub enum MachineTaskCommand {
     Create(MachineTaskCreateArgs),
     Insert(MachineTaskInsertArgs),
     Mutate(MachineTaskMutateArgs),
+    /// Show one task from the active queue or done archive as JSON.
+    Show(MachineTaskShowArgs),
+    /// Update one task status with lifecycle-aware archive behavior.
+    Status(MachineTaskStatusArgs),
+    /// Mark one active task as doing.
+    Start(MachineTaskLifecycleArgs),
+    /// Mark one active task done and archive it.
+    Done(MachineTaskLifecycleArgs),
+    /// Mark one active task rejected and archive it.
+    Reject(MachineTaskLifecycleArgs),
+    /// Apply agent-proposed follow-up tasks.
+    Followups(MachineTaskFollowupsArgs),
     Decompose(Box<MachineTaskDecomposeArgs>),
 }
 
@@ -160,6 +172,63 @@ pub struct MachineTaskInsertArgs {
 pub struct MachineTaskMutateArgs {
     #[arg(long, value_name = "PATH")]
     pub input: Option<String>,
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Args)]
+pub struct MachineTaskShowArgs {
+    /// Task ID to find in the active queue first, then the done archive.
+    pub task_id: String,
+}
+
+#[derive(Args)]
+pub struct MachineTaskStatusArgs {
+    /// Active task ID to update.
+    pub task_id: String,
+    /// New status: draft, todo, doing, done, or rejected.
+    pub status: String,
+    /// Evidence or lifecycle note to append. Repeatable.
+    #[arg(long = "note")]
+    pub notes: Vec<String>,
+    /// Validate and preview the lifecycle document without writing queue files.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Args)]
+pub struct MachineTaskLifecycleArgs {
+    /// Active task ID to update.
+    pub task_id: String,
+    /// Evidence or lifecycle note to append. Repeatable.
+    #[arg(long = "note")]
+    pub notes: Vec<String>,
+    /// Validate and preview the lifecycle document without writing queue files.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+#[derive(Args)]
+pub struct MachineTaskFollowupsArgs {
+    #[command(subcommand)]
+    pub command: MachineTaskFollowupsCommand,
+}
+
+#[derive(Subcommand)]
+pub enum MachineTaskFollowupsCommand {
+    /// Validate and materialize a followups@v1 proposal into queue tasks.
+    Apply(MachineTaskFollowupsApplyArgs),
+}
+
+#[derive(Args)]
+pub struct MachineTaskFollowupsApplyArgs {
+    /// Source task ID that produced the follow-up proposal.
+    #[arg(long)]
+    pub task: String,
+    /// Follow-up proposal path. Defaults to .cueloop/cache/followups/<TASK_ID>.json.
+    #[arg(long, value_name = "PATH")]
+    pub input: Option<PathBuf>,
+    /// Preview created tasks without saving queue changes or removing the proposal.
     #[arg(long)]
     pub dry_run: bool,
 }

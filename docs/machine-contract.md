@@ -32,7 +32,14 @@ This surface exists for the macOS app and any other automation that needs stable
 - `cueloop machine config resolve`
 - `cueloop machine workspace overview`
 - `cueloop machine task create`
+- `cueloop machine task insert`
 - `cueloop machine task mutate`
+- `cueloop machine task show`
+- `cueloop machine task status`
+- `cueloop machine task start`
+- `cueloop machine task done`
+- `cueloop machine task reject`
+- `cueloop machine task followups apply`
 - `cueloop machine task decompose`
 - `cueloop machine run one`
 - `cueloop machine run loop`
@@ -277,6 +284,42 @@ Queue-lock inspection returns a structured document for app and automation consu
 - `continuation`
 
 This is the machine-safe counterpart to `cueloop queue unlock --dry-run`; app integrations should use this document instead of parsing human CLI prose.
+
+### `machine task show` (`version: 1`)
+
+Task show returns one task from the active queue or done archive without requiring machine clients to read and search the full queue document.
+
+The document includes:
+- `version`
+- `task_id`
+- `location` (`active` or `done`)
+- `task`
+
+### `machine task status/start/done/reject` (`version: 1`)
+
+Machine lifecycle commands give agent and app clients structured task status updates without parsing human CLI output.
+
+The lifecycle document includes:
+- `version`
+- `dry_run`
+- `task_id`
+- `status`
+- optional `task`
+- `notes`
+- `archived` (`true` for terminal `done`/`rejected` writes)
+- `continuation`
+
+Terminal lifecycle commands move tasks to the done archive using the same queue/done completion path as the human lifecycle commands. Non-terminal status updates keep the task in the active queue.
+
+### `machine task followups apply` (`version: 1`)
+
+Machine follow-up apply validates and materializes a `followups@v1` proposal into normal queue tasks. It is the machine-safe counterpart to the agent follow-up proposal flow.
+
+The document includes:
+- `version`
+- `dry_run`
+- `report` with created follow-up task IDs and local keys
+- `continuation`
 
 ### `machine task mutate` (`version: 2`) and `machine task decompose` (`version: 2`)
 

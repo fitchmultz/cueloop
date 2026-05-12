@@ -41,6 +41,9 @@ pub const MACHINE_WORKSPACE_OVERVIEW_VERSION: u32 = 1;
 pub const MACHINE_TASK_CREATE_VERSION: u32 = 1;
 pub const MACHINE_TASK_BUILD_VERSION: u32 = 1;
 pub const MACHINE_TASK_MUTATION_VERSION: u32 = 2;
+pub const MACHINE_TASK_SHOW_VERSION: u32 = 1;
+pub const MACHINE_TASK_LIFECYCLE_VERSION: u32 = 1;
+pub const MACHINE_TASK_FOLLOWUPS_VERSION: u32 = 1;
 pub const MACHINE_GRAPH_READ_VERSION: u32 = 1;
 pub const MACHINE_DASHBOARD_READ_VERSION: u32 = 1;
 pub const MACHINE_DECOMPOSE_VERSION: u32 = 2;
@@ -382,6 +385,47 @@ pub struct MachineTaskMutationDocument {
     pub version: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blocking: Option<BlockingState>,
+    #[schemars(schema_with = "json_value_schema")]
+    pub report: JsonValue,
+    pub continuation: MachineContinuationSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MachineTaskLocation {
+    Active,
+    Done,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineTaskShowDocument {
+    pub version: u32,
+    pub task_id: String,
+    pub location: MachineTaskLocation,
+    pub task: Task,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineTaskLifecycleDocument {
+    pub version: u32,
+    pub dry_run: bool,
+    pub task_id: String,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task: Option<Task>,
+    #[serde(default)]
+    pub notes: Vec<String>,
+    pub archived: bool,
+    pub continuation: MachineContinuationSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MachineTaskFollowupsDocument {
+    pub version: u32,
+    pub dry_run: bool,
     #[schemars(schema_with = "json_value_schema")]
     pub report: JsonValue,
     pub continuation: MachineContinuationSummary,
