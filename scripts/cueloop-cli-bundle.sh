@@ -35,12 +35,13 @@ input_paths() {
         "$REPO_ROOT/Cargo.lock" \
         "$REPO_ROOT/VERSION" \
         "$REPO_ROOT/rust-toolchain.toml" \
-        "$REPO_ROOT/scripts/cueloop-cli-bundle.sh"
+        "$REPO_ROOT/scripts/cueloop-cli-bundle.sh" \
+        "$REPO_ROOT/scripts/lib/cueloop-shell.sh"
     if [ -d "$REPO_ROOT/.cargo" ]; then
         find "$REPO_ROOT/.cargo" -type f -print | LC_ALL=C sort
     fi
-    if [ -d "$REPO_ROOT/crates" ]; then
-        find "$REPO_ROOT/crates" -type f \( -name '*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' \) -print | LC_ALL=C sort
+    if [ -d "$REPO_ROOT/crates/cueloop" ]; then
+        find "$REPO_ROOT/crates/cueloop" -type f \( -path '*/src/*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' -o -path '*/assets/*' \) -print | LC_ALL=C sort
     fi
 }
 

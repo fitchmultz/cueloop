@@ -16,7 +16,34 @@
 //! Invariants/Assumptions:
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
+use std::path::Path;
+
 use super::support::{read_repo_file, swift_file_names};
+
+fn collect_cli_input_files(path: &Path, out: &mut Vec<String>) {
+    let entries =
+        std::fs::read_dir(path).unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+    for entry in entries {
+        let entry = entry.expect("read directory entry");
+        let child = entry.path();
+        if child.is_dir() {
+            collect_cli_input_files(&child, out);
+            continue;
+        }
+        let rel = child
+            .strip_prefix(super::support::repo_root())
+            .expect("path should be under repo root")
+            .to_string_lossy()
+            .replace('\\', "/");
+        let include = rel == "crates/cueloop/Cargo.toml"
+            || rel == "crates/cueloop/build.rs"
+            || (rel.starts_with("crates/cueloop/src/") && rel.ends_with(".rs"))
+            || rel.starts_with("crates/cueloop/assets/");
+        if include {
+            out.push(format!("$(SRCROOT)/../../{rel}"));
+        }
+    }
+}
 
 #[test]
 fn xcode_project_references_all_committed_swift_sources() {
@@ -59,8 +86,12 @@ fn xcode_build_phase_uses_shared_cli_bundle_entrypoint() {
         "Release should always route through cueloop-cli-bundle.sh instead of copying a possibly stale target/release CLI"
     );
     assert!(
-        project.contains("alwaysOutOfDate = 1;"),
-        "The Xcode bundle phase should always rerun so CueLoopMac never ships a stale embedded CLI after Rust-only rebuilds"
+        project.contains("CueLoopCLIInputs.xcfilelist"),
+        "The Xcode bundle phase should use a Rust input file list so dependency analysis can run only when the embedded CLI inputs change"
+    );
+    assert!(
+        !project.contains("alwaysOutOfDate = 1;"),
+        "The Xcode bundle phase should not be forced out of date when it has a committed Rust input file list"
     );
 }
 
@@ -129,6 +160,61 @@ fn makefile_release_build_uses_shared_bundle_entrypoint() {
     assert!(
         !make_surface.contains("publish-crate:"),
         "Makefile should not expose a direct crates.io publish bypass outside the release transaction"
+    );
+}
+
+#[test]
+fn xcode_cli_input_file_list_matches_committed_cli_inputs() {
+    let mut expected = vec![
+        "$(SRCROOT)/../../Cargo.toml".to_string(),
+        "$(SRCROOT)/../../Cargo.lock".to_string(),
+        "$(SRCROOT)/../../VERSION".to_string(),
+        "$(SRCROOT)/../../rust-toolchain.toml".to_string(),
+        "$(SRCROOT)/../../scripts/cueloop-cli-bundle.sh".to_string(),
+        "$(SRCROOT)/../../scripts/lib/cueloop-shell.sh".to_string(),
+    ];
+    collect_cli_input_files(
+        &super::support::repo_root().join("crates/cueloop"),
+        &mut expected,
+    );
+    expected.sort();
+
+    let mut actual = read_repo_file("apps/CueLoopMac/CueLoopCLIInputs.xcfilelist")
+        .lines()
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    actual.sort();
+
+    assert_eq!(
+        actual, expected,
+        "apps/CueLoopMac/CueLoopCLIInputs.xcfilelist must stay synchronized with CLI source/assets used by the bundled app"
+    );
+}
+
+#[test]
+fn makefile_xcode_derived_data_cleanup_is_explicit_not_default() {
+    let make_surface = format!(
+        "{}\n{}",
+        read_repo_file("Makefile"),
+        read_repo_file("mk/macos.mk")
+    );
+    assert!(
+        make_surface.contains("CUELOOP_XCODE_CLEAN_DERIVED_DATA ?= 0"),
+        "local Xcode builds should keep DerivedData by default and clean only when explicitly requested"
+    );
+    assert!(
+        make_surface.contains("macos-build-clean:")
+            && make_surface.contains("macos-test-clean:")
+            && make_surface.contains("macos-ci-clean:"),
+        "Makefile should expose explicit clean Xcode targets instead of hiding cache deletion in normal builds"
+    );
+    assert!(
+        make_surface.contains("if [ \"$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)\" = \"1\" ]; then rm -rf \"$$derived_data_path\""),
+        "DerivedData deletion should be guarded by the positive clean flag, not an inverted keep flag"
+    );
+    assert!(
+        !make_surface.contains("CUELOOP_XCODE_KEEP_DERIVED_DATA"),
+        "the old inverted keep flag should be removed instead of kept as confusing compatibility behavior"
     );
 }
 

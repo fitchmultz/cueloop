@@ -122,7 +122,7 @@ Run required gate with:
 make agent-ci
 # Optional (shared workstation): CUELOOP_CI_JOBS=4 make agent-ci
 # Optional (raise floor): CUELOOP_AGENT_CI_MIN_TIER=macos-ci make agent-ci
-# Optional (faster local Xcode iteration): CUELOOP_XCODE_KEEP_DERIVED_DATA=1 make macos-ci
+# Optional (force a fresh Xcode build tree): CUELOOP_XCODE_CLEAN_DERIVED_DATA=1 make macos-ci
 ```
 
 Do not commit or push changes if `make agent-ci` is failing. Fix all issues first.

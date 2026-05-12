@@ -1134,11 +1134,11 @@
 /* Begin PBXShellScriptBuildPhase section */
 		32D95DBB511E4ABDA6EFD0C2 /* Build and Bundle CueLoop CLI */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputFileListPaths = (
+				"$(SRCROOT)/../../apps/CueLoopMac/CueLoopCLIInputs.xcfilelist",
 			);
 			inputPaths = (
 				"$(SRCROOT)/../../Cargo.toml",

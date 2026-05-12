@@ -25,7 +25,7 @@ macos-build: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	acquired=1; \
 	derived_data_path="$(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)"; \
 	echo "→ macOS build (Xcode build)..."; \
-	if [ "$${CUELOOP_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
+	if [ "$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)" = "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 	xcodebuild \
 		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
 		-scheme CueLoopMac \
@@ -37,6 +37,9 @@ macos-build: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
 		SWIFT_TREAT_WARNINGS_AS_ERRORS=YES GCC_TREAT_WARNINGS_AS_ERRORS=YES \
 		build
+
+macos-build-clean:
+	@$(MAKE) --no-print-directory macos-build CUELOOP_XCODE_CLEAN_DERIVED_DATA=1
 
 macos-install-app: macos-build
 	@derived_data_path="$(XCODE_MACOS_BUILD_DERIVED_DATA_PATH)"; \
@@ -82,7 +85,7 @@ macos-test: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 		acquired=1; \
 		echo "→ macOS tests (Xcode, skipping UI tests - use CUELOOP_UI_TESTS=1 to include)..."; \
 		skipped_tests="-skip-testing CueLoopMacUITests"; \
-		if [ "$${CUELOOP_XCODE_KEEP_DERIVED_DATA:-0}" != "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
+		if [ "$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)" = "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 		xcodebuild \
 			-project apps/CueLoopMac/CueLoopMac.xcodeproj \
 			-scheme CueLoopMac \
@@ -98,6 +101,9 @@ macos-test: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	fi; \
 	true
 
+macos-test-clean:
+	@$(MAKE) --no-print-directory macos-test CUELOOP_XCODE_CLEAN_DERIVED_DATA=1
+
 # Build/sign macOS UI test bundles once for local iteration.
 # Use macos-ui-retest repeatedly afterward to avoid fresh bundle preparation.
 macos-ui-build-for-testing: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
@@ -110,7 +116,7 @@ macos-ui-build-for-testing: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	acquired=1; \
 	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui"; \
 	echo "→ macOS UI build-for-testing (one-time prompt may appear for a rebuilt bundle)..."; \
-	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	if [ "$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)" = "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 	xcodebuild \
 		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
 		-scheme CueLoopMac \
@@ -128,6 +134,9 @@ macos-ui-build-for-testing: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/CueLoopMac.app"; \
 	codesign --force --deep --sign - "$$derived_data_path/Build/Products/Debug/CueLoopMacUITests-Runner.app"; \
 	echo "  ✓ Prepared UI runner under $$derived_data_path"
+
+macos-ui-build-for-testing-clean:
+	@$(MAKE) --no-print-directory macos-ui-build-for-testing CUELOOP_XCODE_CLEAN_DERIVED_DATA=1
 
 # Re-run macOS UI tests without rebuilding the app/runner bundles.
 # Optional: set CUELOOP_UI_ONLY_TESTING=<Target/Class/testMethod> to focus a single test.
@@ -260,7 +269,7 @@ macos-test-window-shortcuts: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 	acquired=1; \
 	derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ui-shortcuts"; \
 	echo "→ macOS UI shortcut regressions (focused window/tab behavior)..."; \
-	rm -rf "$$derived_data_path" 2>/dev/null || true; \
+	if [ "$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)" = "1" ]; then rm -rf "$$derived_data_path" 2>/dev/null || true; fi; \
 	xcodebuild \
 		-project apps/CueLoopMac/CueLoopMac.xcodeproj \
 		-scheme CueLoopMac \
@@ -296,9 +305,12 @@ macos-test-window-shortcuts: macos-preflight $(CUELOOP_RELEASE_BUILD_STAMP)
 		exit 1; \
 	fi
 
+macos-test-window-shortcuts-clean:
+	@$(MAKE) --no-print-directory macos-test-window-shortcuts CUELOOP_XCODE_CLEAN_DERIVED_DATA=1
+
 macos-ci: macos-preflight
 	@shared_derived_data_path="$(XCODE_DERIVED_DATA_ROOT)/ship"; \
-	keep_derived_data="$${CUELOOP_XCODE_KEEP_DERIVED_DATA:-0}"; \
+	clean_derived_data="$(CUELOOP_XCODE_CLEAN_DERIVED_DATA)"; \
 	run_dir="$$(mktemp -d "$${TMPDIR:-/tmp}/cueloop-macos-ci.XXXXXX")"; \
 	rust_log="$$run_dir/rust-ci.log"; \
 	macos_log="$$run_dir/macos-validation.log"; \
@@ -317,12 +329,11 @@ macos-ci: macos-preflight
 				if [ -n "$$child_pid" ]; then wait "$$child_pid" 2>/dev/null || true; fi; \
 			done; \
 		fi; \
-		if [ "$$keep_derived_data" != "1" ]; then rm -rf "$$shared_derived_data_path" 2>/dev/null || true; fi; \
 		rm -rf "$$run_dir" 2>/dev/null || true; \
 		exit "$$status"; \
 	}; \
 	trap cleanup EXIT INT TERM; \
-	if [ "$$keep_derived_data" != "1" ]; then rm -rf "$$shared_derived_data_path" 2>/dev/null || true; fi; \
+	if [ "$$clean_derived_data" = "1" ]; then rm -rf "$$shared_derived_data_path" 2>/dev/null || true; fi; \
 	echo "→ macOS ship gate (prebuilding shared release CLI stamp)..."; \
 	$(MAKE) --no-print-directory build; \
 	echo "→ macOS ship gate (running Rust CI and macOS validation lanes concurrently)..."; \
@@ -330,7 +341,7 @@ macos-ci: macos-preflight
 	rust_pid="$$!"; \
 	( $(MAKE) --no-print-directory macos-build macos-test macos-test-contracts \
 		CUELOOP_XCODE_REUSE_SHIP_DERIVED_DATA=1 \
-		CUELOOP_XCODE_KEEP_DERIVED_DATA=1 ) >"$$macos_log" 2>&1 & \
+		CUELOOP_XCODE_CLEAN_DERIVED_DATA=0 ) >"$$macos_log" 2>&1 & \
 	macos_pid="$$!"; \
 	set +e; \
 	wait "$$rust_pid"; \
@@ -356,3 +367,6 @@ macos-ci: macos-preflight
 	echo "→ macOS ship gate (Rust CI + macOS app build+test + deterministic contract smoke)..."; \
 	echo "  ℹ Interactive XCTest UI automation remains excluded from macos-ci (use make macos-test-ui or make macos-test-window-shortcuts when idle)."; \
 	echo "  ✓ macOS CI completed"
+
+macos-ci-clean:
+	@$(MAKE) --no-print-directory macos-ci CUELOOP_XCODE_CLEAN_DERIVED_DATA=1
