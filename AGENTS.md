@@ -92,7 +92,7 @@ Use a short written plan for multi-file, cross-surface, migration, release, depe
 
 - NEVER commit, print, or copy secrets. Keep `.env`, `.env.*`, `.envrc`, raw runner logs, raw dumps, and `.cueloop/logs/` out of tracked files and reports.
 - Runner output may contain sensitive data. Use redaction helpers before logging or copying output into queue notes/docs.
-- Allowed local side effects from normal validation: `target/`, ignored app build/derived-data paths, temporary directories, `.cueloop/cache/`, `.cueloop/lock/`, `.cueloop/logs/`, and local CLI install during `install-verify`. Do not commit them.
+- Allowed local side effects from normal validation: `target/`, ignored app build/derived-data paths, temporary directories, `.cueloop/cache/`, `.cueloop/lock/`, and `.cueloop/logs/`. Normal validation must not install or replace user-global binaries; use explicit `make install` for local CLI/app installation. Do not commit generated runtime artifacts.
 - Do not broaden app/CLI workspace access, bypass queue locks, disable confirmations/previews for destructive actions, or enable automatic publish behavior without explicit maintainer direction.
 - Do not add or enable GitHub Actions as CI. Local Make targets are the validation source of truth; the disabled Cursor finish-line workflow is demo sequencing glue only.
 

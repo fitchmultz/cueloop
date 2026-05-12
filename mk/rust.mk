@@ -34,16 +34,31 @@ install-verify: $(CUELOOP_RELEASE_BUILD_STAMP)
 		echo "install-verify: missing release binary at $$cueloop_bin_path (run make build first)" >&2; \
 		exit 1; \
 	fi; \
-	bin_dir="$(BIN_DIR)"; \
-	if [ ! -w "$$bin_dir" ]; then \
-		bin_dir="$(HOME)/.local/bin"; \
-		echo "install-verify: $(BIN_DIR) not writable; using $$bin_dir"; \
-	fi; \
+	system_tmp="$${TMPDIR:-/tmp}"; \
+	system_tmp="$${system_tmp%/}"; \
+	verify_root="$$(mktemp -d "$$system_tmp/cueloop-install-verify.XXXXXX")"; \
+	cleanup() { rm -rf "$$verify_root" 2>/dev/null || true; }; \
+	trap cleanup EXIT INT TERM; \
+	bin_dir="$$verify_root/bin"; \
 	mkdir -p "$$bin_dir"; \
 	install -m 0755 "$$cueloop_bin_path" "$$bin_dir/$(BIN_NAME)"; \
 	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 
-install: install-verify
+install: $(CUELOOP_RELEASE_BUILD_STAMP)
+	@$(CUELOOP_ENV_RESET); \
+	cueloop_bin_path="$$(scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path)"; \
+	if [ ! -x "$$cueloop_bin_path" ]; then \
+		echo "install: missing release binary at $$cueloop_bin_path (run make build first)" >&2; \
+		exit 1; \
+	fi; \
+	bin_dir="$(BIN_DIR)"; \
+	if [ ! -w "$$bin_dir" ]; then \
+		bin_dir="$(HOME)/.local/bin"; \
+		echo "install: $(BIN_DIR) not writable; using $$bin_dir"; \
+	fi; \
+	mkdir -p "$$bin_dir"; \
+	install -m 0755 "$$cueloop_bin_path" "$$bin_dir/$(BIN_NAME)"; \
+	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 	@if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
 		$(MAKE) --no-print-directory macos-install-app; \
 	fi

@@ -47,12 +47,12 @@ Optional environment (see `make help`):
 
 ### `make ci` on macOS and `macos-ci` dependency graph
 
-`make ci` is intentionally Rust-only, even on macOS: it stops at `install-verify` and does not invoke `macos-install-app` or `xcodebuild`. `make install` remains the explicit operator command that installs both the CLI and CueLoopMac.app on macOS. `make macos-ci` still layers `ci` plus `macos-build`, `macos-test`, and deterministic app contracts.
+`make ci` is intentionally Rust-only, even on macOS: it stops at `install-verify`, which copies the CLI into a temporary directory for verification only, and does not invoke `macos-install-app` or `xcodebuild`. `make install` remains the explicit operator command that installs both the CLI and CueLoopMac.app on macOS. `make macos-ci` still layers `ci` plus `macos-build`, `macos-test`, and deterministic app contracts.
 
 ### Release build stamp and bundling
 
 - The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Makefile`, `mk/rust.mk`, Cargo manifests/lockfile/config, `VERSION`, `rust-toolchain.toml`, the CLI bundling shell scripts, or CLI inputs under `crates/cueloop/src`, `crates/cueloop/assets`, `crates/cueloop/Cargo.toml`, or `crates/cueloop/build.rs` are newer than the stamp (no unconditional `FORCE` rebuild).
-- `install` copies from `target/release/cueloop` after the stamp recipe runs, avoiding a second `cueloop-cli-bundle.sh` invocation in the same gate.
+- `install-verify` copies the release CLI into a temporary bin directory and runs `--help` from there; it does not mutate `$(BIN_DIR)` or `~/.local/bin` during validation. Explicit `make install` copies from `target/release/cueloop` after the stamp recipe runs.
 - Xcode’s “Build and Bundle CueLoop” phase runs through `cueloop-cli-bundle.sh` and uses `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` for dependency analysis, so Xcode does not rerun the phase on unrelated Swift-only no-op builds but still reruns when Rust CLI source, embedded prompt/runner assets, manifests, or bundling scripts change.
 
 ### Cleaning `target/tmp`
@@ -101,7 +101,7 @@ Includes `ci-fast` plus release-shape checks:
 
 - release build
 - schema generation
-- CLI install verification (`install-verify`)
+- CLI install mechanics verification in a temporary directory (`install-verify`)
 
 Use this before release tagging and public-readiness checks.
 
