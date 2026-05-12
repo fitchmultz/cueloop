@@ -422,7 +422,8 @@ The `make ci` target typically includes:
 
 ```makefile
 # Makefile
-ci: check-env-safety check-backup-artifacts deps format-check lint test build generate install-verify
+ci: ci-fast build generate install-verify
+ci-fast: check-env-safety check-backup-artifacts check-file-size-limits rust-toolchain-check version-check format-check lint test
 ```
 
 This ensures:

@@ -12,7 +12,7 @@ ci-docs: check-env-safety check-backup-artifacts check-file-size-limits
 
 # Fast deterministic Rust/CLI gate for routine development and PR-equivalent checks.
 # Clippy is run with --all-targets/--all-features and type-checks the same Rust surface.
-ci-fast: check-env-safety check-backup-artifacts check-file-size-limits deps format-check lint test
+ci-fast: check-env-safety check-backup-artifacts check-file-size-limits rust-toolchain-check version-check format-check lint test
 	@echo "→ Fast CI gate (format-check/lint/test)..."
 	@echo ""
 	@echo "  ✓ Fast CI completed"

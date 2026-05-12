@@ -4,18 +4,17 @@
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.
 # Invariants/Assumptions: The including Makefile defines CUELOOP_ENV_RESET, release stamp variables, toolchain variables, shell flags, and shared resource knobs first.
 
-$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CLI_INPUT_FILES)
+$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CLI_INPUT_FILES) $(CUELOOP_CARGO_CONFIG_INPUT_FILES)
 	@mkdir -p "$(CUELOOP_STAMP_DIR)"
 	@echo "→ Release build..."
 	@$(CUELOOP_ENV_RESET); scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path >/dev/null
 	@touch "$(CUELOOP_RELEASE_BUILD_STAMP)"
 	@echo "  ✓ Release build complete"
 
-# Optional but cheap: fail fast if lockfile or network access is busted
-deps: rust-toolchain-check
+# Explicit dependency prefetch for cold/offline preparation; normal CI lets Cargo fetch only when needed.
+deps: rust-toolchain-check version-check
 	@echo "→ Fetching deps (locked)..."
 	@$(CUELOOP_ENV_RESET); cargo fetch --locked
-	@./scripts/versioning.sh check
 	@echo "  ✓ Deps fetched"
 
 rust-toolchain-check:
@@ -203,8 +202,8 @@ version-sync:
 
 publish-check:
 	@echo "→ Validating crates.io package ($(CARGO_PACKAGE_NAME))..."
-	@$(CUELOOP_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME) --allow-dirty
-	@$(CUELOOP_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked --allow-dirty
+	@$(CUELOOP_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME)
+	@$(CUELOOP_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked
 	@echo "  ✓ crates.io package dry-run passed"
 
 release:

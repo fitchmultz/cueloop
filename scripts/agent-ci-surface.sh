@@ -118,11 +118,16 @@ combined_local_diff_for_path() {
     } 2>/dev/null
 }
 
+changed_diff_lines_for_path() {
+    local path="$1"
+    combined_local_diff_for_path "$path" | grep -E '^[+-][^+-]' || true
+}
+
 makefile_diff_requires_macos_ship_gate() {
     local diff
-    diff="$(combined_local_diff_for_path "Makefile")"
+    diff="$(changed_diff_lines_for_path "Makefile")"
     case "$diff" in
-        *"macos-preflight:"*|*"macos-build:"*|*"macos-install-app:"*|*"macos-test:"*|*"macos-test-contracts:"*|*"macos-test-settings-smoke:"*|*"macos-test-workspace-routing-contract:"*|*"XCODE_"*|*"CUELOOP_XCODE_"*|*"MACOS_APP_INSTALL_DIR"*|*"scripts/cueloop-cli-bundle.sh"*|*"xcodebuild"*)
+        *"macos-preflight:"*|*"macos-build:"*|*"macos-install-app:"*|*"macos-test:"*|*"macos-test-contracts:"*|*"macos-test-settings-smoke:"*|*"macos-test-workspace-routing-contract:"*|*"XCODE_"*|*"CUELOOP_XCODE_"*|*"MACOS_APP_INSTALL_DIR"*|*"xcodebuild"*)
             return 0
             ;;
     esac
@@ -131,7 +136,7 @@ makefile_diff_requires_macos_ship_gate() {
 
 makefile_diff_requires_rust_release_gate() {
     local diff
-    diff="$(combined_local_diff_for_path "Makefile")"
+    diff="$(changed_diff_lines_for_path "Makefile")"
     case "$diff" in
         *"build:"*|*"generate:"*|*"install:"*|*"CUELOOP_RELEASE_BUILD_STAMP"*|*"CUELOOP_STAMP_DIR"*|*"CUELOOP_CLI_BUILD_JOBS_ARG"*|*"BIN_NAME"*|*"BIN_DIR"*|*"PREFIX"*|*"release-gate:"*|*"profile-ship-gate:"*|*"scripts/cueloop-cli-bundle.sh"*)
             return 0

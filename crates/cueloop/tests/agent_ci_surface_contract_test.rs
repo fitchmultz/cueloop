@@ -148,6 +148,26 @@ fn classifier_routes_makefile_ci_router_edit_to_ci_fast() {
 }
 
 #[test]
+fn classifier_ignores_makefile_unchanged_macos_context_lines() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_file(
+        &repo_path.join("Makefile"),
+        "CUELOOP_CI_JOBS ?= 0\nXCODE_DESTINATION ?= platform=macOS\nhelp:\n\t@echo ok\n",
+    );
+    git(repo_path, &["add", "Makefile"]);
+    git(repo_path, &["commit", "-m", "add make resource knobs"]);
+
+    write_file(
+        &repo_path.join("Makefile"),
+        "CUELOOP_CI_JOBS ?= 4\nXCODE_DESTINATION ?= platform=macOS\nhelp:\n\t@echo ok\n",
+    );
+
+    assert_eq!(run_classifier(repo_path, "--target"), "ci-fast");
+}
+
+#[test]
 fn classifier_routes_clean_main_without_local_changes_to_noop() {
     let temp_repo = init_temp_repo();
     let repo_path = temp_repo.path();
@@ -174,6 +194,42 @@ fn classifier_routes_crates_working_tree_to_ci() {
         run_classifier(repo_path, "--reason").contains("Rust crate"),
         "expected Rust release gate routing explanation"
     );
+}
+
+#[test]
+fn classifier_routes_rust_make_fragment_to_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_file(&repo_path.join("mk/rust.mk"), "build:\n\t@echo changed\n");
+
+    assert_eq!(run_classifier(repo_path, "--target"), "ci");
+}
+
+#[test]
+fn classifier_routes_makefile_release_stamp_input_edit_to_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_file(
+        &repo_path.join("Makefile"),
+        "CUELOOP_RELEASE_STAMP_INPUTS := Cargo.toml scripts/cueloop-cli-bundle.sh\nhelp:\n\t@echo ok\n",
+    );
+
+    assert_eq!(run_classifier(repo_path, "--target"), "ci");
+}
+
+#[test]
+fn classifier_routes_macos_make_fragment_to_macos_ci() {
+    let temp_repo = init_temp_repo();
+    let repo_path = temp_repo.path();
+
+    write_file(
+        &repo_path.join("mk/macos.mk"),
+        "macos-build:\n\t@echo changed\n",
+    );
+
+    assert_eq!(run_classifier(repo_path, "--target"), "macos-ci");
 }
 
 #[test]

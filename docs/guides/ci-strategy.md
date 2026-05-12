@@ -30,9 +30,9 @@ Behavior:
 - With **no local changes**, `make agent-ci` exits successfully without running a gate.
 - **Tier A — `make ci-docs`**: all changed paths are docs/community-only (see classifier allowlist in `scripts/lib/release_policy.sh`).
 - **Tier B — `make ci-fast`**: any non-docs path that is not a Rust crate path and not a macOS ship-surface path (for example repo-only metadata like `.gitignore`).
-- **Tier C — `make ci`**: any change under `crates/**`, plus release/build script changes and `Makefile` edits that touch Rust release/build/install targets (release-shaped Rust: `ci-fast` + release build + schema generation + install checks).
-- **Tier D — `make macos-ci`**: any path that affects the app bundle, committed schemas, toolchain, macOS/Xcode bundling scripts, or `Makefile` macOS build/test targets (`apps/CueLoopMac/**`, `apps/AGENTS.md`, `schemas/**`, `scripts/cueloop-cli-bundle.sh`, `scripts/macos-*.sh`, `scripts/lib/xcodebuild-lock.sh`, `VERSION`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/**`).
-- `make ci-fast` runs `make rust-toolchain-check` through `deps`, which verifies the repo-pinned `rust-toolchain.toml` channel, crate `rust-version`, active local rustup override, `rustc`, `cargo`, `rustfmt`, and `clippy` agree.
+- **Tier C — `make ci`**: any change under `crates/**`, `mk/rust.mk`, plus release/build script changes and `Makefile` edits that touch Rust release/build/install targets (release-shaped Rust: `ci-fast` + release build + schema generation + install checks).
+- **Tier D — `make macos-ci`**: any path that affects the app bundle, committed schemas, toolchain, macOS/Xcode bundling scripts, or `Makefile`/`mk/macos.mk` macOS build/test targets (`apps/CueLoopMac/**`, `apps/AGENTS.md`, `schemas/**`, `scripts/cueloop-cli-bundle.sh`, `scripts/macos-*.sh`, `scripts/lib/xcodebuild-lock.sh`, `mk/macos.mk`, `VERSION`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `.cargo/**`).
+- `make ci-fast` runs `make rust-toolchain-check`, which verifies the repo-pinned `rust-toolchain.toml` channel, crate `rust-version`, active local rustup override, `rustc`, `cargo`, `rustfmt`, and `clippy` agree. Dependency prefetch is available as explicit `make deps`; it is not a separate default gate step.
 - `scripts/agent-ci-surface.sh`, `scripts/lib/release_policy.sh`, and CI/router-only `Makefile` edits deliberately stay below tier D so local tooling changes do not rebuild the Mac app.
 - Tier C **does not** run Xcode or Swift tests; it can miss Swift-side integration drift until a tier D run. Use `CUELOOP_AGENT_CI_MIN_TIER=macos-ci` or run `make macos-ci` before merge when that risk matters (see below).
 - On source snapshots without `.git/`, falls back to `make release-gate` so verification stays platform-aware instead of assuming macOS-only tooling.
@@ -51,7 +51,7 @@ Optional environment (see `make help`):
 
 ### Release build stamp and bundling
 
-- The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Cargo.toml`, `Cargo.lock`, `VERSION`, `rust-toolchain.toml`, the CLI bundling shell scripts, or CLI inputs under `crates/cueloop/src`, `crates/cueloop/assets`, `crates/cueloop/Cargo.toml`, or `crates/cueloop/build.rs` are newer than the stamp (no unconditional `FORCE` rebuild).
+- The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Makefile`, `mk/rust.mk`, Cargo manifests/lockfile/config, `VERSION`, `rust-toolchain.toml`, the CLI bundling shell scripts, or CLI inputs under `crates/cueloop/src`, `crates/cueloop/assets`, `crates/cueloop/Cargo.toml`, or `crates/cueloop/build.rs` are newer than the stamp (no unconditional `FORCE` rebuild).
 - `install` copies from `target/release/cueloop` after the stamp recipe runs, avoiding a second `cueloop-cli-bundle.sh` invocation in the same gate.
 - Xcode’s “Build and Bundle CueLoop” phase runs through `cueloop-cli-bundle.sh` and uses `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` for dependency analysis, so Xcode does not rerun the phase on unrelated Swift-only no-op builds but still reruns when Rust CLI source, embedded prompt/runner assets, manifests, or bundling scripts change.
 
@@ -72,7 +72,7 @@ Fast Rust/CLI gate is `make ci-fast`:
 - `check-env-safety` (runs required-file + secret checks everywhere, and adds tracked runtime/local-only file validation when git metadata is available)
 - `check-backup-artifacts`
 - `check-file-size-limits` (same policy behavior as `ci-docs`)
-- `deps`, including `rust-toolchain-check` and release version metadata checks
+- `rust-toolchain-check` and `version-check`
 - `format-check`
 - `lint` (`cargo clippy --all-targets/--all-features`, which also type-checks the Rust surface)
 - `test`
@@ -180,7 +180,7 @@ CUELOOP_CI_JOBS=4 CUELOOP_XCODE_JOBS=4 make pre-public-check
 
 Defaults:
 
-- `CUELOOP_CI_JOBS=0` lets cargo/nextest use tool-managed parallelism for fastest local iteration.
+- `CUELOOP_CI_JOBS=0` lets Cargo/nextest use tool-managed parallelism for fastest local iteration. `RUST_JOBS` remains available only as a lower-level alias for Cargo's `CARGO_BUILD_JOBS` cap.
 - `CUELOOP_XCODE_JOBS=0` keeps xcodebuild on tool-managed parallelism by default; set `CUELOOP_XCODE_JOBS=4` on shared workstations when you need a cap.
 - `CUELOOP_XCODE_CLEAN_DERIVED_DATA=0` keeps Xcode DerivedData for normal incremental local builds. Set `CUELOOP_XCODE_CLEAN_DERIVED_DATA=1` or run an explicit `*-clean` target when you need to force a fresh Xcode build tree.
 - Set either value explicitly (for example `CUELOOP_CI_JOBS=4`) on shared workstations.

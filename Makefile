@@ -10,7 +10,8 @@ BIN_DIR ?= $(PREFIX)/bin
 BIN_NAME ?= cueloop
 CARGO_PACKAGE_NAME ?= cueloop
 CARGO_HTTP_MULTIPLEXING ?= false
-RUST_JOBS ?= 8
+CUELOOP_CI_JOBS ?= 0
+RUST_JOBS ?= $(CUELOOP_CI_JOBS)
 SCCACHE ?= $(shell which sccache 2>/dev/null)
 AGENT_ID ?= manual
 AGENT_TARGET := $(CURDIR)/target/agents/$(AGENT_ID)
@@ -36,9 +37,9 @@ XCODE_RESULT_BUNDLE_PATH ?=
 CUELOOP_UI_ARTIFACTS_ROOT ?= target/ui-artifacts
 MACOS_APP_INSTALL_DIR ?= /Applications
 XCODE_BUILD_LOCK_DIR ?= target/tmp/locks/xcodebuild.lock
-# Default to bounded Rust/nextest parallelism for predictable local and agent runs.
-# Set an explicit cap (for example `RUST_JOBS=4`) on shared workstations.
-CUELOOP_CI_JOBS ?= $(RUST_JOBS)
+# Default to Cargo/nextest-managed parallelism for normal incremental local and agent runs.
+# Set an explicit cap (for example `CUELOOP_CI_JOBS=4`) on shared workstations.
+# `RUST_JOBS` remains available as the lower-level CARGO_BUILD_JOBS cap.
 # Default to xcodebuild-managed parallelism for best local throughput.
 # Set an explicit cap (for example `CUELOOP_XCODE_JOBS=4`) on shared workstations.
 CUELOOP_XCODE_JOBS ?= 0
@@ -46,8 +47,9 @@ CUELOOP_XCODE_JOBS ?= 0
 CUELOOP_STAMP_DIR ?= target/tmp/stamps
 CUELOOP_RELEASE_BUILD_STAMP := $(CUELOOP_STAMP_DIR)/cueloop-release-build.stamp
 # Inputs that affect the release CLI binary; when newer than the stamp, `make build` re-runs `cueloop-cli-bundle.sh`.
-CUELOOP_RELEASE_STAMP_INPUTS := Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh scripts/lib/cueloop-shell.sh
+CUELOOP_RELEASE_STAMP_INPUTS := Makefile mk/rust.mk Cargo.toml Cargo.lock VERSION rust-toolchain.toml scripts/cueloop-cli-bundle.sh scripts/lib/cueloop-shell.sh
 CUELOOP_CLI_INPUT_FILES := $(shell find crates/cueloop -type f \( -path '*/src/*.rs' -o -name 'Cargo.toml' -o -name 'build.rs' -o -path '*/assets/*' \) 2>/dev/null | LC_ALL=C sort)
+CUELOOP_CARGO_CONFIG_INPUT_FILES := $(shell find .cargo -type f 2>/dev/null | LC_ALL=C sort)
 # Default local Xcode builds/tests to normal incremental DerivedData reuse.
 # Set CUELOOP_XCODE_CLEAN_DERIVED_DATA=1, or run explicit *-clean targets, when a fresh Xcode build tree is required.
 CUELOOP_XCODE_CLEAN_DERIVED_DATA ?= 0
@@ -64,14 +66,15 @@ ifneq ($(strip $(CUELOOP_PINNED_RUST_BIN_DIR)),)
 CUELOOP_RUSTUP_ENV_RESET := export PATH="$(CUELOOP_PINNED_RUST_BIN_DIR):$$PATH"; export RUSTC="$(CUELOOP_PINNED_RUSTC)"
 endif
 
+CUELOOP_CARGO_BUILD_JOBS_ENV := $(if $(filter-out 0,$(RUST_JOBS)),export CARGO_BUILD_JOBS="$(RUST_JOBS)",unset CARGO_BUILD_JOBS)
 ifeq ($(CUELOOP_CARGO_MODE),agent)
 ifneq ($(strip $(SCCACHE)),)
-CUELOOP_CARGO_ENV_RESET := export CARGO_TARGET_DIR="$(AGENT_TARGET)"; export RUSTC_WRAPPER="$(SCCACHE)"; export CARGO_INCREMENTAL=0; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
+CUELOOP_CARGO_ENV_RESET := export CARGO_TARGET_DIR="$(AGENT_TARGET)"; export RUSTC_WRAPPER="$(SCCACHE)"; unset CARGO_INCREMENTAL; $(CUELOOP_CARGO_BUILD_JOBS_ENV)
 else
-CUELOOP_CARGO_ENV_RESET := export CARGO_TARGET_DIR="$(AGENT_TARGET)"; unset RUSTC_WRAPPER; export CARGO_INCREMENTAL=0; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
+CUELOOP_CARGO_ENV_RESET := export CARGO_TARGET_DIR="$(AGENT_TARGET)"; unset RUSTC_WRAPPER CARGO_INCREMENTAL; $(CUELOOP_CARGO_BUILD_JOBS_ENV)
 endif
 else
-CUELOOP_CARGO_ENV_RESET := unset RUSTC_WRAPPER RUSTFLAGS CARGO_ENCODED_RUSTFLAGS CARGO_TARGET_DIR CARGO_INCREMENTAL; export CARGO_BUILD_JOBS="$(RUST_JOBS)"
+CUELOOP_CARGO_ENV_RESET := unset RUSTC_WRAPPER RUSTFLAGS CARGO_ENCODED_RUSTFLAGS CARGO_TARGET_DIR CARGO_INCREMENTAL; $(CUELOOP_CARGO_BUILD_JOBS_ENV)
 endif
 CUELOOP_ENV_RESET := $(CUELOOP_RUSTUP_ENV_RESET); $(CUELOOP_CARGO_ENV_RESET)
 
@@ -146,7 +149,7 @@ help:
 	@echo "  make check-file-size-limits # Report file-size advisories and fail only extreme unallowlisted files"
 	@echo ""
 	@echo "Resource knobs (optional):"
-	@echo "  RUST_JOBS=4         # Example Rust/nextest job cap for shared workstations (default 8)"
+	@echo "  CUELOOP_CI_JOBS=4   # Example Rust/nextest job cap for shared workstations (0 = tool default)"
 	@echo "  AGENT_ID=agent-a    # Isolated target/agents/<id> directory for make agent-ci"
 	@echo "  CUELOOP_XCODE_JOBS=4  # Example cap for shared workstations (0 = xcodebuild default)"
 	@echo "  XCODE_ARCHS=$$(uname -m) # Host-arch Xcode CI/test builds (override only for cross-arch validation)"
