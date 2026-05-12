@@ -181,6 +181,214 @@ fn machine_task_insert_creates_full_tasks_atomically() -> Result<()> {
 }
 
 #[test]
+fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+
+    let insert_request = serde_json::json!({
+        "version": 1,
+        "tasks": [{
+            "key": "alpha",
+            "title": "Lifecycle task",
+            "status": TaskStatus::Todo.as_str(),
+            "priority": TaskPriority::Medium.as_str(),
+            "plan": ["Start it", "Complete it"]
+        }]
+    });
+    let insert_path = write_json_file(dir.path(), "lifecycle-insert.json", &insert_request)?;
+    let (insert_status, insert_stdout, insert_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().expect("utf-8 insert request path"),
+        ],
+    );
+    assert!(
+        insert_status.success(),
+        "machine task insert failed\nstdout:\n{insert_stdout}\nstderr:\n{insert_stderr}"
+    );
+    let inserted: Value = serde_json::from_str(&insert_stdout)?;
+    let task_id = inserted["tasks"][0]["task"]["id"]
+        .as_str()
+        .expect("inserted task id")
+        .to_string();
+
+    let (show_status, show_stdout, show_stderr) =
+        run_in_dir(dir.path(), &["machine", "task", "show", &task_id]);
+    assert!(
+        show_status.success(),
+        "machine task show failed\nstdout:\n{show_stdout}\nstderr:\n{show_stderr}"
+    );
+    let shown: Value = serde_json::from_str(&show_stdout)?;
+    assert_eq!(shown["version"], 1);
+    assert_eq!(shown["location"], "active");
+    assert_eq!(shown["task"]["title"], "Lifecycle task");
+
+    let (start_status, start_stdout, start_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "start",
+            &task_id,
+            "--note",
+            "Started by machine API",
+        ],
+    );
+    assert!(
+        start_status.success(),
+        "machine task start failed\nstdout:\n{start_stdout}\nstderr:\n{start_stderr}"
+    );
+    let started: Value = serde_json::from_str(&start_stdout)?;
+    assert_eq!(started["version"], 1);
+    assert_eq!(started["status"], TaskStatus::Doing.as_str());
+    assert_eq!(started["archived"], false);
+    assert_eq!(started["task"]["status"], TaskStatus::Doing.as_str());
+
+    let (done_status, done_stdout, done_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "done",
+            &task_id,
+            "--note",
+            "Verified by machine API",
+        ],
+    );
+    assert!(
+        done_status.success(),
+        "machine task done failed\nstdout:\n{done_stdout}\nstderr:\n{done_stderr}"
+    );
+    let done: Value = serde_json::from_str(&done_stdout)?;
+    assert_eq!(done["status"], TaskStatus::Done.as_str());
+    assert_eq!(done["archived"], true);
+    assert_eq!(done["task"]["status"], TaskStatus::Done.as_str());
+
+    let (show_done_status, show_done_stdout, show_done_stderr) =
+        run_in_dir(dir.path(), &["machine", "task", "show", &task_id]);
+    assert!(
+        show_done_status.success(),
+        "machine task show done failed\nstdout:\n{show_done_stdout}\nstderr:\n{show_done_stderr}"
+    );
+    let shown_done: Value = serde_json::from_str(&show_done_stdout)?;
+    assert_eq!(shown_done["location"], "done");
+
+    Ok(())
+}
+
+#[test]
+fn machine_task_followups_apply_materializes_agent_proposal() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+
+    let insert_request = serde_json::json!({
+        "version": 1,
+        "tasks": [{
+            "key": "source",
+            "title": "Source task",
+            "status": TaskStatus::Todo.as_str(),
+            "priority": TaskPriority::Medium.as_str(),
+            "request": "source request"
+        }]
+    });
+    let insert_path = write_json_file(dir.path(), "followup-source-insert.json", &insert_request)?;
+    let (insert_status, insert_stdout, insert_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().expect("utf-8 insert request path"),
+        ],
+    );
+    assert!(
+        insert_status.success(),
+        "machine task insert failed\nstdout:\n{insert_stdout}\nstderr:\n{insert_stderr}"
+    );
+    let inserted: Value = serde_json::from_str(&insert_stdout)?;
+    let source_id = inserted["tasks"][0]["task"]["id"]
+        .as_str()
+        .expect("source task id")
+        .to_string();
+
+    let proposal_dir = dir.path().join(".cueloop/cache/followups");
+    std::fs::create_dir_all(&proposal_dir)?;
+    let proposal_path = proposal_dir.join(format!("{source_id}.json"));
+    let proposal = serde_json::json!({
+        "version": 1,
+        "source_task_id": source_id,
+        "tasks": [{
+            "key": "agent-followup",
+            "title": "Agent follow-up task",
+            "description": "Created from an agent follow-up proposal.",
+            "priority": TaskPriority::Medium.as_str(),
+            "tags": ["agent"],
+            "scope": ["docs/guides/agent-usage.md"],
+            "evidence": ["Agent found a durable follow-up."],
+            "plan": ["Implement follow-up"],
+            "depends_on_keys": [],
+            "independence_rationale": "Separate durable work."
+        }]
+    });
+    std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal)?)?;
+
+    let (dry_status, dry_stdout, dry_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "followups",
+            "apply",
+            "--task",
+            &source_id,
+            "--dry-run",
+        ],
+    );
+    assert!(
+        dry_status.success(),
+        "machine task followups dry-run failed\nstdout:\n{dry_stdout}\nstderr:\n{dry_stderr}"
+    );
+    let dry_doc: Value = serde_json::from_str(&dry_stdout)?;
+    assert_eq!(dry_doc["version"], 1);
+    assert_eq!(dry_doc["dry_run"], true);
+    assert_eq!(
+        dry_doc["report"]["created_tasks"][0]["key"],
+        "agent-followup"
+    );
+
+    let (apply_status, apply_stdout, apply_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "followups",
+            "apply",
+            "--task",
+            &source_id,
+        ],
+    );
+    assert!(
+        apply_status.success(),
+        "machine task followups apply failed\nstdout:\n{apply_stdout}\nstderr:\n{apply_stderr}"
+    );
+    let apply_doc: Value = serde_json::from_str(&apply_stdout)?;
+    assert_eq!(apply_doc["dry_run"], false);
+    assert_eq!(
+        apply_doc["report"]["created_tasks"][0]["title"],
+        "Agent follow-up task"
+    );
+    assert!(
+        !proposal_path.exists(),
+        "applied default proposal should be removed"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn task_mutate_json_uses_shared_continuation_document() -> Result<()> {
     let dir = setup_cueloop_repo()?;
 

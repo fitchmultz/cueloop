@@ -32,7 +32,15 @@ This surface exists for the macOS app and any other automation that needs stable
 - `cueloop machine config resolve`
 - `cueloop machine workspace overview`
 - `cueloop machine task create`
+- `cueloop machine task build`
+- `cueloop machine task insert`
 - `cueloop machine task mutate`
+- `cueloop machine task show`
+- `cueloop machine task status`
+- `cueloop machine task start`
+- `cueloop machine task done`
+- `cueloop machine task reject`
+- `cueloop machine task followups apply`
 - `cueloop machine task decompose`
 - `cueloop machine run one`
 - `cueloop machine run loop`
@@ -278,6 +286,80 @@ Queue-lock inspection returns a structured document for app and automation consu
 
 This is the machine-safe counterpart to `cueloop queue unlock --dry-run`; app integrations should use this document instead of parsing human CLI prose.
 
+### `machine task create` (`version: 1`)
+
+Structured task creation for agents and apps: read a `MachineTaskCreateRequest` from `--input <path>` or stdin and print a `MachineTaskCreateDocument` (`version` plus the persisted `task`) on stdout.
+
+The request includes:
+- `version` (must match the supported create request version, currently `1`)
+- `title` (required, non-empty after trim)
+- optional `description`, `tags`, `scope`
+- `priority` as the same string values the human CLI accepts for task priority
+- optional `template` and `target` for template-guided creation
+
+**Without `template`:** the handler acquires the queue lock, allocates the next id across the active queue and done archive, appends a single new `todo` task from the provided fields, creates an undo snapshot, saves the queue, and returns the new `Task`.
+
+**With `template`:** CueLoop calls `build_task_created_tasks`, which runs the configured task-builder runner (same implementation family as `machine task build`) using `title` as the build request text, `template` / `target` as template hints, `strict_templates: true`, and fixed `None` runner/model/reasoning-effort overrides in the create handler. Exactly one created task is required; zero or multiple tasks are errors.
+
+Failures before JSON emission use the structured `machine_error` document on stderr, consistent with other machine commands.
+
+### `machine task build` (`version: 1`)
+
+Machine-shaped entry point for `cueloop task build`: runs the configured task-builder runner, lets the runner mutate the queue (typically via nested `cueloop task insert`), then emits a single `MachineTaskBuildDocument` on stdout.
+
+The request includes:
+- `version` (must match the supported build request version, currently `1`)
+- `request` (required natural-language build prompt, non-empty after trim)
+- optional `tags`, `scope`, `template`, `target`, `strict_templates`, `estimated_minutes`
+
+CLI accepts the same flattened `AgentArgs` as other machine task surfaces that call runners (for example `--runner`, `--model`, `--effort`, repo-prompt injection flags mirrored on `cueloop machine task decompose`).
+
+The response includes:
+- `version`
+- `mode` (currently `"write"` after a successful build)
+- optional top-level `blocking` (mirrors `continuation.blocking` when present)
+- `result` with `created_count`, `task_ids`, and full `tasks` for tasks that appeared in the queue relative to a pre-build snapshot
+- `warnings` (currently an empty list when no extra warnings are attached)
+- `continuation` with headline, detail, and `next_steps` commands for graph inspection, resume, and follow-up builds
+
+Machine clients rely on stdout being only the JSON document; runner chatter must not appear in machine stdout (regression-tested in `machine_task_build_contract_test.rs`).
+
+### `machine task show` (`version: 1`)
+
+Task show returns one task from the active queue or done archive without requiring machine clients to read and search the full queue document.
+
+The document includes:
+- `version`
+- `task_id`
+- `location` (`active` or `done`)
+- `task`
+
+### `machine task status/start/done/reject` (`version: 1`)
+
+Machine lifecycle commands give agent and app clients structured task status updates without parsing human CLI output.
+
+The lifecycle document includes:
+- `version`
+- `dry_run`
+- `task_id`
+- `status`
+- optional `task`
+- `notes`
+- `archived` (`true` for terminal `done`/`rejected` writes)
+- `continuation`
+
+Terminal lifecycle commands move tasks to the done archive using the same queue/done completion path as the human lifecycle commands. Non-terminal status updates keep the task in the active queue.
+
+### `machine task followups apply` (`version: 1`)
+
+Machine follow-up apply validates and materializes a `followups@v1` proposal into normal queue tasks. It is the machine-safe counterpart to the agent follow-up proposal flow.
+
+The document includes:
+- `version`
+- `dry_run`
+- `report` with created follow-up task IDs and local keys
+- `continuation`
+
 ### `machine task mutate` (`version: 2`) and `machine task decompose` (`version: 2`)
 
 Task mutation and decomposition documents now include:
@@ -362,7 +444,7 @@ The macOS app should consume only machine surfaces for:
 - queue snapshots
 - config resolution
 - combined queue + config overview (`machine workspace overview`)
-- task create/mutate/decompose flows
+- task create/build/mutate/decompose flows
 - graph and dashboard reads
 - diagnostics consumed by the app
 - run status and event streaming

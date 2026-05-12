@@ -56,7 +56,8 @@ pub use machine::{
     MACHINE_QUEUE_REPAIR_VERSION, MACHINE_QUEUE_UNDO_VERSION, MACHINE_QUEUE_UNLOCK_INSPECT_VERSION,
     MACHINE_QUEUE_VALIDATE_VERSION, MACHINE_RUN_EVENT_VERSION, MACHINE_RUN_STOP_VERSION,
     MACHINE_RUN_SUMMARY_VERSION, MACHINE_SYSTEM_INFO_VERSION, MACHINE_TASK_BUILD_VERSION,
-    MACHINE_TASK_CREATE_VERSION, MACHINE_TASK_MUTATION_VERSION, MACHINE_WORKSPACE_OVERVIEW_VERSION,
+    MACHINE_TASK_CREATE_VERSION, MACHINE_TASK_FOLLOWUPS_VERSION, MACHINE_TASK_LIFECYCLE_VERSION,
+    MACHINE_TASK_MUTATION_VERSION, MACHINE_TASK_SHOW_VERSION, MACHINE_WORKSPACE_OVERVIEW_VERSION,
     MachineCliSpecDocument, MachineConfigResolveDocument, MachineConfigSafetySummary,
     MachineContinuationAction, MachineContinuationSummary, MachineDashboardReadDocument,
     MachineDecomposeDocument, MachineDoctorReportDocument, MachineErrorCode, MachineErrorDocument,
@@ -69,8 +70,9 @@ pub use machine::{
     MachineRunEventKind, MachineRunStopAction, MachineRunStopDocument, MachineRunStopMarker,
     MachineRunSummaryDocument, MachineRunnerOption, MachineSystemInfoDocument,
     MachineTaskBuildDocument, MachineTaskBuildRequest, MachineTaskBuildResult,
-    MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskMutationDocument,
-    MachineValidationWarning, MachineWorkspaceOverviewDocument,
+    MachineTaskCreateDocument, MachineTaskCreateRequest, MachineTaskFollowupsDocument,
+    MachineTaskLifecycleDocument, MachineTaskLocation, MachineTaskMutationDocument,
+    MachineTaskShowDocument, MachineValidationWarning, MachineWorkspaceOverviewDocument,
 };
 
 // Re-exports from cli_spec module (versioned; suitable for tooling consumption)
