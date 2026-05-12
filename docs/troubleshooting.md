@@ -32,7 +32,7 @@ Fixes:
 
 Symptom: `make agent-ci` finished successfully, but `target/debug/cueloop` (or other default `target/` outputs) look stale.
 
-Explanation: `make agent-ci` runs the routed tier with `CUELOOP_CARGO_MODE=agent`, so Cargo uses `CUELOOP_CARGO_TARGET_DIR` under `target/agents/$(AGENT_ID)/` (default `AGENT_ID=manual`) instead of the normal workspace `target/` tree. That isolates agent/CI runs from interactive builds (see root `Makefile` and [`docs/guides/ci-strategy.md`](guides/ci-strategy.md#principles)).
+Explanation: `make agent-ci` runs the routed tier with `CUELOOP_CARGO_MODE=agent`, so the nested Make recipe sets the `CARGO_TARGET_DIR` environment variable for Cargo to `$(CURDIR)/target/agents/$(AGENT_ID)/` (default `AGENT_ID=manual`) instead of the normal workspace `target/` tree. That isolates agent/CI runs from interactive builds (see root `Makefile` and [`docs/guides/ci-strategy.md`](guides/ci-strategy.md#principles)).
 
 Fixes:
 
