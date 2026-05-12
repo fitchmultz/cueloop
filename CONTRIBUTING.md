@@ -187,6 +187,7 @@ All new or changed behavior must be covered by tests:
 - **Failure modes**: Error handling and edge cases
 - **Location**: Prefer tests near the code via `#[cfg(test)]`
 - **Integration tests**: Use `crates/cueloop/tests/` for cross-module behavior
+- **Agent CI classifier**: If you change `scripts/agent-ci-surface.sh` or path allowlists in `scripts/lib/release_policy.sh`, extend `crates/cueloop/tests/agent_ci_surface_contract_test.rs` so representative `noop` / `ci-docs` / `ci-fast` / `ci` / `macos-ci` routing stays pinned (see `docs/guides/ci-strategy.md`).
 
 Example:
 
@@ -206,7 +207,7 @@ CueLoop uses `cargo-llvm-cov` for code coverage analysis. Coverage is **optional
 
 ```bash
 # Install cargo-llvm-cov
-cargo install cargo-llvm-cov
+cargo install cargo-llvm-cov --locked
 
 # On macOS, you may also need the llvm-tools component
 rustup component add llvm-tools-preview

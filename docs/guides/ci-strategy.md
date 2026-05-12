@@ -152,7 +152,7 @@ make coverage
 
 `make security-audit` runs `cargo audit --deny warnings` against `Cargo.lock` and requires `cargo-audit` (`cargo install cargo-audit --locked`). Use it during dependency refreshes, Rust baseline audits, and release/public-readiness preparation. It is intentionally not part of the default day-to-day `make agent-ci` tiers so advisory database/network/tool availability does not make every local edit depend on external RustSec freshness.
 
-`make coverage` (see `mk/coverage.mk`) writes HTML under `target/coverage/html/` by default; the recipe prints `target/coverage/html/index.html` for you to open in a browser. It does not invoke a platform-specific viewer, which keeps Linux and headless environments predictable.
+`make coverage` (see `mk/coverage.mk`) writes HTML under `target/coverage/html/` by default; the recipe prints `target/coverage/html/index.html` for you to open in a browser. It does not invoke a platform-specific viewer, which keeps Linux and headless environments predictable. Use `make coverage-clean` to remove `target/coverage/`, stray `.profraw`, and `.profdata` files when you need a cold report tree or to reclaim disk space.
 
 When a system Rust update is reported, use this local comparison procedure before deciding whether CueLoop should adopt it:
 

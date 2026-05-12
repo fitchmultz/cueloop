@@ -91,12 +91,12 @@ Symptom: `make coverage` exits with `cargo-llvm-cov not found` (or missing `jq` 
 Fix:
 
 ```bash
-cargo install cargo-llvm-cov
+cargo install cargo-llvm-cov --locked
 # On macOS you may also need:
 rustup component add llvm-tools-preview
 ```
 
-Coverage is optional and outside the default `make agent-ci` graph. HTML is written under `target/coverage/html/`; the recipe prints the path to open manually (see `mk/coverage.mk` and [`CONTRIBUTING.md`](../CONTRIBUTING.md)).
+Coverage is optional and outside the default `make agent-ci` graph. HTML is written under `target/coverage/html/`; the recipe prints the path to open manually (see `mk/coverage.mk` and [`CONTRIBUTING.md`](../CONTRIBUTING.md)). To drop generated coverage outputs and profile scraps, run `make coverage-clean`.
 
 ## Need Visual Evidence from UI Tests
 
