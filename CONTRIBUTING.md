@@ -83,8 +83,8 @@ make docs
 - With no local changes, it exits successfully without running a CI target.
 - Docs/community-only changes: `make ci-docs`
 - Ancillary non-docs changes (not `crates/**` and not macOS ship surface): `make ci-fast`
-- Rust crate changes (`crates/**`), release/build script changes, and `Makefile` edits that touch Rust release/build/install targets: `make ci` (release-shaped Rust gate)
-- App bundle, schemas, macOS/Xcode bundling scripts, toolchain changes, and `Makefile` edits that touch macOS build/test targets: `make macos-ci`
+- Rust crate changes (`crates/**`), `mk/rust.mk` edits, release/build script changes, and `Makefile` edits that touch Rust release/build/install targets: `make ci` (release-shaped Rust gate)
+- App bundle, schemas, macOS/Xcode bundling scripts, toolchain changes, and `Makefile` or `mk/macos.mk` edits that touch macOS build/test targets: `make macos-ci`
 
 `Makefile` and `scripts/**` are **not** blanket macOS triggers anymore. CI/router-only edits (for example `scripts/agent-ci-surface.sh`, `scripts/lib/release_policy.sh`, or `agent-ci` target wiring in `Makefile`) should stay below the Mac app gate.
 
