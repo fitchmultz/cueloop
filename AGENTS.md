@@ -52,7 +52,7 @@ Prerequisites: Rust is pinned by `rust-toolchain.toml`; GNU Make >= 4 is require
 | Build release CLI | `make build` |
 | Regenerate schemas | `make generate` |
 | Install locally | `make install` |
-| Update Rust dependencies | `make update` |
+| Refresh compatible Rust dependency lockfile entries | `make update` |
 | RustSec advisory audit | `make security-audit` |
 | Quick CLI iteration | `cargo run -p cueloop -- <command>` |
 | Quick crate tests | `cargo test -p cueloop` |

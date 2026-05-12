@@ -64,10 +64,9 @@ install: $(CUELOOP_RELEASE_BUILD_STAMP)
 	fi
 
 update:
-	@echo "→ Updating direct dependencies to latest stable requirements..."
-	@$(CUELOOP_ENV_RESET); cargo upgrade --incompatible
-	@echo "→ Refreshing lockfile to latest compatible transitive versions..."
+	@echo "→ Refreshing Rust lockfile to latest compatible dependency versions..."
 	@$(CUELOOP_ENV_RESET); CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
+	@echo "  ℹ Direct dependency requirement bumps are explicit Cargo.toml edits; this target only refreshes compatible locked versions."
 	@echo "  ℹ Swift/Xcode has no external package manifest here; use make macos-ci to verify the app against the current toolchain"
 	@echo "  ✓ Dependency update complete"
 

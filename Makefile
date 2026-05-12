@@ -136,7 +136,7 @@ help:
 	@echo "  make profile-ship-gate-clean # Remove ship-gate profiling bundles"
 	@echo "  make lint         # Clippy with -D warnings"
 	@echo "  make generate     # Regenerate committed JSON schemas via release binary"
-	@echo "  make update       # Update Rust deps to latest stable; use release-gate/macos-ci to verify the app toolchain"
+	@echo "  make update       # Refresh Cargo.lock to latest compatible deps; edit Cargo.toml for requirement bumps"
 	@echo "  make security-audit # Audit Cargo.lock against RustSec advisories (requires cargo-audit)"
 	@echo "  make rust-toolchain-check # Verify repo-pinned Rust toolchain baseline"
 	@echo "  make rust-toolchain-drift-check # Compare repo-pinned Rust against global rustup stable"
