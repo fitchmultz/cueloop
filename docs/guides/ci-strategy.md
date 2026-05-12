@@ -52,7 +52,7 @@ Optional environment (see `make help`):
 ### Release build stamp and bundling
 
 - The release stamp `target/tmp/stamps/cueloop-release-build.stamp` is updated when `Makefile`, `mk/rust.mk`, Cargo manifests/lockfile/config, `VERSION`, `rust-toolchain.toml`, the CLI bundling shell scripts, or CLI inputs under `crates/cueloop/src`, `crates/cueloop/assets`, `crates/cueloop/Cargo.toml`, or `crates/cueloop/build.rs` are newer than the stamp (no unconditional `FORCE` rebuild).
-- `install-verify` copies the release CLI into a temporary bin directory and runs `--help` from there; it does not mutate `$(BIN_DIR)` or `~/.local/bin` during validation. Explicit `make install` copies from `target/release/cueloop` after the stamp recipe runs.
+- `install-verify` copies the release CLI produced by `scripts/cueloop-cli-bundle.sh --configuration Release` into a temporary bin directory and runs `--help` from there; it does not mutate `$(BIN_DIR)` or `~/.local/bin` during validation. Explicit `make install` installs that same bundled release binary into `$(BIN_DIR)` (falling back to `~/.local/bin` when the configured prefix is not writable) and, on macOS with Xcode present, runs `macos-install-app`.
 - Xcode’s “Build and Bundle CueLoop” phase runs through `cueloop-cli-bundle.sh` and uses `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` for dependency analysis, so Xcode does not rerun the phase on unrelated Swift-only no-op builds but still reruns when Rust CLI source, embedded prompt/runner assets, manifests, or bundling scripts change.
 
 ### Cleaning `target/tmp`
@@ -150,6 +150,8 @@ make coverage
 ```
 
 `make security-audit` runs `cargo audit --deny warnings` against `Cargo.lock` and requires `cargo-audit` (`cargo install cargo-audit --locked`). Use it during dependency refreshes, Rust baseline audits, and release/public-readiness preparation. It is intentionally not part of the default day-to-day `make agent-ci` tiers so advisory database/network/tool availability does not make every local edit depend on external RustSec freshness.
+
+`make coverage` (see `mk/coverage.mk`) writes HTML under `target/coverage/html/` by default; the recipe prints `target/coverage/html/index.html` for you to open in a browser. It does not invoke a platform-specific viewer, which keeps Linux and headless environments predictable.
 
 When a system Rust update is reported, use this local comparison procedure before deciding whether CueLoop should adopt it:
 

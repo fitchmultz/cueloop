@@ -81,6 +81,8 @@ make docs
 make agent-ci
 ```
 
+Tooling note: `make update` today runs `cargo update` and refreshes `Cargo.lock` to the latest versions compatible with existing `Cargo.toml` requirements; bumping minimum direct dependency versions is still an explicit manifest edit. The audit below used that workflow as written at the time.
+
 Observed toolchain and helper versions:
 
 - `rustc 1.95.0 (59807616e 2026-04-14)`
