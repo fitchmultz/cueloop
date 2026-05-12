@@ -93,6 +93,84 @@ final class MachineContractTests: XCTestCase {
         )
     }
 
+    func testDecodeAcceptsMachineTaskCreateDocument() throws {
+        let data = Data("""
+        {
+          "version": 1,
+          "task": {
+            "id": "RQ-7001",
+            "status": "todo",
+            "title": "Machine contract fixture",
+            "priority": "medium",
+            "tags": ["fixture"],
+            "scope": ["apps/CueLoopMac"],
+            "evidence": [],
+            "plan": [],
+            "notes": [],
+            "request": "fixture",
+            "created_at": "2026-04-23T00:00:00Z",
+            "updated_at": "2026-04-23T00:00:00Z"
+          }
+        }
+        """.utf8)
+
+        let document = try CueLoopMachineContract.decode(
+            MachineTaskCreateDocument.self,
+            from: data,
+            operation: "machine task create"
+        )
+        XCTAssertEqual(document.task.id, "RQ-7001")
+        XCTAssertEqual(document.task.title, "Machine contract fixture")
+    }
+
+    func testDecodeAcceptsMachineTaskBuildDocument() throws {
+        let data = Data("""
+        {
+          "version": 1,
+          "mode": "write",
+          "blocking": null,
+          "result": {
+            "created_count": 1,
+            "task_ids": ["RQ-7002"],
+            "tasks": [
+              {
+                "id": "RQ-7002",
+                "status": "todo",
+                "title": "Built fixture task",
+                "priority": "medium",
+                "tags": ["machine"],
+                "scope": ["crates/cueloop"],
+                "evidence": [],
+                "plan": [],
+                "notes": [],
+                "request": "fixture build",
+                "created_at": "2026-04-23T00:00:00Z",
+                "updated_at": "2026-04-23T00:00:00Z"
+              }
+            ]
+          },
+          "warnings": [],
+          "continuation": {
+            "headline": "Tasks created",
+            "detail": "Fixture continuation.",
+            "blocking": null,
+            "next_steps": []
+          }
+        }
+        """.utf8)
+
+        let document = try CueLoopMachineContract.decode(
+            MachineTaskBuildDocument.self,
+            from: data,
+            operation: "machine task build"
+        )
+        XCTAssertEqual(document.mode, "write")
+        XCTAssertEqual(document.result.createdCount, 1)
+        XCTAssertEqual(document.result.taskIDs, ["RQ-7002"])
+        XCTAssertEqual(document.result.tasks.count, 1)
+        XCTAssertEqual(document.result.tasks.first?.title, "Built fixture task")
+    }
+
     func testDecodeAcceptsMachineRunStopDocument() throws {
         let data = Data("""
         {

@@ -68,6 +68,7 @@ fn app_parity_registry_tracks_required_scenarios_with_proof() {
         "execution_controls_plugin_runner_visibility",
         "execution_controls_parallel_workers_above_menu_default",
         "continuation_next_steps_native_actions",
+        "machine_task_create_and_build_contracts",
     ];
 
     for scenario in required {

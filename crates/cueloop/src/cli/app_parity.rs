@@ -292,6 +292,31 @@ pub const APP_PARITY_SCENARIO_REGISTRY: &[AppParityScenarioEntry] = &[
             "Safe machine continuations should become native actions; unsupported ones must stay explicit copy/unsupported affordances.",
         ],
     ),
+    scenario!(
+        "machine_task_create_and_build_contracts",
+        AppParityScenarioStatus::NativeReady,
+        "Task Creation",
+        &[
+            "machine task create (version: 1)",
+            "machine task build (version: 1)",
+        ],
+        &[
+            "docs/machine-contract.md: machine task create",
+            "docs/machine-contract.md: machine task build",
+            "docs/features/app.md: native workflows should use versioned cueloop machine contracts",
+        ],
+        "Workspace direct task create and AI task build machine JSON",
+        &[
+            "crates/cueloop/tests/machine_contract_test/machine_contract_test_task.rs::machine_task_create_and_mutate_round_trip",
+            "crates/cueloop/tests/machine_task_build_contract_test.rs::machine_task_build_suppresses_noisy_runner_output_before_json",
+        ],
+        &[
+            "apps/CueLoopMac/CueLoopCoreTests/WorkspaceTaskCreationIntegrationTests.swift::test_createTask_importsStructuredTaskImmediately",
+            "apps/CueLoopMac/CueLoopCoreTests/MachineContractTests.swift::testDecodeAcceptsMachineTaskCreateDocument",
+            "apps/CueLoopMac/CueLoopCoreTests/MachineContractTests.swift::testDecodeAcceptsMachineTaskBuildDocument",
+        ],
+        &[],
+    ),
 ];
 
 fn has_blank(items: &[&str]) -> bool {

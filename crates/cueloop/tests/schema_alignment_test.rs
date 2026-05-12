@@ -185,6 +185,8 @@ fn schema_alignment_machine_bundle_contains_expected_documents() {
         "workspace_overview",
         "task_create_request",
         "task_create",
+        "task_build_request",
+        "task_build",
         "task_mutation",
         "graph_read",
         "dashboard_read",
