@@ -97,3 +97,5 @@ make release-gate
 ```
 
 Lower-level targets such as `ci-docs`, `ci-fast`, `ci`, and `macos-ci` still exist, but most contributors should treat them as internal tiers behind `make agent-ci` rather than commands to choose among day to day.
+
+Routing uses only the **current uncommitted** working tree (including untracked paths); commits already on the branch do not change the tier. To debug routing, run `scripts/agent-ci-surface.sh --target` and `--reason` from the repo root. Changes to `scripts/agent-ci-surface.sh` or path allowlists in `scripts/lib/release_policy.sh` should stay aligned with contract coverage in [`crates/cueloop/tests/agent_ci_surface_contract_test.rs`](../crates/cueloop/tests/agent_ci_surface_contract_test.rs) (see [`docs/guides/ci-strategy.md`](guides/ci-strategy.md)).

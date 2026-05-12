@@ -16,7 +16,7 @@ Thank you for your interest in contributing to CueLoop! This document provides g
 
 ```bash
 # Clone the repository
-git clone https://github.com/mitchfultz/cueloop
+git clone https://github.com/fitchmultz/cueloop
 cd cueloop
 
 # Install locally
@@ -83,8 +83,8 @@ make docs
 - With no local changes, it exits successfully without running a CI target.
 - Docs/community-only changes: `make ci-docs`
 - Ancillary non-docs changes (not `crates/**` and not macOS ship surface): `make ci-fast`
-- Rust crate changes (`crates/**`), release/build script changes, and `Makefile` edits that touch Rust release/build/install targets: `make ci` (release-shaped Rust gate)
-- App bundle, schemas, macOS/Xcode bundling scripts, toolchain changes, and `Makefile` edits that touch macOS build/test targets: `make macos-ci`
+- Rust crate changes (`crates/**`), `mk/rust.mk` edits, release/build script changes, and `Makefile` edits that touch Rust release/build/install targets: `make ci` (release-shaped Rust gate)
+- App bundle, schemas, macOS/Xcode bundling scripts, toolchain changes, and `Makefile` or `mk/macos.mk` edits that touch macOS build/test targets: `make macos-ci`
 
 `Makefile` and `scripts/**` are **not** blanket macOS triggers anymore. CI/router-only edits (for example `scripts/agent-ci-surface.sh`, `scripts/lib/release_policy.sh`, or `agent-ci` target wiring in `Makefile`) should stay below the Mac app gate.
 
@@ -95,13 +95,13 @@ Lower-level gate reference (mostly implementation detail / power-user material):
 Docs-only gate (`ci-docs`) pipeline:
 
 ```
-check-env-safety → check-backup-artifacts
+check-env-safety → check-backup-artifacts → check-file-size-limits → docs/community scan
 ```
 
 Fast gate (`ci-fast`) pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format-check → lint → test
+check-env-safety → check-backup-artifacts → check-file-size-limits → rust-toolchain-check → version-check → format-check → lint → test
 ```
 
 Full Rust release gate (`ci`) adds:
@@ -113,8 +113,15 @@ build → generate → install-verify
 Canonical full `make ci` pipeline:
 
 ```
-check-env-safety → check-backup-artifacts → deps → format-check → lint → test → build → generate → install-verify
+check-env-safety → check-backup-artifacts → check-file-size-limits → rust-toolchain-check → version-check → format-check → lint → test → build → generate → install-verify
 ```
+
+Optional cold or offline prep: `make deps` runs `cargo fetch --locked` after toolchain/version checks; it is not part of the default `ci-fast` / `ci` graphs.
+
+### Rust dependencies
+
+- **`make update`** runs `cargo update` and refreshes `Cargo.lock` to the latest versions **compatible with existing `Cargo.toml` requirements**. Bumping minimum versions of direct dependencies is still an explicit manifest edit; the target does not rewrite requirement ranges for you.
+- After lockfile refreshes, run the routed gate (`make agent-ci`) and consider `make security-audit` for release-facing work (see [`AGENTS.md`](AGENTS.md)).
 
 Run required gate with:
 
@@ -154,7 +161,7 @@ make pre-public-check
 We follow standard Rust conventions with additional project-specific requirements:
 
 - **Formatting**: `cargo fmt` (enforced by CI)
-- **Linting**: `cargo clippy --workspace --all-targets -- -D warnings` (warnings treated as errors)
+- **Linting**: `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings` (warnings treated as errors; `make lint` is the supported entrypoint)
 - **Visibility**: Default to private; prefer `pub(crate)` over `pub` unless cross-crate use is required
 - **Errors**: Use descriptive error types (`thiserror`) and `Result<T, E>` over panics
 - **Cohesion**: Keep modules/files focused; split large files rather than growing grab-bags
@@ -185,6 +192,7 @@ All new or changed behavior must be covered by tests:
 - **Failure modes**: Error handling and edge cases
 - **Location**: Prefer tests near the code via `#[cfg(test)]`
 - **Integration tests**: Use `crates/cueloop/tests/` for cross-module behavior
+- **Agent CI classifier**: If you change `scripts/agent-ci-surface.sh` or path allowlists in `scripts/lib/release_policy.sh`, extend `crates/cueloop/tests/agent_ci_surface_contract_test.rs` so representative `noop` / `ci-docs` / `ci-fast` / `ci` / `macos-ci` routing stays pinned (see `docs/guides/ci-strategy.md`).
 
 Example:
 
@@ -204,7 +212,7 @@ CueLoop uses `cargo-llvm-cov` for code coverage analysis. Coverage is **optional
 
 ```bash
 # Install cargo-llvm-cov
-cargo install cargo-llvm-cov
+cargo install cargo-llvm-cov --locked
 
 # On macOS, you may also need the llvm-tools component
 rustup component add llvm-tools-preview
@@ -221,7 +229,7 @@ make coverage-clean
 ```
 
 The coverage target generates:
-- **HTML Report**: `target/coverage/html/index.html` (opens automatically on macOS)
+- **HTML Report**: `target/coverage/html/index.html` — `make coverage` echoes this path when the run finishes; open it manually in a browser. The Makefile does not launch a platform viewer, which keeps Linux and headless environments predictable (see `mk/coverage.mk` and `docs/guides/ci-strategy.md`).
 - **JSON Data**: `target/coverage/coverage.json` (machine-readable coverage data)
 
 #### Interpreting Results

@@ -52,7 +52,7 @@ Prerequisites: Rust is pinned by `rust-toolchain.toml`; GNU Make >= 4 is require
 | Build release CLI | `make build` |
 | Regenerate schemas | `make generate` |
 | Install locally | `make install` |
-| Update Rust dependencies | `make update` |
+| Refresh compatible Rust dependency lockfile entries | `make update` |
 | RustSec advisory audit | `make security-audit` |
 | Quick CLI iteration | `cargo run -p cueloop -- <command>` |
 | Quick crate tests | `cargo test -p cueloop` |
@@ -92,7 +92,7 @@ Use a short written plan for multi-file, cross-surface, migration, release, depe
 
 - NEVER commit, print, or copy secrets. Keep `.env`, `.env.*`, `.envrc`, raw runner logs, raw dumps, and `.cueloop/logs/` out of tracked files and reports.
 - Runner output may contain sensitive data. Use redaction helpers before logging or copying output into queue notes/docs.
-- Allowed local side effects from normal validation: `target/`, ignored app build/derived-data paths, temporary directories, `.cueloop/cache/`, `.cueloop/lock/`, `.cueloop/logs/`, and local CLI install during `install-verify`. Do not commit them.
+- Allowed local side effects from normal validation: `target/`, ignored app build/derived-data paths, temporary directories, `.cueloop/cache/`, `.cueloop/lock/`, and `.cueloop/logs/`. Normal validation must not install or replace user-global binaries; use explicit `make install` for local CLI/app installation. Do not commit generated runtime artifacts.
 - Do not broaden app/CLI workspace access, bypass queue locks, disable confirmations/previews for destructive actions, or enable automatic publish behavior without explicit maintainer direction.
 - Do not add or enable GitHub Actions as CI. Local Make targets are the validation source of truth; the disabled Cursor finish-line workflow is demo sequencing glue only.
 
@@ -117,6 +117,7 @@ This is a Rust-only CLI project on Linux (the SwiftUI macOS app cannot build her
 - **git default branch**: Must be `main` (`git config --global init.defaultBranch main`), otherwise several integration tests that create temp repos will fail with `fatal: 'origin/main' is not a commit`.
 - **Pre-existing test failures**: Three `doctor_contract_test` tests (`doctor_auto_fix_repairs_invalid_queue`, `doctor_passes_in_clean_env`, and `doctor_warns_on_missing_upstream`) fail because they expect the `pi` runner binary on PATH. These are environment-dependent and do not indicate a code regression.
 - **sccache**: Not needed on Linux. The Makefile auto-detects sccache via `which`; when absent, agent mode skips `RUSTC_WRAPPER` gracefully. No action needed.
+- **`make agent-ci` vs `target/debug`**: `agent-ci` sets `CUELOOP_CARGO_MODE=agent` for the nested gate, so Cargo writes under `target/agents/$(AGENT_ID)/` (default `manual`), not `target/debug/`. Use `cargo build -p cueloop` or direct `make ci-fast` for the usual `target/` layout; see [`docs/troubleshooting.md`](docs/troubleshooting.md) and [`docs/guides/ci-strategy.md`](docs/guides/ci-strategy.md).
 - **lld**: Not used or configured by this project. Not needed.
 - **No external services**: No Docker, databases, or network services needed. The entire build/test/lint workflow is self-contained.
 - **Key commands**: See the `## Setup and commands` table above. For day-to-day work: `make lint`, `make format-check`, `make test`, `cargo build -p cueloop`, `make ci-fast`, and `make agent-ci` (the default completion gate).

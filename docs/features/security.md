@@ -422,7 +422,8 @@ The `make ci` target typically includes:
 
 ```makefile
 # Makefile
-ci: check-env-safety check-backup-artifacts deps format-check lint test build generate install-verify
+ci: ci-fast build generate install-verify
+ci-fast: check-env-safety check-backup-artifacts check-file-size-limits rust-toolchain-check version-check format-check lint test
 ```
 
 This ensures:
@@ -431,6 +432,7 @@ This ensures:
 - Code passes all checks
 - Tests pass
 - Build succeeds
+- `install-verify` checks that the release CLI runs (`--help`) from a **temporary** install directory only; it does not write to `$(BIN_DIR)`, `~/.local/bin`, or other user-global locations (explicit `make install` still performs a real install when you want one)
 
 ### Security Benefits
 

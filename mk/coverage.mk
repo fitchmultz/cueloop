@@ -14,7 +14,7 @@ coverage:
 		echo "ERROR: cargo-llvm-cov not found."; \
 		echo ""; \
 		echo "Install with:"; \
-		echo "  cargo install cargo-llvm-cov"; \
+		echo "  cargo install cargo-llvm-cov --locked"; \
 		echo ""; \
 		echo "On macOS, you may also need:"; \
 		echo "  rustup component add llvm-tools-preview"; \
@@ -38,8 +38,7 @@ coverage:
 	@echo "    Per-Crate Breakdown:"
 	@jq -r '.data[0].summaries // [] | sort_by(.crate_name) | .[] | "      \(.crate_name): Lines \(.summary.lines.percent // 0)%, Functions \(.summary.functions.percent // 0)%"' $(COVERAGE_DIR)/coverage.json 2>/dev/null || echo "      (see $(COVERAGE_DIR)/coverage.json for raw data)"
 	@echo ""
-	@echo "  → Opening HTML report..."
-	@open $(COVERAGE_DIR)/html/index.html 2>/dev/null || echo "    (open $(COVERAGE_DIR)/html/index.html manually)"
+	@echo "    Open manually: $(COVERAGE_DIR)/html/index.html"
 
 # Coverage clean: Remove coverage artifacts
 coverage-clean:

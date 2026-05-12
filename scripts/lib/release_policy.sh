@@ -436,7 +436,7 @@ public_is_docs_only_path() {
 public_requires_macos_ship_gate_for_path() {
     local path="$1"
     case "$path" in
-        apps/CueLoopMac/*|apps/AGENTS.md|schemas/*|VERSION|Cargo.toml|Cargo.lock|rust-toolchain.toml|.cargo/*)
+        apps/CueLoopMac/*|apps/AGENTS.md|schemas/*|VERSION|Cargo.toml|Cargo.lock|rust-toolchain.toml|.cargo/*|mk/macos.mk)
             return 0
             ;;
     esac
@@ -458,7 +458,7 @@ public_requires_macos_ship_gate_for_script_path() {
 public_requires_rust_release_gate_for_path() {
     local path="$1"
     case "$path" in
-        crates/*)
+        crates/*|mk/rust.mk)
             return 0
             ;;
     esac

@@ -5,7 +5,7 @@ Owner: Maintainers
 Source of truth: this document
 Parent: [CueLoop Documentation](index.md)
 Related: [Project Operating Constitution](guides/project-operating-constitution.md)
-Last updated: 2026-04-27
+Last updated: 2026-05-12
 
 This is the canonical decision log for project-level decisions that affect
 CueLoop architecture, operations, documentation, release flow, or contributor and
@@ -26,6 +26,72 @@ Expected consequences:
 Follow-up actions:
 Review date, if any:
 ```
+
+## 2026-05-12: Keep install verification out of user-global bin directories
+
+Decision: `make ci` and `make install-verify` must verify CLI install mechanics without replacing binaries in `$(BIN_DIR)`, `~/.local/bin`, `/usr/local/bin`, or other user-global locations. Only explicit operator install commands such as `make install` may write to those locations.
+
+Date: 2026-05-12
+
+Owner: Maintainers
+
+Context: The full Rust gate includes `install-verify`. Before this decision, `install-verify` copied the freshly built release CLI into the writable configured bin directory, usually `~/.local/bin/cueloop`. That made routine validation mutate developer state on both Linux and macOS hosts and could replace the same binary that launched a long-running CueLoop self-development loop.
+
+Chosen option: Have `install-verify` copy the release binary into a temporary bin directory, execute `cueloop --help` from that temporary install path, and clean it up automatically. Keep `make install` as the explicit command that installs the CLI and, on macOS, the app bundle.
+
+Rejected options: Keep writing to `~/.local/bin` during CI because the behavior was documented; add a knob to opt out of user-global install verification; remove install verification entirely.
+
+Reason: Validation should be safe and repeatable by default. A temporary install path still verifies executable permissions, binary naming, and basic launch behavior without hidden global side effects.
+
+Expected consequences: `make ci`, `make agent-ci`, and Linux/macOS release-shaped validation no longer replace a developer's installed `cueloop` binary. Operators who want to update their local CLI still run `make install` explicitly.
+
+Follow-up actions: None.
+
+Review date, if any: None.
+
+## 2026-05-12: Keep `make update` scoped to compatible Cargo.lock refreshes
+
+Decision: `make update` runs `cargo update` to refresh the lockfile to the latest **semver-compatible** versions allowed by existing `Cargo.toml` requirements. Bumping minimum supported versions of direct dependencies remains an explicit `Cargo.toml` edit plus validation, not something the update recipe does implicitly.
+
+Date: 2026-05-12
+
+Owner: Maintainers
+
+Context: Unbounded or surprising lockfile drift makes bisects, agent loops, and release review harder to reason about. Contributors sometimes assumed `make update` might apply requirement bumps the way a major dependency migration would.
+
+Chosen option: Keep `cargo update` as the sole `make update` behavior and print clear post-run notes that direct requirement bumps are manual `Cargo.toml` changes (implementation: `mk/rust.mk` `update` target).
+
+Rejected options: Remove `make update`; fold automatic requirement bumps into the recipe; add a second target that silently widens version constraints.
+
+Reason: Compatible-only refresh is predictable, reversible with Git, and matches Cargo’s contract for `cargo update` without widening the dependency policy surface in Make.
+
+Expected consequences: Routine lockfile maintenance stays one command; intentional API or MSRV-driven upgrades stay visible in manifest diffs and release notes.
+
+Follow-up actions: None.
+
+Review date, if any: None.
+
+## 2026-05-12: Do not auto-open HTML coverage reports
+
+Decision: After `make coverage` succeeds, print the report paths and stop. Do not invoke `xdg-open`, `open`, or other platform viewers from the Makefile.
+
+Date: 2026-05-12
+
+Owner: Maintainers
+
+Context: Opening a browser from Make is surprising on headless Linux agents, breaks predictable automation logs, and couples validation to a graphical session.
+
+Chosen option: Emit the HTML and JSON locations and instruct the operator to open `target/coverage/html/index.html` manually when they want a visual report (`mk/coverage.mk`).
+
+Rejected options: Auto-open on macOS only; detect DISPLAY/WAYLAND_DISPLAY and branch; add a `COVERAGE_OPEN=1` knob in the first iteration.
+
+Reason: Manual open keeps local, CI, and agent environments aligned on one behavior without new configuration.
+
+Expected consequences: Contributors follow the echoed path or their editor’s preview; documentation references the same contract.
+
+Follow-up actions: None.
+
+Review date, if any: None.
 
 ## 2026-04-27: Align CueLoop's source-build MSRV with the pinned Rust toolchain
 
@@ -51,27 +117,15 @@ Review date, if any: None.
 
 ## 2026-04-27: Accept current binary replacement behavior during CueLoop self-development loops
 
-Decision: Keep CueLoop's current long-running loop behavior when the installed
-`cueloop` binary changes during CueLoop self-development. Do not add automatic
-re-exec, stop-on-change, run-pinned executable copies, or queued remediation for
-this concern unless the maintainer explicitly reopens it.
+Decision: Superseded on 2026-05-12 by "Keep install verification out of user-global bin directories" for normal validation. Explicit `make install` can still replace the installed `cueloop` binary, and CueLoop keeps the current long-running loop behavior for that operator-requested install path. Do not add automatic re-exec, stop-on-change, run-pinned executable copies, or queued remediation for explicit install replacement unless the maintainer explicitly reopens it.
 
 Date: 2026-04-27
 
 Owner: Maintainers
 
-Context: CueLoop workers may change CueLoop itself and run `make agent-ci`. For Rust
-crate changes, `make agent-ci` can route to `make ci`, and `make ci` runs
-`install-verify`, which installs the release CLI into the writable bin directory
-(typically `~/.local/bin/cueloop`). Long-running loops are commonly started as
-`cueloop run loop ...`, so the active coordinator process may have been launched
-from the same path that later gets replaced. The existing coordinator remains
-its original in-memory process, while later subprocesses may execute the
-replacement binary from that path.
+Context: This decision originally covered CueLoop workers that changed CueLoop itself and then ran `make agent-ci`. At the time, Rust crate changes could route to `make ci`, and `make ci` ran `install-verify`, which installed the release CLI into the writable bin directory. That validation-time behavior is no longer accepted. The remaining accepted case is an explicit `make install`, where the operator has requested replacement of their installed CLI or app bundle.
 
-Chosen option: Accept the current behavior as an acknowledged self-development
-tradeoff. If a maintainer wants to use a clean binary generation, they can
-manually restart the loop after install. Do not change runtime behavior now.
+Chosen option: Accept the current long-running loop behavior only for explicit operator installs. If a maintainer wants to use a clean binary generation after `make install`, they can manually restart the loop. Do not change runtime behavior now.
 
 Rejected options: Stop the loop whenever the binary changes; automatically
 re-exec the coordinator at sequential or parallel safe boundaries; drain
@@ -87,10 +141,7 @@ beholden to the slowest in-flight worker after each binary-changing task. More
 aggressive hot-swap/re-exec designs risk introducing worker lifecycle, queue,
 state, and cleanup bugs.
 
-Expected consequences: CueLoop self-development loops may continue to run with an
-old in-memory coordinator after `~/.local/bin/cueloop` is replaced. This is an
-accepted risk, not an open defect. Operators who want a fully fresh generation
-should restart the loop manually.
+Expected consequences: CueLoop self-development loops may continue to run with an old in-memory coordinator after an explicit install replaces `~/.local/bin/cueloop` or another configured install path. This is an accepted risk for explicit installs, not for normal validation. Operators who want a fully fresh generation should restart the loop manually.
 
 Follow-up actions: None. Do not automatically add this as an outstanding task
 from `cueloop scan`, audits, TODO sweeps, or agent-created follow-up queues. Only

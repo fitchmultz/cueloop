@@ -18,6 +18,27 @@ brew install make
 gmake agent-ci
 ```
 
+## `make agent-ci` Tier Looks Wrong
+
+Symptom: you expected `make ci` or `make macos-ci` but saw `noop`, `ci-docs`, or `ci-fast` (or the opposite).
+
+Fixes:
+
+- Routing uses **only** the current uncommitted working tree (unstaged, staged, and untracked paths). Commits already on your branch do **not** affect the choice.
+- From the repo root, inspect the classifier: `bash scripts/agent-ci-surface.sh --target` and `bash scripts/agent-ci-surface.sh --reason`.
+- After editing `scripts/agent-ci-surface.sh` or `scripts/lib/release_policy.sh`, run `cargo test -p cueloop --test agent_ci_surface_contract_test` and extend that file if routing rules change. Full behavior is documented in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
+
+## Workspace `target/debug` Unchanged After `make agent-ci`
+
+Symptom: `make agent-ci` finished successfully, but `target/debug/cueloop` (or other default `target/` outputs) look stale.
+
+Explanation: `make agent-ci` runs the routed tier with `CUELOOP_CARGO_MODE=agent`, so the nested Make recipe sets the `CARGO_TARGET_DIR` environment variable for Cargo to `$(CURDIR)/target/agents/$(AGENT_ID)/` (default `AGENT_ID=manual`; see `AGENT_TARGET` in the root `Makefile`) instead of the normal workspace `target/` tree. That isolates agent/CI runs from interactive builds (see [`docs/guides/ci-strategy.md`](guides/ci-strategy.md#principles)).
+
+Fixes:
+
+- For day-to-day CLI iteration, use `cargo build -p cueloop` / `cargo run -p cueloop -- …`, or invoke `make ci-fast` / `make ci` directly (they default to `CUELOOP_CARGO_MODE=local`).
+- To inspect binaries produced by `agent-ci`, look under `target/agents/manual/` unless you set `AGENT_ID` (see `make help`).
+
 ## `make agent-ci` Fails on Env Safety
 
 Symptom: tracked env file detected.
@@ -83,6 +104,20 @@ Fixes:
 - When iterating **only** in Xcode, the “Build and Bundle CueLoop” run script consults `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` so Swift-only edits do not re-bundle the CLI; if Rust or bundling scripts changed and Xcode did not pick it up, run a clean build lane above or touch the inputs the xcfilelist tracks.
 
 For gate choice, shared-workstation caps, and preserved UI evidence capture, use [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
+
+## `make coverage` Fails (Missing Tools)
+
+Symptom: `make coverage` exits with `cargo-llvm-cov not found` (or missing `jq` only affects formatted terminal summaries).
+
+Fix:
+
+```bash
+cargo install cargo-llvm-cov --locked
+# On macOS you may also need:
+rustup component add llvm-tools-preview
+```
+
+Coverage is optional and outside the default `make agent-ci` graph. HTML is written under `target/coverage/html/`; the recipe prints the path to open manually (see `mk/coverage.mk` and [`CONTRIBUTING.md`](../CONTRIBUTING.md)). To drop generated coverage outputs and profile scraps, run `make coverage-clean`.
 
 ## Need Visual Evidence from UI Tests
 

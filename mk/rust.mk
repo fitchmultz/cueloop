@@ -4,18 +4,17 @@
 # Usage: Included by ../Makefile; invoke targets through the root Makefile rather than this fragment directly.
 # Invariants/Assumptions: The including Makefile defines CUELOOP_ENV_RESET, release stamp variables, toolchain variables, shell flags, and shared resource knobs first.
 
-$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CLI_INPUT_FILES)
+$(CUELOOP_RELEASE_BUILD_STAMP): $(CUELOOP_RELEASE_STAMP_INPUTS) $(CUELOOP_CLI_INPUT_FILES) $(CUELOOP_CARGO_CONFIG_INPUT_FILES)
 	@mkdir -p "$(CUELOOP_STAMP_DIR)"
 	@echo "→ Release build..."
 	@$(CUELOOP_ENV_RESET); scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path >/dev/null
 	@touch "$(CUELOOP_RELEASE_BUILD_STAMP)"
 	@echo "  ✓ Release build complete"
 
-# Optional but cheap: fail fast if lockfile or network access is busted
-deps: rust-toolchain-check
+# Explicit dependency prefetch for cold/offline preparation; normal CI lets Cargo fetch only when needed.
+deps: rust-toolchain-check version-check
 	@echo "→ Fetching deps (locked)..."
 	@$(CUELOOP_ENV_RESET); cargo fetch --locked
-	@./scripts/versioning.sh check
 	@echo "  ✓ Deps fetched"
 
 rust-toolchain-check:
@@ -35,25 +34,39 @@ install-verify: $(CUELOOP_RELEASE_BUILD_STAMP)
 		echo "install-verify: missing release binary at $$cueloop_bin_path (run make build first)" >&2; \
 		exit 1; \
 	fi; \
-	bin_dir="$(BIN_DIR)"; \
-	if [ ! -w "$$bin_dir" ]; then \
-		bin_dir="$(HOME)/.local/bin"; \
-		echo "install-verify: $(BIN_DIR) not writable; using $$bin_dir"; \
-	fi; \
+	system_tmp="$${TMPDIR:-/tmp}"; \
+	system_tmp="$${system_tmp%/}"; \
+	verify_root="$$(mktemp -d "$$system_tmp/cueloop-install-verify.XXXXXX")"; \
+	cleanup() { rm -rf "$$verify_root" 2>/dev/null || true; }; \
+	trap cleanup EXIT INT TERM; \
+	bin_dir="$$verify_root/bin"; \
 	mkdir -p "$$bin_dir"; \
 	install -m 0755 "$$cueloop_bin_path" "$$bin_dir/$(BIN_NAME)"; \
 	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 
-install: install-verify
+install: $(CUELOOP_RELEASE_BUILD_STAMP)
+	@$(CUELOOP_ENV_RESET); \
+	cueloop_bin_path="$$(scripts/cueloop-cli-bundle.sh --configuration Release $(CUELOOP_CLI_BUILD_JOBS_ARG) --print-path)"; \
+	if [ ! -x "$$cueloop_bin_path" ]; then \
+		echo "install: missing release binary at $$cueloop_bin_path (run make build first)" >&2; \
+		exit 1; \
+	fi; \
+	bin_dir="$(BIN_DIR)"; \
+	if [ ! -w "$$bin_dir" ]; then \
+		bin_dir="$(HOME)/.local/bin"; \
+		echo "install: $(BIN_DIR) not writable; using $$bin_dir"; \
+	fi; \
+	mkdir -p "$$bin_dir"; \
+	install -m 0755 "$$cueloop_bin_path" "$$bin_dir/$(BIN_NAME)"; \
+	"$$bin_dir/$(BIN_NAME)" --help >/dev/null
 	@if [ "$$(uname -s)" = "Darwin" ] && command -v xcodebuild >/dev/null 2>&1; then \
 		$(MAKE) --no-print-directory macos-install-app; \
 	fi
 
 update:
-	@echo "→ Updating direct dependencies to latest stable requirements..."
-	@$(CUELOOP_ENV_RESET); cargo upgrade --incompatible
-	@echo "→ Refreshing lockfile to latest compatible transitive versions..."
+	@echo "→ Refreshing Rust lockfile to latest compatible dependency versions..."
 	@$(CUELOOP_ENV_RESET); CARGO_HTTP_MULTIPLEXING=$(CARGO_HTTP_MULTIPLEXING) cargo update
+	@echo "  ℹ Direct dependency requirement bumps are explicit Cargo.toml edits; this target only refreshes compatible locked versions."
 	@echo "  ℹ Swift/Xcode has no external package manifest here; use make macos-ci to verify the app against the current toolchain"
 	@echo "  ✓ Dependency update complete"
 
@@ -203,8 +216,8 @@ version-sync:
 
 publish-check:
 	@echo "→ Validating crates.io package ($(CARGO_PACKAGE_NAME))..."
-	@$(CUELOOP_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME) --allow-dirty
-	@$(CUELOOP_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked --allow-dirty
+	@$(CUELOOP_ENV_RESET); cargo package --list -p $(CARGO_PACKAGE_NAME)
+	@$(CUELOOP_ENV_RESET); cargo publish --dry-run -p $(CARGO_PACKAGE_NAME) --locked
 	@echo "  ✓ crates.io package dry-run passed"
 
 release:

@@ -48,7 +48,7 @@ Run from the repository root.
 | Keep temp test dirs | `CUELOOP_CI_KEEP_TMP=1 make test` |
 | Update snapshots intentionally | `INSTA_UPDATE=always cargo test -p cueloop` |
 
-`make test` uses cargo-nextest when available and falls back to cargo test, then runs doc tests. Use `CUELOOP_CI_JOBS=4` on shared workstations.
+`make test` uses cargo-nextest when available and falls back to cargo test, then runs doc tests. Rust/Cargo job caps follow the root Makefile (`CUELOOP_CI_JOBS`, `RUST_JOBS`); see `../../../AGENTS.md` and `../../../docs/guides/ci-strategy.md` (defaults favor tool-managed parallelism; set `CUELOOP_CI_JOBS=4` on shared workstations when you need a cap).
 
 ## Coding conventions
 
