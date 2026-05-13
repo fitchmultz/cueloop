@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added agent-facing machine task APIs plus documented machine task create/build contracts for automation clients.
+
+### Changed
+
+- Interactive init now leaves the CI gate disabled by default and prompts operators before enabling it.
+- Restored simpler local validation and Xcode cache defaults for everyday development.
+- Sped up `make agent-ci` surface classification and documented the classifier path merge, routing policy split, and `python3` requirement.
+- Refreshed Rust dependencies and polished public README trust cues.
+
+### Fixed
+
+- Fixed Linux `sccache` Makefile behavior for shared/local validation flows.
+- Fixed Xcode build cache defaults for the macOS app/tooling path.
+
 ## [0.6.0] - 2026-05-10
 
 ### Added
@@ -202,7 +218,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/fitchmultz/cueloop/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/fitchmultz/cueloop/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/fitchmultz/cueloop/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/fitchmultz/cueloop/compare/v0.4.0...v0.4.1
