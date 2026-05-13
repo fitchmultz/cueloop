@@ -201,10 +201,14 @@ fi
 all_docs_only=1
 while IFS= read -r path; do
     [ -z "$path" ] && continue
-    if ! public_is_docs_only_path "$path"; then
-        all_docs_only=0
-        break
-    fi
+    case "$path" in
+        *.md|docs/*|.github/ISSUE_TEMPLATE/*|.github/PULL_REQUEST_TEMPLATE.md|LICENSE|CODE_OF_CONDUCT.md|SECURITY.md|CONTRIBUTING.md)
+            ;;
+        *)
+            all_docs_only=0
+            break
+            ;;
+    esac
 done <<< "$changed_paths"
 
 if [ "$all_docs_only" = "1" ]; then
