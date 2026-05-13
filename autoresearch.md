@@ -1,11 +1,11 @@
 # Autoresearch: make agent-ci routing overhead
 
 ## Objective
-Reduce wall-clock time of `make agent-ci` for small non-doc local diffs by optimizing the diff-routing/classification path before the selected gate runs. The main workload is the real repository classifier path used by agents: `make agent-ci` with a tiny tracked change under `scripts/` so routing resolves to `ci-fast`.
+Reduce wall-clock time of CueLoop's diff-routing/classification path for small non-doc local diffs by optimizing the real classifier used by agents: `scripts/agent-ci-surface.sh --target` on a stable tiny tracked change under `scripts/` so routing resolves to `ci-fast`.
 
 ## Metrics
-- **Primary**: `agent_ci_ms` (ms, lower is better) — end-to-end wall time for `make agent-ci` on the synthetic tiny-diff workload
-- **Secondary**: `classifier_ms`, `surface_target_code`, `stdout_bytes`, `status_code` — classifier-only wall time, routing tier code (`0=noop,1=ci-docs,2=ci-fast,3=ci,4=macos-ci`), output volume, and command success status
+- **Primary**: `classifier_ms` (ms, lower is better) — median wall time of repeated `scripts/agent-ci-surface.sh --target` runs on the stable tiny-diff workload
+- **Secondary**: `agent_ci_ms`, `surface_target_code`, `stdout_bytes`, `status_code` — one-shot end-to-end `make agent-ci` wall time as a guardrail, routing tier code (`0=noop,1=ci-docs,2=ci-fast,3=ci,4=macos-ci`), output volume, and command success status
 
 ## How to Run
 `./autoresearch.sh` — prepares a stable tiny tracked diff, runs `make agent-ci`, and emits `METRIC` lines.
@@ -35,3 +35,5 @@ Reduce wall-clock time of `make agent-ci` for small non-doc local diffs by optim
 ## What's Been Tried
 - Baseline discovery showed `make agent-ci` is ~0.20s with no local diff, which is too cheap and routes to `noop`; the benchmark harness must force a stable tracked diff.
 - The likely hot path is repeated shelling + git diff inspection in `scripts/agent-ci-surface.sh`, with helper policy functions in `scripts/lib/release_policy.sh`.
+- End-to-end `make agent-ci` proved too noisy for this goal: unchanged controls varied from ~62s to ~101s while classifier time stayed ~70-80ms. That means the prior primary metric was dominated by unrelated `lint`/`test` variance and could not honestly measure routing work.
+- A failed attempt to add a script-surface fast lane in `ci-fast` broke the documented no-git fallback contract; any future optimization must preserve source-snapshot behavior.

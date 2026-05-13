@@ -31,11 +31,14 @@ case "$surface_target" in
 esac
 
 classifier_ms="$(python3 - <<'PY'
-import subprocess, time
-start = time.perf_counter_ns()
-subprocess.run(['bash','scripts/agent-ci-surface.sh','--target'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-end = time.perf_counter_ns()
-print((end-start)//1_000_000)
+import statistics, subprocess, time
+samples=[]
+for _ in range(9):
+    start = time.perf_counter_ns()
+    subprocess.run(['bash','scripts/agent-ci-surface.sh','--target'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    end = time.perf_counter_ns()
+    samples.append((end-start)//1_000_000)
+print(int(statistics.median(samples)))
 PY
 )"
 
@@ -76,8 +79,8 @@ if [ "$status_code" -ne 0 ]; then
   exit "$status_code"
 fi
 
-echo "METRIC agent_ci_ms=$agent_ci_ms"
 echo "METRIC classifier_ms=$classifier_ms"
+echo "METRIC agent_ci_ms=$agent_ci_ms"
 echo "METRIC surface_target_code=$surface_target_code"
 echo "METRIC stdout_bytes=$stdout_bytes"
 echo "METRIC status_code=$status_code"
