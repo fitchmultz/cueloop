@@ -17,6 +17,7 @@
 # - `--release-context` permits only canonical release metadata drift.
 
 set -euo pipefail
+# AUTORESEARCH_PROBE
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/cueloop-shell.sh"

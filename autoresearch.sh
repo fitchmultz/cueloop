@@ -4,20 +4,20 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")" && pwd)"
 cd "$repo_root"
 
-probe_path="scripts/agent-ci-surface.sh"
-probe_marker="# AUTORESEARCH_PROBE"
-
 python3 - <<'PY'
 from pathlib import Path
-p = Path('scripts/agent-ci-surface.sh')
-text = p.read_text()
-marker = '# AUTORESEARCH_PROBE\n'
-needle = 'set -euo pipefail\n'
-if marker not in text:
-    if needle not in text:
-        raise SystemExit('missing insertion point in scripts/agent-ci-surface.sh')
-    text = text.replace(needle, needle + marker, 1)
-    p.write_text(text)
+probes = [
+    ('scripts/agent-ci-surface.sh', '# AUTORESEARCH_PROBE\n', 'set -euo pipefail\n'),
+    ('scripts/pre-public-check.sh', '# AUTORESEARCH_PROBE\n', 'set -euo pipefail\n'),
+]
+for rel, marker, needle in probes:
+    p = Path(rel)
+    text = p.read_text()
+    if marker not in text:
+        if needle not in text:
+            raise SystemExit(f'missing insertion point in {rel}')
+        text = text.replace(needle, needle + marker, 1)
+        p.write_text(text)
 PY
 
 surface_target="$(bash scripts/agent-ci-surface.sh --target)"
