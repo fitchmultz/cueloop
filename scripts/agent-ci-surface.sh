@@ -113,7 +113,7 @@ changed_paths="$(
         git -C "$REPO_ROOT" diff --name-only --relative
         git -C "$REPO_ROOT" diff --cached --name-only --relative
         git -C "$REPO_ROOT" ls-files --others --exclude-standard
-    } | sed '/^$/d' | sort -u
+    } | python3 -c 'import sys; paths = {line for line in sys.stdin.read().splitlines() if line}; [print(path) for path in sorted(paths)]'
 )"
 
 combined_local_diff_for_path() {
