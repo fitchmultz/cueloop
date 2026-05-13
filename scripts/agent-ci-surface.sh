@@ -173,17 +173,17 @@ classify_special_path() {
     fi
 
     case "$path" in
+        scripts/cueloop-cli-bundle.sh|scripts/macos-*|scripts/lib/xcodebuild-lock.sh)
+            CLASSIFY_TARGET="macos-ci"
+            CLASSIFY_REASON="script change requires macOS ship gate (bundling/Xcode/macOS contract): $path"
+            return 0
+            ;;
+        scripts/build-release-artifacts.sh|scripts/release.sh|scripts/versioning.sh|scripts/profile-ship-gate.sh|scripts/check-rust-toolchain.sh|scripts/lib/release_verify_pipeline.sh)
+            CLASSIFY_TARGET="ci"
+            CLASSIFY_REASON="release/build script change requires release-shaped verification: $path"
+            return 0
+            ;;
         scripts/*)
-            if public_requires_macos_ship_gate_for_script_path "$path"; then
-                CLASSIFY_TARGET="macos-ci"
-                CLASSIFY_REASON="script change requires macOS ship gate (bundling/Xcode/macOS contract): $path"
-                return 0
-            fi
-            if public_requires_rust_release_gate_for_script_path "$path"; then
-                CLASSIFY_TARGET="ci"
-                CLASSIFY_REASON="release/build script change requires release-shaped verification: $path"
-                return 0
-            fi
             CLASSIFY_TARGET="ci-fast"
             CLASSIFY_REASON="CI/router/tooling script change requires fast Rust/CLI verification: $path"
             return 0
