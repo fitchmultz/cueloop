@@ -40,6 +40,23 @@ Behavior:
 - The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.cueloop/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/CueLoopMac/build/`.
 - Toolchain drift checks compare the repo-local override with the global rustup stable toolchain during release/public readiness; the repo-local `rust-toolchain.toml` wins inside the workspace.
 
+### Agent-ci classifier path list
+
+`scripts/agent-ci-surface.sh` builds the changed-path set from three git views, all `--relative` to the repo root:
+
+- unstaged: `git diff --name-only`
+- staged: `git diff --cached --name-only`
+- untracked (ignored files excluded): `git ls-files --others --exclude-standard`
+
+Those streams are merged, deduplicated, and sorted lexicographically before routing so each path is evaluated once and order is stable across machines. The merge uses `python3` (stdlib only, no extra packages); the host running `make agent-ci` must have `python3` on `PATH` for this classification step. Duplicate pathnames from overlapping git outputs do not change the chosen tier.
+
+### Classifier implementation notes
+
+- **Path set build**: `scripts/agent-ci-surface.sh` concatenates the three git streams and runs a single `python3 -c` snippet that collects non-empty lines into a set, then prints `sorted(paths)` so dedupe and sort happen in one process (no extra Python packages).
+- **Tier selection**: Each deduped path is considered in sorted order; `consider_candidate` only promotes the target monotonically (`noop` → `ci-docs` → `ci-fast` → `ci` → `macos-ci`), so evaluation order does not downgrade a prior decision.
+- **Where policy lives**: Fast checks that run on every invocation—early “all paths are docs-only” detection, `Makefile` diff sniffing for release vs macOS targets, and explicit `scripts/...` tier bumps—are implemented inline in `scripts/agent-ci-surface.sh` (`classify_special_path` and the docs-only prefix loop). Prefix rules for crates, the macOS app bundle, committed schemas, and toolchain paths still call `public_requires_macos_ship_gate_for_path` and `public_requires_rust_release_gate_for_path` in `scripts/lib/release_policy.sh`. If you change allowlists or `case` patterns, keep the inlined arms and the `public_*` helpers in sync (other tooling sources the helpers) and extend `crates/cueloop/tests/agent_ci_surface_contract_test.rs`.
+- **Wall-clock expectations**: For typical edits, the nested routed gate (`make ci-docs`, `make ci-fast`, etc.) dominates end-to-end `make agent-ci` time. Classifier work is a small slice; it matters most for `noop` (no local changes), very large path lists, or repeated classifier-only debugging.
+
 Optional environment (see `make help`):
 
 - `CUELOOP_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.

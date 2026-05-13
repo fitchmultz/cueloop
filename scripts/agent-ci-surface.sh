@@ -16,6 +16,7 @@
 # Invariants/assumptions:
 # - When no git worktree is available, callers should conservatively run `macos-ci`.
 # - `ci-docs` is reserved for changes that cannot alter executable behavior.
+# - `python3` on PATH is required to merge/dedupe/sort changed pathnames from git outputs.
 
 set -euo pipefail
 
@@ -53,24 +54,29 @@ emit_result() {
     esac
 }
 
-target_rank() {
-    case "$1" in
-        noop) printf '0\n' ;;
-        ci-docs) printf '1\n' ;;
-        ci-fast) printf '2\n' ;;
-        ci) printf '3\n' ;;
-        macos-ci) printf '4\n' ;;
-        *) printf '0\n' ;;
-    esac
-}
-
 consider_candidate() {
     local candidate_target="$1"
     local candidate_reason="$2"
-    if [ "$(target_rank "$candidate_target")" -gt "$(target_rank "$target")" ]; then
-        target="$candidate_target"
-        reason="$candidate_reason"
-    fi
+
+    case "$candidate_target:$target" in
+        noop:*)
+            return 0
+            ;;
+        ci-docs:noop)
+            ;;
+        ci-fast:noop|ci-fast:ci-docs)
+            ;;
+        ci:noop|ci:ci-docs|ci:ci-fast)
+            ;;
+        macos-ci:noop|macos-ci:ci-docs|macos-ci:ci-fast|macos-ci:ci)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    target="$candidate_target"
+    reason="$candidate_reason"
 }
 
 while [ $# -gt 0 ]; do
@@ -107,7 +113,7 @@ changed_paths="$(
         git -C "$REPO_ROOT" diff --name-only --relative
         git -C "$REPO_ROOT" diff --cached --name-only --relative
         git -C "$REPO_ROOT" ls-files --others --exclude-standard
-    } | sed '/^$/d' | sort -u
+    } | python3 -c 'import sys; paths = {line for line in sys.stdin.read().splitlines() if line}; [print(path) for path in sorted(paths)]'
 )"
 
 combined_local_diff_for_path() {
@@ -167,17 +173,17 @@ classify_special_path() {
     fi
 
     case "$path" in
+        scripts/cueloop-cli-bundle.sh|scripts/macos-*|scripts/lib/xcodebuild-lock.sh)
+            CLASSIFY_TARGET="macos-ci"
+            CLASSIFY_REASON="script change requires macOS ship gate (bundling/Xcode/macOS contract): $path"
+            return 0
+            ;;
+        scripts/build-release-artifacts.sh|scripts/release.sh|scripts/versioning.sh|scripts/profile-ship-gate.sh|scripts/check-rust-toolchain.sh|scripts/lib/release_verify_pipeline.sh)
+            CLASSIFY_TARGET="ci"
+            CLASSIFY_REASON="release/build script change requires release-shaped verification: $path"
+            return 0
+            ;;
         scripts/*)
-            if public_requires_macos_ship_gate_for_script_path "$path"; then
-                CLASSIFY_TARGET="macos-ci"
-                CLASSIFY_REASON="script change requires macOS ship gate (bundling/Xcode/macOS contract): $path"
-                return 0
-            fi
-            if public_requires_rust_release_gate_for_script_path "$path"; then
-                CLASSIFY_TARGET="ci"
-                CLASSIFY_REASON="release/build script change requires release-shaped verification: $path"
-                return 0
-            fi
             CLASSIFY_TARGET="ci-fast"
             CLASSIFY_REASON="CI/router/tooling script change requires fast Rust/CLI verification: $path"
             return 0
@@ -195,10 +201,14 @@ fi
 all_docs_only=1
 while IFS= read -r path; do
     [ -z "$path" ] && continue
-    if ! public_is_docs_only_path "$path"; then
-        all_docs_only=0
-        break
-    fi
+    case "$path" in
+        *.md|docs/*|.github/ISSUE_TEMPLATE/*|.github/PULL_REQUEST_TEMPLATE.md|LICENSE|CODE_OF_CONDUCT.md|SECURITY.md|CONTRIBUTING.md)
+            ;;
+        *)
+            all_docs_only=0
+            break
+            ;;
+    esac
 done <<< "$changed_paths"
 
 if [ "$all_docs_only" = "1" ]; then

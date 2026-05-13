@@ -27,6 +27,7 @@ Fixes:
 - Routing uses **only** the current uncommitted working tree (unstaged, staged, and untracked paths). Commits already on your branch do **not** affect the choice.
 - From the repo root, inspect the classifier: `bash scripts/agent-ci-surface.sh --target` and `bash scripts/agent-ci-surface.sh --reason`.
 - After editing `scripts/agent-ci-surface.sh` or `scripts/lib/release_policy.sh`, run `cargo test -p cueloop --test agent_ci_surface_contract_test` and extend that file if routing rules change. Full behavior is documented in [`docs/guides/ci-strategy.md`](guides/ci-strategy.md).
+- If `make agent-ci` fails while classifying with `python3: command not found` (or similar), install Python 3 or ensure `python3` is on `PATH`. The classifier uses it only to normalize the changed-path list (see [Agent-ci classifier path list](guides/ci-strategy.md#agent-ci-classifier-path-list)).
 
 ## Workspace `target/debug` Unchanged After `make agent-ci`
 
