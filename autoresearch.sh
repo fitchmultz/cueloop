@@ -46,7 +46,9 @@ import time
 print(time.perf_counter_ns())
 PY
 )"
-if ! make agent-ci >"$run_log" 2>&1; then
+if make agent-ci >"$run_log" 2>&1; then
+  status_code=0
+else
   status_code=$?
 fi
 end_ns="$(python3 - <<'PY'
