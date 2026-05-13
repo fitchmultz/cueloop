@@ -54,24 +54,29 @@ emit_result() {
     esac
 }
 
-target_rank() {
-    case "$1" in
-        noop) printf '0\n' ;;
-        ci-docs) printf '1\n' ;;
-        ci-fast) printf '2\n' ;;
-        ci) printf '3\n' ;;
-        macos-ci) printf '4\n' ;;
-        *) printf '0\n' ;;
-    esac
-}
-
 consider_candidate() {
     local candidate_target="$1"
     local candidate_reason="$2"
-    if [ "$(target_rank "$candidate_target")" -gt "$(target_rank "$target")" ]; then
-        target="$candidate_target"
-        reason="$candidate_reason"
-    fi
+
+    case "$candidate_target:$target" in
+        noop:*)
+            return 0
+            ;;
+        ci-docs:noop)
+            ;;
+        ci-fast:noop|ci-fast:ci-docs)
+            ;;
+        ci:noop|ci:ci-docs|ci:ci-fast)
+            ;;
+        macos-ci:noop|macos-ci:ci-docs|macos-ci:ci-fast|macos-ci:ci)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    target="$candidate_target"
+    reason="$candidate_reason"
 }
 
 while [ $# -gt 0 ]; do
