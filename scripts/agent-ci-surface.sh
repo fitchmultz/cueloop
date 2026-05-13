@@ -18,6 +18,7 @@
 # - `ci-docs` is reserved for changes that cannot alter executable behavior.
 
 set -euo pipefail
+# AUTORESEARCH_PROBE
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/cueloop-shell.sh"
