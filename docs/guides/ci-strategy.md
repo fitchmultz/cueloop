@@ -40,6 +40,16 @@ Behavior:
 - The source-snapshot path still fails closed on local/runtime artifacts such as `target/`, unallowlisted `.cueloop/*` content, repo-local env files (`.env`, `.env.*`, `.envrc` except `.env.example`), local notes (`.scratchpad.md`, `.FIX_TRACKING.md`), and `apps/CueLoopMac/build/`.
 - Toolchain drift checks compare the repo-local override with the global rustup stable toolchain during release/public readiness; the repo-local `rust-toolchain.toml` wins inside the workspace.
 
+### Agent-ci classifier path list
+
+`scripts/agent-ci-surface.sh` builds the changed-path set from three git views, all `--relative` to the repo root:
+
+- unstaged: `git diff --name-only`
+- staged: `git diff --cached --name-only`
+- untracked (ignored files excluded): `git ls-files --others --exclude-standard`
+
+Those streams are merged, deduplicated, and sorted lexicographically before routing so each path is evaluated once and order is stable across machines. The merge uses `python3` (stdlib only, no extra packages); the host running `make agent-ci` must have `python3` on `PATH` for this classification step. Duplicate pathnames from overlapping git outputs do not change the chosen tier.
+
 Optional environment (see `make help`):
 
 - `CUELOOP_AGENT_CI_FORCE_MACOS=1` — always run `macos-ci` from `agent-ci`.

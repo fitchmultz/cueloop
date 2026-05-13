@@ -16,6 +16,7 @@
 # Invariants/assumptions:
 # - When no git worktree is available, callers should conservatively run `macos-ci`.
 # - `ci-docs` is reserved for changes that cannot alter executable behavior.
+# - `python3` on PATH is required to merge/dedupe/sort changed pathnames from git outputs.
 
 set -euo pipefail
 
