@@ -9,7 +9,7 @@ Purpose: describe CueLoop’s components, runtime data flow, trust boundaries, a
 
 ## System Boundary
 
-CueLoop is a local-first orchestration system for AI-assisted engineering workflows.
+CueLoop is an orchestration system for AI-assisted engineering workflows. It stores queue, configuration, and run state in local project files while invoking configured runner CLIs for agent/model execution.
 
 - Primary runtime: Rust CLI (`crates/cueloop/`)
 - Optional UI: SwiftUI macOS app (`apps/CueLoopMac/`) that shells out to the same CLI binary
@@ -147,7 +147,7 @@ Formal project-level decisions live in the canonical
 [Decisions](decisions.md) log. This section summarizes the durable architecture
 trade-offs that are useful while reading the system design.
 
-Local-first JSONC state:
+Local project JSONC state:
 
 - Pros: diffable, auditable, easy backup/recovery
 - Trade-off: needs strict validation/repair logic

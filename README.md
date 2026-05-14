@@ -1,6 +1,6 @@
 # CueLoop
 
-CueLoop helps developers turn one-off AI coding requests into a local, reviewable task loop: queue the work in repo-local JSONC files, track it through Git when shared mode is used, run it through Codex/Claude/Gemini/Pi-style agents, and require explicit review plus local checks before completion.
+CueLoop is a Rust CLI and macOS app for queue-driven, auditable AI coding agent work. Tasks and run state live in plain `.cueloop/` files, so work can be inspected, diffed, resumed, and gated with local commands.
 
 [![crates.io](https://img.shields.io/crates/v/cueloop.svg)](https://crates.io/crates/cueloop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop)](https://docs.rs/cueloop)
@@ -10,7 +10,7 @@ CueLoop helps developers turn one-off AI coding requests into a local, reviewabl
 
 ## What you are seeing
 
-A task starts as repo-local queue data, moves through supervised planning, implementation, and review phases, then is accepted only after CueLoop updates the queue and runs the configured local gate. The important part is not the runner brand; it is that the workflow stays inspectable in your repository instead of disappearing into chat history or hidden SaaS state.
+A task starts in the queue, moves through supervised planning, implementation, and review phases, then is accepted only after CueLoop updates task state and runs the configured local gate. The important part is not the runner brand; it is that the workflow stays inspectable instead of disappearing into chat history or hidden SaaS state.
 
 You can inspect the current CLI without configuring an external model runner. Core commands include:
 
@@ -35,7 +35,7 @@ Common first commands:
 
 CueLoop is for developers and small teams who already use AI coding agents but need the surrounding workflow to be repeatable:
 
-- evaluators who want a local-first agent orchestration project they can verify quickly
+- evaluators who want a queue-driven AI-agent workflow they can verify quickly
 - maintainers who want AI-generated work to move through the same queue, review, and CI path as human work
 - agent-heavy teams that want to swap runners without rewriting their repo workflow
 - macOS users who want a local app view over the same CLI behavior
@@ -141,7 +141,7 @@ Deeper design notes live in [docs/architecture.md](docs/architecture.md), and co
 
 ## Current limits and safety posture
 
-- CueLoop is local-first orchestration, not hosted SaaS. Runner CLIs may still send prompts/context to their external services depending on your runner configuration.
+- CueLoop stores workflow state in local project files; it is not hosted SaaS. Runner CLIs may still send prompts/context to external services depending on your runner configuration.
 - The safe onboarding path avoids automatic git publishing. Higher-blast-radius profiles such as power-user automation are opt-in.
 - Parallel execution is available but experimental; use it only when branch policy and workspace isolation are understood.
 - macOS UI tests are intentionally outside the default `make macos-ci` gate because they require headed interaction.

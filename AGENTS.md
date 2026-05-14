@@ -4,7 +4,7 @@
 
 ## Purpose
 
-CueLoop is a local-first Rust CLI plus SwiftUI macOS app for running AI agent loops against a repo-local JSONC task queue. This file gives agents the durable repository rules needed to work safely and verify changes. Product docs start at `README.md` and `docs/index.md`; operating rules are in `docs/guides/project-operating-constitution.md`.
+CueLoop is a Rust CLI plus SwiftUI macOS app for queue-driven, auditable AI coding agent work. This file gives agents the durable repository rules needed to work safely and verify changes. Product docs start at `README.md` and `docs/index.md`; operating rules are in `docs/guides/project-operating-constitution.md`.
 
 ## Repository map
 

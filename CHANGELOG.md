@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Cursor runner model aliases now map OpenAI Codex-prefixed CueLoop model names to Cursor SDK model IDs instead of falling back to `composer-2`.
-- Reworked the public README into an outcome-first evaluator path with early visual proof, a no-runner smoke path, and clearer local-first positioning.
+- Reworked the public README into an outcome-first evaluator path with early visual proof, a no-runner smoke path, and clearer queue-driven agent workflow positioning.
 
 ### Fixed
 
