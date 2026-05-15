@@ -27,9 +27,9 @@ public import Foundation
 /// These values are synchronized from the repo-wide VERSION file.
 public enum VersionCompatibility {
     /// Minimum supported CLI version (inclusive).
-    public static let minimumCLIVersion = "0.7.0"
+    public static let minimumCLIVersion = "0.7.1"
     /// Maximum supported CLI version (inclusive).
-    public static let maximumCLIVersion = "0.7.0"
+    public static let maximumCLIVersion = "0.7.1"
     /// Cache duration for version check results (in seconds)
     public static let cacheDuration: TimeInterval = 300 // 5 minutes
 }
