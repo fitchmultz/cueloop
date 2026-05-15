@@ -31,7 +31,8 @@ use std::path::Path;
 
 use gitignored::sync_gitignored;
 pub(crate) use gitignored::{
-    preflight_parallel_ignored_file_allowlist, validate_parallel_ignored_file_allowlist_config,
+    is_denied_parallel_ignored_sync_path, preflight_parallel_ignored_file_allowlist,
+    validate_parallel_ignored_file_allowlist_config,
 };
 use runtime::sync_cueloop_runtime_tree;
 

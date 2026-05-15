@@ -368,6 +368,10 @@ fn default_env_allowed(normalized: &str) -> bool {
     basename == ".env" || basename.starts_with(".env.")
 }
 
+pub(crate) fn is_denied_parallel_ignored_sync_path(normalized: &str) -> bool {
+    denied_prefix(normalized).is_some()
+}
+
 fn denied_prefix(normalized: &str) -> Option<&'static str> {
     NEVER_COPY_PREFIXES
         .iter()

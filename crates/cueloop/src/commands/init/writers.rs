@@ -160,6 +160,11 @@ pub fn write_config(
 
     // Build config with wizard answers or defaults
     let config_json = if let Some(answers) = wizard_answers {
+        crate::commands::run::parallel::sync::validate_parallel_ignored_file_allowlist_config(
+            &answers.parallel_ignored_file_allowlist,
+        )
+        .context("validate selected parallel ignored-file sync entries")?;
+
         let runner_str = format!("{:?}", answers.runner).to_lowercase();
         let model_str = answers.model.clone();
 
@@ -206,6 +211,11 @@ fn merge_parallel_ignored_file_allowlist(
     path: &Path,
     selected_entries: &[String],
 ) -> Result<FileInitStatus> {
+    crate::commands::run::parallel::sync::validate_parallel_ignored_file_allowlist_config(
+        selected_entries,
+    )
+    .context("validate selected parallel ignored-file sync entries")?;
+
     let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let mut value = crate::jsonc::parse_jsonc::<serde_json::Value>(
         &raw,

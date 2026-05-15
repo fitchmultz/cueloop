@@ -337,6 +337,73 @@ fn init_with_wizard_answers_creates_configured_files() -> Result<()> {
 }
 
 #[test]
+fn write_config_rejects_invalid_parallel_allowlist_before_writing() -> Result<()> {
+    let dir = TempDir::new()?;
+    let resolved = resolved_for(&dir);
+    let config_path = resolved.project_config_path.as_ref().unwrap();
+    let wizard_answers = WizardAnswers {
+        runner: Runner::Claude,
+        model: "sonnet".to_string(),
+        phases: 3,
+        queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
+        parallel_ignored_file_allowlist: vec!["node_modules/zod/index.js".to_string()],
+        ci_gate_enabled: false,
+        ci_gate_argv: None,
+        create_first_task: false,
+        first_task_title: None,
+        first_task_description: None,
+        first_task_priority: TaskPriority::Medium,
+    };
+
+    let result = write_config(config_path, true, Some(&wizard_answers));
+
+    assert!(result.is_err());
+    assert!(!config_path.exists());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("validate selected parallel ignored-file sync entries")
+    );
+    Ok(())
+}
+
+#[test]
+fn write_config_rejects_invalid_parallel_allowlist_without_touching_existing_config() -> Result<()>
+{
+    let dir = TempDir::new()?;
+    let resolved = resolved_for(&dir);
+    std::fs::create_dir_all(resolved.repo_root.join(".cueloop"))?;
+    let config_path = resolved.project_config_path.as_ref().unwrap();
+    let original = r#"{
+  "version": 2,
+  "parallel": {
+    "ignored_file_allowlist": ["local-a.json"]
+  }
+}"#;
+    std::fs::write(config_path, original)?;
+    let wizard_answers = WizardAnswers {
+        runner: Runner::Claude,
+        model: "sonnet".to_string(),
+        phases: 3,
+        queue_tracking_mode: crate::commands::init::QueueTrackingMode::TrackedShared,
+        parallel_ignored_file_allowlist: vec!["node_modules/zod/index.js".to_string()],
+        ci_gate_enabled: false,
+        ci_gate_argv: None,
+        create_first_task: false,
+        first_task_title: None,
+        first_task_description: None,
+        first_task_priority: TaskPriority::Medium,
+    };
+
+    let result = write_config(config_path, false, Some(&wizard_answers));
+
+    assert!(result.is_err());
+    assert_eq!(std::fs::read_to_string(config_path)?, original);
+    Ok(())
+}
+
+#[test]
 fn write_config_merges_parallel_allowlist_into_existing_config() -> Result<()> {
     let dir = TempDir::new()?;
     let resolved = resolved_for(&dir);

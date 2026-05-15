@@ -29,6 +29,8 @@ use anyhow::{Context, Result};
 use dialoguer::{Confirm, Input, MultiSelect, Select};
 use std::path::Path;
 
+const MAX_INTERACTIVE_PARALLEL_SYNC_CHOICES: usize = 25;
+
 /// Queue/done tracking mode selected during interactive initialization.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QueueTrackingMode {
@@ -452,17 +454,29 @@ fn select_parallel_sync_allowlist(repo_root: &Path) -> Result<Vec<String>> {
         return Ok(Vec::new());
     }
 
+    if candidates.len() > MAX_INTERACTIVE_PARALLEL_SYNC_CHOICES {
+        println!();
+        println!(
+            "Parallel sync: found {} extra ignored local files after filtering cache/build/dependency trees. To keep init quick and safe, CueLoop will not show a huge checklist or sync any of them by default.",
+            candidates.len()
+        );
+        println!(
+            "If workers need a specific small ignored file later, add it to trusted parallel.ignored_file_allowlist in the active runtime config (for example \"local/tool-config.json\"). Directory trees such as \"node_modules/*\" or entries ending in \"/\" are rejected. See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
+        );
+        return Ok(Vec::new());
+    }
+
     println!();
     println!(
-        "Parallel sync: .env and .env.* are synced by default. Select any additional small ignored files workers need."
+        "Parallel sync: .env and .env.* are synced by default. Optional extras are off by default; select only specific small ignored files workers need."
     );
     println!(
-        "Manual trusted config key: parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\" or \"dir/\"). See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
+        "Press Enter to skip. Manual trusted config key: parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\" or \"dir/\"). See docs/configuration/queue-and-parallel.md#ignored-local-file-sync."
     );
     let selections = MultiSelect::new()
         .with_prompt("Additional ignored files to sync to parallel workers")
         .items(&candidates)
-        .defaults(&vec![true; candidates.len()])
+        .defaults(&vec![false; candidates.len()])
         .interact()
         .context("failed to get parallel ignored-file sync selection")?;
 

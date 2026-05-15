@@ -73,6 +73,7 @@ fn normalize_candidate(repo_root: &Path, raw: &str) -> Option<String> {
         || normalized.contains("**")
         || is_default_env_sync(normalized)
         || is_denied_candidate(normalized)
+        || crate::commands::run::parallel::sync::is_denied_parallel_ignored_sync_path(normalized)
         || has_parent_or_prefix_component(normalized)
     {
         return None;
@@ -106,6 +107,12 @@ fn is_denied_candidate(path: &str) -> bool {
         || path.starts_with(".cueloop/logs/")
         || path.starts_with(".cueloop/workspaces/")
         || path.starts_with("target/")
+        || path.starts_with("node_modules/")
+        || path.starts_with(".venv/")
+        || path.starts_with("__pycache__/")
+        || path.starts_with(".ruff_cache/")
+        || path.starts_with(".pytest_cache/")
+        || path.starts_with(".ty_cache/")
         || path.starts_with("build/")
         || path.starts_with("dist/")
         || path.starts_with("out/")
@@ -127,6 +134,10 @@ mod tests {
         let temp = TempDir::new()?;
         std::fs::write(temp.path().join("local-tool.json"), "{}")?;
         std::fs::write(temp.path().join(".env.local"), "TOKEN=x")?;
+        std::fs::create_dir_all(temp.path().join("node_modules/zod"))?;
+        std::fs::write(temp.path().join("node_modules/zod/index.js"), "module")?;
+        std::fs::create_dir_all(temp.path().join(".venv/bin"))?;
+        std::fs::write(temp.path().join(".venv/bin/python"), "python")?;
 
         assert_eq!(
             normalize_candidate(temp.path(), "local-tool.json"),
@@ -135,6 +146,11 @@ mod tests {
         assert_eq!(normalize_candidate(temp.path(), ".env.local"), None);
         assert_eq!(normalize_candidate(temp.path(), "../secret"), None);
         assert_eq!(normalize_candidate(temp.path(), "target/cache.json"), None);
+        assert_eq!(
+            normalize_candidate(temp.path(), "node_modules/zod/index.js"),
+            None
+        );
+        assert_eq!(normalize_candidate(temp.path(), ".venv/bin/python"), None);
         Ok(())
     }
 
