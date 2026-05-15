@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Interactive init no longer presents huge default-selected ignored-file sync checklists for dependency/cache trees, and selected parallel ignored-file sync entries are validated before config writes.
+
 ## [0.7.1] - 2026-05-15
 
 ### Fixed
