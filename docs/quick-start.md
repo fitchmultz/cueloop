@@ -38,7 +38,7 @@ Non-interactive setup (CI/scripts):
 cueloop init --non-interactive
 ```
 
-`cueloop init` creates/updates `.cueloop/trust.jsonc` by default for current repos, refreshes the generated `.cueloop/README.md` when CueLoop ships a newer template, and gitignores the trust file so project-local execution settings can work immediately without committing machine-local trust. Interactive init also asks whether queue/done should be shared through git or kept local, and lets you select extra ignored local files for parallel-worker sync. Manual additions use trusted `parallel.ignored_file_allowlist` and the small-file contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync). Non-interactive init keeps queue/done tracked and only relies on the default `.env` / `.env.*` parallel sync.
+`cueloop init` creates/updates `.cueloop/trust.jsonc` by default for current repos, refreshes the generated `.cueloop/README.md` when CueLoop ships a newer template, and gitignores the trust file so project-local execution settings can work immediately without committing machine-local trust. Interactive init also asks whether CueLoop state should be shared through git or kept local; local-private mode gitignores the full `.cueloop/` runtime directory. It also lets you select extra ignored local files for parallel-worker sync. Manual additions use trusted `parallel.ignored_file_allowlist` and the small-file contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync). Non-interactive init keeps queue/done tracked and only relies on the default `.env` / `.env.*` parallel sync.
 
 ## 3) Create Tasks
 

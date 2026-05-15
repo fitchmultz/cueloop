@@ -246,7 +246,7 @@ fn make_include_paths(line: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Check if `.cueloop/logs/` is in repo root `.gitignore`.
+/// Check if `.cueloop/logs/` is covered by the repo root `.gitignore`.
 ///
 /// This check inspects the repo-local `.gitignore` file content directly
 /// (not using `git check-ignore`, which would incorrectly pass on machines
@@ -276,12 +276,7 @@ pub(crate) fn check_gitignore_runtime_logs(
         String::new()
     };
 
-    let has_logs_entry = content.lines().any(|line| {
-        let trimmed = line.trim();
-        trimmed == ".cueloop/logs/" || trimmed == ".cueloop/logs"
-    });
-
-    if has_logs_entry {
+    if gitignore_covers_cueloop_logs(&content) {
         report.add(CheckResult::success(
             "project",
             "gitignore_cueloop_logs",
@@ -305,11 +300,7 @@ pub(crate) fn check_gitignore_runtime_logs(
         ) {
             Ok(()) => match fs::read_to_string(&gitignore_path) {
                 Ok(new_content) => {
-                    let now_has_entry = new_content.lines().any(|line| {
-                        let trimmed = line.trim();
-                        trimmed == ".cueloop/logs/" || trimmed == ".cueloop/logs"
-                    });
-                    if now_has_entry {
+                    if gitignore_covers_cueloop_logs(&new_content) {
                         log::info!("Auto-fixed: added .cueloop/logs/ to .gitignore");
                         result = CheckResult::success(
                             "project",
@@ -335,9 +326,29 @@ pub(crate) fn check_gitignore_runtime_logs(
     report.add(result);
 }
 
+fn gitignore_covers_cueloop_logs(content: &str) -> bool {
+    content.lines().any(|line| {
+        matches!(
+            line.trim(),
+            ".cueloop" | ".cueloop/" | ".cueloop/*" | ".cueloop/logs" | ".cueloop/logs/"
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gitignore_covers_cueloop_logs_accepts_specific_and_broad_runtime_entries() {
+        assert!(gitignore_covers_cueloop_logs(".cueloop/logs/\n"));
+        assert!(gitignore_covers_cueloop_logs(".cueloop/logs\n"));
+        assert!(gitignore_covers_cueloop_logs(".cueloop/\n"));
+        assert!(gitignore_covers_cueloop_logs(".cueloop\n"));
+        assert!(gitignore_covers_cueloop_logs(".cueloop/*\n"));
+        assert!(!gitignore_covers_cueloop_logs("# .cueloop/logs/\n"));
+        assert!(!gitignore_covers_cueloop_logs(".cueloop/cache/\n"));
+    }
 
     #[test]
     fn make_target_exists_reads_included_makefiles() -> anyhow::Result<()> {

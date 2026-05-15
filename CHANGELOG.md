@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Local-private interactive init now gitignores the full `.cueloop/` runtime directory instead of a partial queue/done subset, while shared-mode init restores the specific tracked-state gitignore policy.
+
 ## [0.7.0] - 2026-05-13
 
 ### Added

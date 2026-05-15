@@ -34,7 +34,7 @@ use std::path::Path;
 pub enum QueueTrackingMode {
     /// Keep queue/done files trackable for shared team task state.
     TrackedShared,
-    /// Gitignore queue/done files for local-only task state.
+    /// Gitignore the full runtime directory for local-only task state.
     LocalIgnored,
 }
 
@@ -417,7 +417,7 @@ fn select_queue_tracking_mode(repo_root: &Path) -> Result<QueueTrackingMode> {
         ("Tracked shared queue", tracked_desc.as_str()),
         (
             "Local private queue",
-            "Gitignore queue/done so task state stays local to this checkout",
+            "Gitignore the full runtime directory so CueLoop state stays local to this checkout",
         ),
     ];
     let items = options
@@ -560,7 +560,12 @@ pub fn print_completion_message(answers: Option<&WizardAnswers>, queue_path: &Pa
     println!(
         "     - Parallel sync extras use trusted parallel.ignored_file_allowlist (valid: \"local/tool-config.json\"; invalid: \"node_modules/*\"); see docs/configuration/queue-and-parallel.md#ignored-local-file-sync"
     );
-    println!("  4. Keep {runtime_name}/trust.jsonc untracked; init adds it to .gitignore");
+    match answers.map(|answers| answers.queue_tracking_mode) {
+        Some(QueueTrackingMode::LocalIgnored) => {
+            println!("  4. Keep {runtime_name}/ untracked; init adds it to .gitignore")
+        }
+        _ => println!("  4. Keep {runtime_name}/trust.jsonc untracked; init adds it to .gitignore"),
+    }
 
     if let Some(answers) = answers
         && answers.create_first_task

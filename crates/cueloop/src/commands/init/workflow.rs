@@ -61,21 +61,21 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
     )?;
     let config_status = writers::write_config(&config_path, opts.force, wizard_answers.as_ref())?;
 
-    if let Some(answers) = wizard_answers.as_ref()
-        && answers.queue_tracking_mode == wizard::QueueTrackingMode::LocalIgnored
+    let local_queue_mode = wizard_answers.as_ref().is_some_and(|answers| {
+        answers.queue_tracking_mode == wizard::QueueTrackingMode::LocalIgnored
+    });
+
+    if local_queue_mode
         && let Err(e) = gitignore::ensure_local_queue_gitignore_entries(&resolved.repo_root)
     {
+        let runtime_display = runtime_dir
+            .strip_prefix(&resolved.repo_root)
+            .unwrap_or(&runtime_dir)
+            .display();
         log::warn!(
-            "Failed to update .gitignore for local queue mode: {}. You may need to manually add '{}' and '{}' to your .gitignore.",
+            "Failed to update .gitignore for local queue mode: {}. You may need to manually add '{}/' to your .gitignore.",
             e,
-            queue_path
-                .strip_prefix(&resolved.repo_root)
-                .unwrap_or(&queue_path)
-                .display(),
-            done_path
-                .strip_prefix(&resolved.repo_root)
-                .unwrap_or(&done_path)
-                .display()
+            runtime_display
         );
     }
 
@@ -86,7 +86,9 @@ pub fn run_init(resolved: &config::Resolved, opts: InitOptions) -> Result<InitRe
         readme_status = Some((status, version));
     }
 
-    if let Err(e) = gitignore::ensure_cueloop_gitignore_entries(&resolved.repo_root) {
+    if !local_queue_mode
+        && let Err(e) = gitignore::ensure_cueloop_gitignore_entries(&resolved.repo_root)
+    {
         log::warn!(
             "Failed to update .gitignore: {}. You may need to manually add active runtime logs, workspaces, and trust entries to your .gitignore.",
             e

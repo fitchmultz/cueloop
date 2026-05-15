@@ -95,7 +95,7 @@ When you run `cueloop init` in a terminal (TTY), it launches an interactive wiza
 1. **Choose Your AI Runner**: Select from Claude, Codex, OpenCode, Gemini, Cursor, Kimi, or Pi
 2. **Select a Model**: Pick the best model for your chosen runner
 3. **Configure Workflow Mode**: Choose between 1-phase (quick), 2-phase (standard), or 3-phase (full)
-4. **Choose Queue Tracking**: Keep queue/done shared through git (recommended) or gitignore them for local-only task state
+4. **Choose Queue Tracking**: Keep queue/done shared through git (recommended) or gitignore the full `.cueloop/` runtime directory for local-only task state
 5. **Review Parallel Sync Extras**: Select additional small ignored local files workers should receive; `.env` and `.env.*` are already synced by default. Manual additions use trusted `parallel.ignored_file_allowlist`; invalid directory-tree entries such as `node_modules/*` and `dir/` are rejected.
 6. **Create Your First Task** (optional): Add an initial task to get started
 
