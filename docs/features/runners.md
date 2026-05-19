@@ -169,6 +169,7 @@ Codex only supports this restricted model list:
 **Best for:** Users who want IDE-integrated AI capabilities through CueLoop's orchestration.
 
 **Model Options:**
+- `composer-2.5` (default when `model` is omitted)
 - Arbitrary model IDs supported
 - Cursor uses CueLoop's local SDK bridge through Node and `@cursor/sdk`
 - See [Cursor SDK setup](../configuration/agent-and-runners.md#cursor-sdk-setup) for workspace, global npm, and explicit module-path installs
@@ -192,7 +193,7 @@ Codex only supports this restricted model list:
 {
   "agent": {
     "runner": "cursor",
-    "model": "composer-2",
+    "model": "composer-2.5",
     "cursor_sdk_node_bin": "node"
   }
 }

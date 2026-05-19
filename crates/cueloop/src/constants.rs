@@ -302,7 +302,7 @@ pub mod paths {
 /// Version constants for schemas and templates.
 pub mod versions {
     /// Cursor SDK package version CueLoop's local bridge is validated against.
-    pub const CURSOR_SDK_VERSION: &str = "1.0.12";
+    pub const CURSOR_SDK_VERSION: &str = "1.0.13";
 
     /// README template version.
     pub const README_VERSION: u32 = 10;
@@ -332,7 +332,7 @@ pub mod defaults {
     pub const DEFAULT_CLAUDE_MODEL: &str = "sonnet";
 
     /// Default Cursor SDK model name.
-    pub const DEFAULT_CURSOR_MODEL: &str = "composer-2";
+    pub const DEFAULT_CURSOR_MODEL: &str = "composer-2.5";
 
     /// Opencode prompt file message.
     pub const OPENCODE_PROMPT_FILE_MESSAGE: &str = "Follow the attached prompt file verbatim.";

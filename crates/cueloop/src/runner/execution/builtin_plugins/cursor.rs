@@ -314,6 +314,7 @@ impl ResponseParser for CursorResponseParser {
 #[cfg(test)]
 mod tests {
     use super::{CURSOR_SDK_RUNNER, cursor_sdk_request};
+    use crate::constants::{defaults::DEFAULT_CURSOR_MODEL, versions::CURSOR_SDK_VERSION};
     use crate::contracts::{CursorModelParamValue, CursorRunnerConfig, CursorSettingSource};
     use serde_json::{Value as JsonValue, json};
     use std::collections::BTreeMap;
@@ -449,7 +450,7 @@ export class Agent {
         let request = json!({
             "operation": "run",
             "cwd": work_dir,
-            "model": "composer-2",
+            "model": DEFAULT_CURSOR_MODEL,
             "message": "hi"
         });
         let mut command = Command::new("node");
@@ -482,7 +483,7 @@ export class Agent {
         }
         let temp = tempfile::TempDir::new()?;
         std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
-        write_fake_sdk(&temp.path().join("node_modules"), "1.0.13")?;
+        write_fake_sdk(&temp.path().join("node_modules"), "1.0.12")?;
 
         let output = run_helper(temp.path())?;
 
@@ -497,11 +498,13 @@ export class Agent {
             "stdout: {stdout}"
         );
         assert!(
-            stdout.contains(r#""sdk_version":"1.0.13""#),
+            stdout.contains(r#""sdk_version":"1.0.12""#),
             "stdout: {stdout}"
         );
         assert!(
-            stdout.contains(r#""preferred_sdk_version":"1.0.12""#),
+            stdout.contains(&format!(
+                r#""preferred_sdk_version":"{CURSOR_SDK_VERSION}""#
+            )),
             "stdout: {stdout}"
         );
         assert!(
@@ -531,7 +534,9 @@ export class Agent {
         std::fs::create_dir_all(&sdk_dir)?;
         std::fs::write(
             sdk_dir.join("package.json"),
-            r#"{"name":"@cursor/sdk","version":"1.0.12","type":"module","main":"index.js"}"#,
+            format!(
+                r#"{{"name":"@cursor/sdk","version":"{CURSOR_SDK_VERSION}","type":"module","main":"index.js"}}"#
+            ),
         )?;
         std::fs::write(sdk_dir.join("index.js"), "export const NotAgent = true;")?;
 
@@ -552,7 +557,7 @@ export class Agent {
             "stdout: {stdout}"
         );
         assert!(
-            stdout.contains(r#""sdk_version":"1.0.12""#),
+            stdout.contains(&format!(r#""sdk_version":"{CURSOR_SDK_VERSION}""#)),
             "stdout: {stdout}"
         );
         Ok(())

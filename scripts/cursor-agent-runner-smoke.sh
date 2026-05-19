@@ -6,7 +6,7 @@
 # - `@cursor/sdk` resolvable from WORKDIR or global npm roots, or set CUELOOP_CURSOR_SDK_MODULE_PATH
 # - CURSOR_API_KEY exported in the environment
 #
-# Model: composer-2 only (project policy for this smoke script).
+# Model: composer-2.5 only (project policy for this smoke script).
 #
 # Usage:
 #   ./scripts/cursor-agent-runner-smoke.sh [WORKDIR]
@@ -46,8 +46,8 @@ esac
 
 WORKDIR_INPUT="${1:-$(pwd)}"
 WORKDIR="$(cd "$WORKDIR_INPUT" && pwd -P)"
-MODEL="composer-2"
-PREFERRED_SDK_VERSION="1.0.12"
+MODEL="composer-2.5"
+PREFERRED_SDK_VERSION="1.0.13"
 BIN="${CURSOR_SDK_NODE_BIN:-node}"
 
 if ! command -v "$BIN" >/dev/null 2>&1; then

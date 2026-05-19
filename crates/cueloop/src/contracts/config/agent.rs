@@ -124,7 +124,7 @@ pub struct AgentConfig {
     /// This selects Node only; it does not select an SDK package. The Cursor runner uses a
     /// checked-in CueLoop Node bridge plus a usable `@cursor/sdk` resolved from an explicit
     /// `CUELOOP_CURSOR_SDK_MODULE_PATH`, the target workspace, or global npm roots. CueLoop's
-    /// preferred/tested SDK version is `@cursor/sdk@1.0.12`; other versions are tried
+    /// preferred/tested SDK version is `@cursor/sdk@1.0.13`; other versions are tried
     /// best-effort with a warning when compatible. It no longer shells out to Cursor's legacy
     /// `agent` binary.
     pub cursor_sdk_node_bin: Option<String>,

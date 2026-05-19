@@ -33,7 +33,7 @@ const PROJECT_CURSOR_CONFIG: &str = r#"{
   "version": 2,
   "agent": {
     "runner": "cursor",
-    "model": "composer-2"
+    "model": "composer-2.5"
   }
 }"#;
 

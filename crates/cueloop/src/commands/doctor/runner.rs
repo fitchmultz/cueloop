@@ -524,6 +524,7 @@ mod tests {
         check_cursor_sdk_package, cursor_sdk_blocking_reason,
         ensure_cursor_sdk_node_version_supported,
     };
+    use crate::constants::versions::CURSOR_SDK_VERSION;
     use std::path::PathBuf;
     use std::process::Command;
     use std::sync::Mutex;
@@ -612,12 +613,12 @@ mod tests {
         let _global_root = EnvGuard::unset("CUELOOP_CURSOR_SDK_GLOBAL_ROOT");
 
         let temp = tempfile::TempDir::new()?;
-        write_workspace_sdk(&temp, "1.0.12")?;
+        write_workspace_sdk(&temp, CURSOR_SDK_VERSION)?;
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
         let selected = check.selected.as_ref().expect("selected SDK");
         assert_eq!(selected.source, "workspace");
-        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.12"));
+        assert_eq!(selected.sdk_version.as_deref(), Some(CURSOR_SDK_VERSION));
         assert!(!check.version_mismatch());
 
         assert!(
@@ -673,9 +674,9 @@ mod tests {
         let _global_root = EnvGuard::unset("CUELOOP_CURSOR_SDK_GLOBAL_ROOT");
 
         let temp = tempfile::TempDir::new()?;
-        write_workspace_sdk(&temp, "1.0.12")?;
+        write_workspace_sdk(&temp, CURSOR_SDK_VERSION)?;
         let env_root = temp.path().join("env_node_modules");
-        let env_entrypoint = write_importable_sdk(&env_root, "1.0.13")?;
+        let env_entrypoint = write_importable_sdk(&env_root, "1.0.14")?;
         let _module_path = EnvGuard::set("CUELOOP_CURSOR_SDK_MODULE_PATH", &env_entrypoint);
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
@@ -686,7 +687,7 @@ mod tests {
             selected.entrypoint,
             env_entrypoint.to_string_lossy().as_ref()
         );
-        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.13"));
+        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.14"));
         assert!(check.version_mismatch());
         assert!(check.proceeded_best_effort);
         assert!(check.attempted_sources_summary().contains("env"));
@@ -706,7 +707,7 @@ mod tests {
         let temp = tempfile::TempDir::new()?;
         std::fs::write(temp.path().join("package.json"), r#"{"type":"module"}"#)?;
         let global_root = temp.path().join("global_node_modules");
-        let global_entrypoint = write_importable_sdk(&global_root, "1.0.13")?;
+        let global_entrypoint = write_importable_sdk(&global_root, "1.0.14")?;
         let _global_root = EnvGuard::set("CUELOOP_CURSOR_SDK_GLOBAL_ROOT", &global_root);
 
         let check = check_cursor_sdk_package(&node.to_string_lossy(), temp.path())?;
@@ -717,7 +718,7 @@ mod tests {
             selected.entrypoint,
             global_entrypoint.canonicalize()?.to_string_lossy().as_ref()
         );
-        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.13"));
+        assert_eq!(selected.sdk_version.as_deref(), Some("1.0.14"));
         assert_eq!(
             selected.global_root.as_deref(),
             Some(global_root.to_string_lossy().as_ref())
@@ -770,7 +771,9 @@ mod tests {
         std::fs::create_dir_all(&sdk_dir)?;
         std::fs::write(
             sdk_dir.join("package.json"),
-            r#"{"name":"@cursor/sdk","version":"1.0.12","type":"module","main":"index.js"}"#,
+            format!(
+                r#"{{"name":"@cursor/sdk","version":"{CURSOR_SDK_VERSION}","type":"module","main":"index.js"}}"#
+            ),
         )?;
         std::fs::write(sdk_dir.join("index.js"), "export const NotAgent = true;")?;
         let _module_path =
