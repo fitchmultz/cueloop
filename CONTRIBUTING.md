@@ -192,6 +192,7 @@ All new or changed behavior must be covered by tests:
 - **Failure modes**: Error handling and edge cases
 - **Location**: Prefer tests near the code via `#[cfg(test)]`
 - **Integration tests**: Use `crates/cueloop/tests/` for cross-module behavior
+- **Disposable-repo fixtures**: Some suites assume `main` as the default branch name and exercise `cueloop doctor` against schema-merged defaults (including the built-in `pi` runner for cached non-interactive init fixtures). If only a handful of tests fail with `origin/main` or a missing `pi` binary, see [Environment-dependent integration tests](docs/troubleshooting.md#environment-dependent-integration-tests).
 - **Agent CI classifier**: If you change `scripts/agent-ci-surface.sh` or path allowlists in `scripts/lib/release_policy.sh`, extend `crates/cueloop/tests/agent_ci_surface_contract_test.rs` so representative `noop` / `ci-docs` / `ci-fast` / `ci` / `macos-ci` routing stays pinned (see `docs/guides/ci-strategy.md`).
 
 Example:

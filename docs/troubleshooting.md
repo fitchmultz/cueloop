@@ -77,6 +77,31 @@ Fixes:
 - rerun with `make test` to use the project harness
 - inspect `crates/cueloop/tests/test_support.rs` helpers for deterministic setup
 
+## Environment-dependent integration tests
+
+Symptom: a small set of `cargo test -p cueloop` integration tests fails on a fresh machine or CI image even though the default `make agent-ci` / `make ci` path is green upstream.
+
+### Git default branch is not `main`
+
+Several suites create disposable repositories with an explicit `main` branch (for example `git_init` in `crates/cueloop/tests/test_support/test_support_command.rs` runs `git init … -b main`). Parallel and merge-tree helpers then compare `HEAD` to `origin/main` after pushing to a bare `origin` remote (see `crates/cueloop/tests/parallel_done_json_safety_test/support.rs`).
+
+If your global Git default branch is not `main`, some local workflows can diverge from what those tests assume.
+
+Fix:
+
+```bash
+git config --global init.defaultBranch main
+```
+
+### Doctor contract tests and the `pi` runner
+
+`crates/cueloop/tests/doctor_contract_test/` includes success-path checks such as `doctor_passes_in_clean_env` and `doctor_warns_on_missing_upstream`, plus `doctor_auto_fix_repairs_invalid_queue`. They run `cueloop doctor` in repos seeded from the cached `cueloop init --non-interactive` template (`seed_cueloop_dir` in `crates/cueloop/tests/test_support/test_support_command.rs`). That init writes `.cueloop/config.jsonc` with only top-level `"version": 2` (no `agent` stanza); after load, schema defaults apply so the effective agent runner is the built-in `pi` runner. Doctor therefore probes for a `pi` binary on `PATH`.
+
+Fix:
+
+- Install the `pi` runner CLI and ensure it is on `PATH` when you need those tests to pass locally, or
+- Treat the failure as environment-specific when you are not working on doctor/runner diagnostics (repo `AGENTS.md` records the same constraint for Cursor Cloud images).
+
 ## macOS App Build/Test Failures
 
 Symptom: xcodebuild failures or UI test runner signing/quarantine issues.
