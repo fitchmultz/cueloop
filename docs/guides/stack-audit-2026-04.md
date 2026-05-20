@@ -3,7 +3,7 @@ Status: Active
 Owner: Maintainers
 Source of truth: current language/toolchain/dependency baseline and Rust 1.95.0 migration notes
 Parent: [CueLoop Documentation](../index.md)
-Related: [CI and Test Strategy](ci-strategy.md), [Decisions](../decisions.md), [Archived March Stack Audit](stack-audit-2026-03.md)
+Related: [CI and Test Strategy](ci-strategy.md), [Decisions](../decisions.md), [Archived March stack audit](../archive/README.md#contents)
 
 Purpose: record CueLoop's current source-build toolchain baseline, explain the Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, capture the release-note compatibility checklist that drives follow-up Rust modernization tasks, and preserve the dependency/security/lint/rustdoc evidence for the current audited baseline.
 
@@ -118,4 +118,4 @@ Because `rust-toolchain.toml` is in the Tier D routing set, expect `make agent-c
 - Rust `1.95.0` detailed release notes: <https://doc.rust-lang.org/stable/releases.html#version-1950-2026-04-16>
 - Rust `1.95.0` release tag: <https://github.com/rust-lang/rust/releases/tag/1.95.0>
 - CI and Test Strategy: [ci-strategy.md](ci-strategy.md)
-- Archived March stack audit: [stack-audit-2026-03.md](stack-audit-2026-03.md)
+- Archived March stack audit: [stack-audit-2026-03.md](stack-audit-2026-03.md) (see [archive](../archive/README.md))

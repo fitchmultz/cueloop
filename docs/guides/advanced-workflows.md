@@ -7,7 +7,6 @@ Parent: [Advanced Usage Guide](advanced.md)
 
 Purpose: Deep-dive guidance for power users and teams tuning CueLoop's multi-phase execution, parallel task processing, retry/session behavior, notifications, queue cleanup, and dependency ordering.
 
----
 
 ## Table of Contents
 
@@ -15,7 +14,6 @@ Purpose: Deep-dive guidance for power users and teams tuning CueLoop's multi-pha
 2. [Parallel Execution](#parallel-execution)
 3. [Workflow Optimization](#workflow-optimization)
 
----
 
 ## Multi-Phase Workflows
 
@@ -121,7 +119,6 @@ CueLoop automatically retries CI failures up to 2 times. To customize this behav
 2. Second CI failure → Automatic retry with stricter message
 3. Third CI failure → Prompt user (revert/continue/proceed)
 
----
 
 ## Parallel Execution
 
@@ -232,7 +229,6 @@ cueloop run parallel status
 rm .cueloop/cache/parallel/state.json
 ```
 
----
 
 ## Workflow Optimization
 

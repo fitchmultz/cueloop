@@ -7,14 +7,12 @@ Parent: [Advanced Usage Guide](advanced.md)
 
 Purpose: Deep-dive guidance for composing reusable profiles, layering configuration, applying per-task agent overrides, normalizing runner CLI behavior, and injecting instruction files.
 
----
 
 ## Table of Contents
 
 1. [Custom Profiles](#custom-profiles)
 2. [Advanced Configuration](#advanced-configuration)
 
----
 
 ## Custom Profiles
 
@@ -112,7 +110,6 @@ Base Config
            └── overrides: runner=codex, phases=3, effort=high
 ```
 
----
 
 ## Advanced Configuration
 

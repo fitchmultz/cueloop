@@ -7,7 +7,6 @@ Parent: [Feature Documentation](README.md)
 
 CueLoop's session management system provides crash recovery, explicit resume decisions, and runner-level continue support for long-running agent work.
 
----
 
 ## Overview
 
@@ -46,7 +45,6 @@ Those decisions appear across:
 | **Per-phase runner isolation** | Continue sessions stay phase-scoped, including deterministic Kimi session IDs. |
 | **Atomic persistence** | Session state is written atomically to prevent corruption. |
 
----
 
 ## Session State File
 
@@ -99,7 +97,6 @@ This file is created when a task starts and is normally cleared when the run com
 - `phase*_settings` are display-only; CueLoop recomputes effective settings from config + task + CLI overrides.
 - `git_head_commit` is advisory context, not a hard resume gate.
 
----
 
 ## Run-session recovery flow
 
@@ -150,7 +147,6 @@ If a saved session requires a decision and CueLoop cannot ask safely:
 
 This prevents headless automation from silently discarding or duplicating interrupted work.
 
----
 
 ## Machine + app surfaces
 
@@ -228,7 +224,6 @@ This preview is **read-only**: it must not clear or rewrite saved session state.
 
 CueLoopMac consumes both `resume_preview` and `resume_decision` so Run Control can show the expected action before the run starts and the actual action once the run begins.
 
----
 
 ## Continue-session recovery
 
@@ -249,7 +244,6 @@ Run-session recovery decides whether CueLoop resumes a task. Continue-session re
 | Claude | invalid `--resume` / invalid UUID failures |
 | OpenCode | session validation failures, including semantic zero-exit failures |
 
----
 
 ## Kimi per-phase session IDs
 
@@ -267,7 +261,6 @@ RQ-0001-p2-1704153600
 
 This keeps planning / implementation / review recovery isolated from each other.
 
----
 
 ## Configuration
 
@@ -287,7 +280,6 @@ Guidance:
 - extended analysis: `168`
 - CI/headless automation: keep low and pair with an explicit `--resume` policy
 
----
 
 ## Best practices
 
@@ -312,7 +304,6 @@ cueloop run loop --resume --non-interactive
 cueloop run loop --non-interactive
 ```
 
----
 
 ## Troubleshooting
 
@@ -333,7 +324,6 @@ Common causes:
 - the runner rejected the saved session id
 - no runner session id was available to reuse
 
----
 
 ## See also
 

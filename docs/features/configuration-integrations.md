@@ -6,7 +6,6 @@ Parent: [Configuration Feature Guide](configuration.md)
 
 Use this guide when configuring notifications, webhooks, plugins, profiles, and environment-variable substitution. Exact fields and defaults live in [Main Configuration Reference](../configuration.md).
 
----
 
 ## Notifications
 
@@ -17,7 +16,6 @@ Start with:
 - [Notifications feature guide](./notifications.md)
 - [Notification configuration reference](../configuration/notifications-and-webhooks.md#notification-configuration)
 
----
 
 ## Webhooks
 
@@ -40,7 +38,6 @@ References:
 - [Webhooks feature guide](./webhooks.md)
 - [Webhook configuration reference](../configuration/notifications-and-webhooks.md#webhook-configuration)
 
----
 
 ## Plugins
 
@@ -56,7 +53,6 @@ References:
 - [Plugin configuration reference](../configuration/plugins-and-profiles.md#plugin-configuration)
 - [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust)
 
----
 
 ## Profiles
 
@@ -67,7 +63,6 @@ References:
 - [Profiles feature guide](./profiles.md)
 - [Profiles configuration reference](../configuration/plugins-and-profiles.md#profiles)
 
----
 
 ## Environment Variables
 
@@ -79,7 +74,6 @@ Unsupported path override variables:
 - `CUELOOP_QUEUE_PATH_OVERRIDE`
 - `CUELOOP_DONE_PATH_OVERRIDE`
 
----
 
 ## Example
 
@@ -97,7 +91,6 @@ Unsupported path override variables:
 }
 ```
 
----
 
 ## See Also
 

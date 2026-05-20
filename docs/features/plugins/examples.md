@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Provide concrete runner and processor plugin examples that demonstrate the documented protocols.
 
----
 
 ## Example 1: Custom Runner Plugin
 

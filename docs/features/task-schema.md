@@ -14,7 +14,6 @@ This page defines the shape and validation expectations for CueLoop task objects
 - [Task Operations](task-operations.md) — creation, editing, templates, batch operations, and CLI workflows.
 - [Queue](queue.md) — queue file operations, ordering, archive, repair, import/export, and locks.
 
----
 
 ## Overview
 
@@ -56,7 +55,6 @@ Task objects live inside CueLoop queue files. This page owns the minimum task-be
 }
 ```
 
----
 
 ## Task Fields
 
@@ -135,7 +133,6 @@ Task objects live inside CueLoop queue files. This page owns the minimum task-be
 - Arrays and objects are not allowed as values
 - Reserved analytics keys: `runner_used`, `model_used` (auto-populated on completion)
 
----
 
 ## Per-Task Agent Configuration
 
@@ -207,7 +204,6 @@ The `agent` field allows overriding global configuration for individual tasks.
 - Some runners may not support all CLI options (handled per `unsupported_option_policy`)
 - `approval_mode=safe` fails fast in non-interactive contexts (task building/updating)
 
----
 
 ## Task Validation
 
@@ -289,7 +285,6 @@ cueloop task edit status done RQ-0001  # Validates after edit
 }
 ```
 
----
 
 ## Complete Task Examples
 
@@ -423,7 +418,6 @@ cueloop task edit status done RQ-0001  # Validates after edit
 }
 ```
 
----
 
 ## See Also
 

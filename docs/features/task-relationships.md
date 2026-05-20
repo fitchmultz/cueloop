@@ -14,7 +14,6 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 - [Task Operations](task-operations.md) — creation, editing, templates, batch operations, and CLI workflows.
 - [Queue](queue.md) — queue file operations, ordering, archive, repair, import/export, and locks.
 
----
 
 ## Task Relationships
 
@@ -148,7 +147,6 @@ cueloop queue tree --root RQ-0001
 | Validation severity | Error | Error | Error | Error | Warning |
 | Visualization | `queue graph` | `queue graph` | None | None | `queue tree` |
 
----
 
 ## Relationship Validation Summary
 

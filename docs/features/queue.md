@@ -19,7 +19,6 @@ The queue is the source of truth for active work in CueLoop. It manages tasks th
 - [Auto-Archive](#auto-archive)
 - [Aging](#aging)
 
----
 
 ## Overview
 
@@ -40,7 +39,6 @@ CueLoop uses two primary queue files:
 
 4. **Dependency-Aware**: The queue understands task dependencies and validates them to prevent circular dependencies or broken references.
 
----
 
 ## Queue File Format
 
@@ -84,7 +82,6 @@ The `tasks` array contains all tasks in the queue. Tasks are processed in array 
 }
 ```
 
----
 
 ## Task Lifecycle
 
@@ -129,7 +126,6 @@ Tasks with status `done` or `rejected` **must** have:
 
 These tasks are eligible for archiving to `.cueloop/done.jsonc`.
 
----
 
 ## Task Ordering
 
@@ -165,7 +161,6 @@ When new tasks are added via `cueloop task \"...\"` (or `cueloop task build \"..
 
 This prevents new tasks from jumping ahead of work already in progress.
 
----
 
 ## Task Fields
 
@@ -261,7 +256,6 @@ The `agent` field allows per-task runner/model configuration:
 | `followup_reasoning_effort` | Effort for iterations > 1 |
 | `runner_cli` | CLI option overrides |
 
----
 
 ## Queue Operations
 
@@ -413,7 +407,6 @@ Duplicate handling (`--on-duplicate`):
 - `skip`: Drop duplicate tasks
 - `rename`: Generate fresh IDs for duplicates
 
----
 
 ## Queue Locking
 
@@ -475,7 +468,6 @@ Task operations (running actual tasks) use a shared lock mode that allows:
 - Individual task executions create sidecar owner files
 - Multiple tasks can run concurrently under the same supervisor
 
----
 
 ## Auto-Archive
 
@@ -513,7 +505,6 @@ Auto-archive automatically moves terminal tasks to done.json after a configured 
 | Age filter | None (all terminal tasks) | Respects `auto_archive_after_days` |
 | Use case | Immediate cleanup | Background maintenance |
 
----
 
 ## Aging
 
@@ -598,7 +589,6 @@ Aging is calculated from different timestamps based on status:
 | `doing` | `started_at` | `created_at` |
 | `done`, `rejected` | `completed_at` | `updated_at` → `created_at` |
 
----
 
 ## Example Queue Files
 
@@ -690,7 +680,6 @@ Aging is calculated from different timestamps based on status:
 }
 ```
 
----
 
 ## Common Workflows
 
@@ -742,7 +731,6 @@ cueloop queue repair
 cueloop queue archive
 ```
 
----
 
 ## See Also
 

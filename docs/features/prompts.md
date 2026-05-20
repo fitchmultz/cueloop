@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 Purpose: Comprehensive guide to CueLoop's prompt template system, including embedded defaults, override mechanisms, template variables, and prompt flow.
 
----
 
 ## Overview
 
@@ -66,7 +65,6 @@ CueLoop uses a sophisticated prompt system to guide AI agents through task execu
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
 
 ## Embedded Defaults
 
@@ -108,7 +106,6 @@ This ensures that:
 - Teams can incrementally customize only the prompts they need
 - Malformed override files are caught early
 
----
 
 ## Prompt Overrides
 
@@ -182,7 +179,6 @@ If an override is missing required placeholders, CueLoop fails fast with a clear
 Configured `agent.instruction_files` are prepended as authoritative content at the top of every prompt.
 CueLoop does not auto-inject `~/.codex/AGENTS.md` or repo `AGENTS.md`; prompt text should not imply otherwise.
 
----
 
 ## Available Prompts
 
@@ -305,7 +301,6 @@ Review body injected in Phase 3:
 **phase2_handoff_checklist.md**: Steps for 3-phase handoff; when `agent.ci_gate.enabled=false`, Phase 2 implementation and handoff still continue.
 **iteration_checklist.md**: Steps for refinement iterations; disabled CI gate configuration skips only the configured CI command/requirement, and iteration work continues.
 
----
 
 ## Template Variables
 
@@ -363,7 +358,6 @@ Escaped: $${LITERAL} or \${LITERAL}
 
 Environment variables are expanded before config values.
 
----
 
 ## Project Type Guidance
 
@@ -421,7 +415,6 @@ PromptTemplateId::WorkerPhase1 => PromptTemplate {
 },
 ```
 
----
 
 ## RepoPrompt Integration
 
@@ -474,7 +467,6 @@ If RepoPrompt MCP tools are unavailable, prefer the RepoPrompt CLI when it exist
 - `rp-cli` commonly uses `-e` to execute an expression such as `rp-cli -e 'tree'`
 ```
 
----
 
 ## Prompt Flow
 
@@ -605,7 +597,6 @@ User Request ──► Load task_builder.md ──► Validate Required Placehol
                     └──────────────────────────────────────────┘
 ```
 
----
 
 ## Best Practices
 
@@ -667,7 +658,6 @@ cueloop run --debug
 cat .cueloop/logs/debug.log | grep -A 50 "Rendered prompt"
 ```
 
----
 
 ## Reference
 

@@ -12,7 +12,6 @@ For the complete webhook configuration reference, see [Webhooks](../features/web
 
 **Last verified:** 2026-02-15
 
----
 
 ## Overview
 
@@ -23,7 +22,6 @@ There are two primary approaches to webhook integration:
 
 Most third-party services (Slack, Discord, GitHub Actions) require a transformation proxy because they expect specific payload structures that differ from CueLoop's standard format.
 
----
 
 ## Slack Integration
 
@@ -183,7 +181,6 @@ curl -X POST http://localhost:5000/webhook \
   -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Test task","previous_status":"doing","current_status":"done"}'
 ```
 
----
 
 ## Discord Integration
 
@@ -354,7 +351,6 @@ curl -X POST http://localhost:5001/webhook \
   -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Add webhook integration docs","previous_status":"doing","current_status":"done"}'
 ```
 
----
 
 ## GitHub Actions Integration
 
@@ -529,7 +525,6 @@ python github_proxy.py
 }
 ```
 
----
 
 ## Quick Reference Table
 
@@ -539,7 +534,6 @@ python github_proxy.py
 | Discord | Direct or Proxy | Optional | Team notifications with rich embeds |
 | GitHub Actions | Proxy | Yes | CI/CD triggers, workflow automation |
 
----
 
 ## Troubleshooting
 
@@ -601,7 +595,6 @@ pip install gunicorn
 gunicorn -w 2 -b 0.0.0.0:5000 slack_proxy:app
 ```
 
----
 
 ## Further Reading
 

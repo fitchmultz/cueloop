@@ -147,33 +147,41 @@ so that it does not mutate queue state unless I explicitly request it.
 - Queue mutation still requires `--write` explicitly.
 - Validation failures produce deterministic, human-readable output.
 
-## Functional Requirements
+## Functional requirements
 
-1. CueLoop SHALL add a new `cueloop task decompose` subcommand under the existing `task` command group.
-2. CueLoop SHALL accept a freeform request, a `--from-file <PATH>` plan document, or an existing task ID as the decomposition source.
-3. CueLoop SHALL support a preview-first workflow and SHALL NOT mutate queue state unless `--write` is provided.
-4. CueLoop SHALL generate durable queue tasks rather than ephemeral planner-only output.
-5. CueLoop SHALL represent task hierarchy using the existing `parent_id` field.
-6. CueLoop SHALL reuse existing queue ID allocation so generated task IDs remain unique across queue and done archives.
-7. CueLoop SHALL create valid `created_at` and `updated_at` timestamps for all newly written tasks.
-8. CueLoop SHALL preserve the decomposed source task by default when decomposing an existing active task.
-9. CueLoop SHALL support configurable recursion depth limits.
-10. CueLoop SHALL support configurable per-node fanout limits.
-11. CueLoop SHALL enforce a total generated node safety limit before writing queue state.
-12. CueLoop SHALL treat hierarchy and execution ordering as separate concepts.
-13. CueLoop SHALL reuse queue locking and undo snapshot behavior for write operations.
-14. CueLoop SHALL validate queue state before and after decomposition writes.
-15. CueLoop SHALL include deterministic human-readable preview output that can be inspected before write.
-16. CueLoop SHALL integrate with existing hierarchy navigation commands such as `cueloop queue tree`, `cueloop task children`, and `cueloop task parent`.
-17. CueLoop SHALL support runner, model, reasoning-effort, RepoPrompt, and runner CLI override flags consistent with other runner-backed task creation flows.
-18. CueLoop SHALL use a dedicated decomposition prompt/template rather than overloading task-builder or scan prompts.
-19. CueLoop SHALL fail safely when planner output is malformed, incomplete, or inconsistent with queue rules.
-20. CueLoop SHALL support `--attach-to <TASK_ID>` for freeform request and plan-file decomposition under an existing active parent task.
-21. CueLoop SHALL support `--child-policy fail|append|replace` for effective parents with existing child trees.
-22. CueLoop SHALL support optional sibling dependency inference behind `--with-dependencies`.
-23. CueLoop SHALL emit stable versioned JSON output when `--format json` is requested.
-24. CueLoop SHALL persist generated decomposition grouping nodes as `kind: group` and generated leaves as `kind: work_item`.
-25. CueLoop SHALL report root/group and first actionable leaf metadata in preview and write outputs.
+### Command and sources
+
+- Add `cueloop task decompose` under the existing `task` command group.
+- Accept a freeform request, `--from-file <PATH>`, or an existing task ID as the decomposition source.
+- Use a dedicated decomposition prompt/template (not task-builder or scan prompts).
+
+### Preview and writes
+
+- Default to preview; do not mutate `.cueloop/queue.jsonc` unless `--write` is set.
+- Emit deterministic human-readable preview output; support `--format json` with stable versioned payloads.
+- On write: acquire the queue lock, create an undo snapshot, validate before and after, and fail without partial writes on validation errors.
+
+### Generated tasks
+
+- Create durable queue tasks (not ephemeral planner-only output).
+- Represent hierarchy with `parent_id`; persist grouping nodes as `kind: group` and leaves as `kind: work_item`.
+- Allocate IDs via existing queue ID rules (unique across queue and done archives).
+- Set valid `created_at` and `updated_at` on every new task.
+- Preserve the source task by default when decomposing an existing active task.
+- Report root/group node and first actionable leaf in preview and write output.
+
+### Limits and safety
+
+- Support configurable recursion depth, per-node fanout, and a total node cap before write.
+- Treat hierarchy and execution ordering separately; optional sibling `depends_on` only with `--with-dependencies`.
+- Fail safely on malformed or inconsistent planner output.
+- Never reuse existing task IDs; reject parent cycles.
+
+### Flags and integration
+
+- Support runner, model, reasoning-effort, RepoPrompt, and runner CLI overrides consistent with other runner-backed task flows.
+- Support `--attach-to <TASK_ID>`, `--child-policy fail|append|replace`, and `--with-dependencies`.
+- Work with existing hierarchy commands: `cueloop queue tree`, `cueloop task children`, `cueloop task parent`.
 
 ## User Experience
 
@@ -298,45 +306,30 @@ Planner guidance should emphasize:
 
 ## Product Decisions
 
-### Preview Default
+### Preview default
 
-Preview SHALL be the hard default in all environments.
+Preview is the default in all environments:
 
-- `cueloop task decompose <SOURCE>` performs a preview only.
-- Queue mutation requires explicit `--write`.
-- There is no TTY-only “safety behavior” split for preview vs write.
-- This keeps the command predictable, scriptable, and safe.
+- `cueloop task decompose <SOURCE>` previews only; `--write` is required to mutate the queue.
+- No TTY-only split between preview and write (predictable for scripts and the macOS app bridge).
 
-Rationale:
+Decomposition can create many tasks at once; environment-dependent write behavior would be hard to trust in automation.
 
-- Decomposition is a high-blast-radius planning command that can create many tasks at once.
-- Hidden environment-dependent behavior is a bad fit for automation and a bad fit for user trust.
-- Users should never have to remember whether they were in a terminal, CI shell, or app bridge to know whether queue state changed.
+### Existing parent with children
 
-### Existing Parent with Existing Children
+When decomposing a task that already has children, refuse write unless `--child-policy append` or `--child-policy replace` is set. Preview still runs and explains the conflict.
 
-Default behavior when decomposing an existing task that already has children SHALL be to refuse write unless the caller explicitly chooses `--child-policy append` or `--child-policy replace`.
+- `fail` — safest default  
+- `append` — non-destructive extension  
+- `replace` — only with reference checks and undo coverage  
 
-Preview still succeeds and shows the conflict or selected policy.
+### Dependency inference scope
 
-Rationale:
+`--with-dependencies` is optional and limited to siblings under the same generated parent. This keeps validation tractable and avoids planner references to arbitrary queue IDs.
 
-- `fail` remains the safest default.
-- `append` gives users an explicit non-destructive extension path.
-- `replace` is acceptable only with strict reference checks and undo coverage.
+### Parent annotation (v1)
 
-### Dependency Inference Scope
-
-Dependency inference SHALL be optional and limited to siblings within the same generated parent group.
-
-Rationale:
-
-- Sibling-only inference captures the most useful ordering constraints without exposing the planner to arbitrary queue-wide references.
-- Restricting inference scope keeps validation and debugging tractable.
-
-### Parent Annotation Strategy
-
-Decomposed parent tasks SHALL receive a human-readable note in v1.
+Decomposed parent tasks get a human-readable note in v1.
 
 Rationale:
 

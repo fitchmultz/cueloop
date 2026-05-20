@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 CueLoop's supervision system provides human-in-the-loop oversight for CI gate enforcement, git operations, and queue state management during task execution. It ensures code quality through automated checks while providing flexible recovery options when things go wrong.
 
----
 
 ## Overview
 
@@ -28,7 +27,6 @@ The supervision system orchestrates the post-execution workflow after an AI runn
 - **Transparency**: All supervision decisions are logged with clear reasoning
 - **Flexibility**: Multiple git revert modes accommodate different workflow preferences
 
----
 
 ## CI Gate
 
@@ -91,7 +89,6 @@ When the CI gate fails after exhausting retries:
 | `enabled` | Automatically revert uncommitted changes |
 | `disabled` | Leave changes in place, fail the task |
 
----
 
 ## Git Operations
 
@@ -143,7 +140,6 @@ Git LFS files are validated before commit when `--lfs-check` is enabled:
 cueloop run one --lfs-check
 ```
 
----
 
 ## Git Revert Modes
 
@@ -202,7 +198,6 @@ Never revert changes automatically:
 | Task inconsistency detected | Prompt user | Auto-revert | Error only |
 | Non-TTY environment | Keep changes | Auto-revert | Keep changes |
 
----
 
 ## Auto Commit/Push
 
@@ -250,7 +245,6 @@ When `git_publish_mode` is `off`:
 - Parallel workers still run agent-owned integration (fetch/rebase/conflict-fix).
 - Final commit/push remains disabled; worker exits with dirty repo state for manual follow-up.
 
----
 
 ## Queue Operations
 
@@ -313,7 +307,6 @@ When the repository is clean at completion (e.g., documentation-only review):
 2. Archive to done file
 3. Push if ahead (for any previous commits)
 
----
 
 ## Completion Checklist
 
@@ -348,7 +341,6 @@ Override the default checklist by creating `.cueloop/prompts/phase2_handoff_chec
 - [ ] Security review completed
 ```
 
----
 
 ## Notification Integration
 
@@ -404,7 +396,6 @@ Supervision emits webhook events for external integrations:
 
 See [Webhooks](./webhooks.md) for full configuration.
 
----
 
 ## Supervision Flow
 
@@ -500,7 +491,6 @@ CI Failure Detected
          └───────────┴─────────────────┘
 ```
 
----
 
 ## Configuration Examples
 
@@ -555,7 +545,6 @@ CI Failure Detected
 
 **Use Case**: Iterative development with manual git operations.
 
----
 
 ## CLI Overrides
 
@@ -578,7 +567,6 @@ cueloop run one --lfs-check
 cueloop run one --no-notify
 ```
 
----
 
 ## Troubleshooting
 
@@ -633,7 +621,6 @@ git push -u origin HEAD
 # Or use AllowCreateUpstream policy in code
 ```
 
----
 
 ## See Also
 

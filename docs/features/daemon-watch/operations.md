@@ -38,7 +38,6 @@ tmux new-session -d -s cueloop-watch "cueloop watch --auto-queue --close-removed
 tmux attach -t cueloop-watch
 ```
 
----
 
 ## See Also
 

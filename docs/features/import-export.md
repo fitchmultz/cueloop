@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 CueLoop's import/export system enables bulk operations, cross-repository migration, and integration with external tools. Tasks can be exported to various formats for reporting or external processing, and imported from CSV, TSV, or JSON for bulk backlog seeding.
 
----
 
 ## Overview
 
@@ -22,7 +21,6 @@ The import/export system provides:
 - **GitHub integration**: Publish tasks directly as GitHub issues
 - **Round-trip support**: Export and re-import without data loss
 
----
 
 ## Export
 
@@ -180,7 +178,6 @@ GitHub format produces Markdown optimized for issue bodies:
 
 Multiple tasks are separated by horizontal rules (`---`).
 
----
 
 ## Import
 
@@ -343,7 +340,6 @@ Imported tasks. parsed 5 task(s); imported 5; renamed 2 task(s)
   OLD-002 -> RQ-0043
 ```
 
----
 
 ## Round-trip
 
@@ -398,7 +394,6 @@ cueloop queue import --format csv --input tasks.csv --on-duplicate rename
 **Not preserved in CSV/TSV:**
 - Task order (new tasks are positioned per queue policy)
 
----
 
 ## GitHub Issue Publishing
 
@@ -462,7 +457,6 @@ After publishing, these custom fields are set:
 
 To re-publish (update) an issue, run the command again. CueLoop detects the existing URL and updates rather than creates.
 
----
 
 ## Use Cases
 
@@ -522,7 +516,6 @@ cueloop queue export --format json --priority critical | \
   xargs -I {} cueloop queue issue publish {} --label critical
 ```
 
----
 
 ## Best Practices
 
@@ -534,7 +527,6 @@ cueloop queue export --format json --priority critical | \
 6. **Use Markdown for human-readable reports** - great for documentation
 7. **Check import reports** - review rename mappings and skip counts
 
----
 
 ## Troubleshooting
 

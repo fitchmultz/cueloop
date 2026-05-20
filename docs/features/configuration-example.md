@@ -135,7 +135,3 @@ Here's a comprehensive example demonstrating all configuration sections:
   }
 }
 ```
-
----
-
-

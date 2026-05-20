@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Define the command-line, environment, streaming-output, and session contracts for runner plugins.
 
----
 
 ## Runner Commands
 

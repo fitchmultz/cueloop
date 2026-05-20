@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 CueLoop provides a cross-platform desktop notification system that alerts you when tasks complete, fail, or when loop execution finishes. Notifications help you stay informed about long-running tasks without constantly monitoring the terminal.
 
----
 
 ## Overview
 
@@ -26,7 +25,6 @@ Notifications are designed to be:
 - **Cross-platform**: Native notifications on macOS, Linux, and Windows
 - **Optional sound**: Audible alerts can accompany visual notifications
 
----
 
 ## Configuration
 
@@ -112,7 +110,6 @@ Settings are resolved in this order (highest to lowest):
 }
 ```
 
----
 
 ## Platform Support
 
@@ -210,7 +207,6 @@ alsa-utils          # For aplay (fallback)
 
 On platforms not explicitly supported, notifications are silently skipped with a debug log entry. The build can disable the `notifications` feature to compile without notification support entirely.
 
----
 
 ## Sound Support
 
@@ -269,7 +265,6 @@ Platform-specific paths should be used:
 
 **CURRENTLY IMPLEMENTED BEHAVIOR:** Sound failures are logged at debug level using `log::debug!()` and do not affect notification display or task execution. This matches the intended behavior.
 
----
 
 ## CLI Overrides
 
@@ -324,7 +319,6 @@ If you need different settings for completion vs failure, use the specific flags
 cueloop run one --notify --no-notify-fail
 ```
 
----
 
 ## Webhook Notifications
 
@@ -373,7 +367,6 @@ cueloop run loop --wait-when-blocked --notify-when-unblocked
 
 This sends both desktop and webhook notifications when a previously blocked task becomes ready to run.
 
----
 
 ## When Notifications Fire
 
@@ -437,7 +430,6 @@ Understanding the exact timing of notifications helps you configure them appropr
 
 When `suppress_when_active` is `true`, desktop notifications are suppressed while the macOS app is active.
 
----
 
 ## Practical Examples
 
@@ -541,7 +533,6 @@ cueloop run loop --no-notify --no-notify-fail
 cueloop run loop --notify --notify-fail
 ```
 
----
 
 ## Troubleshooting
 
@@ -594,7 +585,6 @@ cargo build --no-default-features
 
 This disables the `notifications` feature flag, making all notification functions no-ops.
 
----
 
 ## Related Documentation
 

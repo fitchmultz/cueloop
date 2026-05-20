@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Help operators and plugin authors diagnose plugin discovery, manifest, runtime, and compatibility issues.
 
----
 
 ## Debugging Commands
 

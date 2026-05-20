@@ -10,7 +10,6 @@ The Task System is the core unit of work in CueLoop. Tasks represent discrete pi
 
 Use this page as the task-system index. Detailed guidance lives in focused child pages so schema, lifecycle, relationship, and operator workflows can evolve without one oversized mixed-scope document.
 
----
 
 ## Task Documentation Map
 
@@ -21,7 +20,6 @@ Use this page as the task-system index. Detailed guidance lives in focused child
 | `depends_on`, `blocks`, `relates_to`, `duplicates`, `parent_id`, and relationship validation | [Task Relationships](task-relationships.md) |
 | Creating, editing, templating, cloning, importing, batching, and quick CLI workflows | [Task Operations](task-operations.md) |
 
----
 
 ## Overview
 
@@ -31,7 +29,6 @@ Tasks capture identity, state, context, relationships, and execution configurati
 
 For queue file operations and archive mechanics, see [Queue](queue.md). For the older combined reference, see [Queue and Tasks](../queue-and-tasks.md).
 
----
 
 ## Task Fields
 

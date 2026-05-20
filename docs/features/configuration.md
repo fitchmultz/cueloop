@@ -11,7 +11,6 @@ CueLoop configuration is documented in two layers:
 
 Use this page to decide where a setting belongs. Use the main reference when you need exact field names, defaults, and validation rules.
 
----
 
 ## Configuration Map
 
@@ -23,7 +22,6 @@ Use this page to decide where a setting belongs. Use the main reference when you
 | Configure plugins/webhooks/notifications/profiles | [Integrations and profiles](configuration-integrations.md) | [Plugin Configuration](../configuration/plugins-and-profiles.md#plugin-configuration) |
 | Keep a complete example nearby | [Complete Configuration Example](configuration-example.md) | [Config Schema](../../schemas/config.schema.json) |
 
----
 
 ## Config Files and Locations
 
@@ -43,7 +41,6 @@ cueloop config schema
 cueloop config profiles list
 ```
 
----
 
 ## Precedence at a Glance
 
@@ -54,7 +51,6 @@ For exact behavior and edge cases, see:
 - [Precedence](../configuration/trust-and-precedence.md#precedence)
 - [Profiles](../configuration/plugins-and-profiles.md#profiles)
 
----
 
 ## Trust and Safety
 
@@ -78,7 +74,6 @@ For the allowed file/glob contract and invalid examples such as `node_modules/*`
 
 Canonical details: [Repo execution trust](../configuration/trust-and-precedence.md#repo-execution-trust).
 
----
 
 ## JSONC and Validation Basics
 
@@ -90,7 +85,6 @@ CueLoop supports JSONC (`.jsonc`) for runtime config and queue files:
 
 Current configuration version is `2`. Prefer canonical validation/error details from [Configuration](../configuration.md).
 
----
 
 ## Feature Guides
 
@@ -101,7 +95,6 @@ Use these focused pages for feature-level configuration decisions:
 - [Integration and Profile Configuration](configuration-integrations.md)
 - [Complete Configuration Example](configuration-example.md)
 
----
 
 ## See Also
 

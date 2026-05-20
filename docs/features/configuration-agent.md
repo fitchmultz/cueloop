@@ -6,7 +6,6 @@ Parent: [Configuration Feature Guide](configuration.md)
 
 Use this guide when choosing how CueLoop invokes AI runners. For exact field names, defaults, and validation rules, use [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
 
----
 
 ## Common Decisions
 
@@ -24,7 +23,6 @@ Related feature docs:
 - [Phases](./phases.md)
 - [Supervision](./supervision.md)
 
----
 
 ## Minimal Safe Baseline
 
@@ -45,7 +43,6 @@ Related feature docs:
 
 Start with the CI gate off until you have a repo-local argv command you trust; enable it when you are ready for CueLoop to enforce that check before completion.
 
----
 
 ## Runner Binary Overrides
 
@@ -59,7 +56,6 @@ Canonical details:
 - [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration)
 - [Cursor SDK setup](../configuration/agent-and-runners.md#cursor-sdk-setup)
 
----
 
 ## Permission and Publication Safety
 
@@ -74,7 +70,6 @@ Treat permissive modes (`yolo`, bypass-style approvals, publish-on-run) as high-
 
 > Note: Codex approval behavior is managed through Codex-native config. CueLoop does not force Codex approval flags.
 
----
 
 ## CI Gate
 
@@ -85,7 +80,6 @@ Treat permissive modes (`yolo`, bypass-style approvals, publish-on-run) as high-
 
 Canonical details: [Agent Configuration](../configuration/agent-and-runners.md#agent-configuration).
 
----
 
 ## Runner CLI Normalization
 
@@ -105,7 +99,6 @@ Typical controls:
 
 Canonical reference: [agent.runner_cli](../configuration/agent-and-runners.md#agentrunner_cli).
 
----
 
 ## Phase Overrides and Retry
 
@@ -133,7 +126,6 @@ Canonical references:
 - [agent.phase_overrides](../configuration/agent-and-runners.md#agentphase_overrides)
 - [agent.runner_retry](../configuration/agent-and-runners.md#agentrunner_retry)
 
----
 
 ## See Also
 

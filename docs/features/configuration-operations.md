@@ -6,7 +6,6 @@ Parent: [Configuration Feature Guide](configuration.md)
 
 Use this guide when configuring CueLoop queue files, task aging, archive behavior, and parallel worker workspaces. Exact fields and defaults live in [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration) and [Parallel Configuration](../configuration/queue-and-parallel.md#parallel-configuration).
 
----
 
 ## Queue File Locations
 
@@ -26,7 +25,6 @@ Canonical details:
 - [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration)
 - [Queue and Tasks](../queue-and-tasks.md)
 
----
 
 ## Task ID and Aging Settings
 
@@ -40,7 +38,6 @@ Common queue hygiene settings:
 
 Invariant: `warning_days < stale_days < rotten_days`.
 
----
 
 ## Auto-Archive
 
@@ -50,7 +47,6 @@ Invariant: `warning_days < stale_days < rotten_days`.
 - `0`: archive immediately when sweep runs
 - `N > 0`: archive when `completed_at` is at least `N` days old
 
----
 
 ## Parallel Workers
 
@@ -66,7 +62,6 @@ If `workspace_root` is inside the repo, keep it gitignored.
 
 Current parallel mode does not use legacy PR-era keys; prefer the direct-push model documented in [Parallel](./parallel.md).
 
----
 
 ## Example
 
@@ -85,7 +80,6 @@ Current parallel mode does not use legacy PR-era keys; prefer the direct-push mo
 }
 ```
 
----
 
 ## See Also
 

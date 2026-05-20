@@ -13,7 +13,6 @@ Parallel execution runs multiple tasks concurrently in isolated git workspace cl
 
 > **CLI Only**: Parallel execution is available only via CLI (`cueloop run loop --parallel [N]`).
 
----
 
 ## Table of Contents
 
@@ -28,7 +27,6 @@ Parallel execution runs multiple tasks concurrently in isolated git workspace cl
 9. [Workflow](#workflow)
 10. [Monitoring](#monitoring)
 
----
 
 ## Overview
 
@@ -78,7 +76,6 @@ Before enabling it, confirm that:
 - your repo can tolerate concurrent workspace clones and repeated rebase/push attempts
 - you have intentionally selected a publish mode that matches that risk
 
----
 
 ## Architecture
 
@@ -141,7 +138,6 @@ Before enabling it, confirm that:
    - Runs CI gates
    - Pushes to origin
 
----
 
 ## Workspace Management
 
@@ -172,7 +168,6 @@ Workspace cleanup behavior:
 - **Failed workers**: Cleaned immediately after worker failure.
 - **Blocked workers**: Retained for explicit operator retry (`cueloop run parallel retry --task ...`).
 
----
 
 ## Integration Loop
 
@@ -221,7 +216,6 @@ Parallel workers do not mutate shared queue/done files for newly discovered foll
 - Irreparable queue/done validation failures
 - Persistent CI failure after retry exhaustion
 
----
 
 ## Configuration
 
@@ -261,7 +255,6 @@ The following settings were removed in the direct-push rewrite:
 - `delete_branch_on_merge` - No longer applicable
 - `merge_runner` - No longer applicable
 
----
 
 ## State Management
 
@@ -313,7 +306,6 @@ State files are automatically migrated from v2 (PR-based) to v3:
 - In-flight workers are mapped to new schema
 - Workers in terminal PR states are marked as `failed`
 
----
 
 ## Operations Commands
 
@@ -345,7 +337,6 @@ This:
 3. Preserves push attempt count (for debugging)
 4. The worker will be picked up on the next `cueloop run loop --parallel`
 
----
 
 ## Limitations
 
@@ -369,7 +360,6 @@ If your target branch has protected branch policies:
 - This results in `BlockedPush` status
 - Use `cueloop run parallel retry` after resolving branch protection issues
 
----
 
 ## Workflow
 
@@ -402,7 +392,6 @@ When workers encounter conflicts:
 4. **Validation**: Worker verifies zero unresolved conflicts before continuing
 5. **Retry**: If resolution fails after max attempts, worker transitions to `blocked_push`
 
----
 
 ## Monitoring
 
@@ -461,7 +450,6 @@ git log --oneline -10
 cueloop run parallel retry --task <task-id>
 ```
 
----
 
 ## Troubleshooting
 
@@ -484,7 +472,6 @@ cueloop run parallel retry --task <task-id>
 **Workspace disk space**
 - Workspaces accumulate over time. Run `cueloop cleanup` or adjust `workspace_retention_hours`.
 
----
 
 ## See Also
 

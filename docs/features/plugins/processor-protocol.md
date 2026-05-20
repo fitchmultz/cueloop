@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Define processor hook timing, inputs, ordering, environment, mutation rules, and failure behavior.
 
----
 
 ## Hook Types
 

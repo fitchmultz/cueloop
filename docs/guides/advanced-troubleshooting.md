@@ -195,7 +195,6 @@ cat .cueloop/logs/debug.log  # Review for secrets
 rm -rf .cueloop/logs/        # Secure deletion
 ```
 
----
 
 ## Quick Reference
 
@@ -251,4 +250,3 @@ cueloop run loop --wait-when-blocked --wait-timeout-seconds 3600
 | Prompt overrides | `.cueloop/prompts/*.md` |
 | Plugins (project) | `.cueloop/plugins/<id>/` |
 | Plugins (global) | `~/.config/cueloop/plugins/<id>/` |
-

@@ -2,7 +2,7 @@
 Status: Archived
 Owner: Maintainers
 Source of truth: historical snapshot; current guidance lives in linked active docs
-Parent: [CueLoop Documentation](../index.md)
+Parent: [Documentation archive](../README.md)
 
 
 Date: 2026-03-13

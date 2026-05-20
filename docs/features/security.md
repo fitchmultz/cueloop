@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 Purpose: Comprehensive guide to CueLoop's security features, including secrets redaction, safeguard dumps, debug logging, git safety, CI gate validation, plugin security, approval modes, and webhook security.
 
----
 
 ## Overview
 
@@ -23,7 +22,6 @@ Security is critical when running AI agents that have access to your codebase, e
 4. **Auditability**: Clear logging and tracking of all actions
 5. **Fail Safe**: Errors default to safe states
 
----
 
 ## Secrets Redaction
 
@@ -120,7 +118,6 @@ Known limitations:
 
 **Best Practice**: Always review output before sharing, even when redaction is applied.
 
----
 
 ## Safeguard Dumps
 
@@ -179,7 +176,6 @@ ls -la /tmp/cueloop/
 rm -rf /tmp/cueloop/error_context_*
 ```
 
----
 
 ## Debug Logging
 
@@ -245,7 +241,6 @@ log::info!("API_KEY={}", secret);  // Console: API_KEY=[REDACTED]
 // Contains: API_KEY=actual_secret_value
 ```
 
----
 
 ## Runner Output Handling
 
@@ -299,7 +294,6 @@ let err = RunnerError::NonZeroExit {
 println!("{}", err);  // Secrets are redacted
 ```
 
----
 
 ## Git Safety
 
@@ -368,7 +362,6 @@ cueloop run one --force
 # - You understand the risks
 ```
 
----
 
 ## CI Gate
 
@@ -441,7 +434,6 @@ This ensures:
 3. **Catches secrets**: Some CI gates include secret scanning
 4. **Ensures tests pass**: Prevents regressions
 
----
 
 ## Plugin Security
 
@@ -507,7 +499,6 @@ Plugins are **disabled by default** and must be explicitly enabled:
 }
 ```
 
----
 
 ## Approval Modes
 
@@ -589,7 +580,6 @@ The `safe` approval mode is **not consistently implemented** across runners and 
 
 Use `auto_edits` or `yolo` for automated workflows.
 
----
 
 ## Webhook Security
 
@@ -739,7 +729,6 @@ Configure events:
 
 Use `["*"]` to subscribe to all events.
 
----
 
 ## Security Checklist
 
@@ -771,7 +760,6 @@ Use `["*"]` to subscribe to all events.
 - [ ] Review and update plugin trust decisions
 - [ ] Keep CueLoop updated: `cargo install cueloop --force`
 
----
 
 ## Reporting Security Issues
 
@@ -786,7 +774,6 @@ If you discover a security vulnerability in CueLoop:
    - Potential impact assessment
 4. Allow reasonable time for remediation before public disclosure
 
----
 
 ## Related Documentation
 

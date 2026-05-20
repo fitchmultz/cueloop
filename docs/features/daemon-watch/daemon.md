@@ -23,7 +23,6 @@ Daemon mode runs CueLoop as a background service that continuously monitors the 
 
 > **Platform Support**: Daemon mode is Unix-only. On Windows, use `cueloop run loop --continuous` directly or configure a Windows service.
 
----
 
 ### Commands
 
@@ -101,7 +100,6 @@ Daemon is running
   Command: cueloop daemon serve --empty-poll-ms 30000 --wait-poll-ms 1000
 ```
 
----
 
 ### Behavior
 
@@ -159,7 +157,6 @@ The daemon maintains state in `.cueloop/cache/daemon.json`:
 
 **Lock File**: `.cueloop/cache/daemon.lock` prevents multiple daemons from starting simultaneously.
 
----
 
 ### Configuration
 
@@ -201,7 +198,6 @@ This triggers:
 }
 ```
 
----
 
 ### Service Templates
 
@@ -291,7 +287,6 @@ launchctl list | grep com.cueloop.daemon
 launchctl unload ~/Library/LaunchAgents/com.cueloop.daemon.plist
 ```
 
----
 
 ### Continuous Mode
 
@@ -320,7 +315,6 @@ cueloop run loop --wait-when-empty
 - Responds to Ctrl+C when running in foreground
 - Polls at `--empty-poll-ms` interval
 
----
 
 ### Wait When Blocked
 
@@ -352,7 +346,6 @@ cueloop run loop --wait-when-blocked
 cueloop run loop --wait-when-blocked --wait-timeout-seconds 600 --notify-when-unblocked
 ```
 
----
 
 ### Graceful Shutdown
 
@@ -391,7 +384,6 @@ Daemon did not stop within 10 seconds. PID: 12345.
 You may need to kill it manually with `kill -9 12345`
 ```
 
----
 
 ## See Also
 

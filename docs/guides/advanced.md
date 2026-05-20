@@ -7,7 +7,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 Purpose: Navigation hub for advanced CueLoop workflows, configuration patterns, integrations, automation, optimization, and troubleshooting.
 
----
 
 ## Use This Guide
 

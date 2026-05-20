@@ -2,14 +2,13 @@
 Status: Archived
 Owner: Maintainers
 Source of truth: historical snapshot; current guidance lives in linked active docs
-Parent: [CueLoop Documentation](../index.md)
+Parent: [Documentation archive](../README.md)
 
 
 **Date:** 2026-03-31
 **Scope:** Full codebase (`crates/cueloop/src`, `crates/cueloop/tests`, `scripts/`, `Makefile`)
 **Auditor:** AI Agent (comprehensive-codebase-audit skill)
 
----
 
 ## Executive Summary
 
@@ -36,7 +35,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 **Error Handling:** Two-tier `anyhow`/`thiserror` approach is consistently applied. Production code uses `?` operator almost universally. `unwrap()` is confined to test code and `LazyLock<Regex>` static initialization (acceptable).
 
----
 
 ## Metrics Dashboard
 
@@ -63,7 +61,6 @@ Parent: [CueLoop Documentation](../index.md)
 | `todo!()` macros | 0 |
 | `unreachable!()` in production | 1 |
 
----
 
 ## Full Findings
 
@@ -98,7 +95,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 ✅ **[Module Documentation]** 100% coverage — all 826 source files have `//!` purpose/responsibilities/scope/usage/invariants headers.
 
----
 
 ### SECURITY
 
@@ -129,7 +125,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Silent failure in daemon session isolation
 - **Fix:** Check `setsid()` return value and log on failure: `if libc::setsid() == -1 { log::warn!("setsid failed: {}", std::io::Error::last_os_error()); }`
 
----
 
 ### COMPLEXITY & COGNITIVE LOAD
 
@@ -139,7 +134,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Regression risk on error handling changes
 - **Fix:** Consider a macro-driven approach or separate the `Display` impl into `runner/error/display.rs`
 
----
 
 ### CODE QUALITY
 
@@ -160,7 +154,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Potential runtime crash if the invariant is violated
 - **Fix:** Return an error or no-op instead of panicking: `Ok(())` with a `log::warn!`
 
----
 
 ### ERROR HANDLING
 
@@ -178,7 +171,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Future readers may wonder if the branch was forgotten
 - **Fix:** Add `// Intentional: success requires no action` comments
 
----
 
 ### RESOURCE MANAGEMENT
 
@@ -190,7 +182,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 ✅ **[Temp Cleanup]** Startup runs `cleanup_default_temp_dirs` with configurable retention.
 
----
 
 ### PERFORMANCE
 
@@ -204,7 +195,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Stale secrets won't be redacted if they change during process lifetime; memory grows with env size
 - **Fix:** Acceptable for a CLI tool — process lifetime is bounded. No action needed.
 
----
 
 ### TESTING
 
@@ -223,7 +213,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 ✅ **[Integration Test Suite]** 176 integration test files with ~28K LOC provide substantial end-to-end coverage.
 
----
 
 ### OBSERVABILITY
 
@@ -235,7 +224,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Difficult to diagnose streaming issues without RUST_LOG=debug
 - **Fix:** Add debug logging for session ID extraction, stream buffer growth, and timeout checkpoint transitions
 
----
 
 ### CONFIGURATION
 
@@ -245,7 +233,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 ✅ **[JSONC Support]** Both JSON and JSONC config files supported with comments.
 
----
 
 ### SHELL SCRIPTS
 
@@ -264,7 +251,6 @@ Parent: [CueLoop Documentation](../index.md)
 - **Impact:** Undefined variable usage or failed commands could go undetected in library functions
 - **Fix:** Add `set -euo pipefail` to all library scripts, or add a guard: `[[ $- == *e* ]] || set -e` to inherit the caller's strict mode only if available. Given these are sourced libraries, adding `set -euo pipefail` at the top is safest and most explicit.
 
----
 
 ## Remediation Roadmap
 
@@ -310,7 +296,6 @@ Parent: [CueLoop Documentation](../index.md)
 
 10. **Proactive file decomposition** — split remaining 31 files in the 400-500 LOC range before they breach the hard limit. Prioritize `cli/scan.rs`, `cli/machine/task.rs`, `commands/init/writers.rs`.
 
----
 
 ## Appendix: Top 20 Largest Non-Test Source Files
 

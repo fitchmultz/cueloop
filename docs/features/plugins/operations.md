@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Show how operators scaffold, install, enable, configure, inspect, validate, and remove plugins.
 
----
 
 ## Configure and Enable
 

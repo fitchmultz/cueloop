@@ -19,13 +19,11 @@ Webhooks complement desktop notifications by providing a machine-readable, integ
 - **Audit Logging**: Capture task history in external systems
 - **Automation**: Trigger custom workflows based on task events
 
----
 
 ## Quick Start: Integration Examples
 
 For copy-paste ready examples with Slack, Discord, and GitHub Actions, see **[Webhook Integration Examples](../guides/webhook-integrations.md)**.
 
----
 
 ## Configuration
 
@@ -93,7 +91,6 @@ When `enabled` is `true`, CueLoop validates `url` before delivery: HTTPS is the 
 }
 ```
 
----
 
 ## Event Types
 
@@ -146,7 +143,6 @@ The `queue_unblocked` event includes:
 - `current_status`: `"runnable"`
 - `note`: Summary counts (e.g., `"ready=2 blocked_deps=3 blocked_schedule=1"`)
 
----
 
 ## Event Filtering
 
@@ -187,7 +183,6 @@ New event types (`loop_*`, `phase_*`, `queue_unblocked`) are **not enabled by de
 { "events": ["loop_started", "phase_started", "phase_completed", "loop_stopped"] }
 ```
 
----
 
 ## Payload Format
 
@@ -336,7 +331,6 @@ Loop events omit `task_id` and `task_title` since they are not task-specific:
 }
 ```
 
----
 
 ## Security
 
@@ -458,7 +452,6 @@ end
 4. **Use constant-time comparison** to prevent timing attacks
 5. **Rotate secrets periodically** and revoke compromised secrets immediately
 
----
 
 ## Delivery Semantics
 
@@ -512,7 +505,6 @@ Webhook consumers should implement idempotency since:
 
 **Recommended approach**: Use `task_id` + `event` + `timestamp` as a unique key for deduplication.
 
----
 
 ## Testing
 
@@ -590,7 +582,6 @@ Replay safety defaults:
 - Replay attempts are capped per failure record (`--max-replay-attempts`).
 - Non-dry-run replay requires `agent.webhook.enabled=true` and a configured `agent.webhook.url`.
 
----
 
 ## Integration Examples
 
@@ -637,7 +628,6 @@ curl -X POST https://your-endpoint.com/webhook \
 cueloop webhook test --url https://your-endpoint.com/webhook
 ```
 
----
 
 ## Reference
 

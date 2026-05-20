@@ -187,19 +187,14 @@ make release-gate
 
 ## Documentation
 
-Start with:
+Start at [docs/index.md](docs/index.md) for the full map. Common entry points:
 
-- [Documentation index](docs/index.md)
-- [Evaluator path](docs/guides/evaluator-path.md)
-- [Quick start](docs/quick-start.md)
-- [Local smoke test](docs/guides/local-smoke-test.md)
-- [CLI reference](docs/cli.md)
-- [Configuration](docs/configuration.md)
-- [Architecture overview](docs/architecture.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Versioning policy](docs/versioning-policy.md)
-- [Contributing](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
+- [Evaluator path](docs/guides/evaluator-path.md) — fastest review path
+- [Quick start](docs/quick-start.md) — install and first run
+- [Feature guides](docs/features/README.md) — queue, runners, phases, plugins
+- [CLI reference](docs/cli.md) and [Configuration](docs/configuration.md)
+- [Architecture](docs/architecture.md) and [Troubleshooting](docs/troubleshooting.md)
+- [Contributing](CONTRIBUTING.md) and [Changelog](CHANGELOG.md)
 
 ## Versioning and license
 

@@ -5,7 +5,7 @@ Source of truth: current priorities are tracked outside this archived note; see 
 Parent: [CueLoop Documentation](index.md)
 
 
-This page preserves the April 2026 cleanup follow-up from `docs/audits/codebase-audit-2026-03-31.md`. It is not the active roadmap.
+This page preserves the April 2026 cleanup follow-up from [codebase audit (2026-03-31)](archive/audits/codebase-audit-2026-03-31.md). It is not the active roadmap.
 
 Archived item:
 

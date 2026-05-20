@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 Purpose: Document CueLoop's configuration profiles feature for quick workflow switching between named `agent` presets.
 
----
 
 ## Overview
 

@@ -23,7 +23,6 @@ Watch mode monitors source files for changes and automatically creates tasks fro
 
 **CURRENTLY IMPLEMENTED BEHAVIOR**: Full implementation with fingerprint-based deduplication, debounced file processing, and comment reconciliation.
 
----
 
 ### Commands
 
@@ -56,7 +55,6 @@ cueloop watch --debounce-ms 1000
 cueloop watch --ignore-patterns "vendor/,target/,node_modules/"
 ```
 
----
 
 ### Triggers
 
@@ -98,7 +96,6 @@ Comments are matched case-insensitively with flexible separators:
 // TODO fix this
 ```
 
----
 
 ### Debouncing
 
@@ -141,7 +138,6 @@ The event loop:
 3. Updates `last_event` timestamp
 4. Processes when `now - last_event >= debounce_duration`
 
----
 
 ### Configuration
 
@@ -208,7 +204,6 @@ cueloop watch --comments todo,fixme
 cueloop watch --comments todo,fixme,hack
 ```
 
----
 
 ### Deduplication
 
@@ -246,7 +241,6 @@ pub fn generate_comment_fingerprint(content: &str) -> String {
 - Whitespace changes (normalization handles this)
 - Case changes (normalization handles this)
 
----
 
 ### Comment Reconciliation
 
@@ -289,7 +283,6 @@ cueloop watch --auto-queue --close-removed
 # 3. Remove the TODO comment → Task auto-closed
 ```
 
----
 
 ### Task Metadata
 
@@ -318,7 +311,6 @@ Watch-created tasks include structured metadata in `custom_fields`:
 | `watch.fingerprint` | SHA256 prefix for deduplication |
 | `watch.version` | Metadata format version |
 
----
 
 ### Use Cases
 
@@ -362,7 +354,6 @@ cueloop watch --auto-queue --close-removed --patterns "*.rs"
 cueloop queue list --tag watch --format json | jq '.tasks | group_by(.custom_fields."watch.comment_type") | map({type: .[0].custom_fields."watch.comment_type", count: length})'
 ```
 
----
 
 ## See Also
 

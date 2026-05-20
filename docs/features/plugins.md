@@ -10,7 +10,6 @@ Purpose: Entry point for CueLoop's plugin system, including custom runners and t
 
 > ⚠️ **Critical security warning:** Plugins are not sandboxed. Enabling a plugin grants full system access equivalent to running arbitrary code. Only enable plugins from trusted sources. See [Plugin Security](plugins/security.md).
 
----
 
 ## Overview
 

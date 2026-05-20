@@ -7,7 +7,6 @@ Parent: [Feature Documentation](README.md)
 
 The migration system manages breaking changes to configuration keys, file formats, and project structure. It provides automated detection, safe application with backup/rollback capability, and preserves JSONC comments during migrations.
 
----
 
 ## Table of Contents
 
@@ -21,7 +20,6 @@ The migration system manages breaking changes to configuration keys, file format
 8. [Breaking Changes Reference](#breaking-changes-reference)
 9. [Implementation Details](#implementation-details)
 
----
 
 ## Overview
 
@@ -48,7 +46,6 @@ README template updates are handled by `cueloop init` and agent-facing write-ena
 - **History-Tracked**: All applied migrations are recorded in `.cueloop/cache/migrations.jsonc`
 - **Scoped Renames**: Config key renames are scoped to their parent object (e.g., `parallel.worktree_root` only renames within `parallel` objects)
 
----
 
 ## Migration Types
 
@@ -158,7 +155,6 @@ MigrationType::ReadmeUpdate {
 - Replaces local README drift because the file is CueLoop-owned/generated
 - Only applicable if current README version < target version
 
----
 
 ## Migration Registry
 
@@ -209,7 +205,6 @@ Migration {
 },
 ```
 
----
 
 ## History Tracking
 
@@ -247,7 +242,6 @@ Migration history is stored in `.cueloop/cache/migrations.jsonc`.
 - **Atomic writes**: Uses atomic file writes to prevent corruption
 - **Git-ignored**: The entire `.cueloop/cache/` directory should be gitignored
 
----
 
 ## CLI Commands
 
@@ -382,7 +376,6 @@ Examples:
   cueloop migrate status       # Show detailed migration status
 ```
 
----
 
 ## Automatic Migrations
 
@@ -408,7 +401,6 @@ Potential future enhancements may include:
 3. **CI integration**: Use `cueloop migrate --check` in CI to fail builds if migrations are needed
 4. **Version control**: Review migration changes before committing
 
----
 
 ## Manual Migrations
 
@@ -486,7 +478,6 @@ if ! cueloop migrate --check; then
 fi
 ```
 
----
 
 ## Breaking Changes Reference
 
@@ -535,7 +526,6 @@ MigrationType::ConfigKeyRename {
 
 > **Important:** State files are not migrated and may need to be deleted if incompatible. For example, parallel mode state files (`.cueloop/cache/parallel/state.json`) may contain references to old config keys.
 
----
 
 ## Implementation Details
 
@@ -622,7 +612,6 @@ cargo test -p cueloop migration
 4. **History validation**: Migration history schema version is checked
 5. **Confirmation prompts**: `--apply` requires user confirmation (unless `--force`)
 
----
 
 ## Related Documentation
 

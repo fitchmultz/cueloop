@@ -14,7 +14,6 @@ This page shows how operators create and mutate CueLoop tasks from the CLI and t
 - [Task Relationships](task-relationships.md) — dependency, blocking, relation, duplicate, and hierarchy semantics.
 - [Queue](queue.md) — queue file operations, ordering, archive, repair, import/export, and locks.
 
----
 
 ## Task Creation
 
@@ -139,7 +138,6 @@ cueloop task clone RQ-0001 --title-prefix "[Follow-up] "
 
 Creates a new task with copied fields (except ID and timestamps) and a reference in `relates_to`.
 
----
 
 ## Task Editing
 
@@ -228,7 +226,6 @@ cueloop task batch status doing RQ-0001 RQ-0002 --continue-on-error
 cueloop task batch edit priority low --tag-filter backlog --dry-run
 ```
 
----
 
 ## Task Templates
 
@@ -299,7 +296,6 @@ cat > .cueloop/templates/security.json << 'EOF'
 EOF
 ```
 
----
 
 ## CLI Quick Reference
 
@@ -320,7 +316,6 @@ EOF
 | Show parent | `cueloop task parent RQ-0002` |
 | Validate queue | `cueloop queue validate` |
 
----
 
 ## See Also
 

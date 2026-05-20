@@ -9,7 +9,6 @@ Parent: [Feature Documentation](README.md)
 
 The Context system in CueLoop generates and maintains an `AGENTS.md` file that documents project conventions, build commands, testing guidelines, and workflow contracts for AI agents working on the codebase.
 
----
 
 ## Overview
 
@@ -30,7 +29,6 @@ The Context system in CueLoop generates and maintains an `AGENTS.md` file that d
 - **Section-based updates**: Add new learnings without regenerating the entire file
 - **Validation**: Ensure AGENTS.md stays complete and up-to-date
 
----
 
 ## Generating Context
 
@@ -84,7 +82,6 @@ $ cueloop context init --interactive
 ? Preview and confirm before writing? › Yes
 ```
 
----
 
 ## Project Type Detection
 
@@ -112,7 +109,6 @@ cueloop context init --project-type rust
 cueloop context init --project-type generic
 ```
 
----
 
 ## AGENTS.md Structure
 
@@ -191,7 +187,6 @@ Command source: No repo-specific command contract detected; entries below start 
 
 Projects that want stricter local rules (for example mandatory module docs or a Makefile-only build contract) should edit the generated `AGENTS.md` and state that policy explicitly instead of relying on defaults.
 
----
 
 ## Updating Context
 
@@ -264,7 +259,6 @@ Update files use markdown sections that match AGENTS.md section names:
 
 Only sections specified with `--section` (or all sections if none specified) will be processed.
 
----
 
 ## Validating Context
 
@@ -298,7 +292,6 @@ cueloop context validate --path docs/AGENTS.md
 - `0`: Validation passed
 - Non-zero: Validation failed (missing sections or file not found)
 
----
 
 ## Context in Prompts
 
@@ -392,7 +385,6 @@ $ cueloop doctor
 ✓ runner/agents_md: AGENTS.md configured and readable
 ```
 
----
 
 ## Best Practices
 
@@ -450,7 +442,6 @@ cueloop context update --section troubleshooting
 cueloop context validate --strict
 ```
 
----
 
 ## Template Reference
 
@@ -491,7 +482,6 @@ Templates use these placeholders that are replaced at generation time:
 | `{timestamp}` | Generation timestamp (RFC3339) |
 | `{template_version}` | Template version for tracking |
 
----
 
 ## Troubleshooting
 
@@ -540,7 +530,6 @@ The `update` command intentionally appends to preserve existing content. To repl
 1. Use `cueloop context init --force` to regenerate
 2. Or manually edit the file
 
----
 
 ## See Also
 

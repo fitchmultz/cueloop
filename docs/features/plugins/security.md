@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Explain the risks and required safety practices for enabling and running plugins.
 
----
 
 > ⚠️ **Plugins are not sandboxed.** Enabling a plugin is equivalent to trusting it with full system access.
 

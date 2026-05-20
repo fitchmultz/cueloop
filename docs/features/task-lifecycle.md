@@ -14,7 +14,6 @@ This page explains how task statuses and priorities describe work state in CueLo
 - [Task Operations](task-operations.md) — creation, editing, templates, batch operations, and CLI workflows.
 - [Queue](queue.md) — queue file operations, ordering, archive, repair, import/export, and locks.
 
----
 
 ## Task Status Lifecycle
 
@@ -76,7 +75,6 @@ if next_status.is_terminal() {
 }
 ```
 
----
 
 ## Task Priority
 
@@ -119,7 +117,6 @@ low → medium → high → critical → low
 - Tasks execute in file order (top to bottom)
 - Priority can be used for manual filtering and UI sorting
 
----
 
 ## See Also
 

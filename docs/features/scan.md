@@ -1,4 +1,4 @@
-# CueLoop Scan System
+# Scan
 Status: Active
 Owner: Maintainers
 Source of truth: this document for its stated scope
@@ -7,40 +7,10 @@ Parent: [Feature Documentation](README.md)
 
 ![Repository Scan](../assets/images/2026-02-07-11-32-24-scan.png)
 
-The scan system automatically identifies opportunities, issues, and improvements in your repository by dispatching an AI agent to analyze the codebase. Unlike manual task creation, scanning explores the repository systematically to discover work you might not have explicitly recognized.
+Scan dispatches a configured runner to explore the repository and enqueue structured tasks. Use it when you want discovery beyond a single `cueloop task` request.
 
----
+Typical uses: onboarding to a repo, pre-release checks, maintenance passes, and security or quality sweeps. Findings include evidence and priority; the agent avoids duplicating existing queue items when possible.
 
-## Overview
-
-Scanning is CueLoop's **discovery mechanism** for finding work that should be done. It uses an autonomous AI agent to:
-
-- Explore the repository structure and code
-- Identify bugs, gaps, and opportunities
-- Generate properly structured tasks in the queue
-- Prioritize findings based on impact and severity
-
-### Use Cases
-
-| Scenario | How Scan Helps |
-|----------|----------------|
-| **Onboarding to a codebase** | Quickly identify critical issues, technical debt, and missing documentation |
-| **Release preparation** | Find bugs, security issues, and workflow gaps before shipping |
-| **Quarterly planning** | Discover feature gaps and enhancement opportunities for roadmap planning |
-| **Security audits** | Systematically identify security vulnerabilities and unsafe patterns |
-| **Performance optimization** | Locate performance bottlenecks and optimization opportunities |
-| **Code maintenance** | Find dead code, duplicated logic, and maintainability issues |
-| **Pre-flight checks** | Validate that CI, tests, and development workflows are functioning |
-
-### Key Benefits
-
-- **Autonomous discovery**: The agent explores beyond what you explicitly ask for
-- **Evidence-based**: Every finding includes concrete evidence from the codebase
-- **Actionable output**: Results are structured as ready-to-work tasks in the queue
-- **Prioritized**: Tasks are ranked by impact (critical → low)
-- **Deduplicated**: The agent checks existing tasks to avoid duplicates
-
----
 
 ## Scan Modes
 
@@ -137,7 +107,6 @@ cueloop scan "evaluate error handling patterns"
 cueloop scan "identify missing test coverage"
 ```
 
----
 
 ## Command Usage
 
@@ -216,7 +185,6 @@ cueloop scan --mode maintenance --profile deep-review --runner claude \
            --model opus "comprehensive security audit"
 ```
 
----
 
 ## Focus Prompt
 
@@ -273,7 +241,6 @@ cueloop scan --mode maintenance "authentication system bugs"
 cueloop scan --mode innovation "REST API completeness"
 ```
 
----
 
 ## Runner Selection
 
@@ -323,7 +290,6 @@ cueloop scan --mode maintenance --runner claude --model opus \
            "design patterns and coupling issues"
 ```
 
----
 
 ## RepoPrompt Integration
 
@@ -354,7 +320,6 @@ cueloop scan --repo-prompt off "quick surface scan"
 
 **CURRENTLY IMPLEMENTED BEHAVIOR**: The flag controls `repoprompt_tool_injection` which wraps the prompt with RepoPrompt requirements via `prompts::wrap_with_repoprompt_requirement()`.
 
----
 
 ## Prompt Templates
 
@@ -422,7 +387,6 @@ Custom variables can be defined in config:
 }
 ```
 
----
 
 ## Output
 
@@ -490,7 +454,6 @@ The scan agent checks for existing tasks before adding new ones:
 
 If a duplicate is found, the agent skips adding it and reports this in the output.
 
----
 
 ## Best Practices
 
@@ -581,7 +544,6 @@ cueloop scan --mode maintenance "add null checks"
 - **Queue validation**: Queue is validated before and after scanning
 - **Force flag**: Use `--force` to bypass clean-repo check if needed
 
----
 
 ## Scan vs Task Build
 
@@ -632,7 +594,6 @@ cueloop task build-refactor --path crates/cueloop/src/auth
 # Result: Creates tasks for large files in auth module
 ```
 
----
 
 ## Advanced Usage
 
@@ -678,7 +639,6 @@ cueloop queue export --format json --tag maintenance > audit-findings.json
 cueloop queue import --format json --input audit-findings.json
 ```
 
----
 
 ## Troubleshooting
 
@@ -699,7 +659,6 @@ If scan fails **after** the runner finishes (for example, reloading or validatin
 - For **raw** safeguard dumps (secrets may be written to disk), set `CUELOOP_RAW_DUMP=1` or `CUELOOP_RAW_DUMP=true` when running `cueloop scan`. (API callers can set `ScanOptions.is_debug_mode` instead.)
 - For raw runner stream capture in `.cueloop/logs/debug.log`, use `cueloop run ... --debug` (scan does not accept `--debug` today).
 
----
 
 ## Summary
 

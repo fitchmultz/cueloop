@@ -7,14 +7,12 @@ Parent: [Advanced Usage Guide](advanced.md)
 
 Purpose: Deep-dive guidance for creating custom CueLoop plugins, debugging plugin execution, running CueLoop as a daemon, integrating watch mode, and wiring automation surfaces such as CI/CD and webhooks.
 
----
 
 ## Table of Contents
 
 1. [Plugin Development](#plugin-development)
 2. [Automation](#automation)
 
----
 
 ## Plugin Development
 
@@ -206,7 +204,6 @@ cueloop plugin list
 cueloop plugin validate --id my.plugin
 ```
 
----
 
 ## Automation
 

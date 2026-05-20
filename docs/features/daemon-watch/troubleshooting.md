@@ -42,7 +42,6 @@ rm -f .cueloop/cache/stop_requested
 cueloop daemon start
 ```
 
----
 
 ## See Also
 

@@ -6,7 +6,6 @@ Parent: [CueLoop Plugin System](../plugins.md)
 
 Purpose: Explain how CueLoop discovers plugins and validates plugin manifests.
 
----
 
 ## Discovery Layout
 
