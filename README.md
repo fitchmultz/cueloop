@@ -4,7 +4,7 @@ CueLoop is a Rust CLI and macOS app for queue-driven, auditable AI coding agent 
 
 [![crates.io](https://img.shields.io/crates/v/cueloop.svg)](https://crates.io/crates/cueloop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop)](https://docs.rs/cueloop)
-[![GitHub release v0.6.0](https://img.shields.io/badge/release-v0.6.0-blue)](https://github.com/fitchmultz/cueloop/releases/tag/v0.6.0)
+[![GitHub release v0.7.2](https://img.shields.io/badge/release-v0.7.2-blue)](https://github.com/fitchmultz/cueloop/releases/tag/v0.7.2)
 
 ![CueLoop three-phase agent workflow](docs/assets/images/2026-02-07-workflow-3phase.png)
 
