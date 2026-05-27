@@ -418,8 +418,10 @@ mod tests {
     }
 
     #[test]
-    fn kimi_requires_managed_session_id() {
-        let report = get_runner_capabilities(&Runner::Kimi, "kimi");
-        assert!(report.requires_managed_session_id);
+    fn managed_session_runners_report_it() {
+        let kimi = get_runner_capabilities(&Runner::Kimi, "kimi");
+        assert!(kimi.requires_managed_session_id);
+        let pi = get_runner_capabilities(&Runner::Pi, "pi");
+        assert!(pi.requires_managed_session_id);
     }
 }

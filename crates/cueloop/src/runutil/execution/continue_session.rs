@@ -43,11 +43,7 @@ pub(crate) fn should_fallback_to_fresh_continue(
     let text = continue_session_error_text(err);
 
     match runner_kind {
-        Runner::Pi => {
-            text.contains("pi session file not found")
-                || text.contains("no session found matching")
-                || text.contains("read pi session dir")
-        }
+        Runner::Pi => is_pi_missing_session_error(&text),
         Runner::Gemini => {
             text.contains("error resuming session")
                 && (text.contains("invalid session identifier") || text.contains("--list-sessions"))
@@ -79,6 +75,15 @@ pub(crate) fn should_fallback_to_fresh_continue(
         }
         _ => false,
     }
+}
+
+fn is_pi_missing_session_error(text: &str) -> bool {
+    text.contains("session not found")
+        || text.contains("no session found")
+        || text.contains("unknown session")
+        || text.contains("pi session file not found")
+        || text.contains("session_not_found")
+        || text.contains("unknown_session")
 }
 
 fn validated_session_id_for_runner<'a>(
@@ -168,6 +173,29 @@ mod tests {
             session_id: None,
         };
         assert!(should_fallback_to_fresh_continue(&Runner::Cursor, &err));
+    }
+
+    #[test]
+    fn pi_resume_known_missing_session_falls_back_to_fresh() {
+        let err = RunnerError::NonZeroExit {
+            code: 1,
+            stdout: "".into(),
+            stderr: "session not found for id missing-session-id".into(),
+            session_id: None,
+        };
+        assert!(should_fallback_to_fresh_continue(&Runner::Pi, &err));
+    }
+
+    #[test]
+    fn pi_resume_unrelated_not_found_error_does_not_fallback() {
+        let err = RunnerError::NonZeroExit {
+            code: 1,
+            stdout: "".into(),
+            stderr: "failed while reading session transcript file: prompt-cache.json not found"
+                .into(),
+            session_id: None,
+        };
+        assert!(!should_fallback_to_fresh_continue(&Runner::Pi, &err));
     }
 
     #[test]

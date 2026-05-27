@@ -130,13 +130,15 @@ pub(crate) fn generate_phase_session_id(task_id: &str, phase: u8) -> String {
 /// Build a phase session ID only for runners that require CueLoop-managed IDs.
 ///
 /// Kimi does not emit session IDs in its JSON output, so CueLoop must supply one.
+/// Pi 0.76+ supports exact project-local session IDs through `--session-id`, so
+/// CueLoop supplies phase IDs there too instead of relying on runner-generated IDs.
 pub(crate) fn phase_session_id_for_runner(
     runner: Runner,
     task_id: &str,
     phase: u8,
 ) -> Option<String> {
     match runner {
-        Runner::Kimi => Some(generate_phase_session_id(task_id, phase)),
+        Runner::Kimi | Runner::Pi => Some(generate_phase_session_id(task_id, phase)),
         _ => None,
     }
 }

@@ -18,7 +18,7 @@
 //! Invariants/assumptions:
 //! - Fake runner scripts emit machine-readable output matching each runner contract.
 
-use super::support::{PI_ENV_MUTEX, continue_session_with, resolved_for_repo};
+use super::support::{continue_session_with, resolved_for_repo};
 use crate::commands::run::supervision::resume_continue_session;
 use crate::contracts::Runner;
 use crate::testsupport::runner::create_fake_runner;
@@ -143,12 +143,19 @@ echo '{{"type":"session","sessionID":"sess-fresh"}}'
 #[test]
 fn resume_continue_session_pi_falls_back_to_fresh_when_resume_lookup_fails() -> anyhow::Result<()> {
     let _interrupt_guard = interrupt_guard();
-    let _env_guard = PI_ENV_MUTEX.lock().expect("pi env mutex poisoned");
     let temp_dir = TempDir::new()?;
     let args_path = temp_dir.path().join("pi-runner-args.txt");
     let runner_script = format!(
         r#"#!/bin/sh
 set -e
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--session-id" ] && [ "$arg" = "missing-session-id" ]; then
+    echo "session not found for id missing-session-id" >&2
+    exit 1
+  fi
+  prev="$arg"
+done
 echo "$@" > "{args_path}"
 echo '{{"type":"result","result":"fresh"}}'
 echo '{{"type":"session","id":"sess-pi-fresh"}}'
@@ -156,11 +163,6 @@ echo '{{"type":"session","id":"sess-pi-fresh"}}'
         args_path = args_path.display()
     );
     let runner_path = create_fake_runner(temp_dir.path(), "pi", &runner_script)?;
-
-    let previous_pi_root = std::env::var_os("PI_CODING_AGENT_DIR");
-    let pi_root = temp_dir.path().join("pi-root");
-    std::fs::create_dir_all(&pi_root)?;
-    unsafe { std::env::set_var("PI_CODING_AGENT_DIR", &pi_root) };
 
     let mut resolved = resolved_for_repo(temp_dir.path());
     resolved.config.agent.pi_bin = Some(runner_path.to_string_lossy().to_string());
@@ -172,22 +174,27 @@ echo '{{"type":"session","id":"sess-pi-fresh"}}'
 
     let result = resume_continue_session(&resolved, &mut session, "hello", None);
 
-    match previous_pi_root {
-        Some(value) => unsafe { std::env::set_var("PI_CODING_AGENT_DIR", value) },
-        None => unsafe { std::env::remove_var("PI_CODING_AGENT_DIR") },
-    }
-
     let resumed = result?;
     let args = std::fs::read_to_string(&args_path)?;
     assert!(
-        !args.split_whitespace().any(|arg| arg == "--session"),
-        "fresh invocation should not include --session args, got: {args}"
+        args.split_whitespace().any(|arg| arg == "--session-id"),
+        "fresh invocation should use a CueLoop-managed --session-id, got: {args}"
+    );
+    assert!(
+        !args
+            .split_whitespace()
+            .any(|arg| arg == "missing-session-id"),
+        "fresh invocation should not reuse the missing resume id, got: {args}"
     );
     assert_eq!(
         resumed.decision.reason,
         crate::session::ResumeReason::RunnerSessionInvalid
     );
-    assert_eq!(session.session_id.as_deref(), Some("sess-pi-fresh"));
+    let fresh_session_id = session.session_id.as_deref().expect("fresh session id");
+    assert!(
+        fresh_session_id.starts_with("RQ-0001-p2-"),
+        "expected generated Pi phase session id, got {fresh_session_id}"
+    );
     Ok(())
 }
 

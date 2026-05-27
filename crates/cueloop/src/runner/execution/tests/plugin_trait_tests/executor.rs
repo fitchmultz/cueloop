@@ -69,7 +69,7 @@ fn plugin_executor_requires_managed_session_id() {
     assert!(!executor.requires_managed_session_id(&Runner::Claude));
     assert!(!executor.requires_managed_session_id(&Runner::Gemini));
     assert!(!executor.requires_managed_session_id(&Runner::Opencode));
-    assert!(!executor.requires_managed_session_id(&Runner::Pi));
+    assert!(executor.requires_managed_session_id(&Runner::Pi));
     assert!(!executor.requires_managed_session_id(&Runner::Cursor));
 }
 

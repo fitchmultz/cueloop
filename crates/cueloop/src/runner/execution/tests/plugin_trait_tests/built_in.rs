@@ -98,8 +98,9 @@ fn all_built_in_plugins_support_resume() {
 }
 
 #[test]
-fn kimi_requires_managed_session_id() {
+fn built_in_plugins_that_need_managed_session_ids_report_it() {
     assert!(BuiltInRunnerPlugin::Kimi.requires_managed_session_id());
+    assert!(BuiltInRunnerPlugin::Pi.requires_managed_session_id());
 }
 
 #[test]
@@ -108,6 +109,5 @@ fn other_plugins_do_not_require_managed_session_id() {
     assert!(!BuiltInRunnerPlugin::Opencode.requires_managed_session_id());
     assert!(!BuiltInRunnerPlugin::Gemini.requires_managed_session_id());
     assert!(!BuiltInRunnerPlugin::Claude.requires_managed_session_id());
-    assert!(!BuiltInRunnerPlugin::Pi.requires_managed_session_id());
     assert!(!BuiltInRunnerPlugin::Cursor.requires_managed_session_id());
 }
