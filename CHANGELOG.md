@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-05-27
+
 ### Changed
 
 - Updated the Pi runner integration for Pi 0.76.0 by using CueLoop-managed `--session-id` values for deterministic project-local sessions.
@@ -242,7 +244,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/fitchmultz/cueloop/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/fitchmultz/cueloop/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/fitchmultz/cueloop/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/fitchmultz/cueloop/compare/v0.7.0...v0.7.0
