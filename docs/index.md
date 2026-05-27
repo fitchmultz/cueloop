@@ -65,6 +65,14 @@ Use these when you want to validate a clone, understand the operational model, o
 - [Versioning Policy](versioning-policy.md)
 - [Roadmap Archive](roadmap.md)
 
+## Audit Snapshots
+
+These are point-in-time review artifacts, not active operating instructions.
+
+- [Thermo-Nuclear Code Quality Review (2026-05-21)](audits/thermo-nuclear-code-quality-review-2026-05-21.md)
+- [Comprehensive Codebase Audit (2026-03-31)](audits/codebase-audit-2026-03-31.md)
+- [CueLoopMac Settings Window Investigation (2026-03-13)](audits/2026-03-13-cueloopmac-settings-window-investigation.md)
+
 ## Maintainer Runbooks
 
 - [Release Runbook](guides/release-runbook.md)
