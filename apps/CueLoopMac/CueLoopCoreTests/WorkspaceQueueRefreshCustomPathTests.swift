@@ -192,7 +192,12 @@ extension WorkspaceQueueRefreshTests {
                 atPath: workspaceURL.appendingPathComponent(".cueloop/queue.jsonc", isDirectory: false).path
             )
         )
-        XCTAssertTrue(workspace.diagnosticsState.watcherHealth.isWatching)
+        let watcherStarted = await CueLoopCoreTestSupport.waitUntil(timeout: .seconds(5)) {
+            await MainActor.run {
+                workspace.diagnosticsState.watcherHealth.isWatching
+            }
+        }
+        XCTAssertTrue(watcherStarted)
 
         try WorkspaceTaskCreationTestSupport.removeItemIfExists(queueReadCurrentURL)
         try FileManager.default.copyItem(at: queueReadUpdatedURL, to: queueReadCurrentURL)
