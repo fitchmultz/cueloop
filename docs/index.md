@@ -20,6 +20,7 @@ CueLoop is a Rust CLI for running AI agent loops against a structured JSON task 
 - [Project Operating Constitution](guides/project-operating-constitution.md): canonical project rules for source of truth, cutover, docs, UX, validation, and drift control
 - [Decisions](decisions.md): project-level decision log
 - [Configuration](configuration.md): hub for config schema, precedence, trust, runners, queues, webhooks, plugins, and profiles
+- [Pi Integration](integrations/pi.md): Pi runner session handling and 0.76+ `--session-id` behavior
 - [PRD Specs](prd/cueloop-task-decompose.md): feature-level product requirements
 - [Queue](features/queue.md) and [Tasks](features/tasks.md): queue semantics and task model references
 - [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path

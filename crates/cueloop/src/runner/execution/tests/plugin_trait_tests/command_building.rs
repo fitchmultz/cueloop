@@ -601,6 +601,42 @@ fn pi_build_run_command_preserves_direct_custom_binary_when_not_node_script() {
 }
 
 #[test]
+fn pi_build_run_command_with_session_id_uses_session_id_flag() {
+    let plugin = BuiltInRunnerPlugin::Pi;
+    let ctx = create_run_context("test prompt", Some("RQ-0001-p2-1704153600"));
+
+    let (cmd, _payload, _guards) = plugin.build_run_command(ctx).unwrap();
+
+    let args: Vec<String> = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    assert!(args.contains(&"--session-id".to_string()));
+    assert!(args.contains(&"RQ-0001-p2-1704153600".to_string()));
+    assert!(!args.contains(&"--session".to_string()));
+}
+
+#[test]
+fn pi_build_run_command_with_session_file_uses_session_flag() {
+    let plugin = BuiltInRunnerPlugin::Pi;
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let session_file = temp_dir.path().join("session.jsonl");
+    std::fs::write(&session_file, "{}\n").expect("write session file");
+    let session_path = session_file.to_string_lossy().to_string();
+    let ctx = create_run_context("test prompt", Some(&session_path));
+
+    let (cmd, _payload, _guards) = plugin.build_run_command(ctx).unwrap();
+
+    let args: Vec<String> = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    assert!(args.contains(&"--session".to_string()));
+    assert!(args.contains(&session_path));
+    assert!(!args.contains(&"--session-id".to_string()));
+}
+
+#[test]
 fn pi_build_run_command_with_yolo_mode() {
     let plugin = BuiltInRunnerPlugin::Pi;
     let mut ctx = create_run_context("test prompt", None);

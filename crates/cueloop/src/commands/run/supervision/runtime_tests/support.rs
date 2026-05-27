@@ -28,9 +28,6 @@ use crate::contracts::{
 };
 use crate::queue;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-
-pub(super) static PI_ENV_MUTEX: Mutex<()> = Mutex::new(());
 
 pub(super) fn make_task(id: &str, title: &str, status: TaskStatus) -> Task {
     Task {

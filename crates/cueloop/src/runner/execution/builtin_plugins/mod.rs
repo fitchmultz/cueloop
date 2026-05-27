@@ -185,7 +185,7 @@ impl RunnerPlugin for BuiltInRunnerPlugin {
     }
 
     fn requires_managed_session_id(&self) -> bool {
-        matches!(self, Self::Kimi)
+        matches!(self, Self::Kimi | Self::Pi)
     }
 }
 

@@ -17,9 +17,6 @@
 //! Invariants/Assumptions:
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
-use std::path::Path;
-
-use super::pi::pi_session_dir_name;
 use super::*;
 use crate::runner::execution::plugin_trait::ResponseParser;
 
@@ -52,8 +49,9 @@ fn all_built_in_plugins_have_metadata() {
 }
 
 #[test]
-fn kimi_requires_managed_session_id() {
+fn built_in_plugins_that_need_managed_session_ids_report_it() {
     assert!(BuiltInRunnerPlugin::Kimi.requires_managed_session_id());
+    assert!(BuiltInRunnerPlugin::Pi.requires_managed_session_id());
     assert!(!BuiltInRunnerPlugin::Codex.requires_managed_session_id());
     assert!(!BuiltInRunnerPlugin::Claude.requires_managed_session_id());
 }
@@ -87,12 +85,6 @@ fn kimi_response_parser_extracts_assistant_text() {
     let result = parser.parse(&json, &mut buffer);
 
     assert_eq!(result, Some("Hello from Kimi".to_string()));
-}
-
-#[test]
-fn pi_session_dir_name_normalizes_path() {
-    let name = pi_session_dir_name(Path::new("/Users/mitchfultz/Projects/AI/cueloop"));
-    assert_eq!(name, "--Users-mitchfultz-Projects-AI-cueloop--");
 }
 
 #[test]

@@ -22,8 +22,7 @@
 //! - Runner CLI options and phase type are preserved from the original session.
 
 use crate::commands::run::PhaseType;
-use crate::commands::run::phases::generate_phase_session_id;
-use crate::contracts::Runner;
+use crate::commands::run::phases::phase_session_id_for_runner;
 use crate::runutil::should_fallback_to_fresh_continue;
 use anyhow::{Context, Result};
 
@@ -91,13 +90,11 @@ fn run_fresh_continue(
 ) -> std::result::Result<(crate::runner::RunnerOutput, Option<String>), crate::runner::RunnerError>
 {
     let bins = crate::runner::resolve_binaries(&resolved.config.agent);
-    let fallback_session_id = match session.runner {
-        Runner::Kimi => Some(generate_phase_session_id(
-            &session.task_id,
-            phase_number(session.phase_type),
-        )),
-        _ => None,
-    };
+    let fallback_session_id = phase_session_id_for_runner(
+        session.runner.clone(),
+        &session.task_id,
+        phase_number(session.phase_type),
+    );
 
     let output = crate::runner::run_prompt(
         session.runner.clone(),

@@ -236,12 +236,15 @@ Codex only supports this restricted model list:
 - Any arbitrary model ID
 
 **Session Handling:**
-Pi sessions are file-based. CueLoop resolves session files from:
-1. Direct path if the session_id is a file
-2. `$PI_CODING_AGENT_DIR/sessions/<workspace-dir>/*_<session_id>.jsonl`
-3. `~/.pi/agent/sessions/<workspace-dir>/*_<session_id>.jsonl`
+Pi 0.76+ exposes `--session-id <id>` for automation-friendly project-local sessions. CueLoop passes stored session IDs with that flag for resume and for fresh runs when a managed ID is available. Direct session file paths still use `--session <path>`.
+
+Pi session files are stored under:
+1. `$PI_CODING_AGENT_DIR/sessions/<workspace-dir>/*_<session_id>.jsonl`
+2. `~/.pi/agent/sessions/<workspace-dir>/*_<session_id>.jsonl`
 
 **CLI Flags Mapped:**
+- `--session-id` - Exact project-local session ID (Pi 0.76+)
+- `--session` - Direct session file path when the stored ID is already a file
 - `--print` / `-p` - When `approval_mode=yolo` or `auto_edits`
 - `--sandbox` - When sandbox is enabled
 

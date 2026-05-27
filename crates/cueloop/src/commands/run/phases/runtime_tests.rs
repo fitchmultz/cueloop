@@ -113,13 +113,15 @@ fn generate_phase_session_id_uses_task_phase_and_timestamp_format() {
 }
 
 #[test]
-fn phase_session_id_for_runner_only_returns_for_kimi() {
+fn phase_session_id_for_runner_returns_for_managed_session_runners() {
     let task_id = "RQ-0009";
     let kimi_id = phase_session_id_for_runner(Runner::Kimi, task_id, 2);
     assert!(
         kimi_id.is_some(),
         "expected kimi session id to be generated"
     );
+    let pi_id = phase_session_id_for_runner(Runner::Pi, task_id, 2);
+    assert!(pi_id.is_some(), "expected pi session id to be generated");
     let opencode_id = phase_session_id_for_runner(Runner::Opencode, task_id, 2);
     assert!(
         opencode_id.is_none(),
