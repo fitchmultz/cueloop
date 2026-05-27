@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated the Pi runner integration for Pi 0.76.0 by using CueLoop-managed `--session-id` values for deterministic project-local sessions.
+- Documented Pi runner session behavior and linked the Pi integration guide from the active docs index.
+
+### Fixed
+
+- Narrowed Pi missing-session fallback detection so unrelated `not found` errors continue to hard-fail instead of silently starting fresh.
+- Simplified Pi resume command construction around an explicit session-argument model instead of a broad run-context shim.
+
 ## [0.7.2] - 2026-05-15
 
 ### Fixed
