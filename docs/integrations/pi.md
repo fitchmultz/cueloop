@@ -8,7 +8,7 @@ Purpose: Document how CueLoop integrates with the Pi Coding Agent CLI, including
 
 ## Tested Version
 
-CueLoop tracks the Pi version validated by the pi fleet in `.pi-fleet-tested-version` (currently **0.76.0**). Install that release or newer before using `agent.runner = "pi"`.
+CueLoop tracks the Pi version validated by the pi fleet in `.pi-fleet-tested-version` (currently **0.78.0**). Install that release or newer before using `agent.runner = "pi"`.
 
 ## CLI Integration
 
