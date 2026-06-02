@@ -93,6 +93,29 @@ Follow-up actions: None.
 
 Review date, if any: None.
 
+
+## 2026-06-02: Advance CueLoop source-build Rust baseline to 1.96.0
+
+Decision: Keep CueLoop's source-build Rust baseline aligned with the current global stable toolchain used by the release gate.
+
+Date: 2026-06-02
+
+Owner: Maintainers
+
+Context: `make release-gate` failed at `make rust-toolchain-drift-check` because the repo pinned Rust `1.95.0` while global stable had advanced to Rust `1.96.0`. CueLoop's prior baseline decision requires updating `rust-toolchain.toml` and the CLI crate `rust-version` together when intentionally adopting a new stable.
+
+Chosen option: Bump `rust-toolchain.toml` to Rust `1.96.0` and bump `crates/cueloop/Cargo.toml` `rust-version` to `1.96` in the same change.
+
+Rejected options: Bypass the drift check for the Cursor SDK bump; keep the repository pinned to `1.95.0` while release verification runs against a newer global stable; update only the toolchain file and leave `rust-version` stale.
+
+Reason: The release gate is designed to surface exactly this drift before release-shaped verification. Aligning both source-of-truth files keeps contributor, release, and app-bundling behavior explicit.
+
+Expected consequences: Contributors and release builds use Rust `1.96.0` for this baseline. Follow-up Rust modernization and release-note audit work can happen separately from the dependency pin.
+
+Follow-up actions: Refresh the stack audit with Rust `1.96.0` release-note details if new language/library/compiler changes should drive modernization tasks.
+
+Review date, if any: None.
+
 ## 2026-04-27: Align CueLoop's source-build MSRV with the pinned Rust toolchain
 
 Decision: Treat the repo-local `rust-toolchain.toml` channel as CueLoop's source-build Rust baseline and keep the CLI crate's `rust-version` aligned to the same minor Rust release.

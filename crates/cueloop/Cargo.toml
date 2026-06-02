@@ -2,7 +2,7 @@
 name = "cueloop"
 version = "0.7.3"
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.96"
 license = "MIT"
 description = "A Rust CLI for managing AI agent loops with a structured JSON task queue"
 repository = "https://github.com/fitchmultz/cueloop"

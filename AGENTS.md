@@ -112,7 +112,7 @@ Final handoff format:
 
 This is a Rust-only CLI project on Linux (the SwiftUI macOS app cannot build here). All `macos-*` Make targets are out of scope.
 
-- **Rust toolchain**: Pinned to 1.95.0 via `rust-toolchain.toml`; `rustup` auto-resolves it. Components: `rustfmt`, `clippy`.
+- **Rust toolchain**: Pinned to 1.96.0 via `rust-toolchain.toml`; `rustup` auto-resolves it. Components: `rustfmt`, `clippy`.
 - **cargo-nextest**: Required for `make test` (it falls back to `cargo test` without it, but nextest is preferred). Installed via `cargo install cargo-nextest --locked`.
 - **git default branch**: Must be `main` (`git config --global init.defaultBranch main`), otherwise several integration tests that create temp repos will fail with `fatal: 'origin/main' is not a commit`.
 - **Pre-existing test failures**: Three `doctor_contract_test` tests (`doctor_auto_fix_repairs_invalid_queue`, `doctor_passes_in_clean_env`, and `doctor_warns_on_missing_upstream`) fail because they expect the `pi` runner binary on PATH. These are environment-dependent and do not indicate a code regression.

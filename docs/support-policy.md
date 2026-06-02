@@ -27,7 +27,7 @@ Purpose: clarify supported platforms/tooling and what maintainers can realistica
 
 As of 2026-04-27:
 
-- Rust `1.95.0` (stable), pinned via `rust-toolchain.toml`
+- Rust `1.96.0` (stable), pinned via `rust-toolchain.toml`
 - Xcode `26.3`
 - Swift language mode `6.2`
 - macOS deployment target `15.0`
