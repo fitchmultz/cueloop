@@ -47,7 +47,7 @@ esac
 WORKDIR_INPUT="${1:-$(pwd)}"
 WORKDIR="$(cd "$WORKDIR_INPUT" && pwd -P)"
 MODEL="composer-2.5"
-PREFERRED_SDK_VERSION="1.0.13"
+PREFERRED_SDK_VERSION="1.0.17"
 BIN="${CURSOR_SDK_NODE_BIN:-node}"
 
 if ! command -v "$BIN" >/dev/null 2>&1; then

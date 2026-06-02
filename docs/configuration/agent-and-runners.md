@@ -56,11 +56,11 @@ CueLoop resolves `@cursor/sdk` in this order:
 
 Supported install patterns:
 
-- Workspace install: `npm install --save-dev @cursor/sdk`, or `npm install --save-exact @cursor/sdk@1.0.13` when you want the preferred/tested version pinned locally.
+- Workspace install: `npm install --save-dev @cursor/sdk`, or `npm install --save-exact @cursor/sdk@1.0.17` when you want the preferred/tested version pinned locally.
 - Global npm install: `npm install -g @cursor/sdk` when Node can resolve global npm roots.
 - Explicit module path: `CUELOOP_CURSOR_SDK_MODULE_PATH=/path/to/@cursor/sdk/...` for a trusted SDK entrypoint.
 
-CueLoop's preferred/tested SDK version is `@cursor/sdk@1.0.13`. An exact version match is not required to attempt execution: older or newer SDK versions are tried best-effort with a warning when the required API is present.
+CueLoop's preferred/tested SDK version is `@cursor/sdk@1.0.17`. An exact version match is not required to attempt execution: older or newer SDK versions are tried best-effort with a warning when the required API is present.
 
 Fatal setup problems include missing `@cursor/sdk`, an unusable explicit module path or failed import, Node below the SDK's supported floor, missing `CURSOR_API_KEY`, or a loaded SDK module that does not expose the required `Agent` API.
 
