@@ -1,7 +1,7 @@
 # Stack Audit (2026-04)
 Status: Active
 Owner: Maintainers
-Source of truth: current language/toolchain/dependency baseline and Rust 1.95.0 migration notes
+Source of truth: current language/toolchain/dependency baseline and Rust 1.95.0 migration notes, with Rust 1.96.0 baseline update notes
 Parent: [CueLoop Documentation](../index.md)
 Related: [CI and Test Strategy](ci-strategy.md), [Decisions](../decisions.md), [Archived March Stack Audit](stack-audit-2026-03.md)
 
@@ -20,13 +20,21 @@ Audit date: `2026-04-27`
 
 ### Languages and Toolchains
 
-- Rust toolchain: `1.95.0` stable (`rust-toolchain.toml`)
-- Cargo manifest MSRV floor: `1.95` (`crates/cueloop/Cargo.toml`)
+- Rust toolchain: `1.96.0` stable (`rust-toolchain.toml`)
+- Cargo manifest MSRV floor: `1.96` (`crates/cueloop/Cargo.toml`)
 - Rust edition: `2024`
 - Xcode: `26.3`
 - Swift language mode: `6.2`
 - macOS deployment target: `15.0`
 - GNU Make: `>= 4`
+
+## Rust 1.96.0 Baseline Update
+
+Audit date: `2026-06-02`
+
+CueLoop now pins Rust `1.96.0` in `rust-toolchain.toml` and declares `rust-version = "1.96"` in the CLI crate manifest. This preserves the active policy that the crate MSRV follows the repository's pinned source-build baseline because local development, release builds, schema generation, and macOS app bundling are validated through the same pinned rustup toolchain.
+
+The update was triggered by `make release-gate` failing `make rust-toolchain-drift-check`: global stable had advanced to Rust `1.96.0` while the repository still pinned `1.95.0`. The release-note modernization audit for Rust `1.96.0` remains a follow-up; this cutover keeps the release gate's source-build baseline aligned.
 
 ## Rust 1.95.0 Baseline
 

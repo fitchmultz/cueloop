@@ -24,7 +24,7 @@ import process from "node:process";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_SETTING_SOURCES = ["project", "user", "plugins"];
-const EXPECTED_CURSOR_SDK_VERSION = "1.0.13";
+const EXPECTED_CURSOR_SDK_VERSION = "1.0.17";
 
 function emit(event) {
   process.stdout.write(`${JSON.stringify(event)}\n`);
