@@ -601,4 +601,4 @@ This disables the `notifications` feature flag, making all notification function
 - [Configuration](../configuration.md) - Complete configuration reference
 - [Webhooks](./webhooks.md) - HTTP webhook notifications
 - [App (macOS)](./app.md) - App entry point and workflow
-- [Queue and Tasks](../queue-and-tasks.md) - Task lifecycle and events
+- [Queue](queue.md) and [Task System](tasks.md) - Task lifecycle and events

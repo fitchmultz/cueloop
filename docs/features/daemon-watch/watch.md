@@ -368,7 +368,7 @@ cueloop queue list --tag watch --format json | jq '.tasks | group_by(.custom_fie
 
 - [Daemon and Watch overview](../daemon-and-watch.md)
 - [CLI Reference](../../cli.md)
-- [Queue and Tasks](../../queue-and-tasks.md)
+- [Queue](../queue.md) and [Task System](../tasks.md)
 - [Daemon Mode](./daemon.md)
 - [Operations](./operations.md)
 - [Troubleshooting](./troubleshooting.md)

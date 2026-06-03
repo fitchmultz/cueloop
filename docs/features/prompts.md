@@ -685,7 +685,7 @@ cat .cueloop/logs/debug.log | grep -A 50 "Rendered prompt"
 
 ### Related Documentation
 
-- [Workflow](../workflow.md) - Phase execution and prompt overrides
+- [Phases](phases.md) - Phase execution, with [Prompts](prompts.md) for prompt overrides
 - [Configuration](../configuration.md) - Config options affecting prompts
-- [Queue and Tasks](../queue-and-tasks.md) - Task structure and fields
+- [Task Schema and Field Reference](task-schema.md) - Task structure and fields
 - [Scan](./scan.md) - Repository scanning details

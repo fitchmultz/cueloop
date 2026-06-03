@@ -36,6 +36,6 @@ Daemon mode is fully implemented on Unix systems (Linux and macOS). On Windows, 
 
 ## See Also
 
-- [Workflow](../workflow.md)
+- [Phases](phases.md)
 - [CLI Reference](../cli.md)
-- [Queue and Tasks](../queue-and-tasks.md)
+- [Queue](queue.md) and [Task System](tasks.md)

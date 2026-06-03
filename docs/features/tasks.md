@@ -29,7 +29,7 @@ A **Task** in CueLoop is a JSON object representing a discrete unit of work. Tas
 
 Tasks capture identity, state, context, relationships, and execution configuration. They are the interface between operators and AI agents: they preserve the original request, guide execution, track progress, and support recovery.
 
-For queue file operations and archive mechanics, see [Queue](queue.md). For the older combined reference, see [Queue and Tasks](../queue-and-tasks.md).
+For queue file operations and archive mechanics, see [Queue](queue.md). The old combined `docs/queue-and-tasks.md` URL now redirects readers here and to the focused queue/task references.
 
 ---
 

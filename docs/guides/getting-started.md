@@ -1,793 +1,367 @@
 # Getting Started with CueLoop
 Status: Active
 Owner: Maintainers
-Source of truth: this document for its stated scope
+Source of truth: this document for guided human onboarding
 Parent: [CueLoop Documentation](../index.md)
 
+This guide is for humans who want enough context to run CueLoop safely for the first time. If you only need the shortest command path, use the [Quick Start](../quick-start.md). If you are an already-running coding agent using CueLoop as a ledger, use the [Agent Usage Guide](agent-usage.md) instead.
 
-This guide covers the longer onboarding path for installing CueLoop, initializing a project, creating a task, and running it through the local queue.
+## What CueLoop does
 
-## What is CueLoop?
+CueLoop keeps AI-agent work in repo-local files instead of hidden chat state:
 
-CueLoop is a Rust CLI that runs AI agent loops against a structured JSON task queue. It can invoke Claude, Codex, OpenCode, Gemini, Cursor, Kimi, and Pi runners while keeping task state in `.cueloop/`.
+- active work: `.cueloop/queue.jsonc`
+- completed/rejected work: `.cueloop/done.jsonc`
+- project settings: `.cueloop/config.jsonc`
+- optional prompt overrides: `.cueloop/prompts/*.md`
 
----
+A typical loop is:
 
-## Table of Contents
+```text
+write task → inspect queue → run supervised phases → validate locally → archive result
+```
 
-1. [Installation](#1-installation)
-2. [Quick Initialization](#2-quick-initialization)
-3. [Your First Task](#3-your-first-task)
-4. [Understanding the Workflow](#4-understanding-the-workflow)
-5. [Runner Selection](#5-runner-selection)
-6. [Configuration Basics](#6-configuration-basics)
-7. [Daily Workflow](#7-daily-workflow)
-8. [Next Steps](#8-next-steps)
+## 1. Install
 
----
-
-## 1. Installation
-
-### From crates.io (Recommended)
-
-The easiest way to install CueLoop is via Cargo:
+From crates.io:
 
 ```bash
 cargo install cueloop
 ```
 
-This installs the latest published version from crates.io and provides the `cueloop` executable at `~/.cargo/bin/cueloop`.
-
-### From Source
-
-If you want the latest development version or to contribute:
+From this repository:
 
 ```bash
-# Clone the repository
 git clone https://github.com/fitchmultz/cueloop cueloop
 cd cueloop
-
-# Build and install
 make install
 ```
 
-This installs the `cueloop` binary to `~/.local/bin/cueloop` (or a writable fallback path).
+On macOS, install GNU Make with `brew install make` and use `gmake` if Apple `make` is first on `PATH`.
 
-### Verify Installation
-
-Check that CueLoop is properly installed:
+Check the binary:
 
 ```bash
 cueloop version
+cueloop --help
 ```
 
-You should see output like:
-```
-cueloop 0.x.x
-```
+## 2. Initialize a project
 
-### Add to PATH
-
-If you installed from source, ensure `~/.local/bin` is in your PATH:
-
-```bash
-# Add to your shell profile (.bashrc, .zshrc, etc.)
-export PATH="$HOME/.local/bin:$PATH"
-```
-
----
-
-## 2. Quick Initialization
-
-CueLoop needs to be initialized in each project where you want to use it. Navigate to your project directory and run:
+Run this from the repository where you want CueLoop state:
 
 ```bash
 cd your-project
 cueloop init
 ```
 
-`cueloop init` writes the current `"version": 2` config contract with safe defaults, no automatic publish side effects, local repo trust in `.cueloop/trust.jsonc` for current repos (gitignored by init), and generated `.cueloop/README.md` guidance. If you use the macOS app, app-launched runs stream output only; interactive approvals still require terminal-first CLI usage.
-
-### Interactive Wizard
-
-When you run `cueloop init` in a terminal (TTY), it launches an interactive wizard that will:
-
-1. **Choose Your AI Runner**: Select from Claude, Codex, OpenCode, Gemini, Cursor, Kimi, or Pi
-2. **Select a Model**: Pick the best model for your chosen runner
-3. **Configure Workflow Mode**: Choose between 1-phase (quick), 2-phase (standard), or 3-phase (full)
-4. **Choose Queue Tracking**: Keep queue/done shared through git (recommended) or gitignore the full `.cueloop/` runtime directory for local-only task state
-5. **Review Parallel Sync Extras**: Select additional small ignored local files workers should receive; `.env` and `.env.*` are already synced by default. Manual additions use trusted `parallel.ignored_file_allowlist`; invalid directory-tree entries such as `node_modules/*` and `dir/` are rejected.
-6. **Create Your First Task** (optional): Add an initial task to get started
-
-### Example Walkthrough
-
-```bash
-$ cd my-awesome-project
-$ cueloop init
-
-✓ Initializing CueLoop in /home/user/my-awesome-project
-
-┌─────────────────────────────────────────┐
-│  Welcome to CueLoop! Let's get started.   │
-└─────────────────────────────────────────┘
-
-Choose your AI runner:
-  [1] Claude - General purpose, excellent reasoning (recommended)
-  [2] Codex - Code generation, OpenAI ecosystem
-  [3] OpenCode - Flexible model selection
-  [4] Gemini - Google ecosystem, cost efficient
-  [5] Cursor - Cursor IDE integration
-  [6] Kimi - Fast execution with session support
-  [7] Pi - OpenAI GPT models
-
-Select [1-7]: 1
-
-Choose a model for Claude:
-  [1] sonnet (default) - Balanced speed and capability
-  [2] opus - Most capable, slower
-  [3] Other (specify ID)
-
-Select [1-3]: 1
-
-Choose workflow mode:
-  [1] 1-phase (Quick) - Single-pass execution
-  [2] 2-phase (Standard) - Plan → Implement
-  [3] 3-phase (Full) - Plan → Implement → Review [Recommended]
-
-Select [1-3]: 3
-
-Would you like to create your first task? [y/N]: y
-Enter task title: Add user authentication feature
-
-✓ Created .cueloop/config.jsonc
-✓ Created .cueloop/queue.jsonc
-✓ Created first task: RQ-0001
-✓ CueLoop is ready to use!
-```
-
-### Non-Interactive Mode
-
-For CI/CD or scripts, skip the wizard:
+Interactive init helps choose a runner, workflow mode, queue tracking policy, and optional first task. For scripts or CI fixtures:
 
 ```bash
 cueloop init --non-interactive
 ```
 
-This uses sensible defaults without prompting.
-
-### Force Reinitialization
-
-To overwrite existing CueLoop files:
+After init, run:
 
 ```bash
-cueloop init --force
-```
-
----
-
-## 3. Your First Task
-
-After initialization, you have several ways to work with tasks.
-
-### macOS: Open the App (SwiftUI)
-
-On macOS, you can use the CueLoop app for interactive queue work:
-
-```bash
-cueloop app open
-```
-
-### Run Your First Task
-
-From the CLI, run the next task in the queue:
-
-```bash
-# Run the next available task
-cueloop run one
-
-# Or run a capped loop after choosing an explicit limit
-cueloop run loop --max-tasks 1
-```
-
-### View the Queue
-
-```bash
-# List all tasks
+cueloop queue validate
 cueloop queue list
+```
 
-# Show the next task
+## 3. Add one task
+
+```bash
+cueloop task "Add regression tests for webhook delivery failures"
+cueloop queue list
+cueloop queue show <TASK_ID>
+```
+
+Use the task ID printed by `cueloop task` or `cueloop queue list`.
+
+Good first tasks are small, specific, and easy to verify. Avoid asking the first run to redesign the whole repo.
+
+## 4. Inspect before running
+
+Before starting an agent, check what CueLoop will select and whether your runner setup is ready:
+
+```bash
 cueloop queue next --with-title
-
-# Search tasks
-cueloop queue search "authentication"
-```
-
-### Creating Tasks
-
-**From the CLI:**
-
-```bash
-# Quick task creation
-cueloop task "Add password reset functionality"
-
-# With details
-cueloop task "Refactor database layer" \
-  --request "Move all database access code into a dedicated module" \
-  --priority high
-```
-
-**From the App (macOS):**
-
-Open the app with `cueloop app open` and create tasks from the UI.
-Use `Decompose Task...` when you want CueLoop to preview a task tree before writing multiple subtasks into the queue.
-
-### Example Decomposition Session
-
-```bash
-# Preview a task tree from one broad goal
-cueloop task decompose "Build OAuth login with GitHub and Google"
-
-# Write the proposed subtree after review
-cueloop task decompose "Build OAuth login with GitHub and Google" --write
-```
-
-The macOS app exposes the same preview-first workflow from the Task menu, queue toolbar, command palette, and task context menus.
-
-### Example Task Session
-
-```bash
-# 1. Check what tasks exist
-$ cueloop queue list
-ID       Status  Priority  Title
-RQ-0001  todo    medium    Add user authentication feature
-
-# 2. Run the next task
-$ cueloop run one
-Starting RQ-0001: Add user authentication feature
-
-=== Phase 1: Planning ===
-Generating implementation plan...
-Plan cached to .cueloop/cache/plans/RQ-0001.md
-
-=== Phase 2: Implementation ===
-Implementing plan...
-Running CI gate: make agent-ci
-✓ CI passed
-
-=== Phase 3: Review ===
-Reviewing changes...
-✓ Task completed
-
-# 3. Check the result
-$ cueloop queue list
-ID       Status  Priority  Title
-RQ-0001  done    medium    Add user authentication feature
-```
-
----
-
-## 4. Understanding the Workflow
-
-CueLoop uses a structured **3-phase workflow** to ensure quality. Understanding these phases helps you choose the right mode for each task.
-
-### The 3 Phases
-
-```
-┌─────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│ Phase 1     │───▶│ Phase 2          │───▶│ Phase 3          │
-│ Planning    │    │ Implementation   │    │ Review           │
-├─────────────┤    ├──────────────────┤    ├──────────────────┤
-│ • Analyze   │    │ • Execute plan   │    │ • Review diff    │
-│ • Research  │    │ • Run CI gate    │    │ • Fix issues     │
-│ • Plan      │    │ • Stop if CI     │    │ • Final CI       │
-│   (cached)  │    │   fails          │    │ • Complete task  │
-└─────────────┘    └──────────────────┘    └──────────────────┘
-```
-
-**Phase 1: Planning**
-- The AI analyzes the task and creates a detailed implementation plan
-- The plan is cached to `.cueloop/cache/plans/<TASK_ID>.md`
-- You can review and edit this plan before implementation
-
-**Phase 2: Implementation**
-- The AI executes the cached plan
-- Changes are applied to the codebase
-- When the CI gate is enabled in config, the configured command runs (for example `make agent-ci` in this repository); otherwise CueLoop skips that subprocess and prompts still remind you what verification was skipped
-- If CI fails, the AI attempts to fix issues
-
-**Phase 3: Review**
-- The AI reviews all changes against quality standards
-- Any flagged issues are addressed
-- When the CI gate is enabled, it runs again before completion
-- Task is marked complete
-
-### Phase Mode Comparison
-
-| Mode | Phases | Best For | Speed | Quality |
-|------|--------|----------|-------|---------|
-| **1-Phase** | Single pass | Quick fixes, typos, simple refactors | ⚡ Fastest | Basic |
-| **2-Phase** | Plan → Implement | Medium complexity, less critical code | 🚀 Fast | Good |
-| **3-Phase** | Plan → Implement → Review | Complex features, production code | 🐢 Slower | ⭐ Highest |
-
-### Choosing the Right Mode
-
-- **1-Phase**: Use for typo fixes, comment updates, simple variable renames
-- **2-Phase**: Use for internal refactoring, test additions, documentation
-- **3-Phase**: Use for new features, API changes, architectural decisions
-
-### Changing Modes
-
-Override phases for a single run:
-
-```bash
-# Use 1-phase for a quick fix
-cueloop run one --phases 1
-
-# Or use the --quick shorthand
-cueloop run one --quick
-
-# Use 3-phase for careful review
-cueloop run one --phases 3
-```
-
-Set default in config:
-
-```json
-{
-  "agent": {
-    "phases": 2
-  }
-}
-```
-
----
-
-## 5. Runner Selection
-
-CueLoop supports multiple AI runners. Choose based on your needs:
-
-### Runner Comparison
-
-| Runner | Best For | Model Options | Speed | Reasoning |
-|--------|----------|---------------|-------|-----------|
-| **Claude** | General purpose, complex reasoning | `sonnet` (default), `opus` | Medium | ⭐⭐⭐ Excellent |
-| **Codex** | Expert coding workflows, best default path | `gpt-5.4`, `gpt-5.3-codex`, `gpt-5.3-codex-spark`, `gpt-5.3` | Fast | ⭐⭐⭐ Excellent |
-| **Gemini** | Cost efficiency, speed | `gemini-3-pro-preview`, `gemini-3-flash-preview` | ⚡ Fast | ⭐⭐ Good |
-| **OpenCode** | Flexible/custom endpoints | Arbitrary model IDs | Varies | Varies |
-| **Cursor** | Cursor IDE users | Uses CueLoop's Node bridge with resolvable `@cursor/sdk` | Medium | ⭐⭐⭐ Excellent |
-| **Kimi** | Fast execution, session support | `kimi-for-coding` | ⚡ Fast | ⭐⭐⭐ Excellent |
-| **Pi** | OpenAI GPT models | `gpt-5.3` | Medium | ⭐⭐⭐ Excellent |
-
-### Recommended Models by Runner
-
-**Claude:**
-- `sonnet` - Best balance of speed and capability (recommended)
-- `opus` - Maximum capability for complex tasks
-
-**Codex:**
-- `gpt-5.4` - Default and recommended for Codex in CueLoop
-- `gpt-5.3-codex` - Prior Codex-tuned option
-- `gpt-5.3-codex-spark` - Spark variant for coding workflows
-- `gpt-5.3` - General GPT-5.3 option when you do not want a Codex-tuned model
-
-**Gemini:**
-- `gemini-3-pro-preview` - Best quality
-- `gemini-3-flash-preview` - Fastest, good for quick tasks
-
-**Kimi:**
-- `kimi-for-coding` - Optimized for coding tasks (default)
-
-### Switching Runners
-
-Override for a single task:
-
-```bash
-# Use Claude for this run
-cueloop run one --runner claude --model sonnet
-
-# Use Codex with high reasoning effort
-cueloop run one --runner codex --model gpt-5.4 --effort high
-```
-
-Set default in config:
-
-```json
-{
-  "agent": {
-    "runner": "claude",
-    "model": "sonnet"
-  }
-}
-```
-
-### Checking Runner Availability
-
-Verify your runners are installed:
-
-```bash
+cueloop run one --dry-run
+cueloop runner list
 cueloop doctor
 ```
 
-This checks:
-- Git repository status
-- Queue file validity
-- Runner binary availability
-- Configuration correctness
+If no runner is configured yet, stop at the dry run and use the [Local Smoke Test](local-smoke-test.md) to verify the CLI and queue model without invoking an external model.
+
+## 5. Run supervised work
+
+Run one task:
+
+```bash
+cueloop run one
+```
+
+Or cap a loop explicitly:
+
+```bash
+cueloop run loop --max-tasks 1
+```
+
+Useful variants:
+
+```bash
+# Single-pass mode for simple work
+cueloop run one --quick
+
+# Full plan → implement → review flow
+cueloop run one --phases 3
+
+# Select and explain without executing
+cueloop run one --dry-run
+```
+
+Do not start with an unlimited loop. Learn queue state, runner behavior, and local validation first.
+
+## 6. Review and validate
+
+After a run, inspect both Git and CueLoop state:
+
+```bash
+git status --short
+cueloop queue validate
+cueloop queue list
+```
+
+In this repository, the normal branch gate is:
+
+```bash
+make agent-ci
+```
+
+For another project, use that project’s local CI/test command.
+
+## 7. Choose deeper docs by question
+
+| Question | Read |
+| --- | --- |
+| What are all the commands? | [CLI Reference](../cli.md) |
+| How do queue files work? | [Queue](../features/queue.md) |
+| What fields can a task have? | [Task Schema and Field Reference](../features/task-schema.md) |
+| How do statuses and priorities work? | [Task Lifecycle and Priority](../features/task-lifecycle.md) |
+| How do dependencies work? | [Task Relationships](../features/task-relationships.md) and [Dependencies](../features/dependencies.md) |
+| What happens in each execution phase? | [Phases](../features/phases.md) |
+| How do I configure runners and models? | [Runners](../features/runners.md) and [Configuration](../configuration.md) |
+| How do CI gates and review safeguards work? | [Supervision](../features/supervision.md) |
+| How do I recover interrupted work? | [Session Management](../features/session-management.md) |
+| How do I use the macOS app? | [App (macOS)](../features/app.md) |
+| How do I debug setup problems? | [Troubleshooting](../troubleshooting.md) |
+
+## Daily operator checklist
+
+1. `cueloop queue validate`
+2. `cueloop queue list`
+3. `cueloop queue next --with-title`
+4. `cueloop run one --dry-run` when unsure
+5. `cueloop run one` or a capped `cueloop run loop --max-tasks <N>`
+6. Review Git diff and queue state
+7. Run the project’s local validation gate
+
+## Next step
+
+If you are evaluating CueLoop, run the [Evaluator Path](evaluator-path.md). If you are adopting it in a project, complete the [Local Smoke Test](local-smoke-test.md) before wiring up a real runner.
+
+## Legacy deep links
+
+The previous version of this page was a long combined tutorial. These headings remain as lightweight redirects so old links and search results still land on useful current guidance.
+
+## What is CueLoop?
+
+See [What CueLoop does](#what-cueloop-does) and the [README](../../README.md).
+
+## Table of Contents
+
+Use [Pick Your Path](../index.md#pick-your-path) in the documentation index.
+
+## 1. Installation
+
+See [Install](#1-install).
+
+### From crates.io (Recommended)
+
+See [Install](#1-install).
+
+### From Source
+
+See [Install](#1-install).
+
+### Verify Installation
+
+See [Install](#1-install).
+
+### Add to PATH
+
+See [Install](#1-install) and [Troubleshooting](../troubleshooting.md).
+
+## 2. Quick Initialization
+
+See [Initialize a project](#2-initialize-a-project).
+
+### Interactive Wizard
+
+See [Initialize a project](#2-initialize-a-project) and [Quick Start](../quick-start.md#2-initialize-a-repository).
+
+### Example Walkthrough
+
+See [Quick Start](../quick-start.md).
+
+### Non-Interactive Mode
+
+See [Initialize a project](#2-initialize-a-project) and [Quick Start](../quick-start.md#2-initialize-a-repository).
+
+### Force Reinitialization
+
+See [CLI Reference](../cli.md).
+
+## 3. Your First Task
+
+See [Add one task](#3-add-one-task).
+
+### macOS: Open the App (SwiftUI)
+
+See [App (macOS)](../features/app.md).
+
+### Run Your First Task
+
+See [Run supervised work](#5-run-supervised-work).
+
+### View the Queue
+
+See [Inspect before running](#4-inspect-before-running) and [Queue](../features/queue.md).
+
+### Creating Tasks
+
+See [Add one task](#3-add-one-task) and [Task Operations](../features/task-operations.md).
+
+### Example Decomposition Session
+
+See [Task Operations](../features/task-operations.md) and [CLI Reference](../cli.md).
+
+### Example Task Session
+
+See [Daily operator checklist](#daily-operator-checklist).
+
+## 4. Understanding the Workflow
+
+See [Workflow in one page](../workflow.md#workflow-in-one-page), [Architecture Overview](../architecture.md), and [Phases](../features/phases.md).
+
+### The 3 Phases
+
+See [Phases](../features/phases.md).
+
+### Phase Mode Comparison
+
+See [Phases](../features/phases.md).
+
+### Choosing the Right Mode
+
+See [Phases](../features/phases.md).
+
+### Changing Modes
+
+See [Configuration](../configuration.md) and [Phases](../features/phases.md).
+
+## 5. Runner Selection
+
+See [Runners](../features/runners.md).
+
+### Runner Comparison
+
+See [Runners](../features/runners.md).
+
+### Recommended Models by Runner
+
+See [Runners](../features/runners.md) and [Agent and Runner Configuration](../features/configuration-agent.md).
+
+### Switching Runners
+
+See [Configuration](../configuration.md) and [Runners](../features/runners.md).
+
+### Checking Runner Availability
+
+See [Inspect before running](#4-inspect-before-running) and [Runners](../features/runners.md).
 
 ### Installing Runners
 
-CueLoop requires the runner CLIs to be installed separately:
-
-- **Claude**: `npm install -g @anthropic-ai/claude-cli` or see Anthropic docs
-- **Codex**: `npm install -g @openai/codex`
-- **Gemini**: Install the Gemini CLI from Google
-- **OpenCode**: Install from OpenCode
-- **Cursor**: Install `@cursor/sdk` in the workspace or globally, or set `CUELOOP_CURSOR_SDK_MODULE_PATH`; CueLoop uses its Node bridge and does not require an exact SDK version match to attempt execution. See [Cursor SDK setup](../configuration/agent-and-runners.md#cursor-sdk-setup).
-- **Kimi**: Install Kimi CLI
-- **Pi**: Install Pi CLI
-
----
+See [Runners](../features/runners.md).
 
 ## 6. Configuration Basics
 
-CueLoop uses a two-layer JSON configuration system:
+See [Configuration](../configuration.md).
 
 ### Configuration Locations
 
-| Location | Purpose | Precedence |
-|----------|---------|------------|
-| `~/.config/cueloop/config.jsonc` | Global defaults | Lower |
-| `.cueloop/config.jsonc` | Project-specific settings | Higher |
-| CLI flags | One-time overrides | Highest |
+See [Configuration](../configuration.md).
 
 ### Essential Configuration
 
-A minimal effective configuration:
-
-```json
-{
-  "version": 2,
-  "agent": {
-    "runner": "codex",
-    "model": "gpt-5.4",
-    "phases": 3,
-    "ci_gate": {
-      "enabled": true,
-      "argv": ["make", "agent-ci"]
-    },
-    "git_publish_mode": "off"
-  },
-  "queue": {
-    "file": ".cueloop/queue.jsonc",
-    "done_file": ".cueloop/done.jsonc"
-  }
-}
-```
+See [Configuration](../configuration.md).
 
 ### Key Configuration Options
 
-**Agent Settings:**
-
-```json
-{
-  "agent": {
-    "runner": "codex",            // Default runner
-    "model": "gpt-5.4",           // Default model
-    "phases": 3,                  // Default phase count (1, 2, or 3)
-    "iterations": 1,              // Iterations per task
-    "reasoning_effort": "medium", // Codex: low/medium/high/xhigh
-    "ci_gate": {                  // Run make agent-ci before completion in this repo
-      "enabled": true,
-      "argv": ["make", "agent-ci"]
-    },
-    "git_publish_mode": "off",    // off / commit / commit_and_push
-    "git_revert_mode": "ask"      // ask/enabled/disabled
-  }
-}
-```
-
-**Queue Settings:**
-
-```json
-{
-  "queue": {
-    "file": ".cueloop/queue.jsonc",
-    "done_file": ".cueloop/done.jsonc",
-    "id_prefix": "RQ",
-    "id_width": 4,
-    "auto_archive_terminal_after_days": 7
-  }
-}
-```
+See [Configuration](../configuration.md).
 
 ### Viewing Current Configuration
 
-```bash
-# Show resolved configuration
-cueloop config show
-
-# Show as JSON for scripting
-cueloop config show --format json
-
-# Show file paths
-cueloop config paths
-```
+See [CLI Reference](../cli.md).
 
 ### Configuration Profiles
 
-CueLoop always includes two built-in profiles for quick workflow switching:
-
-| Profile | Runner posture | Publish mode | Use Case |
-|---------|----------------|--------------|----------|
-| `safe` | Safer approvals | `off` | Recommended default |
-| `power-user` | High-autonomy approvals | `commit_and_push` | Explicit opt-in |
-
-CueLoop also supports custom profiles:
-
-| Profile | Runner | Model | Phases | Use Case |
-|---------|--------|-------|--------|----------|
-| `fast-local` | Codex | gpt-5.4 | 1 | Fast local fixes |
-| `deep-review` | Codex | gpt-5.4 | 3 | Deep review |
-
-Use a profile:
-
-```bash
-cueloop run one --profile safe
-cueloop run one --profile power-user
-cueloop run one --profile fast-local
-cueloop scan --profile deep-review "security audit"
-```
-
-Define custom profiles:
-
-```json
-{
-  "profiles": {
-    "fast-local": {
-      "runner": "codex",
-      "model": "gpt-5.4",
-      "phases": 1,
-      "reasoning_effort": "low"
-    },
-    "deep-review": {
-      "runner": "codex",
-      "model": "gpt-5.4",
-      "phases": 3,
-      "reasoning_effort": "high"
-    }
-  }
-}
-```
-
----
+See [Profiles](../features/profiles.md).
 
 ## 7. Daily Workflow
 
+See [Daily operator checklist](#daily-operator-checklist).
+
 ### Typical Daily Session
 
-```bash
-# 1. Start your day - check the queue
-cueloop queue list
-
-# 2. macOS (optional): open the app UI
-cueloop app open
-
-# 3. Add tasks from code review or planning
-cueloop task "Fix race condition in worker pool"
-cueloop task "Update API documentation"
-
-# 4. Run specific high-priority tasks
-cueloop run one --id RQ-0005
-
-# 5. End of day - archive completed work
-cueloop queue archive
-```
+See [Daily operator checklist](#daily-operator-checklist).
 
 ### CLI Quick Reference
 
-| Command | Description |
-|---------|-------------|
-| `cueloop app open` | Open the macOS app UI |
-| `cueloop run one` | Run next task |
-| `cueloop run one --id RQ-0001` | Run specific task |
-| `cueloop run loop --max-tasks 3` | Run a capped task loop |
-| `cueloop help-all` | Show core, advanced, and experimental commands |
-| `cueloop task "title"` | Create new task |
-| `cueloop queue list` | List all tasks |
-| `cueloop queue next` | Show next runnable task |
-| `cueloop queue archive` | Move done tasks to archive |
-| `cueloop doctor` | Check environment health |
-| `cueloop scan "focus"` | Auto-generate tasks |
+See [CLI Reference](../cli.md).
 
 ### Managing Tasks
 
-**Creating good tasks:**
-
-```bash
-# Good: Clear, actionable title
-cueloop task "Add JWT authentication middleware"
-
-# Better: With context
-cueloop task "Add JWT authentication middleware" \
-  --request "Implement JWT token validation in the auth middleware. Use the existing user model." \
-  --scope "src/middleware/auth.rs" \
-  --priority high
-
-# Best: With evidence/plan
-cueloop task "Add JWT authentication middleware" \
-  --request "Implement JWT token validation..." \
-  --evidence "Current auth uses session cookies, need JWT for API" \
-  --scope "src/middleware/auth.rs,src/models/user.rs" \
-  --priority high \
-  --tag security \
-  --tag api
-```
-
-**Task Dependencies:**
-
-```bash
-# Create tasks that depend on others
-cueloop task "Implement login endpoint" --tags auth
-# Returns: RQ-0001
-
-cueloop task "Add password reset" \
-  --depends-on RQ-0001 \
-  --tag auth
-```
-
-**Scheduling Tasks:**
-
-```bash
-# Schedule for future execution
-cueloop task "Deploy to production" \
-  --scheduled-start "2026-02-15T09:00:00Z"
-
-# Or use relative time
-cueloop task "Weekly dependency update" \
-  --scheduled-start "+7d"
-```
+See [Task Operations](../features/task-operations.md).
 
 ### Git Workflow Integration
 
-CueLoop works best with a clean git workflow:
-
-```bash
-# 1. Ensure working directory is clean
-git status
-
-# 2. Run tasks with an explicit cap (CueLoop will create commits if enabled)
-cueloop run loop --max-tasks 3
-
-# 3. Review changes
-git log --oneline -5
-
-# 4. Push when satisfied
-git push
-```
-
-**Auto-commit configuration:**
-
-```json
-{
-  "agent": {
-    "git_publish_mode": "commit_and_push"
-  }
-}
-```
-
-⚠️ **Warning**: Enable auto-commit only when you're comfortable with automated git operations.
-
----
+See [Supervision](../features/supervision.md).
 
 ## 8. Next Steps
 
-Now that you're up and running, here's where to go next:
+See [Next step](#next-step).
 
 ### Learn More
 
-- **[CLI Reference](../cli.md)** - Complete command documentation
-- **[Configuration](../configuration.md)** - All configuration options
-- **[Queue and Tasks](../queue-and-tasks.md)** - Task management details
-- **[Workflow](../workflow.md)** - Deep dive into the 3-phase workflow
-- **[App (macOS)](../features/app.md)** - macOS SwiftUI app guide
+See [Choose deeper docs by question](#7-choose-deeper-docs-by-question).
 
 ### Advanced Features
 
-For deeper multi-phase, parallel, profile, plugin, and automation patterns, see the [Advanced Usage Guide](advanced.md).
-
-
-**Scan for Tasks:**
-
-Automatically discover tasks in your codebase:
-
-```bash
-# Find maintenance issues
-cueloop scan --mode maintenance "code quality gaps"
-
-# Find feature opportunities
-cueloop scan --mode innovation "missing features"
-```
-
-**Parallel Execution:**
-
-Run multiple tasks concurrently (CLI only):
-
-```bash
-cueloop run loop --parallel 4 --max-tasks 10
-```
-
-**Daemon Mode:**
-
-Run CueLoop continuously in the background:
-
-```bash
-# Start daemon
-cueloop daemon start
-
-# Check status
-cueloop daemon status
-
-# Stop daemon
-cueloop daemon stop
-```
-
-**PRD to Tasks:**
-
-Convert Product Requirements Documents into tasks:
-
-```bash
-cueloop prd create requirements.md
-```
+See [Advanced Usage Guide](advanced.md).
 
 ### Best Practices
 
-1. **Start small**: Begin with 1-phase tasks to get familiar
-2. **Review plans**: Always check Phase 1 plans before implementation
-3. **Use the app (macOS)**: Keep the queue visible while you work
-4. **Archive regularly**: Keep your queue clean with `cueloop queue archive`
-5. **Run doctor**: Check `cueloop doctor` if something seems off
-6. **Version control**: Keep your `.cueloop/` directory in git
-7. **CI gate**: Always ensure the configured CI gate passes before considering work done (`make agent-ci` in this repo)
+See [Daily operator checklist](#daily-operator-checklist) and [Project Operating Constitution](project-operating-constitution.md).
 
 ### Getting Help
 
-- **Check the docs**: Start with `docs/index.md`
-- **Run doctor**: `cueloop doctor` diagnoses common issues
-- **Validate queue**: `cueloop queue validate` checks for problems
-- **Verbose output**: Use `--verbose` flag for more details
+See [Troubleshooting](../troubleshooting.md).
 
 ### Community
 
-- **Issues**: Report bugs or request features
-- **Contributing**: See `CONTRIBUTING.md` for guidelines
-- **Security**: See `SECURITY.md` for vulnerability reporting
-
----
+See [Support Policy](../support-policy.md).
 
 ## Quick Reference Card
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│ CUELOOP QUICK REFERENCE                                          │
-├────────────────────────────────────────────────────────────────┤
-│ INSTALL    cargo install cueloop                      │
-│ INIT       cueloop init                                          │
-│ APP (macOS) cueloop app open                                     │
-│ RUN        cueloop run one        # next task                    │
-│            cueloop run loop --max-tasks 1 # capped loop          │
-│ TASK       cueloop task "title"                                  │
-│ LIST       cueloop queue list                                    │
-│ ARCHIVE    cueloop queue archive                                 │
-│ DOCTOR     cueloop doctor                                        │
-├────────────────────────────────────────────────────────────────┤
-│ PHASES     --phases 1 (quick)  --phases 2 (plan+impl)          │
-│            --phases 3 (full)   --quick (1-phase shorthand)     │
-├────────────────────────────────────────────────────────────────┤
-│ RUNNERS    --runner claude|codex|gemini|opencode|cursor|kimi|pi │
-│            --model <model-id>  --effort low|medium|high|xhigh   │
-└────────────────────────────────────────────────────────────────┘
-```
-
----
-
-Happy automating! 🤖
+See [Daily operator checklist](#daily-operator-checklist) and [CLI Reference](../cli.md).

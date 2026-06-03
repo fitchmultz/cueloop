@@ -428,5 +428,6 @@ cueloop task edit status done RQ-0001  # Validates after edit
 ## See Also
 
 - [Task Relationships](task-relationships.md) — relationship field semantics and graph constraints.
-- [Queue and Tasks](../queue-and-tasks.md) — legacy combined queue and task reference.
+- [Queue](queue.md) — queue file operations, ordering, archive, repair, import/export, and locks.
+- [Task System](tasks.md) — task documentation ownership map.
 - [Queue Schema](../../schemas/queue.schema.json) — generated JSON schema.

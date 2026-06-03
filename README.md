@@ -4,7 +4,7 @@ CueLoop is a Rust CLI and macOS app for queue-driven, auditable AI coding agent 
 
 [![crates.io](https://img.shields.io/crates/v/cueloop.svg)](https://crates.io/crates/cueloop)
 [![docs.rs](https://img.shields.io/docsrs/cueloop)](https://docs.rs/cueloop)
-[![GitHub release v0.6.0](https://img.shields.io/badge/release-v0.6.0-blue)](https://github.com/fitchmultz/cueloop/releases/tag/v0.6.0)
+[![GitHub release](https://img.shields.io/github/v/release/fitchmultz/cueloop)](https://github.com/fitchmultz/cueloop/releases/latest)
 
 ![CueLoop three-phase agent workflow](docs/assets/images/2026-02-07-workflow-3phase.png)
 
@@ -187,19 +187,14 @@ make release-gate
 
 ## Documentation
 
-Start with:
+Start at [docs/index.md](docs/index.md) for the full map. Common entry points:
 
-- [Documentation index](docs/index.md)
-- [Evaluator path](docs/guides/evaluator-path.md)
-- [Quick start](docs/quick-start.md)
-- [Local smoke test](docs/guides/local-smoke-test.md)
-- [CLI reference](docs/cli.md)
-- [Configuration](docs/configuration.md)
-- [Architecture overview](docs/architecture.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Versioning policy](docs/versioning-policy.md)
-- [Contributing](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
+- [Evaluator path](docs/guides/evaluator-path.md) — fastest reviewer-friendly route
+- [Quick start](docs/quick-start.md) — install, initialize, and inspect queue state
+- [Feature guides](docs/features/README.md) — queue, tasks, phases, runners, app, plugins, and automation
+- [CLI reference](docs/cli.md) and [Configuration](docs/configuration.md)
+- [Architecture](docs/architecture.md) and [Troubleshooting](docs/troubleshooting.md)
+- [Contributing](CONTRIBUTING.md) and [Changelog](CHANGELOG.md)
 
 ## Versioning and license
 

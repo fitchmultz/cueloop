@@ -44,7 +44,7 @@ tmux attach -t cueloop-watch
 
 - [Daemon and Watch overview](../daemon-and-watch.md)
 - [CLI Reference](../../cli.md)
-- [Queue and Tasks](../../queue-and-tasks.md)
+- [Queue](../queue.md) and [Task System](../tasks.md)
 - [Daemon Mode](./daemon.md)
 - [Watch Mode](./watch.md)
 - [Troubleshooting](./troubleshooting.md)

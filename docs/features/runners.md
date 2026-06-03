@@ -779,5 +779,5 @@ Error: runner_cli.output_format=Text is not supported for execution
 
 - [Configuration](../configuration.md) - Full configuration reference
 - [Plugin Development](../plugin-development.md) - Creating custom runners
-- [Workflow](../workflow.md) - Three-phase execution model
-- [Queue and Tasks](../queue-and-tasks.md) - Task management
+- [Phases](phases.md) - three-phase execution model
+- [Task System](tasks.md) - task management

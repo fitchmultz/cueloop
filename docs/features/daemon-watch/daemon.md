@@ -397,7 +397,7 @@ You may need to kill it manually with `kill -9 12345`
 
 - [Daemon and Watch overview](../daemon-and-watch.md)
 - [CLI Reference](../../cli.md)
-- [Queue and Tasks](../../queue-and-tasks.md)
+- [Queue](../queue.md) and [Task System](../tasks.md)
 - [Watch Mode](./watch.md)
 - [Operations](./operations.md)
 - [Troubleshooting](./troubleshooting.md)

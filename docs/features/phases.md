@@ -723,6 +723,6 @@ If CI repeatedly fails in Phase 2 or 3:
 
 ## See Also
 
-- [Workflow](../workflow.md) - High-level workflow documentation
+- [Supervision](supervision.md) - CI gates, git operations, and human review points
 - [Configuration](../configuration.md) - Full configuration reference
-- [Queue and Tasks](../queue-and-tasks.md) - Task lifecycle documentation
+- [Task Lifecycle and Priority](task-lifecycle.md) - task lifecycle documentation

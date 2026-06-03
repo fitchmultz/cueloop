@@ -544,6 +544,6 @@ The `update` command intentionally appends to preserve existing content. To repl
 
 ## See Also
 
-- [CLI Reference](../cli.md#cueloop-context) - Complete command documentation
+- [CLI Reference](../cli.md) - Complete command documentation
 - [Configuration](../configuration.md) - Config file format and options
-- [Workflow](../workflow.md) - How tasks use AGENTS.md context
+- [Task System](tasks.md) - task state that carries context into agent work

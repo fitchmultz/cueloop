@@ -1,273 +1,141 @@
-# Workflow and Architecture
-Status: Active
+# Operator Workflow Overview
+Status: Legacy navigation bridge
 Owner: Maintainers
-Source of truth: this document for its stated scope
+Source of truth: canonical pages linked below
 Parent: [CueLoop Documentation](index.md)
 
+This URL is kept for older links and search results. It is no longer the architecture or feature reference for CueLoop runtime behavior.
+
+CueLoop's workflow is a human-started loop over repo-local task files: create or import tasks, inspect the queue, run one or more tasks through supervised phases, validate locally, and archive terminal work.
 
 ![3-Phase Workflow](assets/images/2026-02-07-workflow-3phase.png)
 
-Purpose: Explain CueLoop's high-level runtime layout, phases, and prompt override workflow without deep internals.
+## Workflow in one page
+
+1. Initialize a repo with `cueloop init`.
+2. Add work with `cueloop task "..."`, imports, scans, or the macOS app.
+3. Inspect active work with `cueloop queue list`, `cueloop queue next`, and `cueloop queue validate`.
+4. Run work with `cueloop run one`, `cueloop run loop --max-tasks <N>`, or `cueloop run loop --parallel <N>`.
+5. CueLoop coordinates runner phases, local gates, queue updates, and optional app/automation surfaces.
+6. Completed or rejected work moves from `.cueloop/queue.jsonc` to `.cueloop/done.jsonc`.
+
+## Canonical workflow docs
+
+| Need | Canonical page |
+| --- | --- |
+| Install/init/first local checks | [Quick Start](quick-start.md) |
+| Runtime architecture and data flow | [Architecture Overview](architecture.md) |
+| Multi-phase execution | [Phases](features/phases.md) |
+| Runner orchestration and runner-specific setup | [Runners](features/runners.md) |
+| CI gates, git operations, and human review points | [Supervision](features/supervision.md) |
+| Queue operations and archive behavior | [Queue](features/queue.md) |
+| Task model and task reference map | [Task System](features/tasks.md) |
+| Prompt overrides | [Prompts](features/prompts.md) |
+| Session recovery and resume behavior | [Session Management](features/session-management.md) |
+| Parallel execution | [Parallel](features/parallel.md) |
+| Continuous/background operation | [Daemon and Watch](features/daemon-and-watch.md) |
+| Webhooks and notifications | [Webhooks](features/webhooks.md), [Notifications](features/notifications.md) |
+| Security and redaction | [Security Model](security-model.md), [Security Features](features/security.md) |
+| Complete command syntax | [CLI Reference](cli.md) |
 
 ## Runtime Files
-- `.cueloop/queue.jsonc`: source of truth for active tasks.
-- `.cueloop/done.jsonc`: archive of completed tasks.
+
+- `.cueloop/queue.jsonc`: active task queue.
+- `.cueloop/done.jsonc`: archive of completed/rejected tasks.
 - `.cueloop/config.jsonc`: project-level configuration.
-- `.cueloop/prompts/*.md`: optional prompt overrides (defaults are embedded in the Rust CLI under `crates/cueloop/assets/prompts/`).
-- `.cueloop/cache/parallel/state.json`: parallel run state (in-flight workers and terminal outcomes).
+- `.cueloop/prompts/*.md`: optional prompt overrides.
+- `.cueloop/cache/`: plans, completions, parallel state, backups, and other runtime artifacts.
+
+## Legacy deep links
+
+The old workflow page exposed broad runtime sections. These headings remain as lightweight redirects so existing deep links continue to land on useful current docs.
+
+## Workflow and Architecture
+
+Moved to [Architecture Overview](architecture.md), [Phases](features/phases.md), and [Supervision](features/supervision.md).
 
 ## Prompt Overrides
-CueLoop embeds default prompts in the Rust binary. To override prompts per repo, add:
-- `.cueloop/prompts/worker.md` (base worker prompt)
-- `.cueloop/prompts/worker_phase1.md` (Phase 1 planning wrapper)
-- `.cueloop/prompts/worker_phase2.md` (Phase 2 implementation wrapper, 2-phase)
-- `.cueloop/prompts/worker_phase2_handoff.md` (Phase 2 handoff wrapper, 3-phase)
-- `.cueloop/prompts/worker_phase3.md` (Phase 3 review wrapper)
-- `.cueloop/prompts/worker_single_phase.md` (single-pass wrapper)
-- `.cueloop/prompts/completion_checklist.md`
-- `.cueloop/prompts/phase2_handoff_checklist.md`
-- `.cueloop/prompts/code_review.md`
-- `.cueloop/prompts/task_builder.md`
-- `.cueloop/prompts/scan.md`
 
-Overrides must preserve required placeholders (for example `{{USER_REQUEST}}` in task builder prompts).
+Moved to [Prompts](features/prompts.md).
 
 ## Three-Phase Workflow
-Default execution uses three phases:
-1. Phase 1 (Planning): plan is cached at `.cueloop/cache/plans/<TASK_ID>.md`.
-   - Plan-only violations prompt for action when `git_revert_mode=ask`; you can keep+proceed (explicit override), revert changes, or continue planning with a message.
-2. Phase 2 (Implementation + CI): apply changes, run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when `agent.ci_gate.enabled=true`, then stop. When `agent.ci_gate.enabled=false`, only the CI command/requirement is skipped; implementation and Phase 2 handoff still continue.
-3. Phase 3 (Review + Completion): review diff, resolve any flagged risks or suspicious leads before completion, re-run the configured CI gate command (this repo uses `make agent-ci`; generic fallback is `make ci`) when `agent.ci_gate.enabled=true`, complete task, and (when auto git commit/push is enabled) commit and push. When `agent.ci_gate.enabled=false`, Phase 3 still runs and reports configured CI validation as skipped by configuration.
-   - With auto git commit/push enabled, Phase 3 requires a clean repo to finish; for rejected tasks, allowed dirty files include `.cueloop/queue.{json,jsonc}`, `.cueloop/done.{json,jsonc}`, `.cueloop/config.{json,jsonc}`, and `.cueloop/cache/` (CueLoop bookkeeping/state).
 
-Phases can be set via `--phases` or `agent.phases` in config.
+Moved to [Phases](features/phases.md) and [Supervision](features/supervision.md).
 
 ## Parallel Run Loop (CLI Only)
 
-Parallel execution is available only via the CLI (`cueloop run loop --parallel [N]`).
-
-High-level behavior:
-- Each task runs in its own isolated git workspace clone under
-  `<repo-parent>/.workspaces/<repo-name>/parallel/<TASK_ID>` by default
-  (configurable via `parallel.workspace_root`).
-  Each workspace checks out the coordinator target base branch (for example `main`).
-- Workers run configured phases, then execute an agent-owned integration loop:
-  `fetch/rebase/conflict-fix/commit/push`.
-- Workers push directly to `origin/<target_branch>`; no PR/merge-agent lifecycle is used.
-- State is persisted to `.cueloop/cache/parallel/state.json` for crash recovery and coordination.
-- On startup, CueLoop prunes stale worker records before evaluating the state file's target branch.
-  If the target branch is missing or mismatched and there are no active workers, CueLoop auto-heals
-  the state file to the current branch.
-  Otherwise it fails with recovery guidance to avoid mixing active parallel runs across branches.
-
-**Breaking change (2026-02):** The default directory for parallel workspaces changed from
-`.worktrees/` to `.workspaces/`. The config key `parallel.worktree_root` has been renamed to
-`parallel.workspace_root` and is no longer accepted. Run `cueloop migrate` to update existing
-configs if you have custom `worktree_root` settings.
+Moved to [Parallel](features/parallel.md).
 
 ## Wait When Blocked (Sequential Loop)
 
-When all remaining tasks are blocked by unmet dependencies (`depends_on`) or future schedules (`scheduled_start`), the sequential run loop normally exits with a summary of the blockers. Use `--wait-when-blocked` to keep the loop running and poll for changes instead.
-
-Behavior:
-- The loop polls `.cueloop/queue.jsonc` and `.cueloop/done.jsonc` for changes
-- When a runnable task appears (dependencies complete or schedule passes), the loop continues
-- Configurable poll interval (`--wait-poll-ms`, default: 1000ms, min: 50ms)
-- Optional timeout (`--wait-timeout-seconds`, 0 = no timeout)
-- Optional notification when unblocked (`--notify-when-unblocked`, desktop + webhook)
-- Respects stop signals (`cueloop queue stop`) and Ctrl+C
-
-Use this for "fire and forget" execution through dependent task chains without manual babysitting.
-
-Examples:
-```bash
-# Wait indefinitely for dependencies/schedules to resolve
-cueloop run loop --wait-when-blocked
-
-# Wait with a 10-minute timeout and notify when unblocked
-cueloop run loop --wait-when-blocked --wait-timeout-seconds 600 --notify-when-unblocked
-```
+Moved to [Daemon and Watch](features/daemon-and-watch.md), [Daemon/Watch Operations](features/daemon-watch/operations.md), and [CLI Reference](cli.md).
 
 ### Queue Unblocked Webhook Event
 
-When using `--notify-when-unblocked` with webhooks configured, CueLoop emits a `queue_unblocked` event:
-
-- `previous_status`: `"blocked"`
-- `current_status`: `"runnable"`
-- `note`: Summary counts like `ready=2 blocked_deps=3 blocked_schedule=1`
-
-This event is opt-in; add `"queue_unblocked"` to your webhook events list to receive it.
+Moved to [Webhooks](features/webhooks.md) and [Notifications](features/notifications.md).
 
 ## Continuous Mode (Sequential Loop)
 
-When the queue is empty, the sequential run loop normally exits. Use `--wait-when-empty` (alias `--continuous`) to keep the loop running and wait for new tasks instead.
-
-Behavior:
-- If the queue is empty at startup, the loop does not exit; it waits for work
-- If the loop runs out of candidates later, it waits instead of exiting
-- Uses filesystem notifications (`notify` crate) to watch `.cueloop/queue.jsonc` and `.cueloop/done.jsonc`
-- Falls back to polling if notifications fail
-- Configurable poll interval (`--empty-poll-ms`, default: 30000ms = 30s, min: 50ms)
-- No timeout in continuous mode (runs until stopped)
-- Respects stop signals (`cueloop queue stop`) and Ctrl+C
-
-Combined with `--wait-when-blocked`, the loop provides "always-on" operation that handles both blocked tasks and empty queues.
-
-Use this for "set and forget" operation that integrates with system services (systemd, launchd).
-
-Examples:
-```bash
-# Continuous mode: wait indefinitely for new tasks
-cueloop run loop --continuous
-
-# Poll more frequently (5s) for faster response
-cueloop run loop --continuous --empty-poll-ms 5000
-
-# Always-on mode: handle both blocked and empty states
-cueloop run loop --continuous --wait-when-blocked
-```
+Moved to [Daemon and Watch](features/daemon-and-watch.md) and [Daemon](features/daemon-watch/daemon.md).
 
 ### Daemon Mode
 
-For background operation, use `cueloop daemon start|stop|status` (Unix-only):
+Moved to [Daemon](features/daemon-watch/daemon.md).
 
-```bash
-# Start daemon
-cueloop daemon start
 
-# Check status
-cueloop daemon status
+### Start Daemon
 
-# View logs
-cueloop daemon logs
-# Live follow
-cueloop daemon logs --follow
+Moved to [Daemon](features/daemon-watch/daemon.md).
 
-# Stop daemon
-cueloop daemon stop
-```
+### Check Status
 
-The daemon is a thin wrapper around `cueloop run loop --continuous --wait-when-blocked` that:
-- Detaches from the terminal
-- View logs with `cueloop daemon logs`
-- Manages PID/state files in `.cueloop/cache/`
-- Responds to `cueloop daemon stop` and `cueloop queue stop`
+Moved to [Daemon](features/daemon-watch/daemon.md).
 
-See `docs/cli.md` for systemd and launchd service templates.
+### View Logs
+
+Moved to [Daemon](features/daemon-watch/daemon.md).
 
 ## Security and Redaction
 
+Moved to [Security Model](security-model.md) and [Security Features](features/security.md).
+
 ### Safeguard Dumps
-When operations fail (runner errors, scan validation failures), CueLoop writes safeguard dumps to temp directories for troubleshooting. These dumps are **redacted by default** to prevent secrets from being written to disk.
 
-**Important**: Redaction is pattern-based and best-effort. It may miss secrets in unexpected formats, encoded data, or novel patterns. Always review dumps before sharing.
-
-**Redaction applies to:**
-- API keys and bearer tokens
-- AWS access keys (AKIA...)
-- SSH private keys
-- Hex tokens (32+ characters)
-- Sensitive environment variable values
-
-**Raw dumps** are only written when explicitly opted in via:
-- `CUELOOP_RAW_DUMP=1` or `CUELOOP_RAW_DUMP=true` environment variable
-- `--debug` flag (implies verbose output desired; also enables raw debug logs)
-
-**Never commit safeguard dumps** to version control, even when redacted.
+Moved to [Security Features](features/security.md).
 
 ### Debug Logging
-When `--debug` is enabled, raw runner output is written to `.cueloop/logs/debug.log`. This is intentional for troubleshooting but may contain unredacted secrets captured before redaction is applied.
 
-**Important:** Console output is redacted via `RedactedLogger`, but debug logs capture raw log records and runner streams before redaction. Debug logs should be treated as highly sensitive and never committed.
-
-**Best practices:**
-- Only use `--debug` when necessary for troubleshooting
-- Treat `.cueloop/logs/debug.log` as sensitive data
-- Ensure `.cueloop/logs/` is in `.gitignore`
-- Clean up debug logs after use: `rm -rf .cueloop/logs/`
+Moved to [Security Features](features/security.md) and [Troubleshooting](troubleshooting.md).
 
 ## Runner Model Control
-Runner and model selection are driven by a combination of CLI flags, task overrides, and config. The CLI has the highest priority for a single run.
+
+Moved to [Runners](features/runners.md), [Agent and Runner Configuration](features/configuration-agent.md), and [Configuration](configuration.md).
+
+
+### Phase 2 Continue (CI Failure Retry)
+
+Moved to [Phases](features/phases.md), [Supervision](features/supervision.md), and [Session Management](features/session-management.md).
 
 ## Session State
 
-Session state is persisted to `.cueloop/cache/session.jsonc` for crash recovery. It includes:
-- Task ID and session metadata
-- Iteration and phase progress
-- **Per-phase runner/model settings** (for display in recovery prompts)
-
-Note: Per-phase settings are informational only. Crash recovery recomputes settings from CLI flags, config, and task overrides to ensure consistency.
+Moved to [Session Management](features/session-management.md).
 
 ## Webhook Events
 
-CueLoop can emit webhook events for external integrations (Slack, Discord, CI systems, dashboards). Webhooks are configured via `agent.webhook` in config.
+Moved to [Webhooks](features/webhooks.md).
 
 ### Event Types
 
-**Task Events** (enabled by default):
-- `task_created`: Task added to queue
-- `task_started`: Task execution begins
-- `task_completed`: Task finished successfully
-- `task_failed`: Task failed or was rejected
-- `task_status_changed`: Generic status transition
-
-**Loop Events** (opt-in):
-- `loop_started`: Run loop begins (includes repo/branch/commit context)
-- `loop_stopped`: Run loop ends (includes duration and summary)
-
-**Phase Events** (opt-in):
-- `phase_started`: Phase execution begins (includes runner/model/phase context)
-- `phase_completed`: Phase execution ends (includes duration and CI gate outcome)
+Moved to [Webhooks](features/webhooks.md).
 
 ### Opt-in Behavior
 
-New event types (`loop_*`, `phase_*`) are **opt-in** and not enabled by default. To receive these events, explicitly configure them:
-
-```json
-{
-  "agent": {
-    "webhook": {
-      "enabled": true,
-      "url": "https://example.com/webhook",
-      "events": ["loop_started", "phase_started", "phase_completed", "loop_stopped"]
-    }
-  }
-}
-```
-
-Use `["*"]` to subscribe to all events including new ones.
+Moved to [Webhooks](features/webhooks.md) and [Notifications](features/notifications.md).
 
 ### Runner Session Handling (Kimi)
 
-![Session Management](assets/images/2026-02-07-session-management.png)
+Moved to [Runners](features/runners.md) and [Session Management](features/session-management.md).
 
-CueLoop uses explicit session management for runners that support it (notably **Kimi**):
+## Maintainer note
 
-**Session ID Generation**
-- Format: `{task_id}-p{phase}-{timestamp}`
-- Example: `RQ-0001-p2-1704153600`
-- Each phase (1, 2, 3) gets its own unique session ID
-
-**Why Explicit Sessions?**
-- **Deterministic**: Same ID always resumes the same session
-- **Reliable**: No dependency on parsing JSON output or runner-specific `last_session_id` tracking
-- **Debuggable**: Human-readable IDs make it easy to trace session lifecycle
-- **Isolated**: Each phase has its own session, preventing context leakage between planning, implementation, and review
-
-**Command Examples**
-```bash
-# Phase 2 initial invocation
-kimi --print --output-format stream-json --model kimi-for-coding \
-  --session RQ-0001-p2-1704153600 \
-  --prompt "Implement the plan..."
-
-# Phase 2 continue (CI failure retry)
-kimi --print --output-format stream-json --model kimi-for-coding \
-  --session RQ-0001-p2-1704153600 \
-  --prompt "Fix the CI errors..."
-```
-
-**Implementation Notes**
-- CueLoop generates the session ID at phase start and reuses it for all continue operations within that phase
-- The session ID is stored in `ContinueSession` for CI gate retry loops
-- If Kimi crashes and the session becomes corrupted, CueLoop will attempt to resume with the same ID (user accepts this risk)
+Keep this page as a short human orientation bridge. Do not add detailed behavior here; update the canonical feature page instead.
