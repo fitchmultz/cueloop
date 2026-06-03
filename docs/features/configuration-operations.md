@@ -24,7 +24,7 @@ Notes:
 Canonical details:
 
 - [Queue Configuration](../configuration/queue-and-parallel.md#queue-configuration)
-- [Queue and Tasks](../queue-and-tasks.md)
+- [Queue](queue.md) and [Task System](tasks.md)
 
 ---
 
@@ -93,4 +93,4 @@ Current parallel mode does not use legacy PR-era keys; prefer the direct-push mo
 - [Main Configuration Reference](../configuration.md)
 - [Queue](./queue.md)
 - [Parallel](./parallel.md)
-- [Queue and Tasks](../queue-and-tasks.md)
+- [Queue](queue.md) and [Task System](tasks.md)

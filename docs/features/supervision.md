@@ -640,5 +640,4 @@ git push -u origin HEAD
 - [Phases](./phases.md) — Multi-phase execution workflow
 - [Session Management](./session-management.md) — Crash recovery and resumption
 - [Configuration](../configuration.md) — Full configuration reference
-- [Workflow](../workflow.md) — High-level workflow documentation
 - [Parallel](./parallel.md) — Parallel execution supervision

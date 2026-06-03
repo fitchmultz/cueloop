@@ -746,7 +746,8 @@ cueloop queue archive
 
 ## See Also
 
-- [Queue and Tasks](../queue-and-tasks.md) - Detailed task field documentation
+- [Task Schema and Field Reference](task-schema.md) - Detailed task field documentation
+- [Task Lifecycle and Priority](task-lifecycle.md) - task lifecycle documentation
 - [CLI Documentation](../cli.md) - All queue commands
-- [Workflow](../workflow.md) - Task lifecycle and execution
+- [Phases](phases.md) - task execution phases
 - [Configuration](../configuration.md) - Queue configuration options

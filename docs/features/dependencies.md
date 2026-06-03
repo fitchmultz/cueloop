@@ -665,6 +665,6 @@ $ cueloop queue graph --task <TASK-ID>
 
 ## See Also
 
-- [Queue and Tasks](../queue-and-tasks.md) - Task fields and status lifecycle
+- [Task Schema and Field Reference](task-schema.md) - task fields and [Task Lifecycle and Priority](task-lifecycle.md) - status lifecycle
 - [Configuration](../configuration.md) - Configuring `max_dependency_depth`
 - [CLI Reference](../cli.md) - `cueloop queue graph`, `cueloop queue explain`

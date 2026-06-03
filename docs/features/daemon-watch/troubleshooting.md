@@ -48,7 +48,7 @@ cueloop daemon start
 
 - [Daemon and Watch overview](../daemon-and-watch.md)
 - [CLI Reference](../../cli.md)
-- [Queue and Tasks](../../queue-and-tasks.md)
+- [Queue](../queue.md) and [Task System](../tasks.md)
 - [Daemon Mode](./daemon.md)
 - [Watch Mode](./watch.md)
 - [Operations](./operations.md)

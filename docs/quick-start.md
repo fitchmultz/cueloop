@@ -129,6 +129,8 @@ This repository intentionally keeps sanitized `.cueloop/` state for dogfooding a
 
 - [Evaluator Path](guides/evaluator-path.md)
 - [Local Smoke Test](guides/local-smoke-test.md)
+- [Getting Started](guides/getting-started.md)
 - [CLI Reference](cli.md)
 - [Configuration](configuration.md)
-- [Queue and Tasks](queue-and-tasks.md)
+- [Queue](features/queue.md)
+- [Task System](features/tasks.md)

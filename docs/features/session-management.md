@@ -337,7 +337,7 @@ Common causes:
 
 ## See also
 
-- [Workflow](../workflow.md)
+- [Phases](phases.md)
 - [Configuration](../configuration.md)
 - [Phases](./phases.md)
 - [Runners](./runners.md)

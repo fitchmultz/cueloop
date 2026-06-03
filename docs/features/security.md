@@ -791,6 +791,6 @@ If you discover a security vulnerability in CueLoop:
 ## Related Documentation
 
 - [Configuration](../configuration.md) - Full config reference
-- [Workflow](../workflow.md) - Runtime layout and phases
-- [Queue and Tasks](../queue-and-tasks.md) - Task management
+- [Architecture](../architecture.md) - runtime layout and [Phases](phases.md) - phase behavior
+- [Task System](tasks.md) - task management
 - [SECURITY.md](../../SECURITY.md) - Security policy and vulnerability reporting

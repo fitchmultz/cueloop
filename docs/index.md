@@ -1,83 +1,114 @@
 # CueLoop Documentation
 Status: Active
 Owner: Maintainers
-Source of truth: this document for documentation navigation
+Source of truth: this document for documentation navigation and page ownership
 Parent: [README](../README.md)
 
+CueLoop is a Rust CLI plus SwiftUI macOS app for queue-driven, auditable AI coding agent work. Use this page as the map; each linked page owns its own detailed contract.
 
-CueLoop is a Rust CLI for running AI agent loops against a structured JSON task queue. The executable is `cueloop`; the Cargo package is `cueloop`.
+## Pick Your Path
 
-## Start Here
+| If you are... | Start with | Then read |
+| --- | --- | --- |
+| Evaluating CueLoop quickly | [README](../README.md) | [Evaluator Path](guides/evaluator-path.md), [Local Smoke Test](guides/local-smoke-test.md) |
+| Installing CueLoop in a repo | [Quick Start](quick-start.md) | [Configuration](configuration.md), [CLI Reference](cli.md) |
+| Learning the workflow | [Architecture Overview](architecture.md) | [Phases](features/phases.md), [Queue](features/queue.md), [Task System](features/tasks.md) |
+| Running CueLoop day to day | [CLI Reference](cli.md) | [Troubleshooting](troubleshooting.md), [Feature Guides](features/README.md) |
+| Operating or releasing this project | [CI and Test Strategy](guides/ci-strategy.md) | [Project Operating Constitution](guides/project-operating-constitution.md), [Release Runbook](guides/release-runbook.md) |
+| Building app or automation integrations | [Machine Contract](machine-contract.md) | [App Feature Guide](features/app.md), [Pi Integration](integrations/pi.md) |
+| Using CueLoop as an already-running agent | [Agent Usage Guide](guides/agent-usage.md) | [Machine Contract](machine-contract.md), [Queue](features/queue.md) |
 
-- [README](../README.md): product overview, first end-to-end workflow, and verification path
-- [Evaluator Path](guides/evaluator-path.md): fastest reviewer-friendly path through install, queue inspection, and local verification
-- [Architecture Overview](architecture.md): components, data/control flow, trust boundaries
-- [Quick Start](quick-start.md): install, initialize, create first task, run it
-- [Getting Started](guides/getting-started.md): longer guided onboarding path
-- [Feature Guides](features/README.md): feature-specific workflows and references
-- [CLI Reference](cli.md): command map + high-value workflows
-- [Machine Contract](machine-contract.md): versioned app/automation JSON API
-- [Project Operating Constitution](guides/project-operating-constitution.md): canonical project rules for source of truth, cutover, docs, UX, validation, and drift control
-- [Decisions](decisions.md): project-level decision log
-- [Configuration](configuration.md): hub for config schema, precedence, trust, runners, queues, webhooks, plugins, and profiles
-- [Pi Integration](integrations/pi.md): Pi runner session handling and 0.76+ `--session-id` behavior
-- [PRD Specs](prd/cueloop-task-decompose.md): feature-level product requirements
-- [Queue](features/queue.md) and [Tasks](features/tasks.md): queue semantics and task model references
-- [Local Smoke Test](guides/local-smoke-test.md): deterministic install and verification path
-- [CueLoop Dogfood Harness](guides/dogfood-cueloop.md): repeatable end-to-end fixture project with real three-phase runner execution
-- [Agent Usage Guide](guides/agent-usage.md): machine-command workflow for already-running coding agents using CueLoop as a ledger
-- [Advanced Usage Guide](guides/advanced.md): power-user workflows, profiles, plugins, automation, and optimization
-- [Advanced Troubleshooting and Reference](guides/advanced-troubleshooting.md): complex recovery patterns and quick references
-- [Stack Audit (2026-04)](guides/stack-audit-2026-04.md): current toolchain/dependency inventory and Rust 1.96.0 baseline review
+## Canonical Documentation Ownership
 
-## Core Command Areas
+These pages are the active sources of truth. Legacy URLs remain as navigation bridges when useful, but they should not accumulate new reference material.
 
-- `cueloop run`: supervised execution (`one`, `loop`, `resume`, `parallel`)
-- `cueloop task`: task creation, lifecycle, relations, templates, batch ops
-- `cueloop queue`: queue inspection, validation, analytics, import/export
-- `cueloop scan`: repository scanning and task discovery
-- `cueloop prompt`: prompt rendering/export/sync/diff
-- `cueloop doctor`: readiness diagnostics
-- `cueloop plugin`: plugin lifecycle
-- `cueloop daemon` + `cueloop watch`: background automation
-- `cueloop webhook`: test/status/replay for event delivery
+| Topic | Canonical page |
+| --- | --- |
+| Product overview and fastest value proof | [README](../README.md) |
+| Install, init, and first local checks | [Quick Start](quick-start.md) |
+| Commands and flags | [CLI Reference](cli.md) |
+| Configuration, precedence, trust, profiles, plugins, and integrations | [Configuration](configuration.md) |
+| Runtime architecture and trust boundaries | [Architecture Overview](architecture.md) |
+| Queue file operations, ordering, locking, repair, archive, import/export | [Queue](features/queue.md) |
+| Task docs index | [Task System](features/tasks.md) |
+| Task JSON fields and schema examples | [Task Schema and Field Reference](features/task-schema.md) |
+| Status transitions and priority semantics | [Task Lifecycle and Priority](features/task-lifecycle.md) |
+| Dependencies, blocking, relations, duplicates, and hierarchy | [Task Relationships](features/task-relationships.md) |
+| Creating, editing, templating, cloning, importing, and batching tasks | [Task Operations](features/task-operations.md) |
+| Multi-phase execution | [Phases](features/phases.md) |
+| Runner orchestration | [Runners](features/runners.md) |
+| CI gates, git oversight, and human-in-the-loop supervision | [Supervision](features/supervision.md) |
+| Prompt overrides | [Prompts](features/prompts.md) |
+| Session recovery | [Session Management](features/session-management.md) |
+| Parallel execution | [Parallel](features/parallel.md) |
+| Background automation | [Daemon and Watch](features/daemon-and-watch.md) |
+| Webhooks and notifications | [Webhooks](features/webhooks.md), [Notifications](features/notifications.md) |
+| Security model | [Security Model](security-model.md), [Security Features](features/security.md) |
 
-## Verification and Operations
+## Human Onboarding
 
-Use these when you want to validate a clone, understand the operational model, or prepare for a public release:
+Use these when you want a guided human-readable path rather than a machine contract or maintainer runbook.
 
-- [README](../README.md)
-- [Evaluator Path](guides/evaluator-path.md)
-- [Local Smoke Test](guides/local-smoke-test.md)
-- [CueLoop Dogfood Harness](guides/dogfood-cueloop.md)
-- [Architecture Overview](architecture.md)
-- [Public Readiness Checklist](guides/public-readiness.md)
-- [Security Model](security-model.md)
+- [Quick Start](quick-start.md): shortest install/init/inspect path.
+- [Getting Started](guides/getting-started.md): guided orientation with links to deeper docs.
+- [Evaluator Path](guides/evaluator-path.md): reviewer-friendly route through proof and validation.
+- [Local Smoke Test](guides/local-smoke-test.md): deterministic no-runner validation.
+- [CueLoop Dogfood Harness](guides/dogfood-cueloop.md): repeatable end-to-end fixture project.
+- [Advanced Usage Guide](guides/advanced.md): power-user workflows, profiles, plugins, automation, and optimization.
+
+## Feature Guides
+
+The [Feature Guides](features/README.md) page is the feature-area index. Common entry points:
+
+- [Queue](features/queue.md)
+- [Task System](features/tasks.md)
+- [Phases](features/phases.md)
+- [Runners](features/runners.md)
+- [Supervision](features/supervision.md)
+- [App (macOS)](features/app.md)
+- [Scan](features/scan.md)
+- [Plugins](features/plugins.md)
+- [Daemon and Watch](features/daemon-and-watch.md)
 
 ## Reference Docs
 
 - [CLI Reference](cli.md)
 - [Configuration](configuration.md)
-- [CI and Test Strategy](guides/ci-strategy.md)
-- [Project Operating Constitution](guides/project-operating-constitution.md)
-- [Decisions](decisions.md)
-- [Troubleshooting](troubleshooting.md)
+- [Machine Contract](machine-contract.md)
+- [Environment Variables](environment.md)
+- [Error Handling Guidelines](error-handling.md)
 - [Support Policy](support-policy.md)
 - [Versioning Policy](versioning-policy.md)
+- [Decisions](decisions.md)
 - [Roadmap Archive](roadmap.md)
-
-## Audit Snapshots
-
-These are point-in-time review artifacts, not active operating instructions.
-
-- [Thermo-Nuclear Code Quality Review (2026-05-21)](audits/thermo-nuclear-code-quality-review-2026-05-21.md)
-- [Comprehensive Codebase Audit (2026-03-31)](audits/codebase-audit-2026-03-31.md)
-- [CueLoopMac Settings Window Investigation (2026-03-13)](audits/2026-03-13-cueloopmac-settings-window-investigation.md)
 
 ## Maintainer Runbooks
 
+- [Project Operating Constitution](guides/project-operating-constitution.md)
+- [CI and Test Strategy](guides/ci-strategy.md)
+- [Public Readiness Checklist](guides/public-readiness.md)
 - [Release Runbook](guides/release-runbook.md)
 - [Full Release Guide](releasing.md)
+
+## Agent-Facing Docs
+
+These are for coding agents or app/automation clients, not first-time human onboarding.
+
+- [Agent Usage Guide](guides/agent-usage.md)
+- [Machine Contract](machine-contract.md)
+- [Project Operating Constitution](guides/project-operating-constitution.md)
+- [Configuration Trust and Precedence](configuration/trust-and-precedence.md)
+
+## Archive, Audit, and Baseline Material
+
+Archive and audit docs are useful for history, review evidence, and follow-up planning. Most are point-in-time artifacts; active behavior is defined by the canonical docs above and generated schemas. The current stack audit remains an active baseline document until a newer stack audit supersedes it.
+
+- [Archive and audit policy](archive/README.md)
+- [Stack Audit (2026-04)](guides/stack-audit-2026-04.md): current toolchain/dependency baseline
+- [Thermo-Nuclear Code Quality Review (2026-05-21)](audits/thermo-nuclear-code-quality-review-2026-05-21.md): point-in-time maintainability review
+- [Comprehensive Codebase Audit (2026-03-31)](audits/codebase-audit-2026-03-31.md): point-in-time codebase audit
+- [CueLoopMac Settings Window Investigation (2026-03-13)](audits/2026-03-13-cueloopmac-settings-window-investigation.md): resolved investigation notes
+- [Stack Audit (2026-03)](guides/stack-audit-2026-03.md): older baseline kept for comparison
 
 ## Runtime Paths (Defaults)
 
