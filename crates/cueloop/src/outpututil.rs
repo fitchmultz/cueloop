@@ -177,25 +177,10 @@ pub fn log_error(msg: &str) {
 
 // Runner output styling functions
 
-/// Format a reasoning/thinking block with color
-pub fn format_reasoning(text: &str) -> String {
-    crate::output::theme::cli::format_reasoning(text)
-}
-
-/// Format a tool call with color
-pub fn format_tool_call(name: &str, details: Option<&str>) -> String {
-    crate::output::theme::cli::format_tool_call(name, details)
-}
-
-/// Format a command execution with color
-pub fn format_command(name: &str, status: Option<&str>) -> String {
-    crate::output::theme::cli::format_command(name, status)
-}
-
-/// Format a permission denied message with color
-pub fn format_permission_denied(tool_name: &str) -> String {
-    crate::output::theme::cli::format_permission_denied(tool_name)
-}
+// Re-export theme formatting functions used by runner stream parsers.
+pub use crate::output::theme::cli::{
+    format_command, format_permission_denied, format_reasoning, format_tool_call,
+};
 
 #[cfg(test)]
 mod tests {

@@ -21,31 +21,23 @@
 //! - Parsing is case-insensitive for runner strings.
 //! - Invalid inputs return descriptive errors via anyhow.
 
-use crate::contracts::{
-    GitPublishMode, GitRevertMode, Runner, RunnerApprovalMode, RunnerCliOptionsPatch,
-    RunnerOutputFormat, RunnerPlanMode, RunnerSandboxMode, RunnerVerbosity,
-    UnsupportedOptionPolicy,
-};
-use anyhow::{Result, anyhow, bail};
+use crate::contracts::{GitPublishMode, GitRevertMode, Runner, RunnerCliOptionsPatch};
+use anyhow::{Result, anyhow};
 
 use super::args::RunnerCliArgs;
 
 /// Parse a runner string into a Runner enum.
+///
+/// Rejects plugin runner IDs — CLI `--runner` only accepts built-in names.
 pub fn parse_runner(value: &str) -> Result<Runner> {
-    let normalized = value.trim().to_lowercase();
-    match normalized.as_str() {
-        "codex" => Ok(Runner::Codex),
-        "opencode" => Ok(Runner::Opencode),
-        "gemini" => Ok(Runner::Gemini),
-        "claude" => Ok(Runner::Claude),
-        "cursor" => Ok(Runner::Cursor),
-        "kimi" => Ok(Runner::Kimi),
-        "pi" => Ok(Runner::Pi),
-        _ => bail!(
+    let runner: Runner = value.parse().map_err(|err: &str| anyhow!(err))?;
+    if runner.is_plugin() {
+        anyhow::bail!(
             "Invalid runner: --runner must be 'codex', 'opencode', 'gemini', 'claude', 'cursor', 'kimi', or 'pi' (got: {}). Set a supported runner in .cueloop/config.jsonc or via the --runner flag.",
             value.trim()
-        ),
+        );
     }
+    Ok(runner)
 }
 
 /// Parse git revert mode from a CLI string.
@@ -60,62 +52,22 @@ pub fn parse_git_publish_mode(value: &str) -> Result<GitPublishMode> {
 
 /// Parse runner CLI arguments into a patch struct.
 pub(crate) fn parse_runner_cli_patch(args: &RunnerCliArgs) -> Result<RunnerCliOptionsPatch> {
-    let output_format = match args.output_format.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<RunnerOutputFormat>()
-                .map_err(|err| anyhow!(err))?,
-        ),
-        None => None,
-    };
-    let verbosity = match args.verbosity.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<RunnerVerbosity>()
-                .map_err(|err| anyhow!(err))?,
-        ),
-        None => None,
-    };
-    let approval_mode = match args.approval_mode.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<RunnerApprovalMode>()
-                .map_err(|err| anyhow!(err))?,
-        ),
-        None => None,
-    };
-    let sandbox = match args.sandbox.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<RunnerSandboxMode>()
-                .map_err(|err| anyhow!(err))?,
-        ),
-        None => None,
-    };
-    let plan_mode = match args.plan_mode.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<RunnerPlanMode>()
-                .map_err(|err| anyhow!(err))?,
-        ),
-        None => None,
-    };
-    let unsupported_option_policy = match args.unsupported_option_policy.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<UnsupportedOptionPolicy>()
-                .map_err(|err| anyhow!(err))?,
-        ),
-        None => None,
-    };
+    fn parse_opt<T: std::str::FromStr<Err = &'static str>>(
+        value: Option<&str>,
+    ) -> Result<Option<T>> {
+        match value {
+            Some(v) => Ok(Some(v.parse::<T>().map_err(|err| anyhow!(err))?)),
+            None => Ok(None),
+        }
+    }
 
     Ok(RunnerCliOptionsPatch {
-        output_format,
-        verbosity,
-        approval_mode,
-        sandbox,
-        plan_mode,
-        unsupported_option_policy,
+        output_format: parse_opt(args.output_format.as_deref())?,
+        verbosity: parse_opt(args.verbosity.as_deref())?,
+        approval_mode: parse_opt(args.approval_mode.as_deref())?,
+        sandbox: parse_opt(args.sandbox.as_deref())?,
+        plan_mode: parse_opt(args.plan_mode.as_deref())?,
+        unsupported_option_policy: parse_opt(args.unsupported_option_policy.as_deref())?,
     })
 }
 

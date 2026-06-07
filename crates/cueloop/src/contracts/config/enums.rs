@@ -15,6 +15,7 @@
 //! Invariants/Assumptions:
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
+use crate::contracts::enum_parse::snake_case_from_str;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -37,17 +38,13 @@ pub enum GitRevertMode {
     Disabled,
 }
 
-impl std::str::FromStr for GitRevertMode {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.trim().to_lowercase().as_str() {
-            "ask" => Ok(GitRevertMode::Ask),
-            "enabled" => Ok(GitRevertMode::Enabled),
-            "disabled" => Ok(GitRevertMode::Disabled),
-            _ => Err("git_revert_mode must be 'ask', 'enabled', or 'disabled'"),
-        }
+snake_case_from_str! {
+    GitRevertMode {
+        Ask => "ask",
+        Enabled => "enabled",
+        Disabled => "disabled",
     }
+    "git_revert_mode must be 'ask', 'enabled', or 'disabled'"
 }
 
 /// Git publish mode for post-run repository changes.
@@ -73,17 +70,13 @@ impl GitPublishMode {
     }
 }
 
-impl std::str::FromStr for GitPublishMode {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.trim().to_lowercase().as_str() {
-            "off" => Ok(GitPublishMode::Off),
-            "commit" => Ok(GitPublishMode::Commit),
-            "commit_and_push" => Ok(GitPublishMode::CommitAndPush),
-            _ => Err("git_publish_mode must be 'off', 'commit', or 'commit_and_push'"),
-        }
+snake_case_from_str! {
+    GitPublishMode {
+        Off => "off",
+        Commit => "commit",
+        CommitAndPush => "commit_and_push",
     }
+    "git_publish_mode must be 'off', 'commit', or 'commit_and_push'"
 }
 
 /// Scan prompt version to use for scan operations.

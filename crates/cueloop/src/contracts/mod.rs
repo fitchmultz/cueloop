@@ -24,6 +24,7 @@
 mod blocking;
 mod cli_spec;
 mod config;
+mod enum_parse;
 mod machine;
 mod model;
 mod queue;

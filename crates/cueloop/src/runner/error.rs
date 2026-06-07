@@ -113,15 +113,10 @@ pub enum RunnerError {
 }
 
 fn runner_label(runner: &Runner) -> String {
-    match runner {
-        Runner::Codex => "codex".to_string(),
-        Runner::Opencode => "opencode".to_string(),
-        Runner::Gemini => "gemini".to_string(),
-        Runner::Cursor => "cursor".to_string(),
-        Runner::Claude => "claude".to_string(),
-        Runner::Kimi => "kimi".to_string(),
-        Runner::Pi => "pi".to_string(),
-        Runner::Plugin(id) => format!("plugin:{}", id),
+    if let Runner::Plugin(id) = runner {
+        format!("plugin:{}", id)
+    } else {
+        runner.as_str().to_string()
     }
 }
 

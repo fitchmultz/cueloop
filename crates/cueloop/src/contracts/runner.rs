@@ -25,6 +25,8 @@ use serde_json::json;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
+use super::enum_parse::snake_case_from_str;
+
 pub(crate) const RUNNER_SCHEMA_DESCRIPTION: &str = concat!(
     "Runner id. Built-in runner IDs: codex, opencode, gemini, claude, cursor, kimi, pi. ",
     "Plugin runner IDs are also supported as non-empty strings."
@@ -81,16 +83,18 @@ impl std::str::FromStr for Runner {
         if token.is_empty() {
             return Err("runner must be non-empty");
         }
-        Ok(match token.to_lowercase().as_str() {
-            "codex" => Runner::Codex,
-            "opencode" => Runner::Opencode,
-            "gemini" => Runner::Gemini,
-            "cursor" => Runner::Cursor,
-            "claude" => Runner::Claude,
-            "kimi" => Runner::Kimi,
-            "pi" => Runner::Pi,
-            _ => Runner::Plugin(token.to_string()),
-        })
+        Ok(
+            match super::enum_parse::normalize_enum_token(token).as_str() {
+                "codex" => Runner::Codex,
+                "opencode" => Runner::Opencode,
+                "gemini" => Runner::Gemini,
+                "cursor" => Runner::Cursor,
+                "claude" => Runner::Claude,
+                "kimi" => Runner::Kimi,
+                "pi" => Runner::Pi,
+                _ => Runner::Plugin(token.to_string()),
+            },
+        )
     }
 }
 
@@ -147,17 +151,13 @@ pub enum RunnerOutputFormat {
     Text,
 }
 
-impl std::str::FromStr for RunnerOutputFormat {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match normalize_enum_token(value).as_str() {
-            "stream_json" => Ok(RunnerOutputFormat::StreamJson),
-            "json" => Ok(RunnerOutputFormat::Json),
-            "text" => Ok(RunnerOutputFormat::Text),
-            _ => Err("output_format must be 'stream_json', 'json', or 'text'"),
-        }
+snake_case_from_str! {
+    RunnerOutputFormat {
+        StreamJson => "stream_json",
+        Json => "json",
+        Text => "text",
     }
+    "output_format must be 'stream_json', 'json', or 'text'"
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
@@ -169,17 +169,13 @@ pub enum RunnerVerbosity {
     Verbose,
 }
 
-impl std::str::FromStr for RunnerVerbosity {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match normalize_enum_token(value).as_str() {
-            "quiet" => Ok(RunnerVerbosity::Quiet),
-            "normal" => Ok(RunnerVerbosity::Normal),
-            "verbose" => Ok(RunnerVerbosity::Verbose),
-            _ => Err("verbosity must be 'quiet', 'normal', or 'verbose'"),
-        }
+snake_case_from_str! {
+    RunnerVerbosity {
+        Quiet => "quiet",
+        Normal => "normal",
+        Verbose => "verbose",
     }
+    "verbosity must be 'quiet', 'normal', or 'verbose'"
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
@@ -196,18 +192,14 @@ pub enum RunnerApprovalMode {
     Safe,
 }
 
-impl std::str::FromStr for RunnerApprovalMode {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match normalize_enum_token(value).as_str() {
-            "default" => Ok(RunnerApprovalMode::Default),
-            "auto_edits" => Ok(RunnerApprovalMode::AutoEdits),
-            "yolo" => Ok(RunnerApprovalMode::Yolo),
-            "safe" => Ok(RunnerApprovalMode::Safe),
-            _ => Err("approval_mode must be 'default', 'auto_edits', 'yolo', or 'safe'"),
-        }
+snake_case_from_str! {
+    RunnerApprovalMode {
+        Default => "default",
+        AutoEdits => "auto_edits",
+        Yolo => "yolo",
+        Safe => "safe",
     }
+    "approval_mode must be 'default', 'auto_edits', 'yolo', or 'safe'"
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
@@ -219,17 +211,13 @@ pub enum RunnerSandboxMode {
     Disabled,
 }
 
-impl std::str::FromStr for RunnerSandboxMode {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match normalize_enum_token(value).as_str() {
-            "default" => Ok(RunnerSandboxMode::Default),
-            "enabled" => Ok(RunnerSandboxMode::Enabled),
-            "disabled" => Ok(RunnerSandboxMode::Disabled),
-            _ => Err("sandbox must be 'default', 'enabled', or 'disabled'"),
-        }
+snake_case_from_str! {
+    RunnerSandboxMode {
+        Default => "default",
+        Enabled => "enabled",
+        Disabled => "disabled",
     }
+    "sandbox must be 'default', 'enabled', or 'disabled'"
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
@@ -241,17 +229,13 @@ pub enum RunnerPlanMode {
     Disabled,
 }
 
-impl std::str::FromStr for RunnerPlanMode {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match normalize_enum_token(value).as_str() {
-            "default" => Ok(RunnerPlanMode::Default),
-            "enabled" => Ok(RunnerPlanMode::Enabled),
-            "disabled" => Ok(RunnerPlanMode::Disabled),
-            _ => Err("plan_mode must be 'default', 'enabled', or 'disabled'"),
-        }
+snake_case_from_str! {
+    RunnerPlanMode {
+        Default => "default",
+        Enabled => "enabled",
+        Disabled => "disabled",
     }
+    "plan_mode must be 'default', 'enabled', or 'disabled'"
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, JsonSchema)]
@@ -263,21 +247,13 @@ pub enum UnsupportedOptionPolicy {
     Error,
 }
 
-impl std::str::FromStr for UnsupportedOptionPolicy {
-    type Err = &'static str;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match normalize_enum_token(value).as_str() {
-            "ignore" => Ok(UnsupportedOptionPolicy::Ignore),
-            "warn" => Ok(UnsupportedOptionPolicy::Warn),
-            "error" => Ok(UnsupportedOptionPolicy::Error),
-            _ => Err("unsupported_option_policy must be 'ignore', 'warn', or 'error'"),
-        }
+snake_case_from_str! {
+    UnsupportedOptionPolicy {
+        Ignore => "ignore",
+        Warn => "warn",
+        Error => "error",
     }
-}
-
-fn normalize_enum_token(value: &str) -> String {
-    value.trim().to_lowercase().replace('-', "_")
+    "unsupported_option_policy must be 'ignore', 'warn', or 'error'"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
@@ -326,24 +302,20 @@ pub struct RunnerCliOptionsPatch {
 
 impl RunnerCliOptionsPatch {
     pub fn merge_from(&mut self, other: Self) {
-        if other.output_format.is_some() {
-            self.output_format = other.output_format;
+        fn merge<T>(target: &mut Option<T>, incoming: Option<T>) {
+            if incoming.is_some() {
+                *target = incoming;
+            }
         }
-        if other.verbosity.is_some() {
-            self.verbosity = other.verbosity;
-        }
-        if other.approval_mode.is_some() {
-            self.approval_mode = other.approval_mode;
-        }
-        if other.sandbox.is_some() {
-            self.sandbox = other.sandbox;
-        }
-        if other.plan_mode.is_some() {
-            self.plan_mode = other.plan_mode;
-        }
-        if other.unsupported_option_policy.is_some() {
-            self.unsupported_option_policy = other.unsupported_option_policy;
-        }
+        merge(&mut self.output_format, other.output_format);
+        merge(&mut self.verbosity, other.verbosity);
+        merge(&mut self.approval_mode, other.approval_mode);
+        merge(&mut self.sandbox, other.sandbox);
+        merge(&mut self.plan_mode, other.plan_mode);
+        merge(
+            &mut self.unsupported_option_policy,
+            other.unsupported_option_policy,
+        );
     }
 }
 
