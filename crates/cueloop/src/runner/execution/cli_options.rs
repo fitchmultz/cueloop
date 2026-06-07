@@ -8,7 +8,7 @@
 //! - Provide runner-aware derivations needed by command assembly (e.g., Claude permission mode).
 //!
 //! Non-scope:
-//! - Building runner `Command` arguments (see `cli_spec` / `command` / `runners`).
+//! - Building runner `Command` arguments (see `cli_spec` / `command` / `builtin_plugins`).
 //! - Executing runner processes or parsing output (see `process` / `stream`).
 //!
 //!

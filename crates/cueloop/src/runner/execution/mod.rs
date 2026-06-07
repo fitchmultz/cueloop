@@ -38,7 +38,6 @@
 //! - `plugin_executor.rs`: Plugin-based execution orchestration.
 //! - `process.rs`: Process management and execution.
 //! - `response.rs`: Response extraction (session IDs, assistant messages).
-//! - `runners.rs`: Individual runner implementations.
 //! - `stream.rs`: Output streaming to handlers and terminals.
 //! - `tests/`: Execution-specific integration tests.
 
@@ -52,7 +51,6 @@ mod plugin_executor;
 mod plugin_trait;
 mod process;
 mod response;
-mod runners;
 mod stream;
 
 #[cfg(test)]
