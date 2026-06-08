@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-06-08
+
 ### Changed
 
 - Raised the Rust source-build baseline to 1.96.0 and aligned the crate `rust-version`, schema outputs, and stack-audit evidence with the pinned toolchain.
@@ -255,7 +257,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Secure credential handling: Secrets redaction in logs and queue entries.
 - Lock file isolation: Prevents concurrent queue modifications.
 
-[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/fitchmultz/cueloop/compare/v0.7.4...HEAD
+[0.7.4]: https://github.com/fitchmultz/cueloop/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/fitchmultz/cueloop/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/fitchmultz/cueloop/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/fitchmultz/cueloop/compare/v0.7.0...v0.7.1
