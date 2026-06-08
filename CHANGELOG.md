@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Raised the Rust source-build baseline to 1.96.0 and aligned the crate `rust-version`, schema outputs, and stack-audit evidence with the pinned toolchain.
+- Updated the validated runner baselines to Pi 0.77.0 and Cursor SDK 1.0.17.
+- Reorganized the active documentation entry points around canonical guides, moving legacy long-form material behind the archive index.
+
+### Fixed
+
+- Simplified shared contract enum parsing while preserving hyphenated CLI token support and plugin runner IDs.
+- Kept the macOS Xcode CLI bundle input list synchronized with committed Rust sources after runner module cleanup.
+
 ## [0.7.3] - 2026-05-27
 
 ### Changed

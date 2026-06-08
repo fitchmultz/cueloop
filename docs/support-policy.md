@@ -25,12 +25,12 @@ Purpose: clarify supported platforms/tooling and what maintainers can realistica
 
 ## Current Audited Baseline
 
-As of 2026-04-27:
+As of 2026-06-08:
 
 - Rust `1.96.0` (stable), pinned via `rust-toolchain.toml`
-- Xcode `26.3`
-- Swift language mode `6.2`
-- macOS deployment target `15.0`
+- Xcode `26.5`
+- Swift language mode `6.3`
+- macOS deployment target `26.0`
 
 Best-practice checks live in `docs/guides/stack-audit-2026-04.md`.
 

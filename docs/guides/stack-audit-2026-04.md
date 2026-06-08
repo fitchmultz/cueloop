@@ -1,11 +1,11 @@
 # Stack Audit (2026-04)
 Status: Active
 Owner: Maintainers
-Source of truth: current language/toolchain/dependency baseline and Rust 1.95.0 migration notes, with Rust 1.96.0 baseline update notes
+Source of truth: current language/toolchain/dependency baseline and historical Rust baseline migration notes
 Parent: [CueLoop Documentation](../index.md)
 Related: [CI and Test Strategy](ci-strategy.md), [Decisions](../decisions.md), [Archived March Stack Audit](stack-audit-2026-03.md)
 
-Purpose: record CueLoop's current source-build toolchain baseline, explain the Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, capture the release-note compatibility checklist that drives follow-up Rust modernization tasks, and preserve the dependency/security/lint/rustdoc evidence for the current audited baseline.
+Purpose: record CueLoop's current source-build toolchain baseline, explain the historical Rust 1.95.0 cutover from the stale repo-local 1.94.1 override, capture the release-note compatibility checklist that drives follow-up Rust modernization tasks, and preserve the dependency/security/lint/rustdoc evidence for the current audited baseline.
 
 ## Scope
 
@@ -16,16 +16,16 @@ Purpose: record CueLoop's current source-build toolchain baseline, explain the R
 
 ## Current Versions
 
-Audit date: `2026-04-27`
+Audit date: `2026-06-08`
 
 ### Languages and Toolchains
 
 - Rust toolchain: `1.96.0` stable (`rust-toolchain.toml`)
 - Cargo manifest MSRV floor: `1.96` (`crates/cueloop/Cargo.toml`)
 - Rust edition: `2024`
-- Xcode: `26.3`
-- Swift language mode: `6.2`
-- macOS deployment target: `15.0`
+- Xcode: `26.5`
+- Swift language mode: `6.3`
+- macOS deployment target: `26.0`
 - GNU Make: `>= 4`
 
 ## Rust 1.96.0 Baseline Update
@@ -34,11 +34,47 @@ Audit date: `2026-06-02`
 
 CueLoop now pins Rust `1.96.0` in `rust-toolchain.toml` and declares `rust-version = "1.96"` in the CLI crate manifest. This preserves the active policy that the crate MSRV follows the repository's pinned source-build baseline because local development, release builds, schema generation, and macOS app bundling are validated through the same pinned rustup toolchain.
 
-The update was triggered by `make release-gate` failing `make rust-toolchain-drift-check`: global stable had advanced to Rust `1.96.0` while the repository still pinned `1.95.0`. The release-note modernization audit for Rust `1.96.0` remains a follow-up; this cutover keeps the release gate's source-build baseline aligned.
+The update was triggered by `make release-gate` failing `make rust-toolchain-drift-check`: global stable had advanced to Rust `1.96.0` while the repository still pinned `1.95.0`. The release-note compatibility review below records the Rust `1.96.0` changes that matter for CueLoop's current source-build baseline.
 
-## Rust 1.95.0 Baseline
+## Rust 1.96.0 Release-Note Checklist
 
-CueLoop now pins Rust `1.95.0` in `rust-toolchain.toml` and declares `rust-version = "1.95"` in the CLI crate manifest. The crate MSRV intentionally follows the repository's pinned source-build baseline because local development, release builds, schema generation, and macOS app bundling are all validated through the same pinned rustup toolchain.
+Rust 1.96.0 is a source-build baseline bump with no required CueLoop code migration identified in this release pass. Items to keep in mind for future modernization or compatibility reviews:
+
+- Language/compiler: account for `cfg` accepting `expr` metavariables, always-coerced never types in tuple expressions, s390x vector-register inline assembly support, LoongArch link relaxation, and the Fuchsia RISC-V baseline update.
+- Libraries/stabilized APIs: review future opportunities around `assert_matches!`, `debug_assert_matches!`, `From<T>` for `AssertUnwindSafe` / `LazyCell` / `LazyLock`, `core::range` iterator types, and iterating over ranges of `NonZero` integers.
+- Cargo: note that dependencies may now specify both a git repository and alternate registry, `target.'cfg(..)'.rustdocflags` is supported, and Cargo includes fixes for CVE-2026-5222 and CVE-2026-5223.
+- Rustdoc: deprecation notes now render through normal documentation flow, missing-doc-code-examples no longer fires on impl items, and sidebars separate methods from associated functions.
+- Compatibility: watch for layout fixes for some `#[repr(Int)]` enums with uninhabited zero-sized fields, stricter `Pin<Foo>` unsizing, wasm target linker-flag changes, `return-position-impl-trait-in-traits` privacy errors, dependency reporting of the deny-by-default `uninhabited_static` lint, typed const-generic checks, removal of `-Csoft-float`, stricter `::{self as name}` imports from structs, repeated `export_name`/`link_name`/`link_section` precedence, external LLVM 21 minimum, and AVR `c_double` mapping to `f32`.
+
+## Rust 1.96.0 Validation Evidence
+
+Audit date: `2026-06-08`
+
+Commands run for the current baseline refresh:
+
+```bash
+rustc --version
+cargo --version
+rustup show active-toolchain
+make rust-toolchain-drift-check
+make ci && make macos-build && make install
+```
+
+Observed toolchain versions:
+
+- `rustc 1.96.0 (ac68faa20 2026-05-25)`
+- `cargo 1.96.0 (30a34c682 2026-05-25)`
+- active toolchain: `1.96.0-aarch64-apple-darwin` from `rust-toolchain.toml`
+
+Outcome:
+
+- Toolchain drift: `make rust-toolchain-drift-check` passed and confirmed `rust-toolchain.toml`, crate `rust-version`, `rustc`, `cargo`, `rustfmt`, `clippy`, and global stable all resolve to Rust `1.96.0`.
+- Release gate: `make ci && make macos-build && make install` passed after synchronizing `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` with committed CLI inputs. The command rebuilt the Rust release CLI, validated schemas/tests, built the macOS release app, and installed `CueLoopMac.app`.
+- Security audit: `make security-audit` could not run in this session because `cargo-audit` was not installed on `PATH`; run it before public/security-sensitive dependency releases or install it in a local tooling path and rerun the target.
+
+## Historical Rust 1.95.0 Baseline
+
+CueLoop previously pinned Rust `1.95.0` in `rust-toolchain.toml` and declared `rust-version = "1.95"` in the CLI crate manifest. The crate MSRV intentionally follows the repository's pinned source-build baseline because local development, release builds, schema generation, and macOS app bundling are all validated through the same pinned rustup toolchain.
 
 This is a source-build baseline decision, not release-semver metadata. Release version synchronization remains owned by `VERSION` and `scripts/versioning.sh sync`; Rust baseline changes are owned by `rust-toolchain.toml`, crate `rust-version`, and the validation gates documented here.
 
@@ -67,7 +103,7 @@ High-level checklist:
 - Rustdoc: review whether deprecated item hiding and changed unstable search ranking affect generated docs or contributor expectations.
 - Compatibility: audit array coercion inference changes, stricter `$crate` self-import errors, rare const-padding errors, the `ambiguous_glob_imported_traits` future-incompatibility warning, stricter lifetime-bound and visibility import checking, `Eq::assert_receiver_is_total_eq` deprecation/future warnings on manual impls, non-exhaustive enum discriminant reads, removal of accidental `mut ref` shorthand allowance, derive-helper/built-in attribute conflict warnings, and JSON target spec gating behind unstable options.
 
-Existing queue follow-ups RQ-0051 through RQ-0055 cover the modernization and compatibility work that should happen after this baseline cutover.
+Existing queue follow-ups RQ-0051 through RQ-0055 covered the modernization and compatibility work planned after the historical Rust 1.95.0 baseline cutover.
 
 ## Rust 1.95.0 Dependency, Security, Clippy, and Rustdoc Refresh
 
@@ -96,7 +132,7 @@ Observed toolchain and helper versions:
 - `rustc 1.95.0 (59807616e 2026-04-14)`
 - `cargo 1.95.0 (f2d3ce0bd 2026-03-21)`
 - active toolchain: `1.95.0-aarch64-apple-darwin` from `rust-toolchain.toml`
-- `cargo-audit-audit 0.22.1`
+- `cargo-audit 0.22.1`
 
 Outcome:
 
@@ -108,7 +144,7 @@ Outcome:
 
 ## Verification
 
-Required commands for this cutover:
+For the current Rust `1.96.0` baseline, use the evidence and commands recorded in [Rust 1.96.0 Validation Evidence](#rust-1960-validation-evidence). For future full stack refreshes, rerun:
 
 ```bash
 make version-check
@@ -122,6 +158,9 @@ Because `rust-toolchain.toml` is in the Tier D routing set, expect `make agent-c
 
 ## Sources
 
+- Rust `1.96.0` announcement: <https://blog.rust-lang.org/2026/05/28/Rust-1.96.0/>
+- Rust `1.96.0` detailed release notes: <https://doc.rust-lang.org/stable/releases.html#version-1960-2026-05-28>
+- Rust `1.96.0` release tag: <https://github.com/rust-lang/rust/releases/tag/1.96.0>
 - Rust `1.95.0` announcement: <https://blog.rust-lang.org/2026/04/16/Rust-1.95.0/>
 - Rust `1.95.0` detailed release notes: <https://doc.rust-lang.org/stable/releases.html#version-1950-2026-04-16>
 - Rust `1.95.0` release tag: <https://github.com/rust-lang/rust/releases/tag/1.95.0>
