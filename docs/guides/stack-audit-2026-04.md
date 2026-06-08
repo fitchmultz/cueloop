@@ -57,6 +57,8 @@ rustc --version
 cargo --version
 rustup show active-toolchain
 make rust-toolchain-drift-check
+cargo install cargo-audit --locked --root target/release-tooling
+PATH="$PWD/target/release-tooling/bin:$PATH" make security-audit
 make ci && make macos-build && make install
 ```
 
@@ -65,12 +67,13 @@ Observed toolchain versions:
 - `rustc 1.96.0 (ac68faa20 2026-05-25)`
 - `cargo 1.96.0 (30a34c682 2026-05-25)`
 - active toolchain: `1.96.0-aarch64-apple-darwin` from `rust-toolchain.toml`
+- `cargo-audit 0.22.2` installed under `target/release-tooling/bin` for local validation
 
 Outcome:
 
 - Toolchain drift: `make rust-toolchain-drift-check` passed and confirmed `rust-toolchain.toml`, crate `rust-version`, `rustc`, `cargo`, `rustfmt`, `clippy`, and global stable all resolve to Rust `1.96.0`.
 - Release gate: `make ci && make macos-build && make install` passed after synchronizing `apps/CueLoopMac/CueLoopCLIInputs.xcfilelist` with committed CLI inputs. The command rebuilt the Rust release CLI, validated schemas/tests, built the macOS release app, and installed `CueLoopMac.app`.
-- Security audit: `make security-audit` could not run in this session because `cargo-audit` was not installed on `PATH`; run it before public/security-sensitive dependency releases or install it in a local tooling path and rerun the target.
+- Security audit: `PATH="$PWD/target/release-tooling/bin:$PATH" make security-audit` passed against `Cargo.lock` after installing `cargo-audit` locally under `target/release-tooling`.
 
 ## Historical Rust 1.95.0 Baseline
 
