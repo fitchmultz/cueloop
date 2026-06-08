@@ -506,6 +506,7 @@ $(SRCROOT)/../../crates/cueloop/src/contracts/config/queue.rs
 $(SRCROOT)/../../crates/cueloop/src/contracts/config/retry.rs
 $(SRCROOT)/../../crates/cueloop/src/contracts/config/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/contracts/config/webhook.rs
+$(SRCROOT)/../../crates/cueloop/src/contracts/enum_parse.rs
 $(SRCROOT)/../../crates/cueloop/src/contracts/machine.rs
 $(SRCROOT)/../../crates/cueloop/src/contracts/mod.rs
 $(SRCROOT)/../../crates/cueloop/src/contracts/model.rs
@@ -807,7 +808,6 @@ $(SRCROOT)/../../crates/cueloop/src/runner/execution/process/cleanup.rs
 $(SRCROOT)/../../crates/cueloop/src/runner/execution/process/mod.rs
 $(SRCROOT)/../../crates/cueloop/src/runner/execution/process/wait.rs
 $(SRCROOT)/../../crates/cueloop/src/runner/execution/response.rs
-$(SRCROOT)/../../crates/cueloop/src/runner/execution/runners.rs
 $(SRCROOT)/../../crates/cueloop/src/runner/execution/stream.rs
 $(SRCROOT)/../../crates/cueloop/src/runner/execution/stream_buffer.rs
 $(SRCROOT)/../../crates/cueloop/src/runner/execution/stream_events/claude.rs
