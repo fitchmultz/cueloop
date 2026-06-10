@@ -283,6 +283,38 @@ fn get_runnable_and_blocked_tasks_work() {
 }
 
 #[test]
+fn reverse_blocks_affect_graph_runnable_and_blocked_tasks() {
+    let mut blocker = task("CL-0001", vec![], TaskStatus::Todo);
+    blocker.blocks = vec![" CL-0002 ".to_string()];
+    let blocked = task("CL-0002", vec![], TaskStatus::Todo);
+    let active = queue_file(vec![blocked, blocker]);
+
+    let graph = build_graph(&active, None);
+
+    let runnable = get_runnable_tasks(&graph);
+    assert!(runnable.contains(&"CL-0001".to_string()));
+    assert!(!runnable.contains(&"CL-0002".to_string()));
+
+    let blocked = get_blocked_tasks(&graph);
+    assert!(blocked.contains(&"CL-0002".to_string()));
+    assert!(!blocked.contains(&"CL-0001".to_string()));
+}
+
+#[test]
+fn group_blocks_relationship_does_not_block_graph_runnability() {
+    let mut group = task("CL-0001", vec![], TaskStatus::Todo);
+    group.kind = TaskKind::Group;
+    group.blocks = vec!["CL-0002".to_string()];
+    let work = task("CL-0002", vec![], TaskStatus::Todo);
+    let active = queue_file(vec![group, work]);
+
+    let graph = build_graph(&active, None);
+
+    assert_eq!(get_runnable_tasks(&graph), vec!["CL-0002".to_string()]);
+    assert!(!get_blocked_tasks(&graph).contains(&"CL-0002".to_string()));
+}
+
+#[test]
 fn bounded_chain_from_full_chain_helper_works() {
     let chain = vec!["a".to_string(), "b".to_string(), "c".to_string()];
 

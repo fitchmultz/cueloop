@@ -23,7 +23,7 @@ use super::machine_contract_test_support::{
     make_test_task, run_in_dir, setup_cueloop_repo, trust_project_commands, write_done, write_queue,
 };
 use anyhow::{Context, Result};
-use cueloop::contracts::TaskStatus;
+use cueloop::contracts::{TaskKind, TaskStatus};
 use serde_json::Value;
 
 const SENSITIVE_PROJECT_CONFIG: &str = r#"{
@@ -57,7 +57,7 @@ fn machine_queue_read_returns_versioned_snapshot() -> Result<()> {
 fn machine_queue_read_treats_reverse_blocks_as_runnability_constraints() -> Result<()> {
     let dir = setup_cueloop_repo()?;
     let mut blocker = make_test_task("RQ-0001", "Design first", TaskStatus::Todo);
-    blocker.blocks = vec!["RQ-0002".to_string()];
+    blocker.blocks = vec![" RQ-0002 ".to_string()];
     let blocked = make_test_task("RQ-0002", "Implement second", TaskStatus::Todo);
     write_queue(dir.path(), &[blocker, blocked])?;
 
@@ -79,6 +79,56 @@ fn machine_queue_read_treats_reverse_blocks_as_runnability_constraints() -> Resu
         blocked_row["reasons"][0]["dependencies"][0]["id"],
         "RQ-0001"
     );
+    Ok(())
+}
+
+#[test]
+fn machine_queue_read_group_blocks_relationship_does_not_block_work_item() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+    let mut group = make_test_task("RQ-0001", "Group container", TaskStatus::Todo);
+    group.kind = TaskKind::Group;
+    group.blocks = vec!["RQ-0002".to_string()];
+    let work = make_test_task("RQ-0002", "Runnable work", TaskStatus::Todo);
+    write_queue(dir.path(), &[group, work])?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        status.success(),
+        "machine queue read failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["next_runnable_task_id"], "RQ-0002");
+    let work_row = document["runnability"]["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == "RQ-0002")
+        .expect("work row");
+    assert_eq!(work_row["runnable"], true);
+    Ok(())
+}
+
+#[test]
+fn machine_queue_read_next_matches_prefer_doing_runnability_selection() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+    let doing = make_test_task("RQ-0001", "Continue in-progress task", TaskStatus::Doing);
+    let todo = make_test_task("RQ-0002", "Later todo task", TaskStatus::Todo);
+    write_queue(dir.path(), &[todo, doing])?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        status.success(),
+        "machine queue read failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["next_runnable_task_id"], "RQ-0001");
+    assert_eq!(
+        document["runnability"]["selection"]["selected_task_id"],
+        "RQ-0001"
+    );
+    assert_eq!(document["runnability"]["summary"]["candidates_total"], 2);
+    assert_eq!(document["runnability"]["summary"]["runnable_candidates"], 2);
+    assert!(document["runnability"]["summary"]["blocking"].is_null());
     Ok(())
 }
 

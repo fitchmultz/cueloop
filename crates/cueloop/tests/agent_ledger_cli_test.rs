@@ -210,6 +210,69 @@ fn agent_ledger_flow_tracks_claim_progress_evidence_handoff_and_completion() -> 
 }
 
 #[test]
+fn agent_next_prefers_existing_doing_task() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
+
+    let insert = serde_json::json!({
+        "version": 1,
+        "tasks": [
+            {
+                "key": "todo",
+                "title": "Later todo task",
+                "status": "todo",
+                "priority": "medium"
+            },
+            {
+                "key": "doing",
+                "title": "Continue doing task",
+                "status": "doing",
+                "priority": "medium"
+            }
+        ]
+    });
+    let insert_path = dir.path().join("agent-next-doing-insert.json");
+    std::fs::write(&insert_path, serde_json::to_string_pretty(&insert)?)?;
+    let (insert_status, insert_stdout, insert_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        insert_status.success(),
+        "insert failed\nstdout:\n{insert_stdout}\nstderr:\n{insert_stderr}"
+    );
+    let inserted: Value = serde_json::from_str(&insert_stdout)?;
+    let doing_id = inserted["tasks"][1]["task"]["id"].as_str().unwrap();
+
+    let (next_status, next_stdout, next_stderr) =
+        test_support::run_in_dir(dir.path(), &["agent", "next", "--format", "json"]);
+    assert!(
+        next_status.success(),
+        "agent next failed\nstdout:\n{next_stdout}\nstderr:\n{next_stderr}"
+    );
+    let next: Value = serde_json::from_str(&next_stdout)?;
+    assert_eq!(next["task"]["id"], doing_id);
+
+    let (overview_status, overview_stdout, overview_stderr) =
+        test_support::run_in_dir(dir.path(), &["agent", "overview", "--format", "json"]);
+    assert!(
+        overview_status.success(),
+        "agent overview failed\nstdout:\n{overview_stdout}\nstderr:\n{overview_stderr}"
+    );
+    let overview: Value = serde_json::from_str(&overview_stdout)?;
+    assert_eq!(overview["next_runnable_task_id"], doing_id);
+
+    Ok(())
+}
+
+#[test]
 fn agent_claim_rejects_different_active_owner_without_force() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;

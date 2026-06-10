@@ -123,13 +123,9 @@ fn dependency_issues(
         })
         .collect::<Vec<_>>();
 
+    let task_id = task.id.trim();
     for blocker in active.tasks.iter().filter(|candidate| {
-        candidate
-            .blocks
-            .iter()
-            .any(|blocked_id| blocked_id == &task.id)
-            && candidate.status != TaskStatus::Done
-            && candidate.status != TaskStatus::Rejected
+        crate::queue::operations::is_active_execution_blocker(candidate, task_id)
     }) {
         if task.depends_on.iter().any(|dep_id| dep_id == &blocker.id) {
             continue;

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the agent ledger CLI (`cueloop agent ...`) for agent-oriented queue overview, next-task selection, claims, progress notes, evidence, handoffs, completion, rejection, and validation.
+- Added compact machine queue reads with active-only and done-limit options for app and agent clients.
+
+### Changed
+
+- Changed new/default CueLoop task IDs from `RQ-*` to `CL-*` while preserving explicit and inferable legacy `RQ-*` queue compatibility.
+- Aligned agent, machine, runner, graph, and runnability selection around the same prefer-doing and reverse-block semantics.
+- Updated changelog and contribution guidance so `CL-####` task commits are canonical while legacy `RQ-####` release history remains parsed.
+
+### Fixed
+
+- Fixed reverse `blocks` handling across task selection, targeted runs, parallel worker selection, graph summaries, and machine runnability reports, including whitespace-trimmed IDs and non-executable group tasks not blocking work items.
+- Fixed machine lifecycle output to use redacted notes and evidence, and required explicit evidence for agent completion.
+- Hardened agent claim ownership so active claims cannot be overwritten without expiry or `--force`, and stale expirations are cleared on replacement.
+- Hardened changelog generation so git-cliff failures fail release verification and blank generated release notes are rejected when commits exist.
+
 ## [0.7.4] - 2026-06-08
 
 ### Changed

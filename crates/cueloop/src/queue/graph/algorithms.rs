@@ -183,12 +183,11 @@ pub fn find_critical_path_from(
 pub fn get_runnable_tasks(graph: &DependencyGraph) -> Vec<String> {
     graph
         .values()
-        .filter(|n| {
-            n.task.is_executable_work_item()
-                && n.task.status == TaskStatus::Todo
-                && n.dependencies
-                    .iter()
-                    .all(|dep_id| graph.is_task_completed(dep_id))
+        .filter(|node| {
+            node.task.is_executable_work_item()
+                && node.task.status == TaskStatus::Todo
+                && dependencies_completed(graph, node.dependencies.iter())
+                && reverse_blockers_cleared(graph, node)
         })
         .map(|n| n.task.id.clone())
         .collect()
@@ -197,13 +196,30 @@ pub fn get_runnable_tasks(graph: &DependencyGraph) -> Vec<String> {
 pub fn get_blocked_tasks(graph: &DependencyGraph) -> Vec<String> {
     graph
         .values()
-        .filter(|n| {
-            n.task.is_executable_work_item()
-                && matches!(n.task.status, TaskStatus::Todo | TaskStatus::Doing)
-                && n.dependencies
-                    .iter()
-                    .any(|dep_id| !graph.is_task_completed(dep_id))
+        .filter(|node| {
+            node.task.is_executable_work_item()
+                && matches!(node.task.status, TaskStatus::Todo | TaskStatus::Doing)
+                && (!dependencies_completed(graph, node.dependencies.iter())
+                    || !reverse_blockers_cleared(graph, node))
         })
         .map(|n| n.task.id.clone())
         .collect()
+}
+
+fn dependencies_completed<'a>(
+    graph: &DependencyGraph,
+    dependencies: impl Iterator<Item = &'a String>,
+) -> bool {
+    dependencies
+        .into_iter()
+        .all(|id| graph.is_task_completed(id))
+}
+
+fn reverse_blockers_cleared(graph: &DependencyGraph, node: &crate::queue::graph::TaskNode) -> bool {
+    let task_id = node.task.id.trim();
+    node.blocked_by.iter().all(|blocker_id| {
+        graph.get(blocker_id).is_none_or(|blocker| {
+            !crate::queue::operations::is_active_execution_blocker(&blocker.task, task_id)
+        })
+    })
 }

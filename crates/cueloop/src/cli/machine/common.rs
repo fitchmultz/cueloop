@@ -120,8 +120,7 @@ pub(super) fn build_queue_read_document(
     let (next_runnable_task_id, runnability) = match validation {
         Ok(_) => {
             let runnability = queue_runnability_report(&active, done_ref, selection_options)?;
-            let next_runnable_task_id = queue::operations::next_runnable_task(&active, done_ref)
-                .map(|task| task.id.clone());
+            let next_runnable_task_id = runnability.selection.selected_task_id.clone();
             (next_runnable_task_id, serde_json::to_value(runnability)?)
         }
         Err(err) => {

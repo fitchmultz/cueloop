@@ -53,6 +53,8 @@ pub struct TaskMutationSpec {
 #[serde(deny_unknown_fields)]
 pub struct TaskFieldEdit {
     pub field: String,
+    /// Edit value. In `set` mode, list fields use the same comma/list parsing as human task edits.
+    /// In `append` mode, the value is one redacted list item appended literally after trimming.
     #[serde(default)]
     pub value: String,
     #[serde(default)]

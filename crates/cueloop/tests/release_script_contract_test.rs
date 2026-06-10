@@ -6,6 +6,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
+    process::Command,
 };
 
 fn repo_root() -> PathBuf {
@@ -63,6 +64,17 @@ fn parse_release_metadata_paths(script: &str) -> BTreeSet<String> {
         .collect()
 }
 
+fn path_with_prefix(prefix: &std::path::Path) -> String {
+    let old_path = std::env::var_os("PATH").unwrap_or_default();
+    let separator = if cfg!(windows) { ";" } else { ":" };
+    format!(
+        "{}{}{}",
+        prefix.display(),
+        separator,
+        old_path.to_string_lossy()
+    )
+}
+
 fn parse_makefile_generated_schema_paths(makefile: &str) -> BTreeSet<String> {
     makefile
         .lines()
@@ -100,6 +112,87 @@ fn release_policy_arrays_do_not_repeat_entries() {
     assert!(
         duplicates_by_array.is_empty(),
         "release policy arrays should not contain duplicate entries: {duplicates_by_array:?}"
+    );
+}
+
+#[test]
+fn generate_changelog_modes_fail_when_git_cliff_fails() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let stub_path = temp.path().join("git-cliff");
+    std::fs::write(
+        &stub_path,
+        "#!/usr/bin/env bash\necho git-cliff failed >&2\nexit 42\n",
+    )
+    .expect("write stub");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&stub_path)
+            .expect("metadata")
+            .permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&stub_path, permissions).expect("chmod stub");
+    }
+
+    for mode in ["--check", "--dry-run"] {
+        let output = Command::new("bash")
+            .arg("scripts/generate-changelog.sh")
+            .arg(mode)
+            .current_dir(repo_root())
+            .env("PATH", path_with_prefix(temp.path()))
+            .output()
+            .unwrap_or_else(|err| panic!("run generate-changelog {mode}: {err}"));
+
+        assert!(
+            !output.status.success(),
+            "generate-changelog {mode} should fail when git-cliff fails\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+#[test]
+fn release_changelog_curated_content_requires_bullet_entries() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let heading_only = temp.path().join("heading-only.md");
+    let with_entry = temp.path().join("with-entry.md");
+    std::fs::write(
+        &heading_only,
+        "# Changelog\n\n## [Unreleased]\n\n### Added\n\n## [0.1.0] - 2026-01-01\n",
+    )
+    .expect("write heading-only changelog");
+    std::fs::write(
+        &with_entry,
+        "# Changelog\n\n## [Unreleased]\n\n### Added\n\n- Added a release note.\n\n## [0.1.0] - 2026-01-01\n",
+    )
+    .expect("write populated changelog");
+
+    let script = "source scripts/lib/release_verify_pipeline.sh; release_changelog_has_curated_unreleased_content \"$1\"";
+    let heading_status = Command::new("bash")
+        .arg("-c")
+        .arg(script)
+        .arg("bash")
+        .arg(&heading_only)
+        .current_dir(repo_root())
+        .status()
+        .expect("run heading-only probe");
+    let entry_status = Command::new("bash")
+        .arg("-c")
+        .arg(script)
+        .arg("bash")
+        .arg(&with_entry)
+        .current_dir(repo_root())
+        .status()
+        .expect("run populated probe");
+
+    assert!(
+        !heading_status.success(),
+        "heading-only Unreleased section should not count as curated content"
+    );
+    assert!(
+        entry_status.success(),
+        "Unreleased section with a bullet should count as curated content"
     );
 }
 

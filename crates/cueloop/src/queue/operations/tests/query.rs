@@ -65,7 +65,7 @@ fn next_runnable_task_skips_reverse_blocked_task() {
 
     let mut blocker = task("CL-0001");
     blocker.status = TaskStatus::Todo;
-    blocker.blocks = vec!["CL-0002".to_string()];
+    blocker.blocks = vec![" CL-0002 ".to_string()];
 
     let queue = QueueFile {
         version: 1,
@@ -74,6 +74,25 @@ fn next_runnable_task_skips_reverse_blocked_task() {
 
     let next = next_runnable_task(&queue, None).expect("blocker should be runnable first");
     assert_eq!(next.id, "CL-0001");
+}
+
+#[test]
+fn group_blocks_relationship_does_not_prevent_work_item_selection() {
+    let mut group = task("CL-0001");
+    group.status = TaskStatus::Todo;
+    group.kind = TaskKind::Group;
+    group.blocks = vec!["CL-0002".to_string()];
+
+    let mut work = task("CL-0002");
+    work.status = TaskStatus::Todo;
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![group, work],
+    };
+
+    let next = next_runnable_task(&queue, None).expect("work item should be runnable");
+    assert_eq!(next.id, "CL-0002");
 }
 
 #[test]

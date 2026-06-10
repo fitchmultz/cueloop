@@ -365,7 +365,7 @@ The document includes:
 
 ### `machine task mutate` (`version: 2`) and `machine task decompose` (`version: 2`)
 
-`machine task mutate` consumes a strict `TaskMutationRequest` with request `version: 1`; unknown request fields and unsupported request versions are errors. Each edit defaults to `mode: "set"`; list fields (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `blocks`, `relates_to`) also support `mode: "append"` for durable agent progress updates without replacing existing context.
+`machine task mutate` consumes a strict `TaskMutationRequest` with request `version: 1`; unknown request fields and unsupported request versions are errors. Each edit defaults to `mode: "set"`; list fields (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `blocks`, `relates_to`) also support `mode: "append"` for durable agent progress updates without replacing existing context. Set mode parses list field values with the human task-edit list parser; append mode appends exactly one trimmed, redacted list item literally, so values such as `rust,cli` become one appended item rather than two.
 
 Task mutation and decomposition documents now include:
 - optional top-level `blocking`

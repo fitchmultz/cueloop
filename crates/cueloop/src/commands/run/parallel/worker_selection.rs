@@ -108,6 +108,7 @@ fn candidate_tasks(
         .filter(|task| {
             task.is_executable_work_item()
                 && (task.status == TaskStatus::Todo
+                    || task.status == TaskStatus::Doing
                     || (include_draft && task.status == TaskStatus::Draft))
                 && !excluded_ids.contains(task.id.trim())
         })
@@ -159,4 +160,49 @@ pub(crate) fn collect_excluded_ids(
     }
 
     excluded
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{TaskKind, TaskPriority};
+
+    fn task(id: &str, status: TaskStatus) -> Task {
+        Task {
+            id: id.to_string(),
+            status,
+            kind: TaskKind::WorkItem,
+            title: format!("Task {id}"),
+            description: None,
+            priority: TaskPriority::Medium,
+            tags: vec![],
+            scope: vec![],
+            evidence: vec![],
+            plan: vec![],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+            completed_at: None,
+            started_at: None,
+            scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: HashMap::new(),
+            parent_id: None,
+        }
+    }
+
+    #[test]
+    fn candidate_tasks_include_doing_under_prefer_doing_semantics() {
+        let tasks = vec![task("CL-0001", TaskStatus::Doing)];
+        let candidates = candidate_tasks(&tasks, false, &HashSet::new());
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].id, "CL-0001");
+    }
 }

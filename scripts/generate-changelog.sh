@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 #
-# Generate changelog entries from RQ-#### conventional commits.
+# Generate changelog entries from CL-#### and legacy RQ-#### task commits.
 #
 # RESPONSIBILITY:
 #   This script populates the CHANGELOG.md "Unreleased" section with
-#   entries parsed from commits following the "RQ-####: <summary>" pattern.
-#   It categorizes commits into Added/Changed/Fixed/Removed/Security sections
-#   based on the commit message prefix.
+#   entries parsed from commits following the "CL-####: <summary>" pattern
+#   or legacy "RQ-####: <summary>" pattern. It categorizes commits into
+#   Added/Changed/Fixed/Removed/Security sections based on the commit message prefix.
 #
 # EXPLICITLY DOES NOT HANDLE:
 #   - Version bumping or tagging (handled by release.sh)
 #   - Moving Unreleased content to versioned sections (handled by release.sh)
-#   - Non-RQ-#### commits (these are ignored by git-cliff configuration)
+#   - Non-CL/RQ task commits (these are not grouped by git-cliff task parsers)
 #   - Merge commits or commit bodies (only parses commit subject lines)
 #
 # CALLER INVARIANTS:
@@ -98,9 +98,13 @@ generate_entries() {
     # Generate full changelog and extract just the Unreleased section content
     local full_changelog
     if [ -n "$since_tag" ]; then
-        full_changelog=$(git-cliff --config "$CLIFF_CONFIG" --unreleased 2>/dev/null || echo "")
+        if ! full_changelog=$(git-cliff --config "$CLIFF_CONFIG" --unreleased); then
+            return 1
+        fi
     else
-        full_changelog=$(git-cliff --config "$CLIFF_CONFIG" 2>/dev/null || echo "")
+        if ! full_changelog=$(git-cliff --config "$CLIFF_CONFIG"); then
+            return 1
+        fi
     fi
 
     # Extract just the content after "## [Unreleased]" header up to the next "## ["
@@ -213,7 +217,7 @@ preview_changes() {
     if [ -z "$entries" ] || [ "$has_content" -eq 0 ]; then
         echo "No new entries would be added."
         echo ""
-        echo "Make sure you have RQ-#### commits that match the patterns in cliff.toml"
+        echo "Make sure you have CL-#### commits, or legacy RQ-#### commits, that match the patterns in cliff.toml"
     else
         echo "## [Unreleased]"
         echo "$entries"
@@ -292,7 +296,7 @@ print_usage() {
     cat << 'EOF'
 Usage: scripts/generate-changelog.sh [OPTIONS]
 
-Generate changelog entries from RQ-#### conventional commits.
+Generate changelog entries from CL-#### task commits and legacy RQ-#### task commits.
 
 Options:
   --dry-run    Preview changes without modifying CHANGELOG.md
@@ -310,12 +314,14 @@ Requirements:
   - cliff.toml configuration in repo root
 
 Commit Message Patterns:
-  RQ-####: Add ...       -> Added section
-  RQ-####: Fix ...       -> Fixed section
-  RQ-####: Update ...    -> Changed section
-  RQ-####: Refactor ...  -> Changed section
-  RQ-####: Remove ...    -> Removed section
-  RQ-####: Security ...  -> Security section
+  CL-####: Add ...       -> Added section
+  CL-####: Fix ...       -> Fixed section
+  CL-####: Update ...    -> Changed section
+  CL-####: Refactor ...  -> Changed section
+  CL-####: Remove ...    -> Removed section
+  CL-####: Security ...  -> Security section
+
+Legacy RQ-#### task commits use the same section mapping.
 EOF
 }
 

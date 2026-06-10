@@ -49,13 +49,24 @@ release_changelog_has_curated_unreleased_content() {
         /^## \[/ && in_unreleased {
             exit
         }
-        in_unreleased && $0 !~ /^[[:space:]]*$/ {
+        in_unreleased && $0 ~ /^[[:space:]]*-[[:space:]]/ {
             found = 1
         }
         END {
             exit found ? 0 : 1
         }
     ' "$changelog"
+}
+
+release_commits_exist_since_latest_tag() {
+    local latest_tag
+    latest_tag=$(git -C "$REPO_ROOT" describe --tags --abbrev=0 2>/dev/null || true)
+
+    if [ -n "$latest_tag" ]; then
+        [ -n "$(git -C "$REPO_ROOT" rev-list --max-count=1 "${latest_tag}..HEAD")" ]
+    else
+        [ -n "$(git -C "$REPO_ROOT" rev-list --max-count=1 HEAD)" ]
+    fi
 }
 
 release_generate_changelog_entries() {
@@ -68,6 +79,12 @@ release_generate_changelog_entries() {
     fi
 
     ./scripts/generate-changelog.sh
+
+    if ! release_changelog_has_curated_unreleased_content "$CHANGELOG" \
+        && release_commits_exist_since_latest_tag; then
+        cueloop_log_error "CHANGELOG.md Unreleased is blank after changelog generation despite commits since the latest tag"
+        return 1
+    fi
 }
 
 release_generate_release_notes() {

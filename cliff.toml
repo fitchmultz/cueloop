@@ -1,19 +1,21 @@
 # git-cliff configuration for CueLoop
-# Generates changelog entries from RQ-####: conventional commits
+# Generates changelog entries from CL-#### commits and legacy RQ-#### commits.
 #
 # RESPONSIBILITY:
-#   Configures git-cliff to parse CueLoop's "RQ-####: <summary>" commit pattern
-#   and categorize entries into Keep a Changelog format (Added/Changed/Fixed/etc.)
+#   Configures git-cliff to parse CueLoop's "CL-####: <summary>" commit pattern
+#   plus legacy "RQ-####: <summary>" commits, then categorize entries into
+#   Keep a Changelog format (Added/Changed/Fixed/etc.).
 #
 # EXPLICITLY DOES NOT HANDLE:
-#   - Non-RQ-#### commits (ignored by the commit_parsers patterns)
+#   - Non-CL/RQ task commits (they are not grouped by the task commit parsers)
 #   - Version bumping logic (handled by release.sh)
 #   - Comparison link generation (managed manually in CHANGELOG.md)
 #   - Commit bodies (only parses commit subject lines)
 #
 # CALLER INVARIANTS:
 #   - Must be used with git-cliff >= 2.0
-#   - Commit messages must follow "RQ-####: <Action> <description>" pattern
+#   - Commit messages should follow "CL-####: <Action> <description>";
+#     legacy "RQ-####: ..." remains parsed for old release history
 #   - Action keywords must match the patterns defined in commit_parsers
 #   - CHANGELOG.md must exist with proper Unreleased section structure
 #
@@ -52,10 +54,10 @@ footer = ""
 trim = true
 
 [git]
-# Parse conventional commits (disabled - we use custom RQ-#### pattern)
+# Parse conventional commits (disabled - we use custom CL/RQ task commit patterns)
 conventional_commits = false
 
-# Filter out unconventional commits (disabled - we want all RQ- commits)
+# Filter out unconventional commits (disabled - task grouping is handled by commit_parsers)
 filter_unconventional = false
 
 # Split commits on newlines for parsing
@@ -63,49 +65,49 @@ split_commits = false
 
 # Commit parsers to categorize commits
 # Order matters - first match wins
-# Note: We only process RQ-#### commits; others are filtered by filter_commits
+# Note: CL-#### commits are canonical; RQ-#### remains supported for legacy history.
 commit_parsers = [
     # Added - new features
-    { field = "message", pattern = "^RQ-[0-9]+: [Aa]dd", group = "Added" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Ii]mplement", group = "Added" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Cc]reate", group = "Added" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Ii]ntroduce", group = "Added" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Ee]nable", group = "Added" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Aa]dd", group = "Added" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ii]mplement", group = "Added" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Cc]reate", group = "Added" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ii]ntroduce", group = "Added" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ee]nable", group = "Added" },
 
     # Fixed - bug fixes
-    { field = "message", pattern = "^RQ-[0-9]+: [Ff]ix", group = "Fixed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Bb]ugfix", group = "Fixed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Rr]esolve", group = "Fixed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Cc]orrect", group = "Fixed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ff]ix", group = "Fixed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Bb]ugfix", group = "Fixed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Rr]esolve", group = "Fixed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Cc]orrect", group = "Fixed" },
 
     # Changed - modifications to existing functionality
-    { field = "message", pattern = "^RQ-[0-9]+: [Uu]pdate", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Cc]hange", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Rr]efactor", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Mm]odify", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Ee]nhance", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Ii]mprove", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Rr]edesign", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Rr]ework", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Aa]ssess", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Vv]erify", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Dd]esign", group = "Changed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Ii]ntegrate", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Uu]pdate", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Cc]hange", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Rr]efactor", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Mm]odify", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ee]nhance", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ii]mprove", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Rr]edesign", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Rr]ework", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Aa]ssess", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Vv]erify", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Dd]esign", group = "Changed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ii]ntegrate", group = "Changed" },
 
     # Removed - deprecated/removed features
-    { field = "message", pattern = "^RQ-[0-9]+: [Rr]emove", group = "Removed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Dd]elete", group = "Removed" },
-    { field = "message", pattern = "^RQ-[0-9]+: [Dd]eprecate", group = "Removed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Rr]emove", group = "Removed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Dd]elete", group = "Removed" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Dd]eprecate", group = "Removed" },
 
     # Security - security-related changes
-    { field = "message", pattern = "^RQ-[0-9]+: [Ss]ecurity", group = "Security" },
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+: [Ss]ecurity", group = "Security" },
 
-    # Default - any other RQ-#### commit goes to Changed
-    { field = "message", pattern = "^RQ-[0-9]+:", group = "Changed" },
+    # Default - any other CL/RQ task commit goes to Changed
+    { field = "message", pattern = "^(CL|RQ)-[0-9]+:", group = "Changed" },
 ]
 
-# Don't filter commits - let commit_parsers handle categorization
-filter_commits = false
+# Filter out commits that do not match CL/RQ task commit parsers.
+filter_commits = true
 
 # Protect breaking changes from being skipped
 topo_order = false
@@ -113,7 +115,7 @@ sort_commits = "oldest"
 
 # Link parsers for issue/PR references
 link_parsers = [
-    { pattern = "RQ-([0-9]+)", href = "https://github.com/mitchfultz/cueloop/search?q=RQ-$1&type=commits" },
+    { pattern = "(CL|RQ)-([0-9]+)", href = "https://github.com/mitchfultz/cueloop/search?q=$1-$2&type=commits" },
 ]
 
 [bump]

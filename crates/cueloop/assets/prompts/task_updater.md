@@ -9,7 +9,7 @@ Refresh task metadata in `{{config.queue.file}}` so it accurately reflects curre
 Task ID to update:
 {{TASK_ID}}
 
-`RQ-0000` means review and update all tasks in the queue.
+A task ID ending in `-0000` means review and update all tasks in the queue, regardless of the configured task ID prefix.
 
 # Context
 Use only enough context to verify task accuracy:

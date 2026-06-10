@@ -77,19 +77,32 @@ pub fn are_dependencies_met(task: &Task, active: &QueueFile, done: Option<&Queue
     })
 }
 
+/// Return true when `candidate` participates as an execution blocker for `blocked_task_id`.
+///
+/// Only executable, non-terminal, non-self tasks block execution. Group tasks can carry relationship
+/// metadata, but do not prevent work items from running.
+pub fn is_active_execution_blocker(candidate: &Task, blocked_task_id: &str) -> bool {
+    let blocked_task_id = blocked_task_id.trim();
+    !blocked_task_id.is_empty()
+        && candidate.id.trim() != blocked_task_id
+        && candidate.is_executable_work_item()
+        && candidate.status != TaskStatus::Done
+        && candidate.status != TaskStatus::Rejected
+        && candidate
+            .blocks
+            .iter()
+            .any(|blocked_id| blocked_id.trim() == blocked_task_id)
+}
+
 /// Check if active reverse `blocks` relationships allow this task to run.
 ///
-/// A task is blocked when another active task lists this task in `blocks` and that blocker is not terminal.
+/// A task is blocked when another active execution-blocking task lists this task in `blocks`.
 pub fn are_reverse_blocks_cleared(task: &Task, active: &QueueFile) -> bool {
-    active.tasks.iter().all(|candidate| {
-        candidate.id == task.id
-            || !candidate
-                .blocks
-                .iter()
-                .any(|blocked_id| blocked_id == &task.id)
-            || candidate.status == TaskStatus::Done
-            || candidate.status == TaskStatus::Rejected
-    })
+    let task_id = task.id.trim();
+    active
+        .tasks
+        .iter()
+        .all(|candidate| !is_active_execution_blocker(candidate, task_id))
 }
 
 /// Check whether every scheduling blocker for a task has cleared.

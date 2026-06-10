@@ -248,5 +248,6 @@ fn select_first_runnable_row(
 fn is_candidate(row: &super::model::TaskRunnabilityRow, options: RunnableSelectionOptions) -> bool {
     row.kind.is_executable()
         && (row.status == TaskStatus::Todo
+            || (options.prefer_doing && row.status == TaskStatus::Doing)
             || (options.include_draft && row.status == TaskStatus::Draft))
 }

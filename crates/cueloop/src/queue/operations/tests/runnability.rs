@@ -337,10 +337,68 @@ fn test_runnability_report_prefers_doing_when_prefer_doing_true() {
 }
 
 #[test]
+fn group_blocks_relationship_does_not_block_work_item_runnability() {
+    let mut group = make_task_with_deps("CL-0001", TaskStatus::Todo, None, vec![]);
+    group.kind = TaskKind::Group;
+    group.blocks = vec!["CL-0002".to_string()];
+    let work = make_task_with_deps("CL-0002", TaskStatus::Todo, None, vec![]);
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![group, work],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, true),
+    )
+    .unwrap();
+
+    let work_row = report
+        .tasks
+        .iter()
+        .find(|row| row.id == "CL-0002")
+        .expect("work row");
+    assert!(work_row.runnable);
+    assert_eq!(
+        report.selection.selected_task_id,
+        Some("CL-0002".to_string())
+    );
+}
+
+#[test]
+fn runnability_report_counts_preferred_doing_as_runnable_work() {
+    let doing = make_task_with_deps("CL-0001", TaskStatus::Doing, None, vec![]);
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![doing],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, true),
+    )
+    .unwrap();
+
+    assert_eq!(
+        report.selection.selected_task_id,
+        Some("CL-0001".to_string())
+    );
+    assert_eq!(report.summary.candidates_total, 1);
+    assert_eq!(report.summary.runnable_candidates, 1);
+    assert!(report.summary.blocking.is_none());
+}
+
+#[test]
 fn runnability_report_does_not_select_reverse_blocked_doing_task() {
     let blocked = make_task_with_deps("CL-0002", TaskStatus::Doing, None, vec![]);
     let mut blocker = make_task_with_deps("CL-0001", TaskStatus::Todo, None, vec![]);
-    blocker.blocks = vec!["CL-0002".to_string()];
+    blocker.blocks = vec![" CL-0002 ".to_string()];
     let active = QueueFile {
         version: 1,
         tasks: vec![blocked, blocker],

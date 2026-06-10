@@ -29,7 +29,9 @@ use crate::cli::agent_ledger::{
 use crate::config;
 use crate::contracts::{Task, TaskStatus};
 use crate::queue;
-use crate::queue::operations::{RunnableSelectionOptions, queue_runnability_report};
+use crate::queue::operations::{
+    RunnableSelectionOptions, queue_runnability_report, select_runnable_task_index,
+};
 use crate::timeutil;
 
 const DOCUMENT_VERSION: u32 = 1;
@@ -157,13 +159,10 @@ fn overview(resolved: &config::Resolved, args: &AgentOverviewArgs) -> Result<()>
 
     let (next_runnable_task_id, blocked, validation_error) = match validation {
         Ok(_) => {
-            let report = queue_runnability_report(
-                &active,
-                done_ref,
-                RunnableSelectionOptions::new(false, true),
-            )?;
-            let next = queue::operations::next_runnable_task(&active, done_ref)
-                .map(|task| task.id.clone());
+            let selection_options = RunnableSelectionOptions::new(false, true);
+            let report = queue_runnability_report(&active, done_ref, selection_options)?;
+            let next =
+                selected_task(&active, done_ref, selection_options).map(|task| task.id.clone());
             let blocked = report
                 .tasks
                 .into_iter()
@@ -225,7 +224,12 @@ fn next(resolved: &config::Resolved, args: &AgentNextArgs) -> Result<()> {
         resolved.id_width,
         resolved.queue_max_dependency_depth(),
     )?;
-    let task = queue::operations::next_runnable_task(&active, done_ref).cloned();
+    let task = selected_task(
+        &active,
+        done_ref,
+        RunnableSelectionOptions::new(false, true),
+    )
+    .cloned();
     if args.format == AgentOutputFormat::Json {
         return print_json(&serde_json::json!({
             "version": DOCUMENT_VERSION,
@@ -240,6 +244,14 @@ fn next(resolved: &config::Resolved, args: &AgentNextArgs) -> Result<()> {
         None => println!("No runnable task."),
     }
     Ok(())
+}
+
+fn selected_task<'a>(
+    active: &'a crate::contracts::QueueFile,
+    done: Option<&'a crate::contracts::QueueFile>,
+    options: RunnableSelectionOptions,
+) -> Option<&'a Task> {
+    select_runnable_task_index(active, done, options).and_then(|idx| active.tasks.get(idx))
 }
 
 fn show(resolved: &config::Resolved, args: &AgentTaskReadArgs) -> Result<()> {

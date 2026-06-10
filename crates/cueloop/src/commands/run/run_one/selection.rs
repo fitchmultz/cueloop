@@ -66,6 +66,7 @@ pub(crate) fn select_task_for_run(
                     .filter(|t| {
                         t.is_executable_work_item()
                             && (t.status == TaskStatus::Todo
+                                || t.status == TaskStatus::Doing
                                 || (include_draft && t.status == TaskStatus::Draft))
                     })
                     .cloned()
@@ -139,5 +140,68 @@ fn build_blocked_summary(
                 ),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::contracts::{TaskKind, TaskPriority};
+    use std::collections::HashMap;
+    use std::path::Path;
+
+    fn task(id: &str, status: TaskStatus) -> Task {
+        Task {
+            id: id.to_string(),
+            status,
+            kind: TaskKind::WorkItem,
+            title: format!("Task {id}"),
+            description: None,
+            priority: TaskPriority::Medium,
+            tags: vec![],
+            scope: vec![],
+            evidence: vec![],
+            plan: vec![],
+            notes: vec![],
+            request: None,
+            agent: None,
+            created_at: Some("2026-01-18T00:00:00Z".to_string()),
+            updated_at: Some("2026-01-18T00:00:00Z".to_string()),
+            completed_at: None,
+            started_at: None,
+            scheduled_start: None,
+            estimated_minutes: None,
+            actual_minutes: None,
+            depends_on: vec![],
+            blocks: vec![],
+            relates_to: vec![],
+            duplicates: None,
+            custom_fields: HashMap::new(),
+            parent_id: None,
+        }
+    }
+
+    #[test]
+    fn select_task_for_run_reports_blocked_doing_candidate() -> anyhow::Result<()> {
+        let mut doing = task("CL-0001", TaskStatus::Doing);
+        doing.depends_on = vec!["CL-9999".to_string()];
+        let queue = QueueFile {
+            version: 1,
+            tasks: vec![doing],
+        };
+
+        let result = select_task_for_run(&queue, None, None, None, Path::new("."), false, None)?;
+
+        match result {
+            SelectTaskResult::Blocked { summary, .. } => {
+                assert_eq!(summary.candidates_total, 1);
+                assert_eq!(summary.blocked_by_dependencies, 1);
+            }
+            SelectTaskResult::Selected { .. } => panic!("expected blocked selection, got selected"),
+            SelectTaskResult::NoCandidates => {
+                panic!("expected blocked selection, got no candidates")
+            }
+        }
+        Ok(())
     }
 }

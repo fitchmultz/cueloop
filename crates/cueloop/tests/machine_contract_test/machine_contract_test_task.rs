@@ -161,7 +161,8 @@ fn machine_task_mutate_rejects_unknown_fields_and_versions_and_can_append() -> R
             "task_id": task_id,
             "edits": [
                 {"field": "notes", "mode": "append", "value": "agent note"},
-                {"field": "evidence", "mode": "append", "value": "cargo test passed"}
+                {"field": "evidence", "mode": "append", "value": "cargo test passed"},
+                {"field": "tags", "mode": "append", "value": "rust,cli"}
             ]
         }]
     });
@@ -189,6 +190,8 @@ fn machine_task_mutate_rejects_unknown_fields_and_versions_and_can_append() -> R
     let shown: Value = serde_json::from_str(&show_stdout)?;
     assert_eq!(shown["task"]["notes"][0], "agent note");
     assert_eq!(shown["task"]["evidence"][0], "cargo test passed");
+    assert_eq!(shown["task"]["tags"].as_array().unwrap().len(), 1);
+    assert_eq!(shown["task"]["tags"][0], "rust,cli");
 
     let unknown_request = serde_json::json!({
         "version": 1,

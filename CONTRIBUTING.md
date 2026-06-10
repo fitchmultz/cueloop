@@ -36,7 +36,7 @@ A low-risk first contribution loop:
 # (README + docs/index.md)
 
 # 2) Create a focused branch
-git checkout -b RQ-XXXX-first-contribution
+git checkout -b CL-XXXX-first-contribution
 
 # 3) Make one small change + tests/docs
 
@@ -313,9 +313,9 @@ cargo run -p cueloop -- <command> --help
 
 ### Commit Message Format
 
-Preferred format: `RQ-####: <short summary>`
+Preferred format: `CL-####: <short summary>`
 
-Where `####` is the task ID from `.cueloop/queue.json`.
+Where `####` is the task ID from `.cueloop/queue.json`. Legacy `RQ-####` task commits remain accepted for older queues and release history.
 
 If no task ID exists (for example, first external contribution), use:
 
@@ -324,8 +324,8 @@ If no task ID exists (for example, first external contribution), use:
 - `docs: <short summary>`
 
 Examples:
-- `RQ-0042: Add CI schema validation`
-- `RQ-0007: Fix queue archive race condition`
+- `CL-0042: Add CI schema validation`
+- `CL-0007: Fix queue archive race condition`
 - `docs: clarify run-loop troubleshooting step`
 
 ### Pull Request Expectations

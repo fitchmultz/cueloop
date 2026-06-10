@@ -10915,6 +10915,7 @@
           },
           "value": {
             "default": "",
+            "description": "Edit value. In `set` mode, list fields use the same comma/list parsing as human task edits.\nIn `append` mode, the value is one redacted list item appended literally after trimming.",
             "type": "string"
           }
         },
