@@ -210,6 +210,228 @@ fn agent_ledger_flow_tracks_claim_progress_evidence_handoff_and_completion() -> 
 }
 
 #[test]
+fn agent_claim_rejects_different_active_owner_without_force() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
+
+    let insert = serde_json::json!({
+        "version": 1,
+        "tasks": [{
+            "key": "claim-conflict",
+            "title": "Claim conflict smoke task",
+            "status": "todo",
+            "priority": "medium"
+        }]
+    });
+    let insert_path = dir.path().join("claim-conflict-insert.json");
+    std::fs::write(&insert_path, serde_json::to_string_pretty(&insert)?)?;
+    let (insert_status, insert_stdout, insert_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        insert_status.success(),
+        "insert failed\nstdout:\n{insert_stdout}\nstderr:\n{insert_stderr}"
+    );
+    let inserted: Value = serde_json::from_str(&insert_stdout)?;
+    let task_id = inserted["tasks"][0]["task"]["id"].as_str().unwrap();
+
+    let (first_status, first_stdout, first_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "claim", task_id, "--owner", "one", "--format", "json",
+        ],
+    );
+    assert!(
+        first_status.success(),
+        "first claim failed\nstdout:\n{first_stdout}\nstderr:\n{first_stderr}"
+    );
+
+    let (conflict_status, conflict_stdout, conflict_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "claim", task_id, "--owner", "two", "--format", "json",
+        ],
+    );
+    assert!(
+        !conflict_status.success(),
+        "second owner should conflict\nstdout:\n{conflict_stdout}"
+    );
+    assert!(
+        conflict_stderr.contains("already claimed by 'one'"),
+        "unexpected conflict stderr: {conflict_stderr}"
+    );
+
+    let (force_status, force_stdout, force_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "--force", "claim", task_id, "--owner", "two", "--format", "json",
+        ],
+    );
+    assert!(
+        force_status.success(),
+        "force claim failed\nstdout:\n{force_stdout}\nstderr:\n{force_stderr}"
+    );
+    let forced: Value = serde_json::from_str(&force_stdout)?;
+    assert_eq!(forced["task"]["custom_fields"]["agent_claim_owner"], "two");
+
+    Ok(())
+}
+
+#[test]
+fn agent_claim_without_ttl_clears_stale_expiration() -> Result<()> {
+    let dir = test_support::temp_dir_outside_repo();
+    test_support::git_init(dir.path())?;
+    test_support::seed_cueloop_dir(dir.path())?;
+
+    let insert = serde_json::json!({
+        "version": 1,
+        "tasks": [{
+            "key": "claim-expiration",
+            "title": "Claim expiration smoke task",
+            "status": "todo",
+            "priority": "medium"
+        }]
+    });
+    let insert_path = dir.path().join("claim-expiration-insert.json");
+    std::fs::write(&insert_path, serde_json::to_string_pretty(&insert)?)?;
+    let (insert_status, insert_stdout, insert_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().unwrap(),
+        ],
+    );
+    assert!(
+        insert_status.success(),
+        "insert failed\nstdout:\n{insert_stdout}\nstderr:\n{insert_stderr}"
+    );
+    let inserted: Value = serde_json::from_str(&insert_stdout)?;
+    let task_id = inserted["tasks"][0]["task"]["id"].as_str().unwrap();
+
+    let (first_status, first_stdout, first_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent",
+            "claim",
+            task_id,
+            "--owner",
+            "one",
+            "--ttl-minutes",
+            "60",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(
+        first_status.success(),
+        "first claim failed\nstdout:\n{first_stdout}\nstderr:\n{first_stderr}"
+    );
+
+    let (refresh_status, refresh_stdout, refresh_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "claim", task_id, "--owner", "one", "--format", "json",
+        ],
+    );
+    assert!(
+        refresh_status.success(),
+        "same-owner refresh failed\nstdout:\n{refresh_stdout}\nstderr:\n{refresh_stderr}"
+    );
+    let refreshed: Value = serde_json::from_str(&refresh_stdout)?;
+    assert_eq!(
+        refreshed["task"]["custom_fields"]["agent_claim_owner"],
+        "one"
+    );
+    assert!(
+        refreshed["task"]["custom_fields"]["agent_claim_expires_at"].is_null(),
+        "same-owner no-ttl refresh should clear expiration: {refresh_stdout}"
+    );
+
+    let (conflict_status, conflict_stdout, conflict_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "claim", task_id, "--owner", "two", "--format", "json",
+        ],
+    );
+    assert!(
+        !conflict_status.success(),
+        "cleared expiration should leave active owner protected\nstdout:\n{conflict_stdout}"
+    );
+    assert!(
+        conflict_stderr.contains("already claimed by 'one'"),
+        "unexpected conflict stderr: {conflict_stderr}"
+    );
+
+    let (expired_status, expired_stdout, expired_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent",
+            "--force",
+            "claim",
+            task_id,
+            "--owner",
+            "expired-owner",
+            "--ttl-minutes",
+            "0",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(
+        expired_status.success(),
+        "expired seed claim failed\nstdout:\n{expired_stdout}\nstderr:\n{expired_stderr}"
+    );
+
+    let (replace_status, replace_stdout, replace_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "claim", task_id, "--owner", "two", "--format", "json",
+        ],
+    );
+    assert!(
+        replace_status.success(),
+        "expired claim replacement failed\nstdout:\n{replace_stdout}\nstderr:\n{replace_stderr}"
+    );
+    let replaced: Value = serde_json::from_str(&replace_stdout)?;
+    assert_eq!(
+        replaced["task"]["custom_fields"]["agent_claim_owner"],
+        "two"
+    );
+    assert!(
+        replaced["task"]["custom_fields"]["agent_claim_expires_at"].is_null(),
+        "expired replacement without ttl should clear stale expiration: {replace_stdout}"
+    );
+
+    let (third_status, third_stdout, third_stderr) = test_support::run_in_dir(
+        dir.path(),
+        &[
+            "agent", "claim", task_id, "--owner", "three", "--format", "json",
+        ],
+    );
+    assert!(
+        !third_status.success(),
+        "new owner should not replace ttl-less owner\nstdout:\n{third_stdout}"
+    );
+    assert!(
+        third_stderr.contains("already claimed by 'two'"),
+        "unexpected third-owner stderr: {third_stderr}"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn agent_complete_requires_explicit_evidence() -> Result<()> {
     let dir = test_support::temp_dir_outside_repo();
     test_support::git_init(dir.path())?;

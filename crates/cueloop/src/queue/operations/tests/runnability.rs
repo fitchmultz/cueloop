@@ -337,6 +337,35 @@ fn test_runnability_report_prefers_doing_when_prefer_doing_true() {
 }
 
 #[test]
+fn runnability_report_does_not_select_reverse_blocked_doing_task() {
+    let blocked = make_task_with_deps("CL-0002", TaskStatus::Doing, None, vec![]);
+    let mut blocker = make_task_with_deps("CL-0001", TaskStatus::Todo, None, vec![]);
+    blocker.blocks = vec!["CL-0002".to_string()];
+    let active = QueueFile {
+        version: 1,
+        tasks: vec![blocked, blocker],
+    };
+    let now = "2026-01-18T12:00:00Z";
+
+    let report = queue_runnability_report_at(
+        now,
+        &active,
+        None,
+        RunnableSelectionOptions::new(false, true),
+    )
+    .unwrap();
+
+    assert_eq!(
+        report.selection.selected_task_id,
+        Some("CL-0001".to_string())
+    );
+    assert_eq!(
+        report.selection.selected_task_status,
+        Some(TaskStatus::Todo)
+    );
+}
+
+#[test]
 fn test_runnability_report_done_dependency_satisfies() {
     let done_tasks = vec![make_task_with_deps(
         "RQ-0002",

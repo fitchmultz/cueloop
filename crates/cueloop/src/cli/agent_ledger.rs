@@ -48,7 +48,7 @@ pub enum AgentCommand {
     Show(AgentTaskReadArgs),
     /// Claim a task for the current external agent/session.
     #[command(
-        after_long_help = "Examples:\n  cueloop agent claim CL-0001 --owner pi-session-123\n  cueloop agent claim CL-0001 --owner codex --ttl-minutes 120"
+        after_long_help = "Different active owners are rejected unless the existing claim is expired or --force is supplied.\n\nExamples:\n  cueloop agent claim CL-0001 --owner pi-session-123\n  cueloop agent claim CL-0001 --owner codex --ttl-minutes 120\n  cueloop agent --force claim CL-0001 --owner replacement-agent"
     )]
     Claim(AgentClaimArgs),
     /// Release a previous agent claim from a task.

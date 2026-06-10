@@ -65,27 +65,40 @@ pub fn next_todo_task(queue: &QueueFile) -> Option<&Task> {
         .find(|task| task.status == TaskStatus::Todo)
 }
 
-/// Check if a task's dependencies are met.
+/// Check if a task's direct `depends_on` references are met.
 ///
 /// Dependencies are met if `depends_on` is empty OR all referenced tasks exist and have `status == TaskStatus::Done` or `TaskStatus::Rejected`.
 pub fn are_dependencies_met(task: &Task, active: &QueueFile, done: Option<&QueueFile>) -> bool {
-    if task.depends_on.is_empty() {
-        return true;
-    }
+    task.depends_on.iter().all(|dep_id| {
+        matches!(
+            find_task_across(active, done, dep_id),
+            Some(t) if t.status == TaskStatus::Done || t.status == TaskStatus::Rejected
+        )
+    })
+}
 
-    for dep_id in &task.depends_on {
-        let dep_task = find_task_across(active, done, dep_id);
-        match dep_task {
-            Some(t) => {
-                if t.status != TaskStatus::Done && t.status != TaskStatus::Rejected {
-                    return false;
-                }
-            }
-            None => return false, // Dependency not found means not met
-        }
-    }
+/// Check if active reverse `blocks` relationships allow this task to run.
+///
+/// A task is blocked when another active task lists this task in `blocks` and that blocker is not terminal.
+pub fn are_reverse_blocks_cleared(task: &Task, active: &QueueFile) -> bool {
+    active.tasks.iter().all(|candidate| {
+        candidate.id == task.id
+            || !candidate
+                .blocks
+                .iter()
+                .any(|blocked_id| blocked_id == &task.id)
+            || candidate.status == TaskStatus::Done
+            || candidate.status == TaskStatus::Rejected
+    })
+}
 
-    true
+/// Check whether every scheduling blocker for a task has cleared.
+pub fn are_task_blockers_cleared(
+    task: &Task,
+    active: &QueueFile,
+    done: Option<&QueueFile>,
+) -> bool {
+    are_dependencies_met(task, active, done) && are_reverse_blocks_cleared(task, active)
 }
 
 /// Check if a task's scheduled_start is in the future.
@@ -103,15 +116,16 @@ pub fn is_task_scheduled_for_future(task: &Task) -> bool {
     false
 }
 
-/// Check if a task is runnable (executable, dependencies met, and scheduling satisfied).
+/// Check if a task is runnable (executable, dependencies/blockers met, and scheduling satisfied).
 ///
 /// A task is runnable if:
 /// - It is an executable work item
-/// - All dependencies are met (depends_on tasks are Done or Rejected)
+/// - All `depends_on` tasks are Done or Rejected
+/// - No active non-terminal task blocks it through reverse `blocks`
 /// - The scheduled_start time has passed (or is not set)
 pub fn is_task_runnable(task: &Task, active: &QueueFile, done: Option<&QueueFile>) -> bool {
     task.is_executable_work_item()
-        && are_dependencies_met(task, active, done)
+        && are_task_blockers_cleared(task, active, done)
         && !is_task_scheduled_for_future(task)
 }
 
@@ -136,10 +150,9 @@ pub fn select_runnable_task_index(
     options: RunnableSelectionOptions,
 ) -> Option<usize> {
     if options.prefer_doing
-        && let Some(idx) = active
-            .tasks
-            .iter()
-            .position(|task| task.status == TaskStatus::Doing && task.is_executable_work_item())
+        && let Some(idx) = active.tasks.iter().position(|task| {
+            task.status == TaskStatus::Doing && is_task_runnable(task, active, done)
+        })
     {
         return Some(idx);
     }
@@ -211,7 +224,7 @@ pub fn select_runnable_task_index_with_target(
                 }
                 .into());
             }
-            if !are_dependencies_met(task, active, done) {
+            if !are_task_blockers_cleared(task, active, done) {
                 return Err(QueueQueryError::TargetTaskBlockedByUnmetDependencies {
                     operation: operation.to_string(),
                     task_id: needle.to_string(),
@@ -232,7 +245,7 @@ pub fn select_runnable_task_index_with_target(
             }
         }
         TaskStatus::Todo => {
-            if !are_dependencies_met(task, active, done) {
+            if !are_task_blockers_cleared(task, active, done) {
                 return Err(QueueQueryError::TargetTaskBlockedByUnmetDependencies {
                     operation: operation.to_string(),
                     task_id: needle.to_string(),
@@ -252,7 +265,27 @@ pub fn select_runnable_task_index_with_target(
                 .into());
             }
         }
-        TaskStatus::Doing => {}
+        TaskStatus::Doing => {
+            if !are_task_blockers_cleared(task, active, done) {
+                return Err(QueueQueryError::TargetTaskBlockedByUnmetDependencies {
+                    operation: operation.to_string(),
+                    task_id: needle.to_string(),
+                }
+                .into());
+            }
+            if is_task_scheduled_for_future(task) {
+                return Err(QueueQueryError::TargetTaskScheduledForFuture {
+                    operation: operation.to_string(),
+                    task_id: needle.to_string(),
+                    scheduled_start: task
+                        .scheduled_start
+                        .as_deref()
+                        .unwrap_or("unknown")
+                        .to_string(),
+                }
+                .into());
+            }
+        }
     }
 
     Ok(idx)

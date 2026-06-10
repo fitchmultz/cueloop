@@ -209,17 +209,16 @@ fn first_actionable_draft_leaf_id(active: &QueueFile) -> Option<String> {
 }
 
 fn build_selection(
-    active: &QueueFile,
+    _active: &QueueFile,
     rows: &[super::model::TaskRunnabilityRow],
     options: RunnableSelectionOptions,
 ) -> QueueRunnabilitySelection {
     let (selected_task_id, selected_task_status) = if options.prefer_doing
-        && let Some(task) = active
-            .tasks
+        && let Some(row) = rows
             .iter()
-            .find(|t| t.status == TaskStatus::Doing && t.is_executable_work_item())
+            .find(|row| row.runnable && row.kind.is_executable() && row.status == TaskStatus::Doing)
     {
-        (Some(task.id.clone()), Some(TaskStatus::Doing))
+        (Some(row.id.clone()), Some(TaskStatus::Doing))
     } else {
         select_first_runnable_row(rows, options)
             .map(|row| (Some(row.id.clone()), Some(row.status)))

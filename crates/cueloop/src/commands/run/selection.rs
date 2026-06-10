@@ -60,8 +60,8 @@ pub(crate) fn select_run_one_task_index_excluding(
     if options.prefer_doing
         && let Some(idx) = queue_file.tasks.iter().position(|task| {
             task.status == crate::contracts::TaskStatus::Doing
-                && task.is_executable_work_item()
                 && !is_in_flight(&task.id)
+                && is_task_runnable(task, queue_file, done_ref)
         })
     {
         return Ok(Some(idx));
@@ -265,6 +265,24 @@ mod tests {
     }
 
     #[test]
+    fn select_run_one_task_index_rejects_reverse_blocked_doing_target() {
+        let blocked = task_with_id_status("CL-0002", TaskStatus::Doing);
+        let mut blocker = task_with_id_status("CL-0001", TaskStatus::Todo);
+        blocker.blocks = vec!["CL-0002".to_string()];
+        let queue_file = queue_with_tasks(vec![blocked, blocker]);
+
+        let err = select_run_one_task_index(&queue_file, None, Some("CL-0002"), false)
+            .expect_err("reverse-blocked doing target should error");
+        assert!(
+            matches!(
+                err.downcast_ref::<QueueQueryError>(),
+                Some(QueueQueryError::TargetTaskBlockedByUnmetDependencies { .. })
+            ),
+            "expected TargetTaskBlockedByUnmetDependencies error"
+        );
+    }
+
+    #[test]
     fn select_run_one_task_index_allows_doing() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![task_with_status(TaskStatus::Doing)]);
         let idx = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)?;
@@ -320,6 +338,18 @@ mod tests {
             task_with_id_status("CL-0002", TaskStatus::Todo),
         ]);
         let idx = select_run_one_task_index(&queue_file, None, None, true)?;
+        assert_eq!(idx, Some(1));
+        Ok(())
+    }
+
+    #[test]
+    fn select_run_one_task_index_excluding_skips_reverse_blocked_doing() -> anyhow::Result<()> {
+        let blocked = task_with_id_status("CL-0002", TaskStatus::Doing);
+        let mut blocker = task_with_id_status("CL-0001", TaskStatus::Todo);
+        blocker.blocks = vec!["CL-0002".to_string()];
+        let queue_file = queue_with_tasks(vec![blocked, blocker]);
+
+        let idx = select_run_one_task_index_excluding(&queue_file, None, false, &HashSet::new())?;
         assert_eq!(idx, Some(1));
         Ok(())
     }

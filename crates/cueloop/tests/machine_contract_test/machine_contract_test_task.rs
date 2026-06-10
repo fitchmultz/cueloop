@@ -375,7 +375,7 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
             "--note",
             "Verified by machine API",
             "--evidence",
-            "make agent-ci passed",
+            "webhook signature abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
         ],
     );
     assert!(
@@ -386,8 +386,12 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
     assert_eq!(done["status"], TaskStatus::Done.as_str());
     assert_eq!(done["archived"], true);
     assert_eq!(done["task"]["status"], TaskStatus::Done.as_str());
-    assert_eq!(done["evidence"][0], "make agent-ci passed");
-    assert_eq!(done["task"]["evidence"][0], "make agent-ci passed");
+    assert_eq!(done["evidence"][0], "webhook signature [REDACTED]");
+    assert_eq!(done["task"]["evidence"][0], "webhook signature [REDACTED]");
+    let done_text = serde_json::to_string(&done)?;
+    assert!(
+        !done_text.contains("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789")
+    );
 
     let (show_done_status, show_done_stdout, show_done_stderr) =
         run_in_dir(dir.path(), &["machine", "task", "show", &task_id]);

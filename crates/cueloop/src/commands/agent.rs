@@ -261,7 +261,8 @@ fn claim(resolved: &config::Resolved, args: &AgentClaimArgs, force: bool) -> Res
     let now = timeutil::now_utc_rfc3339()?;
     patch.insert(CLAIM_OWNER_KEY.to_string(), args.owner.trim().to_string());
     patch.insert(CLAIMED_AT_KEY.to_string(), now.clone());
-    if let Some(minutes) = args.ttl_minutes {
+    let ttl_minutes = args.ttl_minutes;
+    if let Some(minutes) = ttl_minutes {
         let now_dt = timeutil::parse_rfc3339(&now)?;
         let expires = now_dt + time::Duration::minutes(i64::from(minutes));
         patch.insert(
@@ -269,20 +270,50 @@ fn claim(resolved: &config::Resolved, args: &AgentClaimArgs, force: bool) -> Res
             timeutil::format_rfc3339(expires)?,
         );
     }
+    let owner = args.owner.trim().to_string();
     let task = mutate_active_task(
         resolved,
         &args.task_id,
         "agent claim",
         force,
-        |task, now| {
+        |task, updated_at| {
+            if !force {
+                ensure_claim_available(task, &owner, &now)?;
+            }
             for (key, value) in patch {
                 task.custom_fields.insert(key, value);
             }
-            task.updated_at = Some(now.to_string());
+            if ttl_minutes.is_none() {
+                task.custom_fields.remove(CLAIM_EXPIRES_AT_KEY);
+            }
+            task.updated_at = Some(updated_at.to_string());
             Ok(())
         },
     )?;
     print_mutation("claimed", &task, false, args.format)
+}
+
+fn ensure_claim_available(task: &Task, owner: &str, now: &str) -> Result<()> {
+    let Some(current_owner) = task.custom_fields.get(CLAIM_OWNER_KEY) else {
+        return Ok(());
+    };
+    if current_owner == owner {
+        return Ok(());
+    }
+    if let Some(expires_at) = task.custom_fields.get(CLAIM_EXPIRES_AT_KEY)
+        && let (Ok(expires), Ok(now)) = (
+            timeutil::parse_rfc3339(expires_at),
+            timeutil::parse_rfc3339(now),
+        )
+        && expires <= now
+    {
+        return Ok(());
+    }
+    bail!(
+        "task {} is already claimed by '{}'; use --force to replace the claim",
+        task.id,
+        current_owner
+    )
 }
 
 fn release(resolved: &config::Resolved, args: &AgentReleaseArgs, force: bool) -> Result<()> {

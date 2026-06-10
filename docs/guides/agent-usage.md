@@ -54,7 +54,7 @@ These commands are designed for active agents and do not invoke runner CLIs:
 | Reject with reason | `cueloop agent reject CL-0001 --reason "Duplicate"` |
 | Validate queue/done state | `cueloop agent validate --format json` |
 
-Claims are stored as task `custom_fields` (`agent_claim_owner`, `agent_claimed_at`, and optional `agent_claim_expires_at`) so they remain visible in the normal queue file. Claims coordinate external agents; they do not start, stop, or supervise runners.
+Claims are stored as task `custom_fields` (`agent_claim_owner`, `agent_claimed_at`, and optional `agent_claim_expires_at`) so they remain visible in the normal queue file. Claims coordinate external agents; they do not start, stop, or supervise runners. A different active owner is rejected unless the claim has expired or the caller uses `cueloop agent --force claim ...`; same-owner claims refresh the lease, and omitting `--ttl-minutes` clears any previous expiration.
 
 ## Machine-safe commands
 

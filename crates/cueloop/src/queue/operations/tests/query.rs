@@ -59,6 +59,74 @@ fn test_next_runnable_task_skips_blocked() {
 }
 
 #[test]
+fn next_runnable_task_skips_reverse_blocked_task() {
+    let mut blocked = task("CL-0002");
+    blocked.status = TaskStatus::Todo;
+
+    let mut blocker = task("CL-0001");
+    blocker.status = TaskStatus::Todo;
+    blocker.blocks = vec!["CL-0002".to_string()];
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![blocked, blocker],
+    };
+
+    let next = next_runnable_task(&queue, None).expect("blocker should be runnable first");
+    assert_eq!(next.id, "CL-0001");
+}
+
+#[test]
+fn select_runnable_task_index_with_target_rejects_reverse_blocked_doing_task() {
+    let mut blocked = task("CL-0002");
+    blocked.status = TaskStatus::Doing;
+
+    let mut blocker = task("CL-0001");
+    blocker.status = TaskStatus::Todo;
+    blocker.blocks = vec!["CL-0002".to_string()];
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![blocked, blocker],
+    };
+
+    let err = select_runnable_task_index_with_target(
+        &queue,
+        None,
+        "CL-0002",
+        "run --target",
+        RunnableSelectionOptions::new(false, true),
+    )
+    .unwrap_err();
+    assert!(format!("{err}").to_lowercase().contains("dependencies"));
+}
+
+#[test]
+fn select_runnable_task_index_with_target_rejects_reverse_blocked_task() {
+    let mut blocked = task("CL-0002");
+    blocked.status = TaskStatus::Todo;
+
+    let mut blocker = task("CL-0001");
+    blocker.status = TaskStatus::Todo;
+    blocker.blocks = vec!["CL-0002".to_string()];
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![blocked, blocker],
+    };
+
+    let err = select_runnable_task_index_with_target(
+        &queue,
+        None,
+        "CL-0002",
+        "run --target",
+        RunnableSelectionOptions::new(false, true),
+    )
+    .unwrap_err();
+    assert!(format!("{err}").to_lowercase().contains("dependencies"));
+}
+
+#[test]
 fn select_runnable_task_index_prefers_doing() {
     let mut todo = task("RQ-0001");
     todo.status = TaskStatus::Todo;
@@ -73,6 +141,25 @@ fn select_runnable_task_index_prefers_doing() {
 
     let idx = select_runnable_task_index(&queue, None, RunnableSelectionOptions::new(false, true))
         .expect("should select doing");
+    assert_eq!(idx, 1);
+}
+
+#[test]
+fn select_runnable_task_index_does_not_prefer_reverse_blocked_doing() {
+    let mut blocked = task("CL-0002");
+    blocked.status = TaskStatus::Doing;
+
+    let mut blocker = task("CL-0001");
+    blocker.status = TaskStatus::Todo;
+    blocker.blocks = vec!["CL-0002".to_string()];
+
+    let queue = QueueFile {
+        version: 1,
+        tasks: vec![blocked, blocker],
+    };
+
+    let idx = select_runnable_task_index(&queue, None, RunnableSelectionOptions::new(false, true))
+        .expect("blocker should be selected");
     assert_eq!(idx, 1);
 }
 

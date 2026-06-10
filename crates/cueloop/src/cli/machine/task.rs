@@ -398,14 +398,8 @@ fn apply_lifecycle_preview(
     if matches!(status, TaskStatus::Done | TaskStatus::Rejected) {
         task.completed_at = Some(now.to_string());
     }
-    task.notes
-        .extend(notes.iter().map(|note| crate::redaction::redact_text(note)));
-    task.evidence.extend(
-        evidence
-            .iter()
-            .map(|item| crate::redaction::redact_text(item))
-            .filter(|item| !item.trim().is_empty()),
-    );
+    task.notes.extend(redacted_non_empty_items(notes));
+    task.evidence.extend(redacted_non_empty_items(evidence));
 }
 
 fn append_evidence(
@@ -432,17 +426,21 @@ fn append_evidence(
 }
 
 fn joined_note(notes: &[String]) -> Option<String> {
-    let joined = notes
-        .iter()
-        .map(|note| note.trim())
-        .filter(|note| !note.is_empty())
-        .collect::<Vec<_>>()
-        .join("\n");
+    let joined = redacted_non_empty_items(notes).join("\n");
     if joined.is_empty() {
         None
     } else {
         Some(joined)
     }
+}
+
+fn redacted_non_empty_items(items: &[String]) -> Vec<String> {
+    items
+        .iter()
+        .map(|item| crate::redaction::redact_text(item))
+        .map(|item| item.trim().to_string())
+        .filter(|item| !item.is_empty())
+        .collect()
 }
 
 fn build_task_lifecycle_document(
@@ -461,8 +459,8 @@ fn build_task_lifecycle_document(
         task_id: task_id.to_string(),
         status: status.as_str().to_string(),
         task,
-        notes: notes.to_vec(),
-        evidence: evidence.to_vec(),
+        notes: redacted_non_empty_items(notes),
+        evidence: redacted_non_empty_items(evidence),
         archived,
         continuation: MachineContinuationSummary {
             headline: format!("Task {task_id} {verb} marked {status}."),
