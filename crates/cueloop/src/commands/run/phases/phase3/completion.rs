@@ -204,7 +204,7 @@ mod tests {
             repo_root: repo_root.clone(),
             queue_path: repo_root.join(".cueloop/queue.jsonc"),
             done_path: repo_root.join(".cueloop/done.jsonc"),
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
@@ -259,14 +259,14 @@ mod tests {
             &resolved.done_path,
             &QueueFile {
                 version: 1,
-                tasks: vec![done_task("RQ-0001")],
+                tasks: vec![done_task("CL-0001")],
             },
         )?;
 
-        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "CL-0001");
         let proposal_doc = serde_json::json!({
             "version": 1,
-            "source_task_id": "RQ-0001",
+            "source_task_id": "CL-0001",
             "tasks": [
                 {
                     "key": "quickagent-doc",
@@ -284,7 +284,7 @@ mod tests {
         });
         std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal_doc)?)?;
 
-        let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?
+        let report = apply_followups_if_present_for_finalization(&resolved, "CL-0001")?
             .expect("expected follow-up proposal to be applied");
         assert_eq!(report.created_tasks.len(), 1);
         assert!(
@@ -299,7 +299,7 @@ mod tests {
             queue_after.tasks[0]
                 .relates_to
                 .iter()
-                .any(|related| related == "RQ-0001")
+                .any(|related| related == "CL-0001")
         );
         Ok(())
     }
@@ -321,11 +321,11 @@ mod tests {
             &resolved.done_path,
             &QueueFile {
                 version: 1,
-                tasks: vec![done_task("RQ-0001")],
+                tasks: vec![done_task("CL-0001")],
             },
         )?;
 
-        let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?;
+        let report = apply_followups_if_present_for_finalization(&resolved, "CL-0001")?;
         assert!(report.is_none(), "expected no-op without proposal file");
         Ok(())
     }
@@ -347,15 +347,15 @@ mod tests {
             &resolved.done_path,
             &QueueFile {
                 version: 1,
-                tasks: vec![done_task("RQ-0001")],
+                tasks: vec![done_task("CL-0001")],
             },
         )?;
 
-        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "CL-0001");
         let proposal_doc = invalid_dependency_proposal_doc();
         std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal_doc)?)?;
 
-        let report = apply_followups_if_present_for_finalization(&resolved, "RQ-0001")?;
+        let report = apply_followups_if_present_for_finalization(&resolved, "CL-0001")?;
 
         assert!(report.is_none(), "invalid proposal should be skipped");
         assert!(
@@ -376,11 +376,11 @@ mod tests {
         let resolved = resolved_for_repo(temp.path().to_path_buf());
         std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
 
-        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "CL-0001");
         let proposal_doc = invalid_dependency_proposal_doc();
         std::fs::write(&proposal_path, serde_json::to_string_pretty(&proposal_doc)?)?;
 
-        let err = apply_followups_if_present_for_finalization(&resolved, "RQ-0001").unwrap_err();
+        let err = apply_followups_if_present_for_finalization(&resolved, "CL-0001").unwrap_err();
 
         assert!(
             format!("{err:#}").contains("load queue"),
@@ -397,10 +397,10 @@ mod tests {
         let resolved = resolved_for_repo(temp.path().to_path_buf());
         std::fs::create_dir_all(temp.path().join(".cueloop/cache/followups"))?;
 
-        let proposal_path = queue::default_followups_path(&resolved.repo_root, "RQ-0001");
+        let proposal_path = queue::default_followups_path(&resolved.repo_root, "CL-0001");
         std::fs::write(&proposal_path, "{ invalid json")?;
 
-        let err = apply_followups_if_present_for_finalization(&resolved, "RQ-0001").unwrap_err();
+        let err = apply_followups_if_present_for_finalization(&resolved, "CL-0001").unwrap_err();
 
         assert!(
             format!("{err:#}").contains("load queue"),
@@ -413,7 +413,7 @@ mod tests {
     fn invalid_dependency_proposal_doc() -> serde_json::Value {
         serde_json::json!({
             "version": "followups@v1",
-            "source_task_id": "RQ-0001",
+            "source_task_id": "CL-0001",
             "tasks": [
                 {
                     "key": "followup-doc",

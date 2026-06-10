@@ -199,7 +199,7 @@ All webhooks are sent as HTTP POST requests with `Content-Type: application/json
 {
   "event": "task_completed",
   "timestamp": "2024-01-15T10:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Add webhook support",
   "previous_status": "doing",
   "current_status": "done",
@@ -213,7 +213,7 @@ All webhooks are sent as HTTP POST requests with `Content-Type: application/json
 |-------|------|----------|-------------|
 | `event` | string | Always | Event type identifier |
 | `timestamp` | string (RFC3339) | Always | When the event occurred |
-| `task_id` | string | Task events only | Task identifier (e.g., `RQ-0001`) |
+| `task_id` | string | Task events only | Task identifier (e.g., `CL-0001`) |
 | `task_title` | string | Task events only | Human-readable task title |
 | `previous_status` | string | Optional | Status before the change |
 | `current_status` | string | Optional | New status after the change |
@@ -226,7 +226,7 @@ All webhooks are sent as HTTP POST requests with `Content-Type: application/json
 {
   "event": "task_created",
   "timestamp": "2024-01-15T09:00:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Implement user authentication",
   "previous_status": null,
   "current_status": null,
@@ -239,7 +239,7 @@ All webhooks are sent as HTTP POST requests with `Content-Type: application/json
 {
   "event": "task_started",
   "timestamp": "2024-01-15T09:05:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Implement user authentication",
   "previous_status": "todo",
   "current_status": "doing",
@@ -252,7 +252,7 @@ All webhooks are sent as HTTP POST requests with `Content-Type: application/json
 {
   "event": "task_completed",
   "timestamp": "2024-01-15T09:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Implement user authentication",
   "previous_status": "doing",
   "current_status": "done",
@@ -265,7 +265,7 @@ All webhooks are sent as HTTP POST requests with `Content-Type: application/json
 {
   "event": "task_failed",
   "timestamp": "2024-01-15T09:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Implement user authentication",
   "previous_status": "doing",
   "current_status": "rejected",
@@ -281,7 +281,7 @@ Phase and loop events include additional context metadata:
 {
   "event": "phase_completed",
   "timestamp": "2024-01-15T10:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Add webhook support",
   "runner": "claude",
   "model": "sonnet",
@@ -581,7 +581,7 @@ cueloop webhook status --format json
 # Replay specific failures safely
 cueloop webhook replay --dry-run --id wf-1700000000-1
 cueloop webhook replay --event task_completed --limit 5
-cueloop webhook replay --task-id RQ-0814 --max-replay-attempts 3
+cueloop webhook replay --task-id CL-0814 --max-replay-attempts 3
 ```
 
 Replay safety defaults:

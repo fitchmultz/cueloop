@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn resolve_task_phase_count_uses_cli_over_task_and_config() {
         let mut task = Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             title: "test".to_string(),
             ..Default::default()
         };
@@ -238,7 +238,7 @@ mod tests {
     #[test]
     fn resolve_task_phase_count_uses_task_when_cli_not_set() {
         let mut task = Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             title: "test".to_string(),
             ..Default::default()
         };
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn resolve_task_phase_count_rejects_invalid_task_phase_value() {
         let mut task = Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             title: "test".to_string(),
             ..Default::default()
         };

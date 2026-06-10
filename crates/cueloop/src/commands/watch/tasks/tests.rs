@@ -52,7 +52,7 @@ fn create_test_resolved(temp_dir: &TempDir) -> Resolved {
         repo_root: temp_dir.path().to_path_buf(),
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -151,7 +151,7 @@ fn generate_task_id_first_id_format() {
 
     let task_id = generate_task_id(&resolved).unwrap();
 
-    assert_eq!(task_id, "RQ-0001");
+    assert_eq!(task_id, "CL-0001");
 }
 
 #[test]
@@ -299,7 +299,7 @@ fn legacy_v1_task_is_upgraded_in_place_when_comment_still_exists() {
     let resolved = create_test_resolved(&temp_dir);
     let mut queue = QueueFile::default();
     queue.tasks.push(task_with_custom_fields(
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         v1_custom_fields("/src/a.rs", 10, "todo", "fix this"),
     ));
@@ -336,12 +336,12 @@ fn task_exists_for_comment_ignores_done_and_rejected_watch_tasks() {
     let comment = detected_comment("/src/a.rs", 10, CommentType::Todo, "fix this");
     let mut queue = QueueFile::default();
     queue.tasks.push(task_with_custom_fields(
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Done,
         v1_custom_fields("/src/a.rs", 10, "todo", "fix this"),
     ));
     queue.tasks.push(task_with_custom_fields(
-        "RQ-0002",
+        "CL-0002",
         TaskStatus::Rejected,
         v1_custom_fields("/src/a.rs", 10, "todo", "fix this"),
     ));

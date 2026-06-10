@@ -84,7 +84,7 @@ echo '{"type":"item.completed","item":{"type":"agent_message","text":"created ta
     let queue: cueloop::contracts::QueueFile =
         serde_json::from_str(&std::fs::read_to_string(queue_path)?)?;
     assert_eq!(queue.tasks.len(), 1);
-    assert_eq!(queue.tasks[0].id, "RQ-0001");
+    assert_eq!(queue.tasks[0].id, "CL-0001");
     assert_eq!(queue.tasks[0].title, "Created through task insert");
     Ok(())
 }

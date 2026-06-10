@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_fixes_trailing_comma_in_array() {
-        let input = r#"{"tasks": [{"id": "RQ-0001", "tags": ["a", "b",]}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "tags": ["a", "b",]}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains("\"tags\": [\"a\", \"b\"]"));
         assert!(!repaired.contains("\"b\","));
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_fixes_trailing_comma_in_object() {
-        let input = r#"{"tasks": [{"id": "RQ-0001", "title": "Test",}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "title": "Test",}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains("\"title\": \"Test\"}"));
         assert!(!repaired.contains("\"Test\","));
@@ -202,24 +202,24 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_returns_none_for_valid_json() {
-        let input = r#"{"tasks": [{"id": "RQ-0001", "title": "Test"}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "title": "Test"}]}"#;
         assert!(attempt_json_repair(input).is_none());
     }
 
     #[test]
     fn attempt_json_repair_fixes_multiple_trailing_commas() {
         // Test with a complete valid task structure that includes all required fields
-        let input = r#"{"version": 1, "tasks": [{"id": "RQ-0001", "title": "Test", "status": "todo", "tags": ["a", "b",], "scope": ["file",],}]}"#;
+        let input = r#"{"version": 1, "tasks": [{"id": "CL-0001", "title": "Test", "status": "todo", "tags": ["a", "b",], "scope": ["file",],}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         // Verify it's valid JSON
         let _: QueueFile = serde_json::from_str(&repaired).expect("repaired should be valid JSON");
     }
 
-    // Tests for enhanced JSON repair (RQ-0362)
+    // Tests for enhanced JSON repair (CL-0362)
 
     #[test]
     fn attempt_json_repair_fixes_single_quoted_strings() {
-        let input = r#"{'version': 1, 'tasks': [{'id': 'RQ-0001', 'title': 'Test'}]}"#;
+        let input = r#"{'version': 1, 'tasks': [{'id': 'CL-0001', 'title': 'Test'}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         // Verify it's valid JSON
         let _: QueueFile = serde_json::from_str(&repaired).expect("repaired should be valid JSON");
@@ -227,7 +227,7 @@ mod tests {
         assert!(repaired.contains("\"version\""));
         assert!(repaired.contains("\"tasks\""));
         assert!(repaired.contains("\"id\""));
-        assert!(repaired.contains("\"RQ-0001\""));
+        assert!(repaired.contains("\"CL-0001\""));
         assert!(repaired.contains("\"title\""));
         assert!(repaired.contains("\"Test\""));
     }
@@ -235,14 +235,14 @@ mod tests {
     #[test]
     fn attempt_json_repair_preserves_apostrophes_in_words() {
         // Apostrophes within words (like "don't") should not be converted
-        let input = r#"{"tasks": [{"id": "RQ-0001", "title": "Don't break this"}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "title": "Don't break this"}]}"#;
         // This is valid JSON, so no repair needed
         assert!(attempt_json_repair(input).is_none());
     }
 
     #[test]
     fn attempt_json_repair_fixes_unquoted_object_keys() {
-        let input = r#"{version: 1, tasks: [{id: "RQ-0001", title: "Test"}]}"#;
+        let input = r#"{version: 1, tasks: [{id: "CL-0001", title: "Test"}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         // Verify it's valid JSON
         let _: QueueFile = serde_json::from_str(&repaired).expect("repaired should be valid JSON");
@@ -256,7 +256,7 @@ mod tests {
     #[test]
     fn attempt_json_repair_fixes_unquoted_keys_after_comma() {
         let input =
-            r#"{"version": 1, tasks: [{"id": "RQ-0001", "title": "Test", status: "todo"}]}"#;
+            r#"{"version": 1, tasks: [{"id": "CL-0001", "title": "Test", status: "todo"}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         let _: QueueFile = serde_json::from_str(&repaired).expect("repaired should be valid JSON");
         assert!(repaired.contains("\"tasks\""));
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn attempt_json_repair_fixes_unescaped_newlines_in_strings() {
         // Agent pastes multi-line content without escaping
-        let input = "{\"version\": 1, \"tasks\": [{\"id\": \"RQ-0001\", \"title\": \"Line one\nLine two\"}]}";
+        let input = "{\"version\": 1, \"tasks\": [{\"id\": \"CL-0001\", \"title\": \"Line one\nLine two\"}]}";
         let repaired = attempt_json_repair(input).expect("should repair");
         // Newlines should be escaped
         assert!(repaired.contains("Line one\\nLine two"));
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_fixes_unescaped_carriage_returns_in_strings() {
-        let input = "{\"version\": 1, \"tasks\": [{\"id\": \"RQ-0001\", \"title\": \"Line one\rLine two\"}]}";
+        let input = "{\"version\": 1, \"tasks\": [{\"id\": \"CL-0001\", \"title\": \"Line one\rLine two\"}]}";
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains("Line one\\rLine two"));
         assert!(!repaired.contains("Line one\rLine two"));
@@ -286,19 +286,19 @@ mod tests {
     #[test]
     fn attempt_json_repair_handles_multiple_errors() {
         // Combine multiple errors: single quotes, unquoted keys, trailing comma
-        let input = r#"{'version': 1, tasks: [{'id': 'RQ-0001', 'title': 'Test', 'status': 'todo', 'tags': [], 'scope': [], 'evidence': [], 'plan': [],}]}"#;
+        let input = r#"{'version': 1, tasks: [{'id': 'CL-0001', 'title': 'Test', 'status': 'todo', 'tags': [], 'scope': [], 'evidence': [], 'plan': [],}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         let _: QueueFile = serde_json::from_str(&repaired).expect("repaired should be valid JSON");
         assert!(repaired.contains("\"version\""));
         assert!(repaired.contains("\"tasks\""));
         assert!(repaired.contains("\"id\""));
-        assert!(repaired.contains("\"RQ-0001\""));
+        assert!(repaired.contains("\"CL-0001\""));
     }
 
     #[test]
     fn attempt_json_repair_escapes_double_quotes_in_single_quoted_strings() {
         // Single-quoted string containing double quotes should escape them
-        let input = r#"{'version': 1, 'tasks': [{'id': 'RQ-0001', 'title': 'Say "hello"'}]}"#;
+        let input = r#"{'version': 1, 'tasks': [{'id': 'CL-0001', 'title': 'Say "hello"'}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains("\"Say \\\"hello\\\"\""));
     }
@@ -313,16 +313,16 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_preserves_single_quote_then_unquoted_key_order() {
-        let input = r#"{'version': 1, 'tasks': [{'id': 'RQ-0001', 'title': 'Test', 'status': 'todo', 'tags': [], 'scope': [], 'evidence': [], 'plan': [], 'created_at': '2026-01-01T00:00:00Z', 'updated_at': '2026-01-01T00:00:00Z'}]}"#;
+        let input = r#"{'version': 1, 'tasks': [{'id': 'CL-0001', 'title': 'Test', 'status': 'todo', 'tags': [], 'scope': [], 'evidence': [], 'plan': [], 'created_at': '2026-01-01T00:00:00Z', 'updated_at': '2026-01-01T00:00:00Z'}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains(r#""tasks""#));
-        assert!(repaired.contains(r#""id": "RQ-0001""#));
+        assert!(repaired.contains(r#""id": "CL-0001""#));
         let _: QueueFile = serde_json::from_str(&repaired).expect("repaired should parse as JSON");
     }
 
     #[test]
     fn attempt_json_repair_handles_multiple_ordered_errors() {
-        let input = r#"{'version': 1, tasks: [{id: 'RQ-0001', title: 'A', status: 'todo', tags: ['bug',], scope: [], evidence: [], plan: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z'}]}"#;
+        let input = r#"{'version': 1, tasks: [{id: 'CL-0001', title: 'A', status: 'todo', tags: ['bug',], scope: [], evidence: [], plan: [], created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z'}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         let _parsed: QueueFile =
             serde_json::from_str(&repaired).expect("repaired should parse as JSON");
@@ -335,7 +335,7 @@ mod tests {
     #[test]
     #[ignore = "perf-smoke: run manually when tuning hot-path: cargo test -p cueloop queue::json_repair::tests::attempt_json_repair_perf_smoke -- --ignored"]
     fn attempt_json_repair_perf_smoke() {
-        let input = r#"{'version': 1, 'tasks': [{'id': 'RQ-0001', 'title': 'A', 'status': 'todo', 'scope': ['x',], 'evidence': ['a',], 'plan': ['x',], 'created_at': '2026-01-01T00:00:00Z', 'updated_at': '2026-01-01T00:00:00Z'}]}"#;
+        let input = r#"{'version': 1, 'tasks': [{'id': 'CL-0001', 'title': 'A', 'status': 'todo', 'scope': ['x',], 'evidence': ['a',], 'plan': ['x',], 'created_at': '2026-01-01T00:00:00Z', 'updated_at': '2026-01-01T00:00:00Z'}]}"#;
         let start = std::time::Instant::now();
         for _ in 0..20_000 {
             let _ = attempt_json_repair(input);

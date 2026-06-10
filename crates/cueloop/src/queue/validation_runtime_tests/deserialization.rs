@@ -50,7 +50,7 @@ fn deserialize_rejects_invalid_field_types() {
     let json = r#"{
         "version": 1,
         "tasks": [{
-            "id": "RQ-0001",
+            "id": "CL-0001",
             "status": "todo",
             "title": "Test",
             "tags": "not-an-array",
@@ -98,7 +98,7 @@ fn deserialize_rejects_missing_task_title() {
     let json = r#"{
         "version": 1,
         "tasks": [{
-            "id": "RQ-0001",
+            "id": "CL-0001",
             "status": "todo",
             "tags": [],
             "scope": [],

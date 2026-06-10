@@ -42,7 +42,7 @@ pub(crate) fn validate_queue(queue: &QueueFile, id_prefix: &str, id_width: usize
     let expected_prefix = super::super::normalize_prefix(id_prefix);
     if expected_prefix.is_empty() {
         bail!(
-            "Empty id_prefix: prefix is required. Set a non-empty prefix (e.g., 'RQ') in .cueloop/config.jsonc or via --id-prefix."
+            "Empty id_prefix: prefix is required. Set a non-empty prefix (e.g., 'CL') in .cueloop/config.jsonc or via --id-prefix."
         );
     }
 

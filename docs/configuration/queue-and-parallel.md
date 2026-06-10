@@ -89,8 +89,8 @@ Rules:
 Supported fields:
 - `file`: path to the queue file (default: `.cueloop/queue.jsonc`).
 - `done_file`: path to the done archive (default: `.cueloop/done.jsonc`).
-- `id_prefix`: task ID prefix (default: `RQ`).
-- `id_width`: zero padding width (default: `4`, e.g. `RQ-0001`).
+- `id_prefix`: task ID prefix (default: `CL`). Existing queues with no explicit prefix keep their inferred prefix, such as legacy `RQ`, so old task IDs remain valid.
+- `id_width`: zero padding width (default: `4`, e.g. `CL-0001`).
 - `auto_archive_terminal_after_days`: automatically archive terminal tasks (done/rejected) from queue to done after this many days (default: `null`/`None`, disabled).
 
 Machine clients resolve these settings through `cueloop machine config resolve` or `cueloop machine workspace overview`; the `.cueloop/...` locations are defaults, not a separate app contract.
@@ -119,7 +119,7 @@ Example configurations:
   "queue": {
     "file": ".cueloop/queue.jsonc",
     "done_file": ".cueloop/done.jsonc",
-    "id_prefix": "RQ",
+    "id_prefix": "CL",
     "id_width": 4,
     "auto_archive_terminal_after_days": 7
   }

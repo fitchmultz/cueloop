@@ -1,4 +1,4 @@
-<!-- CUELOOP_README_VERSION: 10 -->
+<!-- CUELOOP_README_VERSION: 12 -->
 # CueLoop runtime files
 
 This repo is using CueLoop. The `cueloop` executable is the primary command name. This project stores runtime state in `{{RUNTIME_DIR}}/`. New repos default to `.cueloop/`.
@@ -38,7 +38,7 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
   - `cueloop queue next-id`
   - `cueloop queue next-id --count 7`
 - Show task details:
-  - `cueloop queue show RQ-0001`
+  - `cueloop queue show CL-0001`
 - Archive completed tasks:
   - `cueloop queue archive`
 - Repair queue issues:
@@ -55,6 +55,25 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
   - `cueloop queue burndown --days 30`
   - `cueloop queue prune --age 90 --keep-last 100`
 
+### Agent ledger workflow
+
+Use these when an already-running agent is doing the work and only needs durable queue/task tracking. These commands do not spawn runner CLIs.
+
+- Compact queue context:
+  - `cueloop agent overview`
+  - `cueloop agent overview --format json`
+- Pick and inspect work:
+  - `cueloop agent next --with-title`
+  - `cueloop agent show CL-0001 --format json`
+- Claim, track progress, and hand off:
+  - `cueloop agent claim CL-0001 --owner "$USER-session" --ttl-minutes 120`
+  - `cueloop agent start CL-0001 --note "Started in current agent session"`
+  - `cueloop agent note CL-0001 "Found root cause"`
+  - `cueloop agent evidence CL-0001 "make agent-ci passed"`
+  - `cueloop agent handoff CL-0001 --next "Run final verification"`
+- Complete with evidence:
+  - `cueloop agent complete CL-0001 --evidence "make agent-ci passed"`
+
 ### Task creation and updates
 
 - Build a task from a request:
@@ -63,15 +82,15 @@ Do not rename runtime directories manually. Use `cueloop migrate runtime-dir --c
   - `cueloop task insert --input /tmp/task-insert.json`
   - `cueloop task insert --dry-run --format json --input /tmp/task-insert.json`
 - Update task fields from repo state:
-  - `cueloop task update RQ-0001`
+  - `cueloop task update CL-0001`
   - `cueloop task update`
 - Edit task fields:
-  - `cueloop task edit title "New title" RQ-0001`
-  - `cueloop task edit tags "rust, cli" RQ-0001`
+  - `cueloop task edit title "New title" CL-0001`
+  - `cueloop task edit tags "rust, cli" CL-0001`
 - Change task status:
-  - `cueloop task status doing RQ-0001`
+  - `cueloop task status doing CL-0001`
 - Show task details:
-  - `cueloop task show RQ-0001`
+  - `cueloop task show CL-0001`
 
 ### Execution
 
@@ -134,7 +153,7 @@ Prompt templates support variable interpolation for environment variables and co
 - `{{config.agent.model}}` — current model.
 - `{{config.queue.file}}` — queue file path, for example `{{RUNTIME_DIR}}/queue.jsonc`.
 - `{{config.queue.done_file}}` — done archive path, for example `{{RUNTIME_DIR}}/done.jsonc`.
-- `{{config.queue.id_prefix}}` — task ID prefix, for example `RQ`.
+- `{{config.queue.id_prefix}}` — task ID prefix, for example `CL`.
 - `{{config.queue.id_width}}` — task ID width, for example `4`.
 - `{{config.project_type}}` — project type.
 

@@ -320,10 +320,10 @@ mod tests {
         std::fs::write(seed.path().join("base.txt"), "base\n")?;
         git_test::commit_all(seed.path(), "init")?;
         git_test::git_run(seed.path(), &["push", "-u", "origin", "HEAD"])?;
-        git_test::git_run(seed.path(), &["checkout", "-b", "cueloop/RQ-0940"])?;
+        git_test::git_run(seed.path(), &["checkout", "-b", "cueloop/CL-0940"])?;
         std::fs::write(seed.path().join("task.txt"), "remote-only\n")?;
         git_test::commit_all(seed.path(), "remote task")?;
-        git_test::git_run(seed.path(), &["push", "-u", "origin", "cueloop/RQ-0940"])?;
+        git_test::git_run(seed.path(), &["push", "-u", "origin", "cueloop/CL-0940"])?;
 
         let local = TempDir::new()?;
         git_test::clone_repo(remote.path(), local.path())?;
@@ -334,7 +334,7 @@ mod tests {
                 "checkout",
                 "--no-track",
                 "-b",
-                "cueloop/RQ-0940",
+                "cueloop/CL-0940",
                 "origin/main",
             ],
         )?;
@@ -346,7 +346,7 @@ mod tests {
             local.path(),
             &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
         )?;
-        assert_eq!(upstream, "origin/cueloop/RQ-0940");
+        assert_eq!(upstream, "origin/cueloop/CL-0940");
 
         Ok(())
     }

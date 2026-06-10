@@ -42,7 +42,7 @@ fn resolved_with_repo_root(repo_root: PathBuf) -> crate::config::Resolved {
         queue_path: repo_root.join(".cueloop/queue.jsonc"),
         done_path: repo_root.join(".cueloop/done.jsonc"),
         repo_root,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,

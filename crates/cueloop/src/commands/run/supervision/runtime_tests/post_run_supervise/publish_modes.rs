@@ -102,7 +102,7 @@ fn post_run_supervise_errors_on_push_failure_when_enabled() -> anyhow::Result<()
     let err = post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::CommitAndPush,
         PushPolicy::RequireUpstream,
@@ -151,7 +151,7 @@ fn post_run_supervise_skips_push_when_disabled() -> anyhow::Result<()> {
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -179,7 +179,7 @@ fn post_run_supervise_commit_mode_commits_without_pushing() -> anyhow::Result<()
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Commit,
         PushPolicy::RequireUpstream,
@@ -201,7 +201,7 @@ fn post_run_supervise_commit_mode_commits_without_pushing() -> anyhow::Result<()
 
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
     anyhow::ensure!(
-        done_file.tasks.iter().any(|task| task.id == "RQ-0001"),
+        done_file.tasks.iter().any(|task| task.id == "CL-0001"),
         "expected task archived in done file"
     );
     Ok(())
@@ -215,7 +215,7 @@ fn post_run_supervise_noop_archived_done_commit_and_push_pushes_existing_ahead_c
     write_empty_queue(temp.path())?;
     write_done_tasks(
         temp.path(),
-        vec![make_task("RQ-0001", "Archived task", TaskStatus::Done)],
+        vec![make_task("CL-0001", "Archived task", TaskStatus::Done)],
     )?;
     git_test::commit_all(temp.path(), "init")?;
     let _remote = configure_tracking_remote(temp.path())?;
@@ -227,7 +227,7 @@ fn post_run_supervise_noop_archived_done_commit_and_push_pushes_existing_ahead_c
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::CommitAndPush,
         PushPolicy::RequireUpstream,
@@ -253,7 +253,7 @@ fn post_run_supervise_noop_archived_done_commit_mode_skips_push_for_existing_ahe
     write_empty_queue(temp.path())?;
     write_done_tasks(
         temp.path(),
-        vec![make_task("RQ-0001", "Archived task", TaskStatus::Done)],
+        vec![make_task("CL-0001", "Archived task", TaskStatus::Done)],
     )?;
     git_test::commit_all(temp.path(), "init")?;
     let _remote = configure_tracking_remote(temp.path())?;
@@ -265,7 +265,7 @@ fn post_run_supervise_noop_archived_done_commit_mode_skips_push_for_existing_ahe
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Commit,
         PushPolicy::RequireUpstream,
@@ -302,7 +302,7 @@ fn post_run_supervise_allows_productivity_json_dirty() -> anyhow::Result<()> {
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::CommitAndPush,
         PushPolicy::RequireUpstream,
@@ -317,7 +317,7 @@ fn post_run_supervise_allows_productivity_json_dirty() -> anyhow::Result<()> {
 
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
     anyhow::ensure!(
-        done_file.tasks.iter().any(|task| task.id == "RQ-0001"),
+        done_file.tasks.iter().any(|task| task.id == "CL-0001"),
         "expected task in done archive"
     );
 

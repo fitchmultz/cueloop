@@ -24,9 +24,9 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::{
-    app, cleanup, color::ColorArg, completions, config, context, daemon, doctor, init, machine,
-    migrate, plugin, prd, productivity, prompt, queue, run, runner, scan, task, tutorial, undo,
-    version, watch, webhook,
+    agent_ledger, app, cleanup, color::ColorArg, completions, config, context, daemon, doctor,
+    init, machine, migrate, plugin, prd, productivity, prompt, queue, run, runner, scan, task,
+    tutorial, undo, version, watch, webhook,
 };
 
 #[derive(Parser)]
@@ -37,11 +37,13 @@ use super::{
   cueloop init                         Bootstrap CueLoop in this repo
   cueloop queue list                   See queued work
   cueloop queue next --with-title      Pick the next task to run
+  cueloop agent overview               Compact task ledger context for active agents
   cueloop task "Fix the flaky test"    Create a task from a request
   cueloop scan "CI gaps"               Scan repo state into task ideas
   cueloop run one                      Run the next task
   cueloop run loop --max-tasks 1       Run one bounded supervisor iteration
   cueloop app open                     Open the macOS app
+  cueloop agent --help                 Agent ledger commands that do not spawn runners
 
 Next help:
   cueloop <command> --help             Show command-specific flags and examples
@@ -62,8 +64,10 @@ Notes:
 Examples:
   cueloop app open
   cueloop queue list
-  cueloop queue show RQ-0008
+  cueloop queue show CL-0008
   cueloop queue next --with-title
+  cueloop agent overview
+  cueloop agent complete CL-0008 --evidence "make agent-ci passed"
   cueloop scan --runner opencode --model gpt-5.3 --focus "CI gaps"
   cueloop task --runner codex --model gpt-5.4 --effort high "Fix the flaky test"
   cueloop scan --runner gemini --model gemini-3-flash-preview --focus "risk audit"
@@ -117,6 +121,8 @@ pub enum Command {
     Config(config::ConfigArgs),
     Run(Box<run::RunArgs>),
     Task(Box<task::TaskArgs>),
+    /// Agent ledger commands for already-running agents; does not spawn runners.
+    Agent(agent_ledger::AgentArgs),
     Scan(scan::ScanArgs),
     Init(init::InitArgs),
     /// macOS app integration commands.
@@ -129,7 +135,7 @@ pub enum Command {
     /// Render and print the final compiled prompts used by CueLoop (for debugging/auditing).
     #[command(
         hide = true,
-        after_long_help = "Examples:\n  cueloop prompt worker --phase 1 --repo-prompt plan\n  cueloop prompt worker --phase 2 --task-id RQ-0001 --plan-file .cueloop/cache/plans/RQ-0001.md\n  cueloop prompt scan --focus \"CI gaps\" --repo-prompt off\n  cueloop prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/cueloop --repo-prompt tools\n"
+        after_long_help = "Examples:\n  cueloop prompt worker --phase 1 --repo-prompt plan\n  cueloop prompt worker --phase 2 --task-id CL-0001 --plan-file .cueloop/cache/plans/CL-0001.md\n  cueloop prompt scan --focus \"CI gaps\" --repo-prompt off\n  cueloop prompt task-builder --request \"Add tests\" --tags rust,tests --scope crates/cueloop --repo-prompt tools\n"
     )]
     Prompt(prompt::PromptArgs),
     /// Verify environment readiness and configuration.

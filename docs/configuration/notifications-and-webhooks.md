@@ -146,7 +146,7 @@ Webhooks are sent as HTTP POST requests with JSON payloads:
 {
   "event": "task_completed",
   "timestamp": "2024-01-15T10:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Add webhook support",
   "previous_status": "doing",
   "current_status": "done",
@@ -164,7 +164,7 @@ Phase and loop events include additional context metadata:
 {
   "event": "phase_completed",
   "timestamp": "2024-01-15T10:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Add webhook support",
   "runner": "pi",
   "model": "openai-codex/gpt-5.4",

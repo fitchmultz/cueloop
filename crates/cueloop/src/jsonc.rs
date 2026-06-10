@@ -143,7 +143,7 @@ mod tests {
             /* Multi-line
                comment */
             "tasks": [{
-                "id": "RQ-0001",
+                "id": "CL-0001",
                 "title": "Test", // inline comment
             },]
         }"#;
@@ -156,6 +156,6 @@ mod tests {
         );
         let queue = result.unwrap();
         assert_eq!(queue.tasks.len(), 1);
-        assert_eq!(queue.tasks[0].id, "RQ-0001");
+        assert_eq!(queue.tasks[0].id, "CL-0001");
     }
 }

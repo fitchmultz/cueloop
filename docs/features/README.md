@@ -6,7 +6,9 @@ Parent: [CueLoop Documentation](../index.md)
 
 This page is the feature-area map. If you are new to CueLoop, start with the [Quick Start](../quick-start.md) or the main [documentation index](../index.md) first.
 
-## Core model
+## Task tracking core
+
+These features work without configuring or spawning a runner.
 
 | Feature | Use it for |
 | --- | --- |
@@ -18,8 +20,11 @@ This page is the feature-area map. If you are new to CueLoop, start with the [Qu
 | [Task Operations](task-operations.md) | Creating, editing, templating, cloning, importing, batching, and CLI workflows |
 | [Dependencies](dependencies.md) | Dependency graph execution, analysis, and critical paths |
 | [Context](context.md) | RepoPrompt/context-building behavior |
+| [Agent Usage Guide](../guides/agent-usage.md) | Durable task ledger commands for already-running agents |
 
-## Execution
+## Execution automation
+
+These features are optional. Use them when CueLoop should dispatch, supervise, or integrate with external runners and automation.
 
 | Feature | Use it for |
 | --- | --- |
@@ -84,6 +89,7 @@ This page is the feature-area map. If you are new to CueLoop, start with the [Qu
 
 | Goal | Start with |
 | --- | --- |
+| Use CueLoop as an already-running agent | [Agent Usage Guide](../guides/agent-usage.md), then [Task Schema and Field Reference](task-schema.md) |
 | Configure a runner | [Runners](runners.md), then [Agent and Runner Configuration](configuration-agent.md) |
 | Set up parallel execution | [Parallel](parallel.md), then [Queue and Parallel Configuration](../configuration/queue-and-parallel.md#parallel-configuration) |
 | Integrate Slack, Discord, or CI notifications | [Webhooks](webhooks.md), then [Notifications](notifications.md) |

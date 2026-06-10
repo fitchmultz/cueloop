@@ -18,7 +18,7 @@
 //!
 //! Invariants/assumptions:
 //! - Helper configs disable unrelated features unless a scenario opts in.
-//! - Queue fixtures always target `RQ-0001`.
+//! - Queue fixtures always target `CL-0001`.
 
 use crate::commands::run::supervision::ContinueSession;
 use crate::constants::limits::CI_GATE_AUTO_RETRY_LIMIT;
@@ -62,7 +62,7 @@ pub(super) fn make_task(id: &str, title: &str, status: TaskStatus) -> Task {
 }
 
 pub(super) fn write_queue(repo_root: &Path, status: TaskStatus) -> anyhow::Result<()> {
-    write_queue_tasks(repo_root, vec![make_task("RQ-0001", "Test task", status)])
+    write_queue_tasks(repo_root, vec![make_task("CL-0001", "Test task", status)])
 }
 
 pub(super) fn write_queue_tasks(repo_root: &Path, tasks: Vec<Task>) -> anyhow::Result<()> {
@@ -123,7 +123,7 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
         queue: QueueConfig {
             file: Some(PathBuf::from(".cueloop/queue.jsonc")),
             done_file: Some(PathBuf::from(".cueloop/done.jsonc")),
-            id_prefix: Some("RQ".to_string()),
+            id_prefix: Some("CL".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
             task_count_warning_threshold: Some(500),
@@ -139,7 +139,7 @@ pub(super) fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
         repo_root: repo_root.to_path_buf(),
         queue_path: repo_root.join(".cueloop/queue.jsonc"),
         done_path: repo_root.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
@@ -163,7 +163,7 @@ pub(super) fn continue_session_with(
         output_stream: crate::runner::OutputStream::Terminal,
         run_event_handler: None,
         ci_failure_retry_count: 0,
-        task_id: "RQ-0001".to_string(),
+        task_id: "CL-0001".to_string(),
         last_ci_error_pattern: None,
         consecutive_same_error_count: 0,
     }

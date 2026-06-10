@@ -22,7 +22,7 @@ use super::*;
 fn test_resolve_id_prefix_default() {
     let cfg = Config::default();
     let prefix = config::resolve_id_prefix(&cfg).unwrap();
-    assert_eq!(prefix, "RQ");
+    assert_eq!(prefix, "CL");
 }
 
 #[test]

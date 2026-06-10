@@ -327,7 +327,7 @@ mod tests {
             sound_path: None,
             timeout_ms: 8000,
         };
-        notify_task_complete("RQ-0001", "Test task", &config);
+        notify_task_complete("CL-0001", "Test task", &config);
     }
 
     #[test]
@@ -338,7 +338,7 @@ mod tests {
                 tasks_succeeded: 2,
                 tasks_failed: 1,
             },
-            "RQ-0001",
+            "CL-0001",
             "Test task",
             8000,
         );

@@ -44,7 +44,7 @@ pub struct CloneTaskOptions<'a> {
     pub title_prefix: Option<&'a str>,
     /// Current timestamp (RFC3339) for created_at/updated_at.
     pub now_utc: &'a str,
-    /// Prefix for new task ID (e.g., "RQ").
+    /// Prefix for new task ID (e.g., "CL").
     pub id_prefix: &'a str,
     /// Width of the numeric portion of the ID.
     pub id_width: usize,
@@ -179,7 +179,7 @@ pub struct SplitTaskOptions<'a> {
     pub distribute_plan: bool,
     /// Current timestamp (RFC3339) for created_at/updated_at.
     pub now_utc: &'a str,
-    /// Prefix for new task ID (e.g., "RQ").
+    /// Prefix for new task ID (e.g., "CL").
     pub id_prefix: &'a str,
     /// Width of the numeric portion of the ID.
     pub id_width: usize,

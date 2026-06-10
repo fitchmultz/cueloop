@@ -209,7 +209,7 @@ Wraps the base worker for the planning phase:
 
 **Key Placeholders:**
 - `{{TOTAL_PHASES}}` - Number of phases (2 or 3)
-- `{{PLAN_PATH}}` - Where to write the plan (e.g., `.cueloop/cache/plans/RQ-0001.md`)
+- `{{PLAN_PATH}}` - Where to write the plan (e.g., `.cueloop/cache/plans/CL-0001.md`)
 - `{{ITERATION_CONTEXT}}` - Refinement guidance for multi-iteration runs
 - `{{REPOPROMPT_BLOCK}}` - Tool instructions when RepoPrompt is enabled
 
@@ -313,12 +313,12 @@ Review body injected in Phase 3:
 
 | Placeholder | Description | Example |
 |-------------|-------------|---------|
-| `{{TASK_ID}}` | Current task identifier | `RQ-0001` |
+| `{{TASK_ID}}` | Current task identifier | `CL-0001` |
 | `{{USER_REQUEST}}` | Original user input | "Fix login button" |
 | `{{USER_FOCUS}}` | Scan focus area | "authentication" |
 | `{{HINT_TAGS}}` | Suggested tags | `["ui", "bug"]` |
 | `{{HINT_SCOPE}}` | Suggested scope | `["src/auth/"]` |
-| `{{PLAN_PATH}}` | Plan cache file path | `.cueloop/cache/plans/RQ-0001.md` |
+| `{{PLAN_PATH}}` | Plan cache file path | `.cueloop/cache/plans/CL-0001.md` |
 | `{{PLAN_TEXT}}` | Content of plan file | (full plan markdown) |
 | `{{TOTAL_PHASES}}` | Phase count | `2` or `3` |
 | `{{CONFLICT_FILES}}` | Conflicted file list | `["file1.rs", "file2.rs"]` |

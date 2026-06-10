@@ -272,7 +272,7 @@ fn repair_remaps_all_relationship_fields_for_invalid_ids() -> Result<()> {
         .expect("Task 1 found");
     let new_id = task1["id"].as_str().expect("id string");
 
-    assert!(new_id.starts_with("RQ-"), "New ID should start with RQ-");
+    assert!(new_id.starts_with("CL-"), "New ID should start with CL-");
 
     // Verify the referencing task points to the remapped ID everywhere.
     let task2 = tasks

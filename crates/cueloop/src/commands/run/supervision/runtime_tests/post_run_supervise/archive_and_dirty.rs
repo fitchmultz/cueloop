@@ -35,7 +35,7 @@ fn post_run_supervise_commits_and_cleans_when_enabled() -> anyhow::Result<()> {
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::CommitAndPush,
         PushPolicy::RequireUpstream,
@@ -53,7 +53,7 @@ fn post_run_supervise_commits_and_cleans_when_enabled() -> anyhow::Result<()> {
 
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
     anyhow::ensure!(
-        done_file.tasks.iter().any(|task| task.id == "RQ-0001"),
+        done_file.tasks.iter().any(|task| task.id == "CL-0001"),
         "expected task in done archive"
     );
     Ok(())
@@ -71,7 +71,7 @@ fn post_run_supervise_skips_commit_when_disabled() -> anyhow::Result<()> {
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -97,8 +97,8 @@ fn post_run_supervise_archives_rejected_terminal_tasks_alongside_completed_task(
     write_queue_tasks(
         temp.path(),
         vec![
-            make_task("RQ-0001", "Primary task", TaskStatus::Todo),
-            make_task("RQ-0002", "Rejected sibling", TaskStatus::Rejected),
+            make_task("CL-0001", "Primary task", TaskStatus::Todo),
+            make_task("CL-0002", "Rejected sibling", TaskStatus::Rejected),
         ],
     )?;
     git_test::commit_all(temp.path(), "init")?;
@@ -107,7 +107,7 @@ fn post_run_supervise_archives_rejected_terminal_tasks_alongside_completed_task(
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Commit,
         PushPolicy::RequireUpstream,
@@ -127,14 +127,14 @@ fn post_run_supervise_archives_rejected_terminal_tasks_alongside_completed_task(
     let archived_primary = done_file
         .tasks
         .iter()
-        .find(|task| task.id == "RQ-0001")
+        .find(|task| task.id == "CL-0001")
         .expect("primary task should be archived");
     anyhow::ensure!(archived_primary.status == TaskStatus::Done);
 
     let archived_rejected = done_file
         .tasks
         .iter()
-        .find(|task| task.id == "RQ-0002")
+        .find(|task| task.id == "CL-0002")
         .expect("rejected sibling should be archived");
     anyhow::ensure!(archived_rejected.status == TaskStatus::Rejected);
 
@@ -157,7 +157,7 @@ fn post_run_supervise_backfills_missing_completed_at() -> anyhow::Result<()> {
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -174,7 +174,7 @@ fn post_run_supervise_backfills_missing_completed_at() -> anyhow::Result<()> {
     let task = done_file
         .tasks
         .iter()
-        .find(|task| task.id == "RQ-0001")
+        .find(|task| task.id == "CL-0001")
         .expect("expected task in done archive");
     let completed_at = task
         .completed_at

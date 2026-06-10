@@ -43,11 +43,11 @@ mod tests {
 
     #[test]
     fn effective_active_worker_count_uses_max() {
-        let workspace_path = crate::testsupport::path::portable_abs_path("ws/RQ-0001");
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws/CL-0001");
         let mut state_file =
             state::ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "main".to_string());
         state_file.upsert_worker(WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             workspace_path.clone(),
             "2026-02-20T00:00:00Z".to_string(),
         ));
@@ -60,11 +60,11 @@ mod tests {
 
     #[test]
     fn initial_tasks_started_starts_at_zero_per_invocation() {
-        let workspace_path = crate::testsupport::path::portable_abs_path("ws/RQ-0001");
+        let workspace_path = crate::testsupport::path::portable_abs_path("ws/CL-0001");
         let mut state_file =
             state::ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "main".to_string());
         let mut failed = WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             workspace_path,
             "2026-02-20T00:00:00Z".to_string(),
         );

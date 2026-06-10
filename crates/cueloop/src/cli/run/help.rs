@@ -128,8 +128,8 @@ Blocking-state diagnosis:\n\
 Examples:\n\
  cueloop run one\n\
  cueloop run one --resume\n\
- cueloop run one --id RQ-0001\n\
- cueloop run one --id RQ-0001 --resume\n\
+ cueloop run one --id CL-0001\n\
+ cueloop run one --id CL-0001 --resume\n\
  cueloop run one --debug\n\
  cueloop run one --profile fast-local\n\
  cueloop run one --profile deep-review\n\
@@ -152,7 +152,7 @@ Examples:\n\
  cueloop run one --non-interactive\n\
  cueloop run one --dry-run\n\
  cueloop run one --dry-run --include-draft\n\
- cueloop run one --dry-run --id RQ-0001";
+ cueloop run one --dry-run --id CL-0001";
 
 pub(super) const RUN_LOOP_AFTER_LONG_HELP: &str = "Resume behavior:\n\
  - `cueloop run loop --resume` auto-resumes the interrupted session when safe.\n\
@@ -206,13 +206,13 @@ pub(super) const PARALLEL_AFTER_LONG_HELP: &str = "Experimental direct-push para
 Examples:\n\
  cueloop run parallel status\n\
  cueloop run parallel status --json\n\
- cueloop run parallel retry --task RQ-0001";
+ cueloop run parallel retry --task CL-0001";
 
 pub(super) const PARALLEL_STATUS_AFTER_LONG_HELP: &str = "Examples:\n\
  cueloop run parallel status\n\
  cueloop run parallel status --json\n\
- cueloop run parallel retry --task RQ-0001";
+ cueloop run parallel retry --task CL-0001";
 
 pub(super) const PARALLEL_RETRY_AFTER_LONG_HELP: &str = "Examples:\n\
- cueloop run parallel retry --task RQ-0001\n\
+ cueloop run parallel retry --task CL-0001\n\
  cueloop run loop --parallel <N>";

@@ -128,14 +128,14 @@ Resume decisions remain structured:
   "version": 3,
   "kind": "resume_decision",
   "timestamp": "2026-04-26T06:00:00Z",
-  "task_id": "RQ-0001",
-  "message": "Resume: continuing the interrupted session for task RQ-0001.",
+  "task_id": "CL-0001",
+  "message": "Resume: continuing the interrupted session for task CL-0001.",
   "payload": {
     "status": "resuming_same_session",
     "scope": "run_session",
     "reason": "session_valid",
-    "task_id": "RQ-0001",
-    "message": "Resume: continuing the interrupted session for task RQ-0001.",
+    "task_id": "CL-0001",
+    "message": "Resume: continuing the interrupted session for task CL-0001.",
     "detail": "Saved session is current and will resume from phase 2 with 1 completed loop task(s)."
   }
 }
@@ -232,11 +232,13 @@ App and automation clients should decode this document on stdout for successful 
 
 ### `machine queue read`
 
+`machine queue read` returns the active queue, done archive, `next_runnable_task_id`, and runnability details. For compact agent/app reads, `--active-only` returns an empty done archive while preserving active queue and runnability semantics, and `--done-limit <N>` includes only the most recent `N` done-archive tasks.
+
 `runnability.summary.blocking` is the queue/read-side source of truth for why the queue is idle, dependency-blocked, schedule-blocked, mixed, draft-activation waiting, or structurally invalid.
 
 Draft-only active queues are valid but not runnable by default. They use a waiting `idle` blocking payload with message `No runnable tasks because all tasks are draft.` and may set `task_id` to the first actionable draft leaf for `cueloop task ready <ID>` guidance.
 
-Task payloads include `kind` (`work_item` or `group`) with backward-compatible default `work_item`. Runnability report `version: 2` also includes `kind` on each row. `group` rows remain visible with `runnable: false` and a `non_executable_kind` reason, but they do not count as runnable candidates or blockers. `next_runnable_task_id` and `runnability.selection.selected_task_id` select executable `work_item` tasks only.
+Task payloads include `kind` (`work_item` or `group`) with backward-compatible default `work_item`. Runnability report `version: 2` also includes `kind` on each row. `group` rows remain visible with `runnable: false` and a `non_executable_kind` reason, but they do not count as runnable candidates or blockers. `next_runnable_task_id` and `runnability.selection.selected_task_id` select executable `work_item` tasks only. Reverse `blocks` edges are treated as execution constraints: if task A lists task B in `blocks`, B is not runnable until A is `done` or `rejected`, even if B does not list A in `depends_on`.
 
 When the queue and done files are readable but structural validation fails, `machine queue read` still returns the queue snapshot for app recovery UI, but it must not advertise runnable work: `next_runnable_task_id` is omitted/null, `runnability.selection.selected_task_id` is null, and `runnability.summary.blocking` carries a stalled `operator_recovery` state whose `scope` is `queue_validate`.
 
@@ -345,10 +347,11 @@ The lifecycle document includes:
 - `status`
 - optional `task`
 - `notes`
+- `evidence`
 - `archived` (`true` for terminal `done`/`rejected` writes)
 - `continuation`
 
-Terminal lifecycle commands move tasks to the done archive using the same queue/done completion path as the human lifecycle commands. Non-terminal status updates keep the task in the active queue.
+Terminal lifecycle commands move tasks to the done archive using the same queue/done completion path as the human lifecycle commands. `--note` appends working/lifecycle notes, while repeatable `--evidence` appends verification evidence to the task before returning or archiving it. Non-terminal status updates keep the task in the active queue.
 
 ### `machine task followups apply` (`version: 1`)
 
@@ -361,6 +364,8 @@ The document includes:
 - `continuation`
 
 ### `machine task mutate` (`version: 2`) and `machine task decompose` (`version: 2`)
+
+`machine task mutate` consumes a strict `TaskMutationRequest` with request `version: 1`; unknown request fields and unsupported request versions are errors. Each edit defaults to `mode: "set"`; list fields (`tags`, `scope`, `evidence`, `plan`, `notes`, `depends_on`, `blocks`, `relates_to`) also support `mode: "append"` for durable agent progress updates without replacing existing context.
 
 Task mutation and decomposition documents now include:
 - optional top-level `blocking`

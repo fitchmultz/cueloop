@@ -57,10 +57,10 @@ pub struct QueueConfig {
     /// into workspace clones.
     pub done_file: Option<PathBuf>,
 
-    /// ID prefix (default: "RQ").
+    /// ID prefix (default: "CL").
     pub id_prefix: Option<String>,
 
-    /// Zero pad width for the numeric suffix (default: 4 -> RQ-0001).
+    /// Zero pad width for the numeric suffix (default: 4 -> CL-0001).
     #[schemars(range(min = 1, max = 255))]
     pub id_width: Option<u8>,
 

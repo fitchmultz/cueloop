@@ -169,7 +169,7 @@ fn check_unknown_keys_auto_fix_removes_unknown_key() {
         repo_root: dir.path().to_path_buf(),
         queue_path: dir.path().join("queue.json"),
         done_path: dir.path().join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(config_path.clone()),

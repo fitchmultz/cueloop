@@ -66,13 +66,23 @@ pub struct MachineQueueArgs {
 
 #[derive(Subcommand)]
 pub enum MachineQueueCommand {
-    Read,
+    Read(MachineQueueReadArgs),
     Graph,
     Dashboard(MachineDashboardArgs),
     Validate,
     Repair(MachineQueueRepairArgs),
     Undo(MachineQueueUndoArgs),
     UnlockInspect,
+}
+
+#[derive(Args)]
+pub struct MachineQueueReadArgs {
+    /// Omit the done archive from the response for compact agent/app reads.
+    #[arg(long)]
+    pub active_only: bool,
+    /// Include at most this many done-archive tasks. Defaults to all for compatibility.
+    #[arg(long, value_name = "N")]
+    pub done_limit: Option<usize>,
 }
 
 #[derive(Args)]
@@ -188,9 +198,12 @@ pub struct MachineTaskStatusArgs {
     pub task_id: String,
     /// New status: draft, todo, doing, done, or rejected.
     pub status: String,
-    /// Evidence or lifecycle note to append. Repeatable.
+    /// Lifecycle note to append. Repeatable.
     #[arg(long = "note")]
     pub notes: Vec<String>,
+    /// Verification evidence to append. Repeatable.
+    #[arg(long = "evidence")]
+    pub evidence: Vec<String>,
     /// Validate and preview the lifecycle document without writing queue files.
     #[arg(long)]
     pub dry_run: bool,
@@ -200,9 +213,12 @@ pub struct MachineTaskStatusArgs {
 pub struct MachineTaskLifecycleArgs {
     /// Active task ID to update.
     pub task_id: String,
-    /// Evidence or lifecycle note to append. Repeatable.
+    /// Lifecycle note to append. Repeatable.
     #[arg(long = "note")]
     pub notes: Vec<String>,
+    /// Verification evidence to append. Repeatable.
+    #[arg(long = "evidence")]
+    pub evidence: Vec<String>,
     /// Validate and preview the lifecycle document without writing queue files.
     #[arg(long)]
     pub dry_run: bool,

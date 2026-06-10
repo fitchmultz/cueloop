@@ -40,7 +40,7 @@ fn create_test_resolved(temp_dir: &TempDir) -> Resolved {
     let queue = QueueFile {
         version: 1,
         tasks: vec![Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             title: "Test task".to_string(),
             status: TaskStatus::Todo,
             kind: Default::default(),
@@ -76,7 +76,7 @@ fn create_test_resolved(temp_dir: &TempDir) -> Resolved {
         repo_root: repo_root.to_path_buf(),
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -102,7 +102,7 @@ fn snapshot_contains_both_queues() {
     let done = QueueFile {
         version: 1,
         tasks: vec![Task {
-            id: "RQ-0000".to_string(),
+            id: "CL-0000".to_string(),
             title: "Done task".to_string(),
             status: TaskStatus::Done,
             kind: Default::default(),
@@ -146,9 +146,9 @@ fn snapshot_contains_both_queues() {
 
     let snapshot = load_undo_snapshot(&resolved.repo_root, &actual_id).unwrap();
     assert_eq!(snapshot.queue_json.tasks.len(), 1);
-    assert_eq!(snapshot.queue_json.tasks[0].id, "RQ-0001");
+    assert_eq!(snapshot.queue_json.tasks[0].id, "CL-0001");
     assert_eq!(snapshot.done_json.tasks.len(), 1);
-    assert_eq!(snapshot.done_json.tasks[0].id, "RQ-0000");
+    assert_eq!(snapshot.done_json.tasks[0].id, "CL-0000");
 }
 
 #[test]
@@ -186,7 +186,7 @@ fn restore_from_snapshot_restores_both_files() {
     let mut queue = load_queue(&resolved.queue_path).unwrap();
     queue.tasks[0].status = TaskStatus::Doing;
     queue.tasks.push(Task {
-        id: "RQ-0002".to_string(),
+        id: "CL-0002".to_string(),
         title: "New task".to_string(),
         status: TaskStatus::Todo,
         kind: Default::default(),
@@ -221,7 +221,7 @@ fn restore_from_snapshot_restores_both_files() {
 
     let restored_queue = load_queue(&resolved.queue_path).unwrap();
     assert_eq!(restored_queue.tasks.len(), 1);
-    assert_eq!(restored_queue.tasks[0].id, "RQ-0001");
+    assert_eq!(restored_queue.tasks[0].id, "CL-0001");
     assert_eq!(restored_queue.tasks[0].status, TaskStatus::Todo);
 }
 

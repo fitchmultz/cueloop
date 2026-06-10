@@ -42,14 +42,14 @@ fn state_migration_v2_to_v3() -> Result<()> {
         "merge_method": "squash",
         "merge_when": "as_created",
         "tasks_in_flight": [{
-            "task_id": "RQ-0001",
+            "task_id": "CL-0001",
             "workspace_path": workspace_path,
             "branch": "b",
             "pid": 123
         }],
-        "prs": [{"task_id": "RQ-0001", "pr_number": 5}],
+        "prs": [{"task_id": "CL-0001", "pr_number": 5}],
         "pending_merges": [{
-            "task_id": "RQ-0001",
+            "task_id": "CL-0001",
             "pr_number": 5,
             "queued_at": "2026-02-01T00:00:00Z"
         }]
@@ -66,7 +66,7 @@ fn state_migration_v2_to_v3() -> Result<()> {
 #[test]
 fn worker_record_lifecycle_transitions() {
     let workspace_path = crate::testsupport::path::portable_abs_path("ws");
-    let mut worker = WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
+    let mut worker = WorkerRecord::new("CL-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
     assert!(matches!(worker.lifecycle, WorkerLifecycle::Running));
     assert!(!worker.is_terminal());
@@ -84,7 +84,7 @@ fn worker_record_lifecycle_transitions() {
 #[test]
 fn worker_record_mark_failed() {
     let workspace_path = crate::testsupport::path::portable_abs_path("ws");
-    let mut worker = WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
+    let mut worker = WorkerRecord::new("CL-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
     worker.mark_failed("2026-02-20T01:00:00Z".into(), "CI failed");
 
@@ -96,7 +96,7 @@ fn worker_record_mark_failed() {
 #[test]
 fn worker_record_mark_blocked() {
     let workspace_path = crate::testsupport::path::portable_abs_path("ws");
-    let mut worker = WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
+    let mut worker = WorkerRecord::new("CL-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
     worker.mark_blocked("2026-02-20T01:00:00Z".into(), "merge conflict");
 
@@ -108,7 +108,7 @@ fn worker_record_mark_blocked() {
 #[test]
 fn worker_record_push_attempts() {
     let workspace_path = crate::testsupport::path::portable_abs_path("ws");
-    let mut worker = WorkerRecord::new("RQ-0001", workspace_path, "2026-02-20T00:00:00Z".into());
+    let mut worker = WorkerRecord::new("CL-0001", workspace_path, "2026-02-20T00:00:00Z".into());
 
     assert_eq!(worker.push_attempts, 0);
     worker.increment_push_attempt();
@@ -124,15 +124,15 @@ fn state_upsert_worker_replaces_existing() {
     let ws2 = crate::testsupport::path::portable_abs_path("ws2");
     let ws1_new = crate::testsupport::path::portable_abs_path("ws1-new");
 
-    state.upsert_worker(WorkerRecord::new("RQ-0001", ws1, "t1".into()));
-    state.upsert_worker(WorkerRecord::new("RQ-0002", ws2, "t2".into()));
+    state.upsert_worker(WorkerRecord::new("CL-0001", ws1, "t1".into()));
+    state.upsert_worker(WorkerRecord::new("CL-0002", ws2, "t2".into()));
 
-    let mut updated = WorkerRecord::new("RQ-0001", ws1_new.clone(), "t1-new".into());
+    let mut updated = WorkerRecord::new("CL-0001", ws1_new.clone(), "t1-new".into());
     updated.start_integration();
     state.upsert_worker(updated);
 
     assert_eq!(state.workers.len(), 2);
-    let w1 = state.get_worker("RQ-0001").expect("updated worker");
+    let w1 = state.get_worker("CL-0001").expect("updated worker");
     assert_eq!(w1.workspace_path, ws1_new);
     assert!(matches!(w1.lifecycle, WorkerLifecycle::Integrating));
 }
@@ -143,14 +143,14 @@ fn state_remove_worker() {
     let ws1 = crate::testsupport::path::portable_abs_path("ws1");
     let ws2 = crate::testsupport::path::portable_abs_path("ws2");
 
-    state.upsert_worker(WorkerRecord::new("RQ-0001", ws1, "t1".into()));
-    state.upsert_worker(WorkerRecord::new("RQ-0002", ws2, "t2".into()));
+    state.upsert_worker(WorkerRecord::new("CL-0001", ws1, "t1".into()));
+    state.upsert_worker(WorkerRecord::new("CL-0002", ws2, "t2".into()));
 
-    state.remove_worker("RQ-0001");
+    state.remove_worker("CL-0001");
 
     assert_eq!(state.workers.len(), 1);
-    assert!(state.get_worker("RQ-0001").is_none());
-    assert!(state.get_worker("RQ-0002").is_some());
+    assert!(state.get_worker("CL-0001").is_none());
+    assert!(state.get_worker("CL-0002").is_some());
 }
 
 #[test]
@@ -160,9 +160,9 @@ fn state_active_worker_count() {
     let ws2 = crate::testsupport::path::portable_abs_path("ws2");
     let ws3 = crate::testsupport::path::portable_abs_path("ws3");
 
-    let w1 = WorkerRecord::new("RQ-0001", ws1, "t1".into());
-    let mut w2 = WorkerRecord::new("RQ-0002", ws2, "t2".into());
-    let mut w3 = WorkerRecord::new("RQ-0003", ws3, "t3".into());
+    let w1 = WorkerRecord::new("CL-0001", ws1, "t1".into());
+    let mut w2 = WorkerRecord::new("CL-0002", ws2, "t2".into());
+    let mut w3 = WorkerRecord::new("CL-0003", ws3, "t3".into());
 
     w2.mark_completed("t".into());
     w3.mark_blocked("t".into(), "error");
@@ -182,7 +182,7 @@ fn state_round_trips() -> Result<()> {
 
     let mut state = ParallelStateFile::new("2026-02-20T00:00:00Z", "main");
     let mut worker = WorkerRecord::new(
-        "RQ-0001",
+        "CL-0001",
         workspace_path.clone(),
         "2026-02-20T00:00:00Z".into(),
     );
@@ -198,7 +198,7 @@ fn state_round_trips() -> Result<()> {
     assert_eq!(loaded.workers.len(), 1);
 
     let worker = &loaded.workers[0];
-    assert_eq!(worker.task_id, "RQ-0001");
+    assert_eq!(worker.task_id, "CL-0001");
     assert_eq!(worker.workspace_path, workspace_path);
     assert!(matches!(worker.lifecycle, WorkerLifecycle::Integrating));
     assert_eq!(worker.push_attempts, 1);
@@ -214,7 +214,7 @@ fn state_deserialization_ignores_unknown_fields() -> Result<()> {
         "target_branch": "main",
         "unknown_top": "ignored",
         "workers": [{
-            "task_id": "RQ-0001",
+            "task_id": "CL-0001",
             "workspace_path": crate::testsupport::path::portable_abs_path("ws"),
             "started_at": "2026-02-20T00:00:00Z",
             "unknown_worker": "ignored"
@@ -223,6 +223,6 @@ fn state_deserialization_ignores_unknown_fields() -> Result<()> {
 
     let state: ParallelStateFile = serde_json::from_value(raw)?;
     assert_eq!(state.workers.len(), 1);
-    assert_eq!(state.workers[0].task_id, "RQ-0001");
+    assert_eq!(state.workers[0].task_id, "CL-0001");
     Ok(())
 }

@@ -185,7 +185,7 @@ mod tests {
         let default_done = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-DEFAULT".to_string(),
+                id: "CL-DEFAULT".to_string(),
                 status: TaskStatus::Done,
                 kind: Default::default(),
                 title: "default".to_string(),
@@ -199,7 +199,7 @@ mod tests {
         let custom_done = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-CUSTOM".to_string(),
+                id: "CL-CUSTOM".to_string(),
                 status: TaskStatus::Done,
                 kind: Default::default(),
                 title: "custom".to_string(),
@@ -215,7 +215,7 @@ mod tests {
             repo_root,
             queue_path: PathBuf::from("unused-queue"),
             done_path: custom_done_path,
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: None,
@@ -223,7 +223,7 @@ mod tests {
 
         let loaded = load_done_queue_for_estimation(&resolved)?;
         assert_eq!(loaded.tasks.len(), 1);
-        assert_eq!(loaded.tasks[0].id, "RQ-CUSTOM");
+        assert_eq!(loaded.tasks[0].id, "CL-CUSTOM");
         Ok(())
     }
 }

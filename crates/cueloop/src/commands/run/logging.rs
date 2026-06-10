@@ -157,12 +157,12 @@ mod tests {
     #[test]
     fn labels_trim_task_ids() {
         assert_eq!(
-            phase_label(2, 3, "Implementation", " RQ-1 "),
-            "Phase 2/3 (Implementation) for RQ-1"
+            phase_label(2, 3, "Implementation", " CL-1 "),
+            "Phase 2/3 (Implementation) for CL-1"
         );
         assert_eq!(
-            single_phase_label("SinglePhase (Execution)", " RQ-2 "),
-            "SinglePhase (Execution) for RQ-2"
+            single_phase_label("SinglePhase (Execution)", " CL-2 "),
+            "SinglePhase (Execution) for CL-2"
         );
     }
 }

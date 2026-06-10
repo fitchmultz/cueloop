@@ -152,7 +152,7 @@ mod tests {
             repo_root: repo_root.clone(),
             queue_path: repo_root.join(".cueloop/queue.json"),
             done_path: repo_root.join(".cueloop/done.json"),
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: Some(repo_root.join(".cueloop/config.json")),
@@ -161,7 +161,7 @@ mod tests {
 
     fn task() -> Task {
         Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             status: TaskStatus::Todo,
             kind: Default::default(),
             title: "Test task".to_string(),

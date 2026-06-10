@@ -64,7 +64,7 @@ Task objects live inside CueLoop queue files. This page owns the minimum task-be
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Unique task identifier (e.g., `RQ-0001`) |
+| `id` | string | Unique task identifier (e.g., `CL-0001`) |
 | `title` | string | Short, descriptive task title |
 | `created_at` | string | RFC3339 UTC timestamp of creation |
 | `updated_at` | string | RFC3339 UTC timestamp of last modification |
@@ -152,7 +152,7 @@ The `agent` field allows overriding global configuration for individual tasks.
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Complex refactoring task",
   "agent": {
     "runner": "codex",
@@ -276,7 +276,7 @@ The `agent` field allows overriding global configuration for individual tasks.
 cueloop queue validate
 
 # Validation runs automatically on most queue operations
-cueloop task edit status done RQ-0001  # Validates after edit
+cueloop task edit status done CL-0001  # Validates after edit
 ```
 
 ### Configuration
@@ -297,7 +297,7 @@ cueloop task edit status done RQ-0001  # Validates after edit
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Add user authentication",
   "description": "Implement JWT-based authentication for the API",
   "status": "todo",
@@ -322,13 +322,13 @@ cueloop task edit status done RQ-0001  # Validates after edit
 
 ```json
 {
-  "id": "RQ-0003",
+  "id": "CL-0003",
   "title": "Implement login endpoint",
   "status": "todo",
   "priority": "high",
   "created_at": "2026-01-15T10:30:00Z",
   "updated_at": "2026-01-15T10:30:00Z",
-  "depends_on": ["RQ-0001", "RQ-0002"],
+  "depends_on": ["CL-0001", "CL-0002"],
   "tags": ["api", "endpoint"],
   "scope": ["src/routes/login.rs"]
 }
@@ -338,7 +338,7 @@ cueloop task edit status done RQ-0001  # Validates after edit
 
 ```json
 {
-  "id": "RQ-0005",
+  "id": "CL-0005",
   "title": "Complex algorithm optimization",
   "status": "todo",
   "priority": "critical",
@@ -364,7 +364,7 @@ cueloop task edit status done RQ-0001  # Validates after edit
 
 ```json
 {
-  "id": "RQ-0010",
+  "id": "CL-0010",
   "title": "Implement feature X",
   "status": "doing",
   "priority": "high",
@@ -377,27 +377,27 @@ cueloop task edit status done RQ-0001  # Validates after edit
 
 ```json
 {
-  "id": "RQ-0011",
+  "id": "CL-0011",
   "title": "Implement feature X - Backend API",
   "status": "todo",
   "priority": "high",
-  "parent_id": "RQ-0010",
+  "parent_id": "CL-0010",
   "created_at": "2026-01-15T12:30:00Z",
   "updated_at": "2026-01-15T12:30:00Z",
-  "depends_on": ["RQ-0001"]
+  "depends_on": ["CL-0001"]
 }
 ```
 
 ```json
 {
-  "id": "RQ-0012",
+  "id": "CL-0012",
   "title": "Implement feature X - Frontend UI",
   "status": "todo",
   "priority": "medium",
-  "parent_id": "RQ-0010",
+  "parent_id": "CL-0010",
   "created_at": "2026-01-15T12:30:00Z",
   "updated_at": "2026-01-15T12:30:00Z",
-  "depends_on": ["RQ-0011"]
+  "depends_on": ["CL-0011"]
 }
 ```
 
@@ -405,7 +405,7 @@ cueloop task edit status done RQ-0001  # Validates after edit
 
 ```json
 {
-  "id": "RQ-0020",
+  "id": "CL-0020",
   "title": "Fix critical security vulnerability",
   "status": "doing",
   "priority": "critical",

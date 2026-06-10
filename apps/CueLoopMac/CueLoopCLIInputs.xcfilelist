@@ -1,9 +1,6 @@
-$(SRCROOT)/../../Cargo.toml
 $(SRCROOT)/../../Cargo.lock
+$(SRCROOT)/../../Cargo.toml
 $(SRCROOT)/../../VERSION
-$(SRCROOT)/../../rust-toolchain.toml
-$(SRCROOT)/../../scripts/cueloop-cli-bundle.sh
-$(SRCROOT)/../../scripts/lib/cueloop-shell.sh
 $(SRCROOT)/../../crates/cueloop/Cargo.toml
 $(SRCROOT)/../../crates/cueloop/assets/agents_templates/generic.md
 $(SRCROOT)/../../crates/cueloop/assets/agents_templates/go.md
@@ -46,6 +43,7 @@ $(SRCROOT)/../../crates/cueloop/src/agent/resolve/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/agent/resolve/types.rs
 $(SRCROOT)/../../crates/cueloop/src/bin/cueloop.rs
 $(SRCROOT)/../../crates/cueloop/src/celebrations.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/agent_ledger.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/app.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/app_parity.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/args.rs
@@ -197,6 +195,7 @@ $(SRCROOT)/../../crates/cueloop/src/cli/version.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/watch.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/webhook.rs
 $(SRCROOT)/../../crates/cueloop/src/cli_entrypoint.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/agent.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/app/launch_plan.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/app/mod.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/app/model.rs
@@ -939,3 +938,6 @@ $(SRCROOT)/../../crates/cueloop/src/webhook/worker/runtime/state.rs
 $(SRCROOT)/../../crates/cueloop/src/webhook/worker/runtime/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/webhook/worker/runtime/types.rs
 $(SRCROOT)/../../crates/cueloop/src/webhook/worker/runtime/worker_loop.rs
+$(SRCROOT)/../../rust-toolchain.toml
+$(SRCROOT)/../../scripts/cueloop-cli-bundle.sh
+$(SRCROOT)/../../scripts/lib/cueloop-shell.sh

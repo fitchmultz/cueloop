@@ -34,7 +34,7 @@ fn phase1_continue_resumes_and_recovers_from_plan_only_violation() -> Result<()>
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 dirty="{root}/dirty-file.txt"
 if [ -f "$dirty" ]; then
   /bin/rm -f "$dirty"
@@ -90,7 +90,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -148,7 +148,7 @@ fn phase1_proceed_allows_plan_only_violation() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 dirty="{root}/dirty-file.txt"
 echo "dirty" > "$dirty"
 echo "plan content" > "$plan"
@@ -189,7 +189,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -248,7 +248,7 @@ fn phase1_rejects_changes_to_baseline_dirty_paths() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 baseline="{root}/baseline.txt"
 echo "changed" > "$baseline"
 echo "plan content" > "$plan"
@@ -286,7 +286,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -357,7 +357,7 @@ fn phase1_allows_jsonc_queue_bookkeeping_changes() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 echo "plan content" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
 echo '{{"type":"session","sessionID":"sess-123"}}'
@@ -393,7 +393,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,

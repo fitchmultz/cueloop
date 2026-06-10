@@ -480,7 +480,7 @@ For tasks that take hours, enable all notifications with sound:
 
 Then run with:
 ```bash
-cueloop run one RQ-0001 --notify-sound
+cueloop run one CL-0001 --notify-sound
 ```
 
 ### Example 3: CI/Server Environment

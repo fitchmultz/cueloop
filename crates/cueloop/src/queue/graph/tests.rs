@@ -59,41 +59,41 @@ fn queue_file(tasks: Vec<Task>) -> QueueFile {
 #[test]
 fn build_graph_creates_correct_structure() {
     let active = queue_file(vec![
-        task("RQ-0001", vec![], TaskStatus::Todo),
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
-        task("RQ-0003", vec!["RQ-0001"], TaskStatus::Todo),
+        task("CL-0001", vec![], TaskStatus::Todo),
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo),
+        task("CL-0003", vec!["CL-0001"], TaskStatus::Todo),
     ]);
 
     let graph = build_graph(&active, None);
 
     assert_eq!(graph.len(), 3);
-    assert!(graph.contains("RQ-0001"));
-    assert!(graph.contains("RQ-0002"));
-    assert!(graph.contains("RQ-0003"));
+    assert!(graph.contains("CL-0001"));
+    assert!(graph.contains("CL-0002"));
+    assert!(graph.contains("CL-0003"));
 
-    let node1 = graph.get("RQ-0001").unwrap();
+    let node1 = graph.get("CL-0001").unwrap();
     assert_eq!(node1.dependents.len(), 2);
-    assert!(node1.dependents.contains(&"RQ-0002".to_string()));
-    assert!(node1.dependents.contains(&"RQ-0003".to_string()));
+    assert!(node1.dependents.contains(&"CL-0002".to_string()));
+    assert!(node1.dependents.contains(&"CL-0003".to_string()));
 
-    let node2 = graph.get("RQ-0002").unwrap();
-    assert_eq!(node2.dependencies, vec!["RQ-0001".to_string()]);
+    let node2 = graph.get("CL-0002").unwrap();
+    assert_eq!(node2.dependencies, vec!["CL-0001".to_string()]);
 }
 
 #[test]
 fn topological_sort_orders_dependencies_first() {
     let active = queue_file(vec![
-        task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo),
-        task("RQ-0001", vec![], TaskStatus::Todo),
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+        task("CL-0003", vec!["CL-0002"], TaskStatus::Todo),
+        task("CL-0001", vec![], TaskStatus::Todo),
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo),
     ]);
 
     let graph = build_graph(&active, None);
     let sorted = topological_sort(&graph).unwrap();
 
-    let idx1 = sorted.iter().position(|id| id == "RQ-0001").unwrap();
-    let idx2 = sorted.iter().position(|id| id == "RQ-0002").unwrap();
-    let idx3 = sorted.iter().position(|id| id == "RQ-0003").unwrap();
+    let idx1 = sorted.iter().position(|id| id == "CL-0001").unwrap();
+    let idx2 = sorted.iter().position(|id| id == "CL-0002").unwrap();
+    let idx3 = sorted.iter().position(|id| id == "CL-0003").unwrap();
 
     assert!(idx1 < idx2);
     assert!(idx2 < idx3);
@@ -102,8 +102,8 @@ fn topological_sort_orders_dependencies_first() {
 #[test]
 fn topological_sort_detects_cycle() {
     let active = queue_file(vec![
-        task("RQ-0001", vec!["RQ-0002"], TaskStatus::Todo),
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+        task("CL-0001", vec!["CL-0002"], TaskStatus::Todo),
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo),
     ]);
 
     let graph = build_graph(&active, None);
@@ -115,9 +115,9 @@ fn topological_sort_detects_cycle() {
 fn topological_sort_detects_longer_cycle() {
     // A depends on C, B depends on A, C depends on B -> forms 3-node cycle
     let active = queue_file(vec![
-        task("RQ-0001", vec!["RQ-0003"], TaskStatus::Todo), // A -> C
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo), // B -> A
-        task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo), // C -> B
+        task("CL-0001", vec!["CL-0003"], TaskStatus::Todo), // A -> C
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo), // B -> A
+        task("CL-0003", vec!["CL-0002"], TaskStatus::Todo), // C -> B
     ]);
 
     let graph = build_graph(&active, None);
@@ -129,7 +129,7 @@ fn topological_sort_detects_longer_cycle() {
 fn topological_sort_detects_self_loop() {
     // A depends on itself (self-loop)
     let active = queue_file(vec![
-        task("RQ-0001", vec!["RQ-0001"], TaskStatus::Todo), // A -> A
+        task("CL-0001", vec!["CL-0001"], TaskStatus::Todo), // A -> A
     ]);
 
     let graph = build_graph(&active, None);
@@ -142,10 +142,10 @@ fn topological_sort_detects_cycle_with_independent_nodes() {
     // Cycle: A -> B -> A
     // Independent: C (no deps), D depends on C
     let active = queue_file(vec![
-        task("RQ-0001", vec!["RQ-0002"], TaskStatus::Todo), // A -> B (cycle)
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo), // B -> A (cycle)
-        task("RQ-0003", vec![], TaskStatus::Todo),          // C (independent)
-        task("RQ-0004", vec!["RQ-0003"], TaskStatus::Todo), // D -> C (independent chain)
+        task("CL-0001", vec!["CL-0002"], TaskStatus::Todo), // A -> B (cycle)
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo), // B -> A (cycle)
+        task("CL-0003", vec![], TaskStatus::Todo),          // C (independent)
+        task("CL-0004", vec!["CL-0003"], TaskStatus::Todo), // D -> C (independent chain)
     ]);
 
     let graph = build_graph(&active, None);
@@ -158,10 +158,10 @@ fn topological_sort_detects_multiple_cycles() {
     // Cycle 1: A -> B -> A
     // Cycle 2: C -> D -> C
     let active = queue_file(vec![
-        task("RQ-0001", vec!["RQ-0002"], TaskStatus::Todo),
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
-        task("RQ-0003", vec!["RQ-0004"], TaskStatus::Todo),
-        task("RQ-0004", vec!["RQ-0003"], TaskStatus::Todo),
+        task("CL-0001", vec!["CL-0002"], TaskStatus::Todo),
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo),
+        task("CL-0003", vec!["CL-0004"], TaskStatus::Todo),
+        task("CL-0004", vec!["CL-0003"], TaskStatus::Todo),
     ]);
 
     let graph = build_graph(&active, None);
@@ -178,10 +178,10 @@ fn topological_sort_handles_complex_dag() {
     //      \ /
     //       D
     let active = queue_file(vec![
-        task("RQ-0001", vec![], TaskStatus::Todo), // A (root)
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo), // B -> A
-        task("RQ-0003", vec!["RQ-0001"], TaskStatus::Todo), // C -> A
-        task("RQ-0004", vec!["RQ-0002", "RQ-0003"], TaskStatus::Todo), // D -> B, C
+        task("CL-0001", vec![], TaskStatus::Todo), // A (root)
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo), // B -> A
+        task("CL-0003", vec!["CL-0001"], TaskStatus::Todo), // C -> A
+        task("CL-0004", vec!["CL-0002", "CL-0003"], TaskStatus::Todo), // D -> B, C
     ]);
 
     let graph = build_graph(&active, None);
@@ -189,10 +189,10 @@ fn topological_sort_handles_complex_dag() {
     assert_eq!(sorted.len(), 4);
 
     // A must come before B, C, D
-    let idx_a = sorted.iter().position(|id| id == "RQ-0001").unwrap();
-    let idx_b = sorted.iter().position(|id| id == "RQ-0002").unwrap();
-    let idx_c = sorted.iter().position(|id| id == "RQ-0003").unwrap();
-    let idx_d = sorted.iter().position(|id| id == "RQ-0004").unwrap();
+    let idx_a = sorted.iter().position(|id| id == "CL-0001").unwrap();
+    let idx_b = sorted.iter().position(|id| id == "CL-0002").unwrap();
+    let idx_c = sorted.iter().position(|id| id == "CL-0003").unwrap();
+    let idx_d = sorted.iter().position(|id| id == "CL-0004").unwrap();
 
     assert!(idx_a < idx_b);
     assert!(idx_a < idx_c);
@@ -203,10 +203,10 @@ fn topological_sort_handles_complex_dag() {
 #[test]
 fn find_critical_paths_finds_longest_chain() {
     let active = queue_file(vec![
-        task("RQ-0001", vec![], TaskStatus::Done),
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
-        task("RQ-0003", vec!["RQ-0002"], TaskStatus::Todo),
-        task("RQ-0004", vec!["RQ-0001"], TaskStatus::Todo),
+        task("CL-0001", vec![], TaskStatus::Done),
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo),
+        task("CL-0003", vec!["CL-0002"], TaskStatus::Todo),
+        task("CL-0004", vec!["CL-0001"], TaskStatus::Todo),
     ]);
 
     let graph = build_graph(&active, None);
@@ -215,71 +215,71 @@ fn find_critical_paths_finds_longest_chain() {
     assert!(!paths.is_empty());
     let path = &paths[0];
     assert_eq!(path.length, 3);
-    assert_eq!(path.path, vec!["RQ-0003", "RQ-0002", "RQ-0001"]);
+    assert_eq!(path.path, vec!["CL-0003", "CL-0002", "CL-0001"]);
 }
 
 #[test]
 fn find_critical_path_from_returns_none_for_missing_task() {
-    let active = queue_file(vec![task("RQ-0001", vec![], TaskStatus::Todo)]);
+    let active = queue_file(vec![task("CL-0001", vec![], TaskStatus::Todo)]);
     let graph = build_graph(&active, None);
-    assert!(find_critical_path_from(&graph, "RQ-9999").is_none());
+    assert!(find_critical_path_from(&graph, "CL-9999").is_none());
 }
 
 #[test]
 fn traversal_covers_non_dependency_edges() {
-    let mut a = task("RQ-0001", vec![], TaskStatus::Todo);
-    a.blocks = vec!["RQ-0002".to_string()];
-    a.relates_to = vec!["RQ-0003".to_string()];
-    a.duplicates = Some("RQ-0004".to_string());
+    let mut a = task("CL-0001", vec![], TaskStatus::Todo);
+    a.blocks = vec!["CL-0002".to_string()];
+    a.relates_to = vec!["CL-0003".to_string()];
+    a.duplicates = Some("CL-0004".to_string());
 
-    let mut b = task("RQ-0002", vec![], TaskStatus::Todo);
+    let mut b = task("CL-0002", vec![], TaskStatus::Todo);
     b.blocks = vec![];
 
-    let c = task("RQ-0003", vec![], TaskStatus::Todo);
+    let c = task("CL-0003", vec![], TaskStatus::Todo);
 
-    let d = task("RQ-0004", vec![], TaskStatus::Todo);
+    let d = task("CL-0004", vec![], TaskStatus::Todo);
 
     let graph = build_graph(&queue_file(vec![a, b, c, d]), None);
 
     assert!(
         graph
-            .get_blocks_chain("RQ-0001")
-            .contains(&"RQ-0002".to_string())
+            .get_blocks_chain("CL-0001")
+            .contains(&"CL-0002".to_string())
     );
     assert!(
         graph
-            .get_blocked_by_chain("RQ-0002")
-            .contains(&"RQ-0001".to_string())
+            .get_blocked_by_chain("CL-0002")
+            .contains(&"CL-0001".to_string())
     );
 
-    let related = graph.get_related_chain("RQ-0001");
-    assert!(related.contains(&"RQ-0003".to_string()));
+    let related = graph.get_related_chain("CL-0001");
+    assert!(related.contains(&"CL-0003".to_string()));
 
-    let dupes = graph.get_duplicate_chain("RQ-0001");
-    assert!(dupes.contains(&"RQ-0004".to_string()));
+    let dupes = graph.get_duplicate_chain("CL-0001");
+    assert!(dupes.contains(&"CL-0004".to_string()));
 
     assert_eq!(
-        graph.get_immediate_blocks("RQ-0001"),
-        vec!["RQ-0002".to_string()]
+        graph.get_immediate_blocks("CL-0001"),
+        vec!["CL-0002".to_string()]
     );
 }
 
 #[test]
 fn get_runnable_and_blocked_tasks_work() {
     let active = queue_file(vec![
-        task("RQ-0001", vec![], TaskStatus::Todo),
-        task("RQ-0002", vec!["RQ-0001"], TaskStatus::Todo),
+        task("CL-0001", vec![], TaskStatus::Todo),
+        task("CL-0002", vec!["CL-0001"], TaskStatus::Todo),
     ]);
 
     let graph = build_graph(&active, None);
 
     let runnable = get_runnable_tasks(&graph);
-    assert!(runnable.contains(&"RQ-0001".to_string()));
-    assert!(!runnable.contains(&"RQ-0002".to_string()));
+    assert!(runnable.contains(&"CL-0001".to_string()));
+    assert!(!runnable.contains(&"CL-0002".to_string()));
 
     let blocked = get_blocked_tasks(&graph);
-    assert!(blocked.contains(&"RQ-0002".to_string()));
-    assert!(!blocked.contains(&"RQ-0001".to_string()));
+    assert!(blocked.contains(&"CL-0002".to_string()));
+    assert!(!blocked.contains(&"CL-0001".to_string()));
 }
 
 #[test]
@@ -301,18 +301,18 @@ fn bounded_chain_from_full_chain_helper_works() {
 
 #[test]
 fn graph_keeps_group_nodes_but_excludes_them_from_runnable_and_blocked_counts() {
-    let mut group = task("RQ-0001", vec!["RQ-9999"], TaskStatus::Todo);
+    let mut group = task("CL-0001", vec!["CL-9999"], TaskStatus::Todo);
     group.kind = TaskKind::Group;
-    let work_item = task("RQ-0002", vec![], TaskStatus::Todo);
+    let work_item = task("CL-0002", vec![], TaskStatus::Todo);
     let active = queue_file(vec![group, work_item]);
 
     let graph = build_graph(&active, None);
 
-    assert!(graph.contains("RQ-0001"));
+    assert!(graph.contains("CL-0001"));
     assert_eq!(
-        graph.get("RQ-0001").expect("group node").task.kind,
+        graph.get("CL-0001").expect("group node").task.kind,
         TaskKind::Group
     );
-    assert_eq!(get_runnable_tasks(&graph), vec!["RQ-0002".to_string()]);
-    assert!(!get_blocked_tasks(&graph).contains(&"RQ-0001".to_string()));
+    assert_eq!(get_runnable_tasks(&graph), vec!["CL-0002".to_string()]);
+    assert!(!get_blocked_tasks(&graph).contains(&"CL-0001".to_string()));
 }

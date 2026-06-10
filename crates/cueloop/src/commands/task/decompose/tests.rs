@@ -108,7 +108,7 @@ fn normalize_response_resolves_sibling_dependencies() -> Result<()> {
 #[test]
 fn write_task_decomposition_attaches_freeform_subtree_under_existing_parent() -> Result<()> {
     let (_temp, resolved) = test_resolved()?;
-    let parent = test_task("RQ-0001", "Epic", None);
+    let parent = test_task("CL-0001", "Epic", None);
     queue::save_queue(
         &resolved.queue_path,
         &QueueFile {
@@ -146,11 +146,11 @@ fn write_task_decomposition_attaches_freeform_subtree_under_existing_parent() ->
     };
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
-    assert_eq!(result.parent_task_id.as_deref(), Some("RQ-0001"));
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0002"));
+    assert_eq!(result.parent_task_id.as_deref(), Some("CL-0001"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0002"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0003")
+        Some("CL-0003")
     );
     assert_eq!(result.created_ids.len(), 2);
 
@@ -159,18 +159,18 @@ fn write_task_decomposition_attaches_freeform_subtree_under_existing_parent() ->
     assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
     assert_eq!(queue_file.tasks[1].kind, TaskKind::Group);
     assert_eq!(queue_file.tasks[2].kind, TaskKind::WorkItem);
-    assert_eq!(queue_file.tasks[1].parent_id.as_deref(), Some("RQ-0001"));
-    assert_eq!(queue_file.tasks[2].parent_id.as_deref(), Some("RQ-0002"));
+    assert_eq!(queue_file.tasks[1].parent_id.as_deref(), Some("CL-0001"));
+    assert_eq!(queue_file.tasks[2].parent_id.as_deref(), Some("CL-0002"));
     Ok(())
 }
 
 #[test]
 fn write_task_decomposition_replace_rejects_external_references() -> Result<()> {
     let (_temp, resolved) = test_resolved()?;
-    let parent = test_task("RQ-0001", "Epic", None);
-    let child = test_task("RQ-0002", "Old child", Some("RQ-0001"));
-    let mut external = test_task("RQ-0003", "External", None);
-    external.depends_on = vec!["RQ-0002".to_string()];
+    let parent = test_task("CL-0001", "Epic", None);
+    let child = test_task("CL-0002", "Old child", Some("CL-0001"));
+    let mut external = test_task("CL-0003", "External", None);
+    external.depends_on = vec!["CL-0002".to_string()];
     queue::save_queue(
         &resolved.queue_path,
         &QueueFile {
@@ -246,16 +246,16 @@ fn write_task_decomposition_materializes_sibling_dependencies() -> Result<()> {
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
     assert_eq!(result.created_ids.len(), 3);
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0001"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0002")
+        Some("CL-0002")
     );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
     assert_eq!(queue_file.tasks[1].kind, TaskKind::WorkItem);
     assert_eq!(queue_file.tasks[2].kind, TaskKind::WorkItem);
-    assert_eq!(queue_file.tasks[2].depends_on, vec!["RQ-0002".to_string()]);
+    assert_eq!(queue_file.tasks[2].depends_on, vec!["CL-0002".to_string()]);
     assert!(
         queue_file
             .tasks
@@ -269,9 +269,9 @@ fn write_task_decomposition_materializes_sibling_dependencies() -> Result<()> {
 fn write_task_decomposition_append_inserts_after_existing_subtree_without_reordering_siblings()
 -> Result<()> {
     let (_temp, resolved) = test_resolved()?;
-    let parent = test_task("RQ-0001", "Epic", None);
-    let existing_child = test_task("RQ-0002", "Existing child", Some("RQ-0001"));
-    let later_sibling = test_task("RQ-0003", "Later sibling", None);
+    let parent = test_task("CL-0001", "Epic", None);
+    let existing_child = test_task("CL-0002", "Existing child", Some("CL-0001"));
+    let later_sibling = test_task("CL-0003", "Later sibling", None);
     queue::save_queue(
         &resolved.queue_path,
         &QueueFile {
@@ -309,10 +309,10 @@ fn write_task_decomposition_append_inserts_after_existing_subtree_without_reorde
     };
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0004"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0004"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0005")
+        Some("CL-0005")
     );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(
@@ -321,7 +321,7 @@ fn write_task_decomposition_append_inserts_after_existing_subtree_without_reorde
             .iter()
             .map(|task| task.id.as_str())
             .collect::<Vec<_>>(),
-        vec!["RQ-0001", "RQ-0002", "RQ-0004", "RQ-0005", "RQ-0003"]
+        vec!["CL-0001", "CL-0002", "CL-0004", "CL-0005", "CL-0003"]
     );
     assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
     assert_eq!(queue_file.tasks[2].kind, TaskKind::Group);
@@ -333,9 +333,9 @@ fn write_task_decomposition_append_inserts_after_existing_subtree_without_reorde
 fn write_task_decomposition_replace_reinserts_new_children_at_removed_subtree_boundary()
 -> Result<()> {
     let (_temp, resolved) = test_resolved()?;
-    let parent = test_task("RQ-0001", "Epic", None);
-    let existing_child = test_task("RQ-0002", "Existing child", Some("RQ-0001"));
-    let later_sibling = test_task("RQ-0003", "Later sibling", None);
+    let parent = test_task("CL-0001", "Epic", None);
+    let existing_child = test_task("CL-0002", "Existing child", Some("CL-0001"));
+    let later_sibling = test_task("CL-0003", "Later sibling", None);
     queue::save_queue(
         &resolved.queue_path,
         &QueueFile {
@@ -370,11 +370,11 @@ fn write_task_decomposition_replace_reinserts_new_children_at_removed_subtree_bo
     };
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
-    assert_eq!(result.replaced_ids, vec!["RQ-0002".to_string()]);
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(result.replaced_ids, vec!["CL-0002".to_string()]);
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0001"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0004")
+        Some("CL-0004")
     );
 
     let queue_file = queue::load_queue(&resolved.queue_path)?;
@@ -384,7 +384,7 @@ fn write_task_decomposition_replace_reinserts_new_children_at_removed_subtree_bo
             .iter()
             .map(|task| task.id.as_str())
             .collect::<Vec<_>>(),
-        vec!["RQ-0001", "RQ-0004", "RQ-0003"]
+        vec!["CL-0001", "CL-0004", "CL-0003"]
     );
     assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
     assert_eq!(queue_file.tasks[1].kind, TaskKind::WorkItem);
@@ -417,10 +417,10 @@ fn write_task_decomposition_created_tasks_inherit_request_and_timestamps_from_sh
     };
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0001"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0001")
+        Some("CL-0001")
     );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let task = &queue_file.tasks[0];
@@ -748,7 +748,7 @@ pub(super) fn test_resolved() -> Result<(TempDir, config::Resolved)> {
         repo_root: repo_root.clone(),
         queue_path: cueloop_dir.join("queue.jsonc"),
         done_path: cueloop_dir.join("done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(cueloop_dir.join("config.jsonc")),

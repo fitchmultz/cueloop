@@ -104,8 +104,8 @@ fn select_next_task_locked_suppresses_non_blocking_validation_warnings() -> Resu
     std::fs::create_dir_all(&cueloop_dir)?;
 
     let queue_path = cueloop_dir.join("queue.json");
-    let dependency = selection_test_task("RQ-0001", "Incomplete dependency");
-    let mut dependent = selection_test_task("RQ-0002", "Blocked dependent");
+    let dependency = selection_test_task("CL-0001", "Incomplete dependency");
+    let mut dependent = selection_test_task("CL-0002", "Blocked dependent");
     dependent.depends_on = vec![dependency.id.clone()];
     queue::save_queue(
         &queue_path,
@@ -120,14 +120,14 @@ fn select_next_task_locked_suppresses_non_blocking_validation_warnings() -> Resu
         repo_root: repo_root.clone(),
         queue_path,
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
     };
 
     let queue_lock = queue::acquire_queue_lock(&repo_root, "test", false)?;
-    let excluded = HashSet::from(["RQ-0001".to_string()]);
+    let excluded = HashSet::from(["CL-0001".to_string()]);
     let selected = select_next_task_locked(&resolved, false, &excluded, &queue_lock)?;
 
     assert_eq!(selected, None);
@@ -161,9 +161,9 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
     let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
 
-    // Add tasks in non-ID order: RQ-0003 first, RQ-0001 second, RQ-0002 third
+    // Add tasks in non-ID order: CL-0003 first, CL-0001 second, CL-0002 third
     queue_file.tasks.push(Task {
-        id: "RQ-0003".to_string(),
+        id: "CL-0003".to_string(),
         title: "Third ID, first in file".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -191,7 +191,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
         parent_id: None,
     });
     queue_file.tasks.push(Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "First ID, second in file".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -219,7 +219,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
         parent_id: None,
     });
     queue_file.tasks.push(Task {
-        id: "RQ-0002".to_string(),
+        id: "CL-0002".to_string(),
         title: "Second ID, third in file".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -248,25 +248,25 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
     });
     queue::save_queue(&queue_path, &queue_file)?;
 
-    // Create state file with terminal workers for RQ-0003 (Completed) and RQ-0001 (Failed)
+    // Create state file with terminal workers for CL-0003 (Completed) and CL-0001 (Failed)
     // These should NOT be excluded from selection - terminal state doesn't block re-selection
     let state_path = cueloop_dir.join("cache/parallel/state.json");
     let mut state =
         state::ParallelStateFile::new("2026-01-01T00:00:00Z".to_string(), "main".to_string());
 
-    // Completed worker for RQ-0003 (should NOT block selection)
+    // Completed worker for CL-0003 (should NOT block selection)
     let mut completed_worker = state::WorkerRecord::new(
-        "RQ-0003",
-        crate::testsupport::path::portable_abs_path("workspace/RQ-0003"),
+        "CL-0003",
+        crate::testsupport::path::portable_abs_path("workspace/CL-0003"),
         "2026-01-01T00:00:00Z".to_string(),
     );
     completed_worker.mark_completed("2026-01-01T01:00:00Z".to_string());
     state.upsert_worker(completed_worker);
 
-    // Failed worker for RQ-0001 (should NOT block selection)
+    // Failed worker for CL-0001 (should NOT block selection)
     let mut failed_worker = state::WorkerRecord::new(
-        "RQ-0001",
-        crate::testsupport::path::portable_abs_path("workspace/RQ-0001"),
+        "CL-0001",
+        crate::testsupport::path::portable_abs_path("workspace/CL-0001"),
         "2026-01-01T00:00:00Z".to_string(),
     );
     failed_worker.mark_failed("2026-01-01T01:00:00Z".to_string(), "test error");
@@ -280,7 +280,7 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -295,20 +295,20 @@ fn select_next_task_locked_preserves_queue_order_with_terminal_workers() -> Resu
 
     // Terminal workers should NOT be in excluded set
     assert!(
-        !excluded.contains("RQ-0003"),
+        !excluded.contains("CL-0003"),
         "Completed worker should NOT be excluded"
     );
     assert!(
-        !excluded.contains("RQ-0001"),
+        !excluded.contains("CL-0001"),
         "Failed worker should NOT be excluded"
     );
 
     let selected = select_next_task_locked(&resolved, false, &excluded, &queue_lock)?
         .expect("a task should be selected");
 
-    // Should select RQ-0003 (first in queue file order), NOT RQ-0001 (lowest ID)
+    // Should select CL-0003 (first in queue file order), NOT CL-0001 (lowest ID)
     assert_eq!(
-        selected.0, "RQ-0003",
+        selected.0, "CL-0003",
         "parallel selection must honor queue file order even with terminal workers in state"
     );
     Ok(())
@@ -329,9 +329,9 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
     let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
 
-    // Add tasks: RQ-0001 first (will be blocked), RQ-0002 second
+    // Add tasks: CL-0001 first (will be blocked), CL-0002 second
     queue_file.tasks.push(Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "First task (blocked)".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -359,7 +359,7 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
         parent_id: None,
     });
     queue_file.tasks.push(Task {
-        id: "RQ-0002".to_string(),
+        id: "CL-0002".to_string(),
         title: "Second task".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -388,13 +388,13 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
     });
     queue::save_queue(&queue_path, &queue_file)?;
 
-    // Create state with BlockedPush worker for RQ-0001 (SHOULD block selection)
+    // Create state with BlockedPush worker for CL-0001 (SHOULD block selection)
     let state_path = cueloop_dir.join("cache/parallel/state.json");
     let mut state =
         state::ParallelStateFile::new("2026-01-01T00:00:00Z".to_string(), "main".to_string());
     let mut blocked_worker = state::WorkerRecord::new(
-        "RQ-0001",
-        crate::testsupport::path::portable_abs_path("workspace/RQ-0001"),
+        "CL-0001",
+        crate::testsupport::path::portable_abs_path("workspace/CL-0001"),
         "2026-01-01T00:00:00Z".to_string(),
     );
     blocked_worker.mark_blocked("2026-01-01T01:00:00Z".to_string(), "merge conflict");
@@ -408,7 +408,7 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -422,16 +422,16 @@ fn select_next_task_locked_excludes_blocked_push_workers() -> Result<()> {
 
     // BlockedPush worker SHOULD be excluded
     assert!(
-        excluded.contains("RQ-0001"),
+        excluded.contains("CL-0001"),
         "BlockedPush worker should be excluded"
     );
 
     let selected = select_next_task_locked(&resolved, false, &excluded, &queue_lock)?
         .expect("a task should be selected");
 
-    // Should skip RQ-0001 (blocked) and select RQ-0002
+    // Should skip CL-0001 (blocked) and select CL-0002
     assert_eq!(
-        selected.0, "RQ-0002",
+        selected.0, "CL-0002",
         "parallel selection should skip blocked workers and select next in queue order"
     );
     Ok(())

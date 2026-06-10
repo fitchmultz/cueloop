@@ -417,6 +417,8 @@ pub struct MachineTaskLifecycleDocument {
     pub task: Option<Task>,
     #[serde(default)]
     pub notes: Vec<String>,
+    #[serde(default)]
+    pub evidence: Vec<String>,
     pub archived: bool,
     pub continuation: MachineContinuationSummary,
 }

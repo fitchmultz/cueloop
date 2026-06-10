@@ -135,7 +135,7 @@ Parallel execution runs tasks in isolated git workspace clones:
 ├─────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
 │  │  Worker 1   │  │  Worker 2   │  │    Worker N     │ │
-│  │  RQ-0001    │  │  RQ-0002    │  │    RQ-000N      │ │
+│  │  CL-0001    │  │  CL-0002    │  │    CL-000N      │ │
 │  │ (workspace) │  │ (workspace) │  │  (workspace)    │ │
 │  └──────┬──────┘  └──────┬──────┘  └────────┬────────┘ │
 │         │                │                   │          │
@@ -183,7 +183,7 @@ watch -n 2 'cueloop run parallel status'
 watch -n 2 'cueloop run parallel status --json'
 
 # Retry a blocked worker
-cueloop run parallel retry --task RQ-0001
+cueloop run parallel retry --task CL-0001
 ```
 
 ### Workspace Root Configuration
@@ -213,7 +213,7 @@ Parallel workers resolve rebase conflicts inside the integration loop. If a work
 cueloop run parallel status
 
 # Retry that worker (reuses retained workspace/state)
-cueloop run parallel retry --task RQ-0001
+cueloop run parallel retry --task CL-0001
 ```
 
 ### Parallel State Recovery
@@ -339,7 +339,7 @@ cueloop productivity summary
 cueloop queue graph --critical
 
 # Check what blocks a task
-cueloop queue graph --task RQ-0001 --reverse
+cueloop queue graph --task CL-0001 --reverse
 
 # Optimize order: start with critical path tasks
 cueloop queue list --sort priority | head -10

@@ -56,7 +56,7 @@ After the basic smoke test, try one lightweight end-to-end repo-local flow:
 ```bash
 cueloop task "Document the evaluator quick path"
 cueloop queue list
-cueloop queue show RQ-0001
+cueloop queue show CL-0001
 cueloop run one --dry-run
 ```
 

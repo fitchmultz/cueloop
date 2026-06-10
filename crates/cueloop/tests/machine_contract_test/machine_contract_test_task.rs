@@ -121,6 +121,124 @@ fn machine_task_create_and_mutate_round_trip() -> Result<()> {
 }
 
 #[test]
+fn machine_task_mutate_rejects_unknown_fields_and_versions_and_can_append() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+
+    let insert_request = serde_json::json!({
+        "version": 1,
+        "tasks": [{
+            "key": "alpha",
+            "title": "Mutation hardening task",
+            "status": TaskStatus::Todo.as_str(),
+            "priority": TaskPriority::Medium.as_str()
+        }]
+    });
+    let insert_path = write_json_file(
+        dir.path(),
+        "mutation-hardening-insert.json",
+        &insert_request,
+    )?;
+    let (insert_status, insert_stdout, insert_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "insert",
+            "--input",
+            insert_path.to_str().expect("utf-8 insert path"),
+        ],
+    );
+    assert!(
+        insert_status.success(),
+        "machine task insert failed\nstdout:\n{insert_stdout}\nstderr:\n{insert_stderr}"
+    );
+    let inserted: Value = serde_json::from_str(&insert_stdout)?;
+    let task_id = inserted["tasks"][0]["task"]["id"].as_str().unwrap();
+
+    let append_request = serde_json::json!({
+        "version": 1,
+        "tasks": [{
+            "task_id": task_id,
+            "edits": [
+                {"field": "notes", "mode": "append", "value": "agent note"},
+                {"field": "evidence", "mode": "append", "value": "cargo test passed"}
+            ]
+        }]
+    });
+    let append_path = write_json_file(dir.path(), "mutation-append.json", &append_request)?;
+    let (append_status, append_stdout, append_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "mutate",
+            "--input",
+            append_path.to_str().expect("utf-8 append path"),
+        ],
+    );
+    assert!(
+        append_status.success(),
+        "machine task mutate append failed\nstdout:\n{append_stdout}\nstderr:\n{append_stderr}"
+    );
+    let (show_status, show_stdout, show_stderr) =
+        run_in_dir(dir.path(), &["machine", "task", "show", task_id]);
+    assert!(
+        show_status.success(),
+        "show failed\n{show_stdout}\n{show_stderr}"
+    );
+    let shown: Value = serde_json::from_str(&show_stdout)?;
+    assert_eq!(shown["task"]["notes"][0], "agent note");
+    assert_eq!(shown["task"]["evidence"][0], "cargo test passed");
+
+    let unknown_request = serde_json::json!({
+        "version": 1,
+        "unknown": true,
+        "tasks": []
+    });
+    let unknown_path = write_json_file(dir.path(), "mutation-unknown.json", &unknown_request)?;
+    let (unknown_status, _unknown_stdout, unknown_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "mutate",
+            "--input",
+            unknown_path.to_str().expect("utf-8 unknown path"),
+        ],
+    );
+    assert!(!unknown_status.success(), "unknown fields should fail");
+    assert!(
+        unknown_stderr.contains("unknown field") || unknown_stderr.contains("machine_error"),
+        "unexpected unknown-field stderr: {unknown_stderr}"
+    );
+
+    let version_request = serde_json::json!({
+        "version": 99,
+        "tasks": [{"task_id": task_id, "edits": [{"field": "notes", "value": "x"}]}]
+    });
+    let version_path = write_json_file(dir.path(), "mutation-version.json", &version_request)?;
+    let (version_status, _version_stdout, version_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "mutate",
+            "--input",
+            version_path.to_str().expect("utf-8 version path"),
+        ],
+    );
+    assert!(
+        !version_status.success(),
+        "unsupported versions should fail"
+    );
+    assert!(
+        version_stderr.contains("Unsupported task mutation request version"),
+        "unexpected version stderr: {version_stderr}"
+    );
+    Ok(())
+}
+
+#[test]
 fn machine_task_insert_creates_full_tasks_atomically() -> Result<()> {
     let dir = setup_cueloop_repo()?;
 
@@ -163,7 +281,7 @@ fn machine_task_insert_creates_full_tasks_atomically() -> Result<()> {
     assert_eq!(document["version"], 1);
     assert_eq!(document["created_count"], 1);
     assert_eq!(document["tasks"][0]["key"], "alpha");
-    assert_eq!(document["tasks"][0]["task"]["id"], "RQ-0001");
+    assert_eq!(document["tasks"][0]["task"]["id"], "CL-0001");
     assert_eq!(
         document["tasks"][0]["task"]["custom_fields"]["scan_agent"],
         "scan-general"
@@ -176,7 +294,7 @@ fn machine_task_insert_creates_full_tasks_atomically() -> Result<()> {
         "machine queue read failed\nstdout:\n{read_stdout}\nstderr:\n{read_stderr}"
     );
     let read_document: Value = serde_json::from_str(&read_stdout)?;
-    assert_eq!(read_document["active"]["tasks"][0]["id"], "RQ-0001");
+    assert_eq!(read_document["active"]["tasks"][0]["id"], "CL-0001");
     Ok(())
 }
 
@@ -256,6 +374,8 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
             &task_id,
             "--note",
             "Verified by machine API",
+            "--evidence",
+            "make agent-ci passed",
         ],
     );
     assert!(
@@ -266,6 +386,8 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
     assert_eq!(done["status"], TaskStatus::Done.as_str());
     assert_eq!(done["archived"], true);
     assert_eq!(done["task"]["status"], TaskStatus::Done.as_str());
+    assert_eq!(done["evidence"][0], "make agent-ci passed");
+    assert_eq!(done["task"]["evidence"][0], "make agent-ci passed");
 
     let (show_done_status, show_done_stdout, show_done_stderr) =
         run_in_dir(dir.path(), &["machine", "task", "show", &task_id]);

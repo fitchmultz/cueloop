@@ -28,7 +28,7 @@ fn ensure_phase3_completion_requires_clean_repo_when_enabled() -> Result<()> {
     assert!(
         ensure_phase3_completion(
             &resolved,
-            "RQ-0001",
+            "CL-0001",
             crate::contracts::GitPublishMode::CommitAndPush
         )
         .is_err()
@@ -45,7 +45,7 @@ fn ensure_phase3_completion_allows_queue_files_for_rejected_status_when_enabled(
     let resolved = resolved_for_completion(temp.path().to_path_buf());
     ensure_phase3_completion(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         crate::contracts::GitPublishMode::CommitAndPush,
     )?;
     Ok(())
@@ -85,7 +85,7 @@ fn ensure_phase3_completion_allows_config_changes_when_enabled() -> Result<()> {
     let resolved = resolved_for_completion(temp.path().to_path_buf());
     ensure_phase3_completion(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         crate::contracts::GitPublishMode::CommitAndPush,
     )?;
     Ok(())
@@ -125,7 +125,7 @@ fn ensure_phase3_completion_allows_config_jsonc_changes_when_enabled() -> Result
     let resolved = resolved_for_completion(temp.path().to_path_buf());
     ensure_phase3_completion(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         crate::contracts::GitPublishMode::CommitAndPush,
     )?;
     Ok(())
@@ -142,7 +142,7 @@ fn ensure_phase3_completion_rejected_still_requires_clean_repo_for_other_changes
     assert!(
         ensure_phase3_completion(
             &resolved,
-            "RQ-0001",
+            "CL-0001",
             crate::contracts::GitPublishMode::CommitAndPush
         )
         .is_err()
@@ -157,7 +157,7 @@ fn ensure_phase3_completion_allows_dirty_repo_when_disabled() -> Result<()> {
     write_queue_and_done(temp.path(), TaskStatus::Done)?;
 
     let resolved = resolved_for_completion(temp.path().to_path_buf());
-    ensure_phase3_completion(&resolved, "RQ-0001", crate::contracts::GitPublishMode::Off)?;
+    ensure_phase3_completion(&resolved, "CL-0001", crate::contracts::GitPublishMode::Off)?;
     Ok(())
 }
 
@@ -202,7 +202,7 @@ echo '{"type":"session","sessionID":"sess-123"}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -290,7 +290,7 @@ echo '{"type":"session","sessionID":"sess-123"}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,

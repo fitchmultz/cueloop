@@ -12,11 +12,12 @@ CueLoop is a Rust CLI plus SwiftUI macOS app for queue-driven, auditable AI codi
 | --- | --- | --- |
 | Evaluating CueLoop quickly | [README](../README.md) | [Evaluator Path](guides/evaluator-path.md), [Local Smoke Test](guides/local-smoke-test.md) |
 | Installing CueLoop in a repo | [Quick Start](quick-start.md) | [Configuration](configuration.md), [CLI Reference](cli.md) |
-| Learning the workflow | [Architecture Overview](architecture.md) | [Phases](features/phases.md), [Queue](features/queue.md), [Task System](features/tasks.md) |
+| Learning the task ledger | [Agent Usage Guide](guides/agent-usage.md) | [Queue](features/queue.md), [Task System](features/tasks.md), [Task Schema and Field Reference](features/task-schema.md) |
+| Learning runner-backed workflow | [Architecture Overview](architecture.md) | [Phases](features/phases.md), [Runners](features/runners.md), [Supervision](features/supervision.md) |
 | Running CueLoop day to day | [CLI Reference](cli.md) | [Troubleshooting](troubleshooting.md), [Feature Guides](features/README.md) |
 | Operating or releasing this project | [CI and Test Strategy](guides/ci-strategy.md) | [Project Operating Constitution](guides/project-operating-constitution.md), [Release Runbook](guides/release-runbook.md) |
 | Building app or automation integrations | [Machine Contract](machine-contract.md) | [App Feature Guide](features/app.md), [Pi Integration](integrations/pi.md) |
-| Using CueLoop as an already-running agent | [Agent Usage Guide](guides/agent-usage.md) | [Machine Contract](machine-contract.md), [Queue](features/queue.md) |
+| Using CueLoop as an already-running agent | [Agent Usage Guide](guides/agent-usage.md) | [Machine Contract](machine-contract.md), [Queue](features/queue.md), [Task Schema and Field Reference](features/task-schema.md) |
 
 ## Canonical Documentation Ownership
 

@@ -50,7 +50,7 @@ fn resolved_with_config(config: Config) -> (config::Resolved, TempDir) {
         .queue
         .id_prefix
         .clone()
-        .unwrap_or_else(|| "RQ".to_string());
+        .unwrap_or_else(|| "CL".to_string());
     let id_width = config.queue.id_width.unwrap_or(4) as usize;
 
     (
@@ -218,7 +218,7 @@ fn run_scan_backfills_new_tasks_added_by_runner() -> anyhow::Result<()> {
 
     let queue_after = QueueFile {
         version: 1,
-        tasks: vec![scan_task_missing_request("RQ-0001", "Follow up on TODOs")],
+        tasks: vec![scan_task_missing_request("CL-0001", "Follow up on TODOs")],
     };
     let queue_after_path = resolved.repo_root.join(".cueloop/cache/queue-after.json");
     std::fs::create_dir_all(
@@ -256,7 +256,7 @@ echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"scan com
     let queue = load_queue(&resolved.queue_path)?;
     assert_eq!(queue.tasks.len(), 1);
     let task = &queue.tasks[0];
-    assert_eq!(task.id, "RQ-0001");
+    assert_eq!(task.id, "CL-0001");
     assert_eq!(task.title, "Follow up on TODOs");
     assert_eq!(task.request.as_deref(), Some("scan: review TODO coverage"));
     assert_eq!(task.created_at.as_deref(), Some("2026-04-01T00:00:00Z"));
@@ -271,7 +271,7 @@ fn run_scan_rejects_stray_non_queue_mutations() -> anyhow::Result<()> {
 
     let queue_after = QueueFile {
         version: 1,
-        tasks: vec![scan_task_missing_request("RQ-0001", "Follow up on TODOs")],
+        tasks: vec![scan_task_missing_request("CL-0001", "Follow up on TODOs")],
     };
     let queue_after_path = resolved.repo_root.join(".cueloop/cache/queue-after.json");
     std::fs::create_dir_all(
@@ -328,8 +328,8 @@ fn run_scan_fails_before_runner_when_queue_is_invalid() -> anyhow::Result<()> {
         &QueueFile {
             version: 1,
             tasks: vec![
-                scan_task("RQ-0001", "First"),
-                scan_task("RQ-0001", "Duplicate"),
+                scan_task("CL-0001", "First"),
+                scan_task("CL-0001", "Duplicate"),
             ],
         },
     )?;

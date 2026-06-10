@@ -40,7 +40,7 @@ use crate::queue::graph::{GraphFormat, build_graph, find_critical_paths};
 #[derive(Args)]
 #[command(
     about = "Visualize task dependencies as a graph",
-    after_long_help = "Examples:\n  cueloop queue graph\n  cueloop queue graph --task RQ-0001\n  cueloop queue graph --format dot\n  cueloop queue graph --critical\n  cueloop queue graph --reverse --task RQ-0001"
+    after_long_help = "Examples:\n  cueloop queue graph\n  cueloop queue graph --task CL-0001\n  cueloop queue graph --format dot\n  cueloop queue graph --critical\n  cueloop queue graph --reverse --task CL-0001"
 )]
 pub struct QueueGraphArgs {
     /// Focus on a specific task (show its dependency tree).

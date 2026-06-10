@@ -36,7 +36,7 @@ use super::{QueueListFormat, StatusArg};
 #[derive(Args)]
 /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
 #[command(
-    after_long_help = "Examples:\n  cueloop queue search \"authentication\"\n  cueloop queue search \"RQ-\\d{4}\" --regex\n  cueloop queue search \"TODO\" --match-case\n  cueloop queue search \"fix\" --status todo --tag rust\n  cueloop queue search \"refactor\" --scope crates/cueloop --tag rust\n  cueloop queue search \"auth bug\" --fuzzy\n  cueloop queue search \"fuzzy search\" --fuzzy --match-case"
+    after_long_help = "Examples:\n  cueloop queue search \"authentication\"\n  cueloop queue search \"CL-\\d{4}\" --regex\n  cueloop queue search \"TODO\" --match-case\n  cueloop queue search \"fix\" --status todo --tag rust\n  cueloop queue search \"refactor\" --scope crates/cueloop --tag rust\n  cueloop queue search \"auth bug\" --fuzzy\n  cueloop queue search \"fuzzy search\" --fuzzy --match-case"
 )]
 pub struct QueueSearchArgs {
     /// Search query (substring or regex pattern).

@@ -109,7 +109,7 @@ impl Default for Config {
             queue: QueueConfig {
                 file: Some(PathBuf::from(DEFAULT_QUEUE_FILE)),
                 done_file: Some(PathBuf::from(DEFAULT_DONE_FILE)),
-                id_prefix: Some("RQ".to_string()),
+                id_prefix: Some(crate::constants::queue::DEFAULT_ID_PREFIX.to_string()),
                 id_width: Some(DEFAULT_ID_WIDTH as u8),
                 size_warning_threshold_kb: Some(DEFAULT_SIZE_WARNING_THRESHOLD_KB),
                 task_count_warning_threshold: Some(DEFAULT_TASK_COUNT_WARNING_THRESHOLD),

@@ -10,13 +10,14 @@ CueLoop is a Rust CLI and macOS app for queue-driven, auditable AI coding agent 
 
 ## What you are seeing
 
-A task starts in the queue, moves through supervised planning, implementation, and review phases, then is accepted only after CueLoop updates task state and runs the configured local gate. The important part is not the runner brand; it is that the workflow stays inspectable instead of disappearing into chat history or hidden SaaS state.
+CueLoop is first a durable task ledger for agent work: tasks, status, notes, evidence, handoff state, and done history stay in repo-local files instead of disappearing into chat history. If you want CueLoop to execute work too, the same queue can also move through supervised planning, implementation, review, and local validation phases. Human-runner automation is additive; the plain task ledger remains useful on its own.
 
 You can inspect the current CLI without configuring an external model runner. Core commands include:
 
 ```text
 Commands:
   queue     Inspect and manage the task queue
+  agent     Track queue work from an already-running agent without spawning runners
   config    Inspect and manage CueLoop configuration
   run       Run CueLoop supervisor (executes queued tasks)
   task      Create and build tasks from freeform requests
@@ -26,6 +27,7 @@ Commands:
 Common first commands:
   cueloop init                         Bootstrap CueLoop in this repo
   cueloop queue list                   See queued work
+  cueloop agent overview               Compact context for active agents
   cueloop task "Fix the flaky test"    Create a task from a request
   cueloop run one                      Run the next task
   ...
@@ -57,7 +59,8 @@ CueLoop’s answer is a plain-file task queue, a supervised runner loop, and loc
 | Problem | Capability | Proof / where to inspect |
 | --- | --- | --- |
 | AI work gets trapped in chat history | Stores active and completed work in repo-local `.cueloop/queue.jsonc` and `.cueloop/done.jsonc` JSONC files | `cueloop queue list`, `cueloop queue validate`, [Queue docs](docs/features/queue.md) |
-| Different agent CLIs have different knobs | Normalizes runner selection across `codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, and `pi` | `cueloop runner list`, [CLI reference](docs/cli.md) |
+| Already-running agents need durable progress state | Provides `cueloop agent ...` commands for compact context, claim/release, notes, evidence, handoff, validation, and evidence-required completion without spawning nested runners | `cueloop agent overview`, `cueloop agent complete --help`, [Agent Usage Guide](docs/guides/agent-usage.md) |
+| Different agent CLIs have different knobs | Normalizes runner selection across `codex`, `opencode`, `gemini`, `claude`, `cursor`, `kimi`, and `pi` when you opt into CueLoop-runner execution | `cueloop runner list`, [CLI reference](docs/cli.md) |
 | “Agent finished” is not enough quality control | Supports one-, two-, and three-phase execution: plan, implement, review/complete | `cueloop run one --phases 3`, [Architecture overview](docs/architecture.md) |
 | Local CI and queue state drift out of sync | Runs configured gates before completion and validates queue/done state after runs | `make agent-ci`, [CI strategy](docs/guides/ci-strategy.md) |
 | Parallel agent work can damage the base repo | Uses isolated worker workspaces for parallel execution and an integration loop for completed workers | `cueloop run loop --parallel <N>`, [Architecture overview](docs/architecture.md#sequence-parallel-worker-lifecycle) |
@@ -102,19 +105,28 @@ Expected result: CueLoop creates or refreshes `.cueloop/` runtime files, command
 
 For a reviewer-friendly script, use [docs/guides/local-smoke-test.md](docs/guides/local-smoke-test.md). For a short evaluation route through the repo, use [docs/guides/evaluator-path.md](docs/guides/evaluator-path.md).
 
-### 3. Try one real task loop
+### 3. Try one real task-ledger loop
 
-After choosing a runner/profile:
+This path uses CueLoop only for durable task tracking while you or an already-running agent do the work:
 
 ```bash
 cueloop task "Add retry coverage for webhook delivery failures"
-cueloop queue list
-cueloop queue show <created-task-id>
+cueloop agent overview
+cueloop agent start <created-task-id> --note "Started in current session"
+# do the work with your current tools/agent
+cueloop agent evidence <created-task-id> "make agent-ci passed"
+cueloop agent complete <created-task-id> --evidence "make agent-ci passed"
+cueloop agent validate
+```
+
+Use the task ID printed by `cueloop task` or `cueloop queue list`. That demonstrates the ledger loop: request → queue item → active work state → evidence → done archive.
+
+If you want CueLoop to dispatch and supervise a runner instead, choose a runner/profile and run:
+
+```bash
 cueloop run one --profile safe --phases 3
 cueloop queue validate
 ```
-
-Use the task ID printed by `cueloop task` or `cueloop queue list`. That demonstrates the core loop: request → queue item → supervised agent phases → local validation → queue update.
 
 ## How it works
 
@@ -130,12 +142,13 @@ flowchart LR
 ```
 
 1. Tasks live in `.cueloop/queue.jsonc`; terminal tasks are archived to `.cueloop/done.jsonc`.
-2. A human starts `cueloop run one`, `cueloop run loop`, or `cueloop run loop --parallel <N>`.
-3. CueLoop resolves config, selected profile, runner overrides, queue state, and safety checks.
-4. The runner executes one, two, or three supervised phases.
-5. CueLoop runs the configured local gate before completion and before any configured publish behavior.
-6. Queue/done state is validated, archived, and finalized according to config.
-7. The macOS app uses the same CLI/machine surfaces rather than a separate workflow engine.
+2. An already-running agent can use `cueloop agent ...` to claim, start, annotate, hand off, validate, and complete tasks without spawning another runner.
+3. A human can optionally start `cueloop run one`, `cueloop run loop`, or `cueloop run loop --parallel <N>` when they want CueLoop to dispatch and supervise runner CLIs.
+4. CueLoop resolves config, selected profile, runner overrides, queue state, and safety checks for runner-backed execution.
+5. The runner executes one, two, or three supervised phases only in runner mode.
+6. CueLoop runs the configured local gate before runner-mode completion and before any configured publish behavior.
+7. Queue/done state is validated, archived, and finalized according to config.
+8. The macOS app uses the same CLI/machine surfaces rather than a separate workflow engine.
 
 Deeper design notes live in [docs/architecture.md](docs/architecture.md), and command behavior lives in [docs/cli.md](docs/cli.md).
 

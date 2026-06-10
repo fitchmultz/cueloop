@@ -106,7 +106,7 @@ fn test_resolved(repo_root: &Path) -> config::Resolved {
         repo_root: repo_root.to_path_buf(),
         queue_path: repo_root.join(".cueloop/queue.jsonc"),
         done_path: repo_root.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -157,10 +157,10 @@ fn finished_success_marks_completed_persists_state_and_removes_worker() -> Resul
     let state_path = temp.path().join("state.json");
     let (repo_root, branch) = initialized_remote_backed_repo(&temp)?;
     let mut guard = create_guard(&temp, state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -169,7 +169,7 @@ fn finished_success_marks_completed_persists_state_and_removes_worker() -> Resul
     let mut stats = ParallelRunStats::default();
     handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace: workspace.clone(),
             status: synthetic_status(0),
@@ -184,7 +184,7 @@ fn finished_success_marks_completed_persists_state_and_removes_worker() -> Resul
     )?;
 
     let saved = state::load_state(&state_path)?.expect("saved state");
-    let worker = saved.get_worker("RQ-0006").expect("worker record");
+    let worker = saved.get_worker("CL-0006").expect("worker record");
     assert_eq!(worker.lifecycle, WorkerLifecycle::Completed);
     assert_eq!(stats.succeeded(), 1);
     assert!(guard.in_flight().is_empty());
@@ -196,10 +196,10 @@ fn finished_blocked_push_retains_workspace_and_records_attempts() -> Result<()> 
     let temp = TempDir::new()?;
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -211,7 +211,7 @@ fn finished_blocked_push_retains_workspace_and_records_attempts() -> Result<()> 
     std::fs::write(
         &marker_path,
         serde_json::json!({
-            "task_id": "RQ-0006",
+            "task_id": "CL-0006",
             "reason": "blocked by integration",
             "attempt": 3,
             "max_attempts": 5,
@@ -224,7 +224,7 @@ fn finished_blocked_push_retains_workspace_and_records_attempts() -> Result<()> 
     let mut stats = ParallelRunStats::default();
     handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace: workspace.clone(),
             status: synthetic_status(1),
@@ -239,7 +239,7 @@ fn finished_blocked_push_retains_workspace_and_records_attempts() -> Result<()> 
     )?;
 
     let saved = state::load_state(&state_path)?.expect("saved state");
-    let worker = saved.get_worker("RQ-0006").expect("worker record");
+    let worker = saved.get_worker("CL-0006").expect("worker record");
     assert_eq!(worker.lifecycle, WorkerLifecycle::BlockedPush);
     assert_eq!(worker.push_attempts, 3);
     assert_eq!(worker.last_error.as_deref(), Some("blocked by integration"));
@@ -253,10 +253,10 @@ fn finished_failure_without_block_marker_cleans_workspace() -> Result<()> {
     let temp = TempDir::new()?;
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -265,7 +265,7 @@ fn finished_failure_without_block_marker_cleans_workspace() -> Result<()> {
     let mut stats = ParallelRunStats::default();
     handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace: workspace.clone(),
             status: synthetic_status(9),
@@ -280,7 +280,7 @@ fn finished_failure_without_block_marker_cleans_workspace() -> Result<()> {
     )?;
 
     let saved = state::load_state(&state_path)?.expect("saved state");
-    let worker = saved.get_worker("RQ-0006").expect("worker record");
+    let worker = saved.get_worker("CL-0006").expect("worker record");
     assert_eq!(worker.lifecycle, WorkerLifecycle::Failed);
     assert!(!workspace.path.exists());
     assert_eq!(stats.failed(), 1);
@@ -294,10 +294,10 @@ fn finished_worker_state_save_failure_keeps_guard_tracking() -> Result<()> {
     let (repo_root, branch) = initialized_remote_backed_repo(&temp)?;
     std::fs::create_dir_all(&bad_state_path)?;
     let mut guard = create_guard(&temp, bad_state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -306,7 +306,7 @@ fn finished_worker_state_save_failure_keeps_guard_tracking() -> Result<()> {
     let mut stats = ParallelRunStats::default();
     let err = handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace: workspace.clone(),
             status: synthetic_status(0),
@@ -322,7 +322,7 @@ fn finished_worker_state_save_failure_keeps_guard_tracking() -> Result<()> {
     .expect_err("state save should fail");
 
     assert!(err.to_string().contains("write parallel state"));
-    assert!(guard.in_flight().contains_key("RQ-0006"));
+    assert!(guard.in_flight().contains_key("CL-0006"));
     Ok(())
 }
 
@@ -331,10 +331,10 @@ fn finished_success_surfaces_branch_refresh_failure() -> Result<()> {
     let temp = TempDir::new()?;
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -343,7 +343,7 @@ fn finished_success_surfaces_branch_refresh_failure() -> Result<()> {
     let mut stats = ParallelRunStats::default();
     let err = handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace,
             status: synthetic_status(0),
@@ -363,7 +363,7 @@ fn finished_success_surfaces_branch_refresh_failure() -> Result<()> {
         "unexpected error: {err:#}"
     );
     assert_eq!(stats.succeeded(), 0);
-    assert!(guard.in_flight().contains_key("RQ-0006"));
+    assert!(guard.in_flight().contains_key("CL-0006"));
     Ok(())
 }
 
@@ -397,7 +397,7 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
 
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
     std::fs::create_dir_all(workspace.path.join(".cueloop"))?;
     std::fs::write(
         workspace.path.join(".cueloop/queue.jsonc"),
@@ -407,9 +407,9 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
         workspace.path.join(".cueloop/done.jsonc"),
         "{workspace_done}",
     )?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -418,7 +418,7 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
     let mut stats = ParallelRunStats::default();
     let err = handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace,
             status: synthetic_status(0),
@@ -446,7 +446,7 @@ fn finished_success_errors_when_tracked_bookkeeping_refresh_cannot_fast_forward(
         "{stale_done}"
     );
     assert_eq!(stats.succeeded(), 0);
-    assert!(guard.in_flight().contains_key("RQ-0006"));
+    assert!(guard.in_flight().contains_key("CL-0006"));
     Ok(())
 }
 
@@ -474,25 +474,25 @@ fn finished_success_reconciles_ignored_source_bookkeeping_from_worker_done_task(
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0006", TaskStatus::Todo)],
+            tasks: vec![task("CL-0006", TaskStatus::Todo)],
         },
     )?;
     crate::queue::save_queue(&resolved.done_path, &QueueFile::default())?;
 
     let state_path = temp.path().join("state.json");
     let mut guard = create_guard(&temp, state_path.clone());
-    let workspace = worker_workspace(&temp, "RQ-0006")?;
+    let workspace = worker_workspace(&temp, "CL-0006")?;
     std::fs::create_dir_all(workspace.path.join(".cueloop"))?;
     crate::queue::save_queue(
         &workspace.path.join(".cueloop/done.jsonc"),
         &QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0006", TaskStatus::Done)],
+            tasks: vec![task("CL-0006", TaskStatus::Done)],
         },
     )?;
-    register_finished_worker_monitor(&mut guard, &workspace, "RQ-0006")?;
+    register_finished_worker_monitor(&mut guard, &workspace, "CL-0006")?;
     guard.state_file_mut().upsert_worker(WorkerRecord::new(
-        "RQ-0006",
+        "CL-0006",
         workspace.path.clone(),
         "2026-04-25T00:00:00Z".to_string(),
     ));
@@ -501,7 +501,7 @@ fn finished_success_reconciles_ignored_source_bookkeeping_from_worker_done_task(
     let mut stats = ParallelRunStats::default();
     handle_finished_workers_for_test!(
         vec![crate::commands::run::parallel::worker::FinishedWorker {
-            task_id: "RQ-0006".to_string(),
+            task_id: "CL-0006".to_string(),
             task_title: "Task".to_string(),
             workspace,
             status: synthetic_status(0),
@@ -522,7 +522,7 @@ fn finished_success_reconciles_ignored_source_bookkeeping_from_worker_done_task(
     );
     let done = crate::queue::load_queue(&resolved.done_path)?;
     assert_eq!(done.tasks.len(), 1);
-    assert_eq!(done.tasks[0].id, "RQ-0006");
+    assert_eq!(done.tasks[0].id, "CL-0006");
     assert_eq!(stats.succeeded(), 1);
     Ok(())
 }

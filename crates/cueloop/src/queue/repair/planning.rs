@@ -277,7 +277,7 @@ mod tests {
         let queue_path = dir.path().join("queue.json");
         let done_path = dir.path().join("done.json");
 
-        let mut t = task("RQ-0001");
+        let mut t = task("CL-0001");
         t.status = TaskStatus::Done;
         t.completed_at = None;
 
@@ -295,7 +295,7 @@ mod tests {
         )
         .unwrap();
 
-        let plan = plan_queue_repair(&queue_path, &done_path, "RQ", 4).unwrap();
+        let plan = plan_queue_repair(&queue_path, &done_path, "CL", 4).unwrap();
         let report = plan.report();
         assert!(report.fixed_timestamps > 0);
 
@@ -309,7 +309,7 @@ mod tests {
         let queue_path = dir.path().join("queue.json");
         let done_path = dir.path().join("done.json");
 
-        let mut t = task("RQ-0001");
+        let mut t = task("CL-0001");
         t.status = TaskStatus::Done;
         t.created_at = Some("2026-01-18T12:00:00-05:00".to_string());
         t.updated_at = Some("2026-01-18T12:00:00-05:00".to_string());
@@ -329,7 +329,7 @@ mod tests {
         )
         .unwrap();
 
-        let plan = plan_queue_repair(&queue_path, &done_path, "RQ", 4).unwrap();
+        let plan = plan_queue_repair(&queue_path, &done_path, "CL", 4).unwrap();
         let report = plan.report();
         assert!(report.fixed_timestamps > 0);
 

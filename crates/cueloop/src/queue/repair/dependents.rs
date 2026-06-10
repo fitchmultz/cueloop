@@ -110,22 +110,22 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                task("RQ-0001", vec![]),
-                task("RQ-0002", vec!["RQ-0001"]),
-                task("RQ-0003", vec!["RQ-0002"]),
+                task("CL-0001", vec![]),
+                task("CL-0002", vec!["CL-0001"]),
+                task("CL-0003", vec!["CL-0002"]),
             ],
         };
         let done = QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0004", vec!["RQ-0003"])],
+            tasks: vec![task("CL-0004", vec!["CL-0003"])],
         };
 
-        let got = get_dependents("RQ-0001", &active, Some(&done));
+        let got = get_dependents("CL-0001", &active, Some(&done));
         let set: std::collections::HashSet<String> = got.into_iter().collect();
 
-        assert!(set.contains("RQ-0002"));
-        assert!(set.contains("RQ-0003"));
-        assert!(set.contains("RQ-0004"));
+        assert!(set.contains("CL-0002"));
+        assert!(set.contains("CL-0003"));
+        assert!(set.contains("CL-0004"));
         assert_eq!(set.len(), 3);
     }
 
@@ -134,15 +134,15 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                task("RQ-0001", vec!["RQ-0002"]),
-                task("RQ-0002", vec!["RQ-0001"]),
+                task("CL-0001", vec!["CL-0002"]),
+                task("CL-0002", vec!["CL-0001"]),
             ],
         };
 
-        let got = get_dependents("RQ-0001", &active, None);
+        let got = get_dependents("CL-0001", &active, None);
         let set: std::collections::HashSet<String> = got.into_iter().collect();
 
-        assert!(set.contains("RQ-0002"));
+        assert!(set.contains("CL-0002"));
         assert_eq!(set.len(), 1);
     }
 }

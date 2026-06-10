@@ -277,9 +277,9 @@ mod tests {
     #[test]
     fn select_publishable_task_ids_trims_and_filters() {
         let queue = queue_with_ids(&[
-            (" RQ-0001 ", TaskStatus::Todo, &["bug"]),
-            ("RQ-0002", TaskStatus::Doing, &["bug"]),
-            ("RQ-0003", TaskStatus::Todo, &["ops"]),
+            (" CL-0001 ", TaskStatus::Todo, &["bug"]),
+            ("CL-0002", TaskStatus::Doing, &["bug"]),
+            ("CL-0003", TaskStatus::Todo, &["ops"]),
         ]);
         let filters = PublishManyFilters {
             statuses: vec![TaskStatus::Todo],
@@ -288,6 +288,6 @@ mod tests {
         };
 
         let selected = select_publishable_task_ids(&queue, &filters);
-        assert_eq!(selected, vec!["RQ-0001"]);
+        assert_eq!(selected, vec!["CL-0001"]);
     }
 }

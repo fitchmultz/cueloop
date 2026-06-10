@@ -127,7 +127,7 @@ pub struct WebhookPayload {
     pub event: String,
     /// Timestamp of the event (RFC3339).
     pub timestamp: String,
-    /// Task ID (e.g., "RQ-0001").
+    /// Task ID (e.g., "CL-0001").
     /// Optional: may be None for loop-level events.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub task_id: Option<String>,

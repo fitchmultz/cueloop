@@ -169,7 +169,7 @@ mod tests {
     fn test_session() -> SessionState {
         SessionState::new(
             "test-session-id".to_string(),
-            "RQ-0001".to_string(),
+            "CL-0001".to_string(),
             "2026-01-30T00:00:00.000000000Z".to_string(),
             2,
             Runner::Claude,
@@ -186,7 +186,7 @@ mod tests {
 
         assert_eq!(session.version, SESSION_STATE_VERSION);
         assert_eq!(session.session_id, "test-session-id");
-        assert_eq!(session.task_id, "RQ-0001");
+        assert_eq!(session.task_id, "CL-0001");
         assert_eq!(session.iterations_planned, 2);
         assert_eq!(session.iterations_completed, 0);
         assert_eq!(session.current_phase, 1);
@@ -243,7 +243,7 @@ mod tests {
     fn session_deserialization_ignores_optional_git_commit_when_none() {
         let session = SessionState::new(
             "test-id".to_string(),
-            "RQ-0001".to_string(),
+            "CL-0001".to_string(),
             "2026-01-30T00:00:00.000000000Z".to_string(),
             1,
             Runner::Claude,
@@ -282,7 +282,7 @@ mod tests {
 
         let session = SessionState::new(
             "test-id".to_string(),
-            "RQ-0001".to_string(),
+            "CL-0001".to_string(),
             "2026-01-30T00:00:00.000000000Z".to_string(),
             1,
             Runner::Claude,
@@ -334,7 +334,7 @@ mod tests {
 
         let session = SessionState::new(
             "test-id".to_string(),
-            "RQ-0001".to_string(),
+            "CL-0001".to_string(),
             "2026-01-30T00:00:00.000000000Z".to_string(),
             1,
             Runner::Claude,
@@ -359,7 +359,7 @@ mod tests {
         let json = r#"{
             "version": 1,
             "session_id": "test-id",
-            "task_id": "RQ-0001",
+            "task_id": "CL-0001",
             "run_started_at": "2026-01-30T00:00:00.000000000Z",
             "last_updated_at": "2026-01-30T00:00:00.000000000Z",
             "iterations_planned": 1,
@@ -381,7 +381,7 @@ mod tests {
     fn session_serialization_skips_none_phase_settings() {
         let session = SessionState::new(
             "test-id".to_string(),
-            "RQ-0001".to_string(),
+            "CL-0001".to_string(),
             "2026-01-30T00:00:00.000000000Z".to_string(),
             1,
             Runner::Claude,

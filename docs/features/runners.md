@@ -437,9 +437,9 @@ CueLoop manages runner sessions explicitly for reliable crash recovery. Each pha
 {task_id}-p{phase}-{timestamp}
 ```
 
-**Example:** `RQ-0001-p2-1704153600`
+**Example:** `CL-0001-p2-1704153600`
 
-- `task_id` - The task identifier (e.g., `RQ-0001`)
+- `task_id` - The task identifier (e.g., `CL-0001`)
 - `phase` - Phase number (1, 2, or 3)
 - `timestamp` - Unix epoch seconds
 

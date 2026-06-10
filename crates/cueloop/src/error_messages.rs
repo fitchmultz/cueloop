@@ -117,101 +117,101 @@ mod tests {
     #[test]
     fn task_not_found_in_active_queue_matches_contract() {
         assert_eq!(
-            task_not_found_in_queue("RQ-100"),
-            "Task 'RQ-100' not found in active queue."
+            task_not_found_in_queue("CL-100"),
+            "Task 'CL-100' not found in active queue."
         );
     }
 
     #[test]
     fn task_not_found_in_queue_or_done_matches_contract() {
         assert_eq!(
-            task_not_found_in_queue_or_done("RQ-100"),
-            "Task 'RQ-100' not found in queue or done archive."
+            task_not_found_in_queue_or_done("CL-100"),
+            "Task 'CL-100' not found in queue or done archive."
         );
     }
 
     #[test]
     fn task_not_found_with_include_done_hint_matches_contract() {
         assert_eq!(
-            task_not_found_with_include_done_hint("RQ-100"),
-            "Task 'RQ-100' not found in active queue. Use --include-done to search the done archive."
+            task_not_found_with_include_done_hint("CL-100"),
+            "Task 'CL-100' not found in active queue. Use --include-done to search the done archive."
         );
     }
 
     #[test]
     fn root_task_not_found_without_done_search_includes_hint() {
         assert_eq!(
-            root_task_not_found("RQ-100", false),
-            "Root task 'RQ-100' not found in active queue. Use --include-done to search the done archive."
+            root_task_not_found("CL-100", false),
+            "Root task 'CL-100' not found in active queue. Use --include-done to search the done archive."
         );
     }
 
     #[test]
     fn root_task_not_found_with_done_search_matches_contract() {
         assert_eq!(
-            root_task_not_found("RQ-100", true),
-            "Root task 'RQ-100' not found in queue or done archive."
+            root_task_not_found("CL-100", true),
+            "Root task 'CL-100' not found in queue or done archive."
         );
     }
 
     #[test]
     fn source_task_not_found_without_done_search_matches_contract() {
         assert_eq!(
-            source_task_not_found("RQ-100", false),
-            "Source task 'RQ-100' not found in active queue."
+            source_task_not_found("CL-100", false),
+            "Source task 'CL-100' not found in active queue."
         );
     }
 
     #[test]
     fn source_task_not_found_with_done_search_matches_contract() {
         assert_eq!(
-            source_task_not_found("RQ-100", true),
-            "Source task 'RQ-100' not found in queue or done archive."
+            source_task_not_found("CL-100", true),
+            "Source task 'CL-100' not found in queue or done archive."
         );
     }
 
     #[test]
     fn generic_task_not_found_matches_contract() {
-        assert_eq!(task_not_found("RQ-100"), "Task not found: RQ-100");
+        assert_eq!(task_not_found("CL-100"), "Task not found: CL-100");
     }
 
     #[test]
     fn batch_task_not_found_matches_contract() {
         assert_eq!(
-            task_not_found_batch_failure("RQ-100"),
-            "Task not found: RQ-100"
+            task_not_found_batch_failure("CL-100"),
+            "Task not found: CL-100"
         );
     }
 
     #[test]
     fn task_not_found_for_edit_matches_contract() {
         assert_eq!(
-            task_not_found_for_edit("status", "RQ-100"),
-            "Queue status failed (task_id=RQ-100): task not found in .cueloop/queue.jsonc."
+            task_not_found_for_edit("status", "CL-100"),
+            "Queue status failed (task_id=CL-100): task not found in .cueloop/queue.jsonc."
         );
     }
 
     #[test]
     fn task_not_found_with_operation_matches_contract() {
         assert_eq!(
-            task_not_found_with_operation("edit", "RQ-100"),
-            "Queue query failed (operation=edit): target task not found: RQ-100. Ensure it exists in .cueloop/queue.jsonc."
+            task_not_found_with_operation("edit", "CL-100"),
+            "Queue query failed (operation=edit): target task not found: CL-100. Ensure it exists in .cueloop/queue.jsonc."
         );
     }
 
     #[test]
     fn task_not_found_in_done_archive_matches_contract() {
         assert_eq!(
-            task_not_found_in_done_archive("RQ-100", "restore"),
-            "Task 'RQ-100' not found in done archive for restore."
+            task_not_found_in_done_archive("CL-100", "restore"),
+            "Task 'CL-100' not found in done archive for restore."
         );
     }
 
     #[test]
     fn task_no_longer_exists_matches_contract() {
         assert_eq!(
-            task_no_longer_exists("RQ-100"),
-            "Task 'RQ-100' no longer exists in queue (may have been deleted or archived)."
+            task_no_longer_exists("CL-100"),
+            "Task 'CL-100' no longer exists in queue (may have been deleted or archived)."
         );
     }
 }

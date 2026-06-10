@@ -30,16 +30,16 @@ fn validate_rejects_self_blocking() {
     let active = QueueFile {
         version: 1,
         tasks: vec![task_with_relationships(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
-            vec!["RQ-0001".to_string()],
+            vec!["CL-0001".to_string()],
             vec![],
             None,
         )],
     };
 
     let err =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect_err("Should error on self-blocking");
+        validate_queue_set(&active, None, "CL", 4, 10).expect_err("Should error on self-blocking");
     assert!(
         format!("{err:#}").contains("Self-blocking"),
         "Error should mention self-blocking: {err:#}"
@@ -51,15 +51,15 @@ fn validate_rejects_self_relates_to() {
     let active = QueueFile {
         version: 1,
         tasks: vec![task_with_relationships(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             vec![],
-            vec!["RQ-0001".to_string()],
+            vec!["CL-0001".to_string()],
             None,
         )],
     };
 
-    let err = validate_queue_set(&active, None, "RQ", 4, 10)
+    let err = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("Should error on self-relates_to");
     assert!(
         format!("{err:#}").contains("Self-reference"),
@@ -72,15 +72,15 @@ fn validate_rejects_self_duplication() {
     let active = QueueFile {
         version: 1,
         tasks: vec![task_with_relationships(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             vec![],
             vec![],
-            Some("RQ-0001".to_string()),
+            Some("CL-0001".to_string()),
         )],
     };
 
-    let err = validate_queue_set(&active, None, "RQ", 4, 10)
+    let err = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("Should error on self-duplication");
     assert!(
         format!("{err:#}").contains("Self-duplication"),
@@ -94,17 +94,17 @@ fn validate_rejects_blocks_to_nonexistent_task() {
         version: 1,
         tasks: vec![
             task_with_relationships(
-                "RQ-0001",
+                "CL-0001",
                 TaskStatus::Todo,
-                vec!["RQ-9999".to_string()],
+                vec!["CL-9999".to_string()],
                 vec![],
                 None,
             ),
-            task_with_relationships("RQ-0002", TaskStatus::Todo, vec![], vec![], None),
+            task_with_relationships("CL-0002", TaskStatus::Todo, vec![], vec![], None),
         ],
     };
 
-    let err = validate_queue_set(&active, None, "RQ", 4, 10)
+    let err = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("Should error on blocks to non-existent task");
     assert!(
         format!("{err:#}").contains("non-existent"),
@@ -118,17 +118,17 @@ fn validate_rejects_relates_to_nonexistent_task() {
         version: 1,
         tasks: vec![
             task_with_relationships(
-                "RQ-0001",
+                "CL-0001",
                 TaskStatus::Todo,
                 vec![],
-                vec!["RQ-9999".to_string()],
+                vec!["CL-9999".to_string()],
                 None,
             ),
-            task_with_relationships("RQ-0002", TaskStatus::Todo, vec![], vec![], None),
+            task_with_relationships("CL-0002", TaskStatus::Todo, vec![], vec![], None),
         ],
     };
 
-    let err = validate_queue_set(&active, None, "RQ", 4, 10)
+    let err = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("Should error on relates_to non-existent task");
     assert!(
         format!("{err:#}").contains("non-existent"),
@@ -142,17 +142,17 @@ fn validate_rejects_duplicates_nonexistent_task() {
         version: 1,
         tasks: vec![
             task_with_relationships(
-                "RQ-0001",
+                "CL-0001",
                 TaskStatus::Todo,
                 vec![],
                 vec![],
-                Some("RQ-9999".to_string()),
+                Some("CL-9999".to_string()),
             ),
-            task_with_relationships("RQ-0002", TaskStatus::Todo, vec![], vec![], None),
+            task_with_relationships("CL-0002", TaskStatus::Todo, vec![], vec![], None),
         ],
     };
 
-    let err = validate_queue_set(&active, None, "RQ", 4, 10)
+    let err = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("Should error on duplicates non-existent task");
     assert!(
         format!("{err:#}").contains("non-existent"),
@@ -166,23 +166,23 @@ fn validate_rejects_circular_blocking() {
         version: 1,
         tasks: vec![
             task_with_relationships(
-                "RQ-0001",
+                "CL-0001",
                 TaskStatus::Todo,
-                vec!["RQ-0002".to_string()],
+                vec!["CL-0002".to_string()],
                 vec![],
                 None,
             ),
             task_with_relationships(
-                "RQ-0002",
+                "CL-0002",
                 TaskStatus::Todo,
-                vec!["RQ-0001".to_string()],
+                vec!["CL-0001".to_string()],
                 vec![],
                 None,
             ),
         ],
     };
 
-    let err = validate_queue_set(&active, None, "RQ", 4, 10)
+    let err = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("Should error on circular blocking");
     assert!(
         format!("{err:#}").contains("Circular blocking"),
@@ -192,17 +192,17 @@ fn validate_rejects_circular_blocking() {
 
 #[test]
 fn validate_warns_on_duplicate_of_done_task() {
-    let mut done_task = task_with("RQ-0002", TaskStatus::Done, vec![]);
+    let mut done_task = task_with("CL-0002", TaskStatus::Done, vec![]);
     done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
 
     let active = QueueFile {
         version: 1,
         tasks: vec![task_with_relationships(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             vec![],
             vec![],
-            Some("RQ-0002".to_string()),
+            Some("CL-0002".to_string()),
         )],
     };
     let done = QueueFile {
@@ -210,7 +210,7 @@ fn validate_warns_on_duplicate_of_done_task() {
         tasks: vec![done_task],
     };
 
-    let warnings = validate_queue_set(&active, Some(&done), "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, Some(&done), "CL", 4, 10)
         .expect("Should not error on duplicate of done task");
     assert!(
         warnings
@@ -227,18 +227,18 @@ fn validate_allows_valid_relationships() {
         version: 1,
         tasks: vec![
             task_with_relationships(
-                "RQ-0001",
+                "CL-0001",
                 TaskStatus::Todo,
-                vec!["RQ-0002".to_string()],
-                vec!["RQ-0003".to_string()],
+                vec!["CL-0002".to_string()],
+                vec!["CL-0003".to_string()],
                 None,
             ),
-            task_with_relationships("RQ-0002", TaskStatus::Todo, vec![], vec![], None),
-            task_with_relationships("RQ-0003", TaskStatus::Todo, vec![], vec![], None),
+            task_with_relationships("CL-0002", TaskStatus::Todo, vec![], vec![], None),
+            task_with_relationships("CL-0003", TaskStatus::Todo, vec![], vec![], None),
         ],
     };
 
-    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, None, "CL", 4, 10)
         .expect("Should not error on valid relationships");
     assert!(
         warnings.is_empty(),

@@ -24,7 +24,7 @@ use crate::testsupport::git as git_test;
 use tempfile::TempDir;
 
 fn archived_done_task_with_non_utc_timestamps() -> crate::contracts::Task {
-    let mut task = make_task("RQ-0001", "Archived task", TaskStatus::Done);
+    let mut task = make_task("CL-0001", "Archived task", TaskStatus::Done);
     task.created_at = Some("2026-01-18T00:00:00-07:00".to_string());
     task.updated_at = Some("2026-01-18T00:00:00-07:00".to_string());
     task.completed_at = Some("2026-01-18T00:05:00-07:00".to_string());
@@ -53,7 +53,7 @@ fn post_run_supervise_runs_ci_for_clean_repo_when_queue_mutation_is_pending() ->
     let err = post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -72,7 +72,7 @@ fn post_run_supervise_runs_ci_for_clean_repo_when_queue_mutation_is_pending() ->
     let task = queue_file
         .tasks
         .iter()
-        .find(|task| task.id == "RQ-0001")
+        .find(|task| task.id == "CL-0001")
         .expect("task should remain in queue after CI failure");
     assert_eq!(task.status, TaskStatus::Todo);
     assert!(
@@ -115,7 +115,7 @@ fn post_run_supervise_runs_ci_after_queue_maintenance_dirties_repo() -> anyhow::
     let err = post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -139,7 +139,7 @@ fn post_run_supervise_skips_ci_for_clean_already_archived_done_noop() -> anyhow:
     git_test::init_repo(temp.path())?;
     write_done_tasks(
         temp.path(),
-        vec![make_task("RQ-0001", "Archived task", TaskStatus::Done)],
+        vec![make_task("CL-0001", "Archived task", TaskStatus::Done)],
     )?;
     queue::save_queue(
         &temp.path().join(".cueloop/queue.jsonc"),
@@ -164,7 +164,7 @@ fn post_run_supervise_skips_ci_for_clean_already_archived_done_noop() -> anyhow:
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -184,7 +184,7 @@ fn post_run_supervise_skips_ci_for_clean_already_archived_done_noop() -> anyhow:
     );
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
     anyhow::ensure!(
-        done_file.tasks.iter().any(|task| task.id == "RQ-0001"),
+        done_file.tasks.iter().any(|task| task.id == "CL-0001"),
         "expected archived done entry to remain intact"
     );
     Ok(())
@@ -212,7 +212,7 @@ fn post_run_supervise_successful_maintenance_repair_publish_off_leaves_dirty_rep
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -229,7 +229,7 @@ fn post_run_supervise_successful_maintenance_repair_publish_off_leaves_dirty_rep
     let repaired = done_file
         .tasks
         .iter()
-        .find(|task| task.id == "RQ-0001")
+        .find(|task| task.id == "CL-0001")
         .expect("expected archived task");
     let completed_at = repaired
         .completed_at

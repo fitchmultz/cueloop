@@ -35,7 +35,7 @@ fn test_config_default() {
         config.queue.done_file,
         Some(PathBuf::from(".cueloop/done.jsonc"))
     );
-    assert_eq!(config.queue.id_prefix, Some("RQ".to_string()));
+    assert_eq!(config.queue.id_prefix, Some("CL".to_string()));
     assert_eq!(config.queue.id_width, Some(4));
     assert_eq!(config.agent.runner, Some(Runner::Pi));
     assert_eq!(config.agent.model, Some(Model::OpenAiCodexGpt54));

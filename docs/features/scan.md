@@ -443,9 +443,9 @@ After a successful scan, the agent:
 3. **Logs results to console**
    ```
    Scan added 12 task(s):
-   - RQ-0045: Fix unsafe deserialization in auth module
-   - RQ-0046: Add input validation for user preferences
-   - RQ-0047: Resolve race condition in queue operations
+   - CL-0045: Fix unsafe deserialization in auth module
+   - CL-0046: Add input validation for user preferences
+   - CL-0047: Resolve race condition in queue operations
    ...
    ```
 

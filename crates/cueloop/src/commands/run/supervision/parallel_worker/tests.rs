@@ -33,7 +33,7 @@ fn resolved_for_bookkeeping(
         repo_root,
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -44,7 +44,7 @@ fn resolved_for_bookkeeping(
 fn write_ci_failure_marker_creates_expected_json_payload() {
     let temp = tempfile::TempDir::new().unwrap();
 
-    write_ci_failure_marker(temp.path(), "RQ-1234", "CI gate failed");
+    write_ci_failure_marker(temp.path(), "CL-1234", "CI gate failed");
 
     let marker_path = temp
         .path()
@@ -53,7 +53,7 @@ fn write_ci_failure_marker_creates_expected_json_payload() {
 
     let raw = std::fs::read_to_string(marker_path).unwrap();
     let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(payload["task_id"], "RQ-1234");
+    assert_eq!(payload["task_id"], "CL-1234");
     assert_eq!(payload["error"], "CI gate failed");
     assert!(payload["timestamp"].as_str().is_some());
 }
@@ -65,13 +65,13 @@ fn write_ci_failure_marker_overwrites_existing_marker_contents() {
         .path()
         .join(crate::commands::run::parallel::CI_FAILURE_MARKER_FILE);
     std::fs::create_dir_all(marker_path.parent().unwrap()).unwrap();
-    std::fs::write(&marker_path, r#"{"task_id":"RQ-0001","error":"old"}"#).unwrap();
+    std::fs::write(&marker_path, r#"{"task_id":"CL-0001","error":"old"}"#).unwrap();
 
-    write_ci_failure_marker(temp.path(), "RQ-9999", "new failure");
+    write_ci_failure_marker(temp.path(), "CL-9999", "new failure");
 
     let raw = std::fs::read_to_string(marker_path).unwrap();
     let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(payload["task_id"], "RQ-9999");
+    assert_eq!(payload["task_id"], "CL-9999");
     assert_eq!(payload["error"], "new failure");
 }
 
@@ -81,7 +81,7 @@ fn write_ci_failure_marker_uses_fallback_when_primary_path_is_unusable() {
     let primary_parent = temp.path().join(".cueloop");
     std::fs::write(&primary_parent, "not-a-directory").unwrap();
 
-    write_ci_failure_marker(temp.path(), "RQ-8888", "ci fallback");
+    write_ci_failure_marker(temp.path(), "CL-8888", "ci fallback");
 
     let fallback = temp
         .path()
@@ -90,7 +90,7 @@ fn write_ci_failure_marker_uses_fallback_when_primary_path_is_unusable() {
 
     let raw = std::fs::read_to_string(fallback).unwrap();
     let payload: serde_json::Value = serde_json::from_str(&raw).unwrap();
-    assert_eq!(payload["task_id"], "RQ-8888");
+    assert_eq!(payload["task_id"], "CL-8888");
     assert_eq!(payload["error"], "ci fallback");
 }
 
@@ -137,7 +137,7 @@ fn restore_bookkeeping_restores_custom_resolved_queue_done_paths() {
     let resolved =
         resolved_for_bookkeeping(repo_root.clone(), custom_queue.clone(), custom_done.clone());
 
-    restore_parallel_worker_bookkeeping(&resolved, "RQ-0001").unwrap();
+    restore_parallel_worker_bookkeeping(&resolved, "CL-0001").unwrap();
 
     assert_eq!(
         std::fs::read_to_string(&custom_queue).unwrap(),
@@ -228,16 +228,16 @@ fn collect_bookkeeping_status_lines_matches_generated_cache_paths() {
         repo_root.join(".cueloop/done.jsonc"),
     );
     let status = "\
-?? .cueloop/cache/plans/RQ-0001.md
-?? .cueloop/cache/phase2_final/RQ-0001.md
+?? .cueloop/cache/plans/CL-0001.md
+?? .cueloop/cache/phase2_final/CL-0001.md
 ?? .cueloop/logs/parallel-debug.log
 M  src/lib.rs
 ";
 
     let matches = collect_bookkeeping_status_lines(&resolved, status);
     assert_eq!(matches.len(), 3);
-    assert!(matches[0].contains(".cueloop/cache/plans/RQ-0001.md"));
-    assert!(matches[1].contains(".cueloop/cache/phase2_final/RQ-0001.md"));
+    assert!(matches[0].contains(".cueloop/cache/plans/CL-0001.md"));
+    assert!(matches[1].contains(".cueloop/cache/phase2_final/CL-0001.md"));
     assert!(matches[2].contains(".cueloop/logs/parallel-debug.log"));
 }
 
@@ -267,8 +267,8 @@ fn restore_bookkeeping_removes_generated_worker_cache_artifacts() {
     .unwrap();
     git_test::commit_all(&repo_root, "init bookkeeping").unwrap();
 
-    let generated_plan = repo_root.join(".cueloop/cache/plans/RQ-0001.md");
-    let generated_phase2 = repo_root.join(".cueloop/cache/phase2_final/RQ-0001.md");
+    let generated_plan = repo_root.join(".cueloop/cache/plans/CL-0001.md");
+    let generated_phase2 = repo_root.join(".cueloop/cache/phase2_final/CL-0001.md");
     let generated_session = repo_root.join(".cueloop/cache/session.jsonc");
     let generated_logs = repo_root.join(".cueloop/logs/parallel.log");
     std::fs::create_dir_all(generated_plan.parent().unwrap()).unwrap();
@@ -276,7 +276,7 @@ fn restore_bookkeeping_removes_generated_worker_cache_artifacts() {
     std::fs::create_dir_all(generated_logs.parent().unwrap()).unwrap();
     std::fs::write(&generated_plan, "plan").unwrap();
     std::fs::write(&generated_phase2, "phase2").unwrap();
-    std::fs::write(&generated_session, "{\"task\":\"RQ-0001\"}").unwrap();
+    std::fs::write(&generated_session, "{\"task\":\"CL-0001\"}").unwrap();
     std::fs::write(&generated_logs, "debug").unwrap();
 
     let resolved = crate::config::Resolved {
@@ -284,13 +284,13 @@ fn restore_bookkeeping_removes_generated_worker_cache_artifacts() {
         repo_root: repo_root.clone(),
         queue_path: workspace_queue.clone(),
         done_path: workspace_done.clone(),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
     };
 
-    restore_parallel_worker_bookkeeping(&resolved, "RQ-0001").unwrap();
+    restore_parallel_worker_bookkeeping(&resolved, "CL-0001").unwrap();
 
     assert!(!generated_plan.exists());
     assert!(!generated_phase2.exists());
@@ -324,12 +324,12 @@ fn restore_bookkeeping_restores_tracked_plan_cache() {
     .unwrap();
     git_test::commit_all(&repo_root, "init bookkeeping").unwrap();
 
-    let plan_path = repo_root.join(".cueloop/cache/plans/RQ-0001.md");
+    let plan_path = repo_root.join(".cueloop/cache/plans/CL-0001.md");
     std::fs::create_dir_all(plan_path.parent().unwrap()).unwrap();
     std::fs::write(&plan_path, "initial plan").unwrap();
     git_test::git_run(
         &repo_root,
-        &["add", "-f", ".cueloop/cache/plans/RQ-0001.md"],
+        &["add", "-f", ".cueloop/cache/plans/CL-0001.md"],
     )
     .unwrap();
     git_test::commit_all(&repo_root, "track plan cache").unwrap();
@@ -341,13 +341,13 @@ fn restore_bookkeeping_restores_tracked_plan_cache() {
         repo_root: repo_root.clone(),
         queue_path: workspace_queue.clone(),
         done_path: workspace_done.clone(),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
     };
 
-    restore_parallel_worker_bookkeeping(&resolved, "RQ-0001").unwrap();
+    restore_parallel_worker_bookkeeping(&resolved, "CL-0001").unwrap();
 
     assert_eq!(std::fs::read_to_string(&plan_path).unwrap(), "initial plan");
 }

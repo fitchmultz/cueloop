@@ -205,7 +205,7 @@ pub mod identity {
 /// Queue configuration constants.
 pub mod queue {
     /// Default queue ID prefix.
-    pub const DEFAULT_ID_PREFIX: &str = "RQ";
+    pub const DEFAULT_ID_PREFIX: &str = "CL";
 
     /// Current default queue file path (relative to repo root).
     pub const DEFAULT_QUEUE_FILE: &str = ".cueloop/queue.jsonc";
@@ -235,7 +235,7 @@ pub mod git {
     pub const DEFAULT_BRANCH_PREFIX: &str = "cueloop/";
 
     /// Sample task ID for branch validation.
-    pub const SAMPLE_TASK_ID: &str = "RQ-0001";
+    pub const SAMPLE_TASK_ID: &str = "CL-0001";
 }
 
 /// Runner-related constants.
@@ -305,7 +305,7 @@ pub mod versions {
     pub const CURSOR_SDK_VERSION: &str = "1.0.17";
 
     /// README template version.
-    pub const README_VERSION: u32 = 10;
+    pub const README_VERSION: u32 = 12;
 
     /// Session state schema version.
     pub const SESSION_STATE_VERSION: u32 = 1;

@@ -196,7 +196,7 @@ Use comments in config for documentation:
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Implement complex algorithm",
   "status": "todo",
   "agent": {

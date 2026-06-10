@@ -261,14 +261,14 @@ mod tests {
         // We can't easily assert exact ANSI codes without being brittle,
         // but we can check the plain text parts are there.
         let task = Task {
-            id: "RQ-123".into(),
+            id: "CL-123".into(),
             status: TaskStatus::Todo,
             kind: Default::default(),
             title: "My Task".into(),
             ..Default::default()
         };
         let out = format_task_compact(&task);
-        assert!(out.contains("RQ-123"));
+        assert!(out.contains("CL-123"));
         assert!(out.contains("My Task"));
         assert!(out.contains("todo")); // ANSI codes surround "todo"
     }
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn format_task_detailed_formatting() {
         let task = Task {
-            id: "RQ-123".into(),
+            id: "CL-123".into(),
             status: TaskStatus::Done,
             kind: Default::default(),
             title: "My Task".into(),
@@ -287,7 +287,7 @@ mod tests {
             ..Default::default()
         };
         let out = format_task_detailed(&task);
-        assert!(out.contains("RQ-123"));
+        assert!(out.contains("CL-123"));
         assert!(out.contains("done"));
         assert!(out.contains("t1,t2"));
         assert!(out.contains("s1"));
@@ -298,7 +298,7 @@ mod tests {
     fn format_task_compact_includes_priority() {
         use crate::contracts::TaskPriority;
         let task = Task {
-            id: "RQ-123".into(),
+            id: "CL-123".into(),
             status: TaskStatus::Todo,
             kind: Default::default(),
             priority: TaskPriority::High,
@@ -306,7 +306,7 @@ mod tests {
             ..Default::default()
         };
         let out = format_task_compact(&task);
-        assert!(out.contains("RQ-123"));
+        assert!(out.contains("CL-123"));
         assert!(out.contains("high")); // Priority is shown
         assert!(out.contains("todo"));
         assert!(out.contains("My Task"));

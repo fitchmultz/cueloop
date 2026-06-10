@@ -69,7 +69,7 @@ cueloop run loop --parallel 3 --max-tasks 10
 cueloop run parallel status
 
 # Retry a blocked worker
-cueloop run parallel retry --task RQ-0001
+cueloop run parallel retry --task CL-0001
 ```
 
 Before enabling it, confirm that:
@@ -282,7 +282,7 @@ Parallel run state is persisted at:
   "target_branch": "main",
   "workers": [
     {
-      "task_id": "RQ-0001",
+      "task_id": "CL-0001",
       "workspace_path": "/abs/path/to/workspace",
       "lifecycle": "running|integrating|completed|failed|blocked_push",
       "started_at": "2026-02-20T00:00:00Z",
@@ -336,7 +336,7 @@ Displays:
 
 ```bash
 # Retry a blocked or failed worker
-cueloop run parallel retry --task RQ-0001
+cueloop run parallel retry --task CL-0001
 ```
 
 This:
@@ -386,7 +386,7 @@ cueloop run loop --parallel 4 --max-tasks 10
 cueloop run parallel status
 
 # 4. If workers are blocked, investigate and retry
-cueloop run parallel retry --task RQ-0005
+cueloop run parallel retry --task CL-0005
 
 # 5. Resume parallel execution
 cueloop run loop --parallel 4

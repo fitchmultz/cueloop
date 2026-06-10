@@ -192,7 +192,7 @@ echo '{{"type":"session","id":"sess-pi-fresh"}}'
     );
     let fresh_session_id = session.session_id.as_deref().expect("fresh session id");
     assert!(
-        fresh_session_id.starts_with("RQ-0001-p2-"),
+        fresh_session_id.starts_with("CL-0001-p2-"),
         "expected generated Pi phase session id, got {fresh_session_id}"
     );
     Ok(())

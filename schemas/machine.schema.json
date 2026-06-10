@@ -748,7 +748,7 @@
               "auto_archive_terminal_after_days": null,
               "done_file": ".cueloop/done.jsonc",
               "file": ".cueloop/queue.jsonc",
-              "id_prefix": "RQ",
+              "id_prefix": "CL",
               "id_width": 4,
               "max_dependency_depth": 10,
               "size_warning_threshold_kb": 500,
@@ -1587,7 +1587,7 @@
           },
           "id_prefix": {
             "default": null,
-            "description": "ID prefix (default: \"RQ\").",
+            "description": "ID prefix (default: \"CL\").",
             "type": [
               "string",
               "null"
@@ -1595,7 +1595,7 @@
           },
           "id_width": {
             "default": null,
-            "description": "Zero pad width for the numeric suffix (default: 4 -> RQ-0001).",
+            "description": "Zero pad width for the numeric suffix (default: 4 -> CL-0001).",
             "format": "uint8",
             "maximum": 255,
             "minimum": 1,
@@ -10514,6 +10514,13 @@
       "dry_run": {
         "type": "boolean"
       },
+      "evidence": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
       "notes": {
         "default": [],
         "items": {
@@ -10892,6 +10899,86 @@
       "continuation"
     ],
     "title": "MachineTaskMutationDocument",
+    "type": "object"
+  },
+  "task_mutation_request": {
+    "$defs": {
+      "TaskFieldEdit": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/$defs/TaskFieldEditMode",
+            "default": "set"
+          },
+          "value": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field"
+        ],
+        "type": "object"
+      },
+      "TaskFieldEditMode": {
+        "enum": [
+          "set",
+          "append"
+        ],
+        "type": "string"
+      },
+      "TaskMutationSpec": {
+        "additionalProperties": false,
+        "properties": {
+          "edits": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/TaskFieldEdit"
+            },
+            "type": "array"
+          },
+          "expected_updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "atomic": {
+        "default": true,
+        "type": "boolean"
+      },
+      "tasks": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/TaskMutationSpec"
+        },
+        "type": "array"
+      },
+      "version": {
+        "default": 1,
+        "format": "uint8",
+        "maximum": 255,
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "title": "TaskMutationRequest",
     "type": "object"
   },
   "task_show": {
@@ -12140,7 +12227,7 @@
               "auto_archive_terminal_after_days": null,
               "done_file": ".cueloop/done.jsonc",
               "file": ".cueloop/queue.jsonc",
-              "id_prefix": "RQ",
+              "id_prefix": "CL",
               "id_width": 4,
               "max_dependency_depth": 10,
               "size_warning_threshold_kb": 500,
@@ -13053,7 +13140,7 @@
           },
           "id_prefix": {
             "default": null,
-            "description": "ID prefix (default: \"RQ\").",
+            "description": "ID prefix (default: \"CL\").",
             "type": [
               "string",
               "null"
@@ -13061,7 +13148,7 @@
           },
           "id_width": {
             "default": null,
-            "description": "Zero pad width for the numeric suffix (default: 4 -> RQ-0001).",
+            "description": "Zero pad width for the numeric suffix (default: 4 -> CL-0001).",
             "format": "uint8",
             "maximum": 255,
             "minimum": 1,

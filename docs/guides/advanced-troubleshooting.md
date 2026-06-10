@@ -48,7 +48,7 @@ jq '.target_branch' .cueloop/cache/parallel/state.json
 cueloop run parallel status --json | jq '.workers[] | select(.lifecycle == "blocked_push")'
 
 # Retry a blocked worker explicitly
-cueloop run parallel retry --task RQ-0001
+cueloop run parallel retry --task CL-0001
 ```
 
 ### Queue Lock Issues
@@ -150,13 +150,13 @@ RUST_LOG=debug cueloop run one 2>&1 | grep -i webhook
 **Problem:** Task stuck waiting for dependencies
 ```bash
 # Check dependency graph
-cueloop queue graph --task RQ-0001
+cueloop queue graph --task CL-0001
 
 # View blocking tasks
 cueloop queue list --status doing
 
 # Check done.json for completed dependencies
-jq '.tasks[] | select(.id == "RQ-0000")' .cueloop/done.jsonc
+jq '.tasks[] | select(.id == "CL-0000")' .cueloop/done.jsonc
 ```
 
 ### Recovery Patterns
@@ -185,7 +185,7 @@ cueloop daemon start
 **Debug mode for troubleshooting:**
 ```bash
 # Enable debug logging
-cueloop --debug run one --id RQ-0001
+cueloop --debug run one --id CL-0001
 
 # View debug logs
 tail -f .cueloop/logs/debug.log

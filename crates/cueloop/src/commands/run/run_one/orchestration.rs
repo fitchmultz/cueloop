@@ -320,19 +320,19 @@ mod tests {
     #[test]
     fn infer_resume_phase_prefers_phase2_final_response_cache() -> Result<()> {
         let temp = tempfile::TempDir::new()?;
-        crate::promptflow::write_plan_cache(temp.path(), "RQ-0001", "plan")?;
-        crate::promptflow::write_phase2_final_response_cache(temp.path(), "RQ-0001", "done")?;
+        crate::promptflow::write_plan_cache(temp.path(), "CL-0001", "plan")?;
+        crate::promptflow::write_phase2_final_response_cache(temp.path(), "CL-0001", "done")?;
 
-        assert_eq!(infer_resume_phase_from_caches(temp.path(), "RQ-0001"), 3);
+        assert_eq!(infer_resume_phase_from_caches(temp.path(), "CL-0001"), 3);
         Ok(())
     }
 
     #[test]
     fn infer_resume_phase_uses_plan_cache_when_phase2_cache_missing() -> Result<()> {
         let temp = tempfile::TempDir::new()?;
-        crate::promptflow::write_plan_cache(temp.path(), "RQ-0001", "plan")?;
+        crate::promptflow::write_plan_cache(temp.path(), "CL-0001", "plan")?;
 
-        assert_eq!(infer_resume_phase_from_caches(temp.path(), "RQ-0001"), 2);
+        assert_eq!(infer_resume_phase_from_caches(temp.path(), "CL-0001"), 2);
         Ok(())
     }
 
@@ -340,7 +340,7 @@ mod tests {
     fn infer_resume_phase_defaults_to_phase1_without_caches() -> Result<()> {
         let temp = tempfile::TempDir::new()?;
 
-        assert_eq!(infer_resume_phase_from_caches(temp.path(), "RQ-0001"), 1);
+        assert_eq!(infer_resume_phase_from_caches(temp.path(), "CL-0001"), 1);
         Ok(())
     }
 }

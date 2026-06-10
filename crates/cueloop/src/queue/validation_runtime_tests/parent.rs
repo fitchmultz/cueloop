@@ -30,17 +30,17 @@ fn validate_warns_on_missing_parent() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_parent("RQ-0001", None),
-            task_with_parent("RQ-0002", Some("RQ-9999")),
+            task_with_parent("CL-0001", None),
+            task_with_parent("CL-0002", Some("CL-9999")),
         ],
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on missing parent");
+        validate_queue_set(&active, None, "CL", 4, 10).expect("Should not error on missing parent");
     assert!(
         warnings
             .iter()
-            .any(|warning| warning.task_id == "RQ-0002"
+            .any(|warning| warning.task_id == "CL-0002"
                 && warning.message.contains("does not exist")),
         "Should warn about missing parent: {:?}",
         warnings
@@ -51,15 +51,15 @@ fn validate_warns_on_missing_parent() {
 fn validate_warns_on_self_parent() {
     let active = QueueFile {
         version: 1,
-        tasks: vec![task_with_parent("RQ-0001", Some("RQ-0001"))],
+        tasks: vec![task_with_parent("CL-0001", Some("CL-0001"))],
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on self-parent");
+        validate_queue_set(&active, None, "CL", 4, 10).expect("Should not error on self-parent");
     assert!(
         warnings
             .iter()
-            .any(|warning| warning.task_id == "RQ-0001" && warning.message.contains("itself")),
+            .any(|warning| warning.task_id == "CL-0001" && warning.message.contains("itself")),
         "Should warn about self-parent: {:?}",
         warnings
     );
@@ -70,13 +70,13 @@ fn validate_errors_on_parent_cycle() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_parent("RQ-0001", Some("RQ-0002")),
-            task_with_parent("RQ-0002", Some("RQ-0001")),
+            task_with_parent("CL-0001", Some("CL-0002")),
+            task_with_parent("CL-0002", Some("CL-0001")),
         ],
     };
 
     let err =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect_err("Should error on parent cycle");
+        validate_queue_set(&active, None, "CL", 4, 10).expect_err("Should error on parent cycle");
     assert!(
         err.to_string().contains("Circular parent chain"),
         "Error should mention circular parent chain: {err}"
@@ -85,7 +85,7 @@ fn validate_errors_on_parent_cycle() {
 
 #[test]
 fn validate_ignores_whitespace_parent_id() {
-    let mut child = task_with_parent("RQ-0001", None);
+    let mut child = task_with_parent("CL-0001", None);
     child.parent_id = Some("   ".to_string());
 
     let active = QueueFile {
@@ -93,7 +93,7 @@ fn validate_ignores_whitespace_parent_id() {
         tasks: vec![child],
     };
 
-    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, None, "CL", 4, 10)
         .expect("Should not error on whitespace parent_id");
     assert!(
         warnings.is_empty(),
@@ -107,13 +107,13 @@ fn validate_accepts_valid_parent() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_parent("RQ-0001", None),
-            task_with_parent("RQ-0002", Some("RQ-0001")),
+            task_with_parent("CL-0001", None),
+            task_with_parent("CL-0002", Some("CL-0001")),
         ],
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on valid parent");
+        validate_queue_set(&active, None, "CL", 4, 10).expect("Should not error on valid parent");
     assert!(
         !warnings
             .iter()
@@ -127,9 +127,9 @@ fn validate_accepts_valid_parent() {
 fn validate_finds_parent_in_done() {
     let active = QueueFile {
         version: 1,
-        tasks: vec![task_with_parent("RQ-0002", Some("RQ-0001"))],
+        tasks: vec![task_with_parent("CL-0002", Some("CL-0001"))],
     };
-    let mut parent = task_with_parent("RQ-0001", None);
+    let mut parent = task_with_parent("CL-0001", None);
     parent.status = TaskStatus::Done;
     parent.completed_at = Some("2026-01-18T00:00:00Z".to_string());
     let done = QueueFile {
@@ -137,7 +137,7 @@ fn validate_finds_parent_in_done() {
         tasks: vec![parent],
     };
 
-    let warnings = validate_queue_set(&active, Some(&done), "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, Some(&done), "CL", 4, 10)
         .expect("Should not error when parent is in done");
     assert!(
         !warnings

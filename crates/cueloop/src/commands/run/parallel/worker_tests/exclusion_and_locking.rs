@@ -26,16 +26,16 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
 
     // Running worker (should be selectable for explicit retry flows)
     let running_worker = state::WorkerRecord::new(
-        "RQ-0001",
-        workspace_root.join("RQ-0001"),
+        "CL-0001",
+        workspace_root.join("CL-0001"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     state_file.upsert_worker(running_worker);
 
     // Integrating worker (should be selectable; true active workers are tracked in-flight)
     let mut integrating_worker = state::WorkerRecord::new(
-        "RQ-0002",
-        workspace_root.join("RQ-0002"),
+        "CL-0002",
+        workspace_root.join("CL-0002"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     integrating_worker.start_integration();
@@ -43,8 +43,8 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
 
     // Completed worker (retained for status/reporting; not excluded by default)
     let mut completed_worker = state::WorkerRecord::new(
-        "RQ-0003",
-        workspace_root.join("RQ-0003"),
+        "CL-0003",
+        workspace_root.join("CL-0003"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     completed_worker.mark_completed("2026-02-20T01:00:00Z".to_string());
@@ -52,8 +52,8 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
 
     // Failed worker (retained for status/retry; not excluded by default)
     let mut failed_worker = state::WorkerRecord::new(
-        "RQ-0004",
-        workspace_root.join("RQ-0004"),
+        "CL-0004",
+        workspace_root.join("CL-0004"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     failed_worker.mark_failed("2026-02-20T01:00:00Z".to_string(), "error");
@@ -61,8 +61,8 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
 
     // Blocked worker (must stay excluded until explicit retry)
     let mut blocked_worker = state::WorkerRecord::new(
-        "RQ-0006",
-        workspace_root.join("RQ-0006"),
+        "CL-0006",
+        workspace_root.join("CL-0006"),
         "2026-02-20T00:00:00Z".to_string(),
     );
     blocked_worker.mark_blocked("2026-02-20T01:00:00Z".to_string(), "blocked");
@@ -72,12 +72,12 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
     let child = std::process::Command::new("true").spawn()?;
     let (worker_events_tx, _worker_events_rx) = std::sync::mpsc::channel();
     in_flight.insert(
-        "RQ-0005".to_string(),
+        "CL-0005".to_string(),
         start_worker_monitor(
-            "RQ-0005",
+            "CL-0005",
             "title".to_string(),
             WorkspaceSpec {
-                path: crate::testsupport::path::portable_abs_path("workspaces/RQ-0005"),
+                path: crate::testsupport::path::portable_abs_path("workspaces/CL-0005"),
                 branch: "main".to_string(),
             },
             child,
@@ -86,42 +86,42 @@ fn collect_excluded_ids_excludes_in_flight_attempted_and_blocked_workers() -> Re
     );
 
     let mut attempted_in_run = HashSet::new();
-    attempted_in_run.insert("RQ-0007".to_string());
+    attempted_in_run.insert("CL-0007".to_string());
 
     let excluded = collect_excluded_ids(&state_file, &in_flight, &attempted_in_run);
 
     // In-flight worker should be excluded
     assert!(
-        excluded.contains("RQ-0005"),
+        excluded.contains("CL-0005"),
         "in-flight worker should be excluded"
     );
 
     // Non-terminal state records should not be excluded.
     assert!(
-        !excluded.contains("RQ-0001"),
+        !excluded.contains("CL-0001"),
         "running worker should NOT be excluded"
     );
     assert!(
-        !excluded.contains("RQ-0002"),
+        !excluded.contains("CL-0002"),
         "integrating worker should NOT be excluded"
     );
 
     // Completed/failed workers are retained for status/retry but should not
     // block queue-ordered scheduling by default.
     assert!(
-        !excluded.contains("RQ-0003"),
+        !excluded.contains("CL-0003"),
         "completed worker should NOT be excluded"
     );
     assert!(
-        !excluded.contains("RQ-0004"),
+        !excluded.contains("CL-0004"),
         "failed worker should NOT be excluded"
     );
     assert!(
-        excluded.contains("RQ-0006"),
+        excluded.contains("CL-0006"),
         "blocked worker should be excluded"
     );
     assert!(
-        excluded.contains("RQ-0007"),
+        excluded.contains("CL-0007"),
         "attempted task should be excluded for this invocation"
     );
 
@@ -145,7 +145,7 @@ fn select_next_task_locked_works_under_held_lock() -> Result<()> {
     let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Test task".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -179,7 +179,7 @@ fn select_next_task_locked_works_under_held_lock() -> Result<()> {
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -195,7 +195,7 @@ fn select_next_task_locked_works_under_held_lock() -> Result<()> {
     // Should return the todo task
     assert!(result.is_some());
     let (task_id, task_title) = result.unwrap();
-    assert_eq!(task_id, "RQ-0001");
+    assert_eq!(task_id, "CL-0001");
     assert_eq!(task_title, "Test task");
 
     Ok(())
@@ -222,7 +222,7 @@ fn select_next_task_locked_returns_none_when_no_tasks() -> Result<()> {
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -255,7 +255,7 @@ fn select_next_task_locked_preserves_queue_order_over_task_id() -> Result<()> {
     let queue_path = cueloop_dir.join("queue.json");
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
-        id: "RQ-0003".to_string(),
+        id: "CL-0003".to_string(),
         title: "Third ID, first in file".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -283,7 +283,7 @@ fn select_next_task_locked_preserves_queue_order_over_task_id() -> Result<()> {
         parent_id: None,
     });
     queue_file.tasks.push(Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "First ID, second in file".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -317,7 +317,7 @@ fn select_next_task_locked_preserves_queue_order_over_task_id() -> Result<()> {
         repo_root: repo_root.clone(),
         queue_path: queue_path.clone(),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -329,7 +329,7 @@ fn select_next_task_locked_preserves_queue_order_over_task_id() -> Result<()> {
         .expect("a task should be selected");
 
     assert_eq!(
-        selected.0, "RQ-0003",
+        selected.0, "CL-0003",
         "parallel selection must honor queue file order, not task ID sort order"
     );
     Ok(())

@@ -48,7 +48,7 @@ fn test_save_and_load_history() {
 
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-31T12:00:00Z".to_string(),
-        task_id: "RQ-0001".to_string(),
+        task_id: "CL-0001".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 3,
@@ -66,7 +66,7 @@ fn test_save_and_load_history() {
     let loaded = load_execution_history(temp.path()).unwrap();
 
     assert_eq!(loaded.entries.len(), 1);
-    assert_eq!(loaded.entries[0].task_id, "RQ-0001");
+    assert_eq!(loaded.entries[0].task_id, "CL-0001");
     assert_eq!(loaded.entries[0].phase_count, 3);
 }
 
@@ -77,7 +77,7 @@ fn test_record_execution() {
     durations.insert(ExecutionPhase::Planning, Duration::from_secs(60));
 
     record_execution(
-        "RQ-0001",
+        "CL-0001",
         "codex",
         "sonnet",
         3,
@@ -103,7 +103,7 @@ fn test_prune_old_entries() {
     for index in 0..150 {
         history.entries.push(ExecutionEntry {
             timestamp: format!("2026-01-{:02}T12:00:00Z", (index % 30) + 1),
-            task_id: format!("RQ-{index:04}"),
+            task_id: format!("CL-{index:04}"),
             runner: "codex".to_string(),
             model: "sonnet".to_string(),
             phase_count: 3,
@@ -122,7 +122,7 @@ fn test_weighted_average_duration() {
 
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-31T12:00:00Z".to_string(),
-        task_id: "RQ-0001".to_string(),
+        task_id: "CL-0001".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 3,
@@ -136,7 +136,7 @@ fn test_weighted_average_duration() {
 
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-30T12:00:00Z".to_string(),
-        task_id: "RQ-0002".to_string(),
+        task_id: "CL-0002".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 3,
@@ -169,7 +169,7 @@ fn test_get_phase_averages() {
 
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-31T12:00:00Z".to_string(),
-        task_id: "RQ-0001".to_string(),
+        task_id: "CL-0001".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 3,
@@ -250,7 +250,7 @@ fn test_weighted_average_monotonic_decay() {
         let day = 11 + index * 5;
         history.entries.push(ExecutionEntry {
             timestamp: format!("2026-01-{day:02}T12:00:00Z"),
-            task_id: format!("RQ-{index}"),
+            task_id: format!("CL-{index}"),
             runner: "codex".to_string(),
             model: "sonnet".to_string(),
             phase_count: 3,

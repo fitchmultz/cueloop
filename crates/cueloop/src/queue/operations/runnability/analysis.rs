@@ -105,7 +105,8 @@ fn dependency_issues(
     active: &QueueFile,
     done: Option<&QueueFile>,
 ) -> Vec<DependencyIssue> {
-    task.depends_on
+    let mut issues = task
+        .depends_on
         .iter()
         .filter_map(|dep_id| match find_task_across(active, done, dep_id) {
             Some(dep_task)
@@ -120,5 +121,24 @@ fn dependency_issues(
             }),
             None => Some(DependencyIssue::Missing { id: dep_id.clone() }),
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    for blocker in active.tasks.iter().filter(|candidate| {
+        candidate
+            .blocks
+            .iter()
+            .any(|blocked_id| blocked_id == &task.id)
+            && candidate.status != TaskStatus::Done
+            && candidate.status != TaskStatus::Rejected
+    }) {
+        if task.depends_on.iter().any(|dep_id| dep_id == &blocker.id) {
+            continue;
+        }
+        issues.push(DependencyIssue::NotComplete {
+            id: blocker.id.clone(),
+            status: blocker.status,
+        });
+    }
+
+    issues
 }

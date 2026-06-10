@@ -20,7 +20,7 @@
  Invariants/assumptions callers must respect:
  - Contract mode is enabled only via `--workspace-routing-contract`.
  - The script provides disposable workspace A/B/C paths and a report path via environment variables.
- - The seeded workspace C queue contains task `RQ-0300` for pending route verification.
+ - The seeded workspace C queue contains task `CL-0300` for pending route verification.
  */
 
 import Darwin
@@ -171,13 +171,13 @@ final class WorkspaceRoutingContractRunner {
         steps.append(WorkspaceRoutingContractStepReport(name: "url-open-bootstrap-retarget", snapshot: bootstrapRetargetSnapshot))
 
         let appendedWorkspace = WorkspaceManager.shared.createWorkspace(workingDirectory: configuration.workspaceCURL)
-        WorkspaceManager.shared.route(.showTaskDetail(taskID: "RQ-0300"), to: appendedWorkspace.id)
+        WorkspaceManager.shared.route(.showTaskDetail(taskID: "CL-0300"), to: appendedWorkspace.id)
         let pendingRouteSnapshot = try await waitForSnapshot(
             stepName: "route-pending-task-detail-to-new-workspace",
             expectedWorkspacePath: configuration.workspaceCPath,
             expectedTaskCount: 1,
             expectedWorkspaceCount: 2,
-            expectedSelectedTaskID: "RQ-0300",
+            expectedSelectedTaskID: "CL-0300",
             expectedSelectedSection: SidebarSection.queue.rawValue,
             expectedVisibleWorkspaceWindowCount: 1,
             expectedPlaceholder: false

@@ -59,10 +59,10 @@ fn write_task_decomposition_applies_parent_and_leaf_statuses_by_kind() -> Result
     };
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0001"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0002")
+        Some("CL-0002")
     );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue_file.tasks[0].kind, TaskKind::Group);
@@ -97,10 +97,10 @@ fn write_task_decomposition_single_node_uses_leaf_status() -> Result<()> {
     };
 
     let result = write_task_decomposition(&resolved, &preview, false)?;
-    assert_eq!(result.root_group_task_id.as_deref(), Some("RQ-0001"));
+    assert_eq!(result.root_group_task_id.as_deref(), Some("CL-0001"));
     assert_eq!(
         result.first_actionable_leaf_task_id.as_deref(),
-        Some("RQ-0001")
+        Some("CL-0001")
     );
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     assert_eq!(queue_file.tasks[0].kind, TaskKind::WorkItem);
@@ -135,11 +135,11 @@ fn decompose_document_all_draft_write_guides_first_leaf_promotion() {
         with_dependencies: false,
     };
     let write = TaskDecomposeWriteResult {
-        root_task_id: Some("RQ-0001".to_string()),
-        root_group_task_id: Some("RQ-0001".to_string()),
-        first_actionable_leaf_task_id: Some("RQ-0002".to_string()),
+        root_task_id: Some("CL-0001".to_string()),
+        root_group_task_id: Some("CL-0001".to_string()),
+        first_actionable_leaf_task_id: Some("CL-0002".to_string()),
         parent_task_id: None,
-        created_ids: vec!["RQ-0001".to_string(), "RQ-0002".to_string()],
+        created_ids: vec!["CL-0001".to_string(), "CL-0002".to_string()],
         replaced_ids: vec![],
         parent_annotated: false,
     };
@@ -152,13 +152,13 @@ fn decompose_document_all_draft_write_guides_first_leaf_promotion() {
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "cueloop task ready RQ-0002"
+        "cueloop task ready CL-0002"
     );
     assert!(
         document
             .continuation
             .detail
-            .contains("Promote first actionable leaf RQ-0002")
+            .contains("Promote first actionable leaf CL-0002")
     );
 }
 
@@ -184,11 +184,11 @@ fn decompose_document_single_leaf_draft_write_ignores_parent_status_for_activati
         with_dependencies: false,
     };
     let write = TaskDecomposeWriteResult {
-        root_task_id: Some("RQ-0001".to_string()),
-        root_group_task_id: Some("RQ-0001".to_string()),
-        first_actionable_leaf_task_id: Some("RQ-0001".to_string()),
+        root_task_id: Some("CL-0001".to_string()),
+        root_group_task_id: Some("CL-0001".to_string()),
+        first_actionable_leaf_task_id: Some("CL-0001".to_string()),
         parent_task_id: None,
-        created_ids: vec!["RQ-0001".to_string()],
+        created_ids: vec!["CL-0001".to_string()],
         replaced_ids: vec![],
         parent_annotated: false,
     };
@@ -201,7 +201,7 @@ fn decompose_document_single_leaf_draft_write_ignores_parent_status_for_activati
     );
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "cueloop task ready RQ-0001"
+        "cueloop task ready CL-0001"
     );
 }
 
@@ -288,11 +288,11 @@ fn decompose_document_runnable_leaf_write_guides_run_without_activation() {
         with_dependencies: false,
     };
     let write = TaskDecomposeWriteResult {
-        root_task_id: Some("RQ-0001".to_string()),
-        root_group_task_id: Some("RQ-0001".to_string()),
-        first_actionable_leaf_task_id: Some("RQ-0002".to_string()),
+        root_task_id: Some("CL-0001".to_string()),
+        root_group_task_id: Some("CL-0001".to_string()),
+        first_actionable_leaf_task_id: Some("CL-0002".to_string()),
         parent_task_id: None,
-        created_ids: vec!["RQ-0001".to_string(), "RQ-0002".to_string()],
+        created_ids: vec!["CL-0001".to_string(), "CL-0002".to_string()],
         replaced_ids: vec![],
         parent_annotated: false,
     };

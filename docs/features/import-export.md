@@ -75,7 +75,7 @@ cueloop queue export --tag rust --tag cli
 cueloop queue export --scope "crates/cueloop"
 
 # Filter by ID pattern (substring match)
-cueloop queue export --id_pattern "RQ-000"
+cueloop queue export --id_pattern "CL-000"
 
 # Filter by creation date (RFC3339 or YYYY-MM-DD)
 cueloop queue export --created-after 2026-01-01
@@ -117,7 +117,7 @@ id,title,status,priority,tags,scope,evidence,plan,notes,request,created_at,updat
 
 **Example CSV row:**
 ```csv
-RQ-0001,Fix authentication bug,high,todo,"bug,auth","src/auth.rs","unit tests pass;integration tests pass",,,,2026-01-15T00:00:00Z,2026-01-15T12:00:00Z,,,,
+CL-0001,Fix authentication bug,high,todo,"bug,auth","src/auth.rs","unit tests pass;integration tests pass",,,,2026-01-15T00:00:00Z,2026-01-15T12:00:00Z,,,,
 ```
 
 #### JSON Format
@@ -127,7 +127,7 @@ JSON export produces a pretty-printed array of task objects:
 ```json
 [
   {
-    "id": "RQ-0001",
+    "id": "CL-0001",
     "title": "Fix authentication bug",
     "status": "todo",
     "priority": "high",
@@ -152,7 +152,7 @@ Markdown export produces a GitHub-flavored table:
 ```markdown
 | ID | Status | Priority | Title | Tags | Scope | Created |
 |---|---|---|---|---|---|---|
-| RQ-0001 | todo | high | Fix authentication bug | `bug`, `auth` | `src/auth.rs` | 2026-01-15 |
+| CL-0001 | todo | high | Fix authentication bug | `bug`, `auth` | `src/auth.rs` | 2026-01-15 |
 ```
 
 #### GitHub Issue Format
@@ -160,7 +160,7 @@ Markdown export produces a GitHub-flavored table:
 GitHub format produces Markdown optimized for issue bodies:
 
 ```markdown
-## RQ-0001: Fix authentication bug
+## CL-0001: Fix authentication bug
 
 **Status:** `todo` | **Priority:** `high`
 
@@ -175,7 +175,7 @@ GitHub format produces Markdown optimized for issue bodies:
 - unit tests pass
 - integration tests pass
 
-<!-- cueloop_task_id: RQ-0001 -->
+<!-- cueloop_task_id: CL-0001 -->
 ```
 
 Multiple tasks are separated by horizontal rules (`---`).
@@ -339,8 +339,8 @@ cueloop queue import --format json --input tasks.json --on-duplicate rename
 When using `rename`, CueLoop reports the ID mappings:
 ```
 Imported tasks. parsed 5 task(s); imported 5; renamed 2 task(s)
-  OLD-001 -> RQ-0042
-  OLD-002 -> RQ-0043
+  OLD-001 -> CL-0042
+  OLD-002 -> CL-0043
 ```
 
 ---
@@ -419,19 +419,19 @@ cueloop queue issue publish <TASK_ID> [OPTIONS]
 
 ```bash
 # Publish a task as a new GitHub issue
-cueloop queue issue publish RQ-0001
+cueloop queue issue publish CL-0001
 
 # Preview without creating
-cueloop queue issue publish RQ-0001 --dry-run
+cueloop queue issue publish CL-0001 --dry-run
 
 # Add labels and assignees
-cueloop queue issue publish RQ-0001 --label bug --label help-wanted --assignee @me
+cueloop queue issue publish CL-0001 --label bug --label help-wanted --assignee @me
 
 # Publish to a different repository
-cueloop queue issue publish RQ-0001 --repo owner/repo
+cueloop queue issue publish CL-0001 --repo owner/repo
 
 # Combine options
-cueloop queue issue publish RQ-0001 --label enhancement --assignee alice --assignee bob
+cueloop queue issue publish CL-0001 --label enhancement --assignee alice --assignee bob
 ```
 
 ### How It Works

@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn build_machine_error_document_classifies_task_conflict() {
         let err = anyhow::anyhow!(
-            "Task mutation conflict for RQ-0001: expected updated_at 2026-03-30T00:00:00Z, found 2026-03-30T00:01:00Z."
+            "Task mutation conflict for CL-0001: expected updated_at 2026-03-30T00:00:00Z, found 2026-03-30T00:01:00Z."
         );
 
         let document = build_machine_error_document(&err);

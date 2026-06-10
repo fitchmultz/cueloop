@@ -398,7 +398,7 @@ mod tests {
             payload: WebhookPayload {
                 event: "task_failed".to_string(),
                 timestamp: "2026-04-25T00:00:00Z".to_string(),
-                task_id: Some("RQ-0006".to_string()),
+                task_id: Some("CL-0006".to_string()),
                 task_title: Some("Webhook contract".to_string()),
                 previous_status: None,
                 current_status: None,

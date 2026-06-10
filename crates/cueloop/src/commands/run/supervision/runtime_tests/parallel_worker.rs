@@ -154,7 +154,7 @@ fn post_run_parallel_worker_restores_bookkeeping_without_signals() -> anyhow::Re
 
     post_run_supervise_parallel_worker(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -224,7 +224,7 @@ fn post_run_parallel_worker_restores_custom_queue_done_bookkeeping() -> anyhow::
 
     post_run_supervise_parallel_worker(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -277,7 +277,7 @@ fn post_run_parallel_worker_errors_when_bookkeeping_restore_fails() -> anyhow::R
 
     let result = post_run_supervise_parallel_worker(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -326,7 +326,7 @@ fn post_run_parallel_worker_writes_ci_failure_marker_on_ci_error() -> anyhow::Re
 
     let err = post_run_supervise_parallel_worker(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::Off,
         PushPolicy::RequireUpstream,
@@ -342,7 +342,7 @@ fn post_run_parallel_worker_writes_ci_failure_marker_on_ci_error() -> anyhow::Re
     let marker_path = repo_root.join(crate::commands::run::parallel::CI_FAILURE_MARKER_FILE);
     let raw = std::fs::read_to_string(&marker_path)?;
     let payload: serde_json::Value = serde_json::from_str(&raw)?;
-    assert_eq!(payload["task_id"], "RQ-0001");
+    assert_eq!(payload["task_id"], "CL-0001");
     assert!(
         payload["error"]
             .as_str()
@@ -371,13 +371,13 @@ fn post_run_parallel_worker_commit_and_push_restores_bookkeeping_and_publishes_r
     std::fs::write(&resolved.queue_path, r#"{"version":1,"tasks":[]}"#)?;
     std::fs::write(
         &resolved.done_path,
-        r#"{"version":1,"tasks":[{"id":"RQ-0001"}]}"#,
+        r#"{"version":1,"tasks":[{"id":"CL-0001"}]}"#,
     )?;
     std::fs::write(&productivity_path, r#"{"stats":["changed"]}"#)?;
 
     post_run_supervise_parallel_worker(
         &resolved,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Disabled,
         GitPublishMode::CommitAndPush,
         PushPolicy::RequireUpstream,
@@ -394,7 +394,7 @@ fn post_run_parallel_worker_commit_and_push_restores_bookkeeping_and_publishes_r
         productivity_before
     );
     assert_eq!(upstream_counts(repo_root)?, (0, 0));
-    assert_eq!(head_commit_subject(repo_root)?, "RQ-0001: Test task");
+    assert_eq!(head_commit_subject(repo_root)?, "CL-0001: Test task");
 
     let status = git_test::git_output(repo_root, &["status", "--porcelain"])?;
     assert!(status.trim().is_empty(), "expected clean repo: {status}");

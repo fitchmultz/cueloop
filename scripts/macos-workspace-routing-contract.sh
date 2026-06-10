@@ -167,9 +167,9 @@ prepare_workspace "$WORKSPACE_A"
 prepare_workspace "$WORKSPACE_B"
 prepare_workspace "$WORKSPACE_C"
 
-seed_workspace_task "$WORKSPACE_A" "RQ-0100" "Workspace A Contract Task" "medium"
-seed_workspace_task "$WORKSPACE_B" "RQ-0200" "Workspace B URL Route Task" "high"
-seed_workspace_task "$WORKSPACE_C" "RQ-0300" "Workspace C Pending Route Task" "medium"
+seed_workspace_task "$WORKSPACE_A" "CL-0100" "Workspace A Contract Task" "medium"
+seed_workspace_task "$WORKSPACE_B" "CL-0200" "Workspace B URL Route Task" "high"
+seed_workspace_task "$WORKSPACE_C" "CL-0300" "Workspace C Pending Route Task" "medium"
 
 WORKSPACE_A="$(canonicalize_path "$WORKSPACE_A")"
 WORKSPACE_B="$(canonicalize_path "$WORKSPACE_B")"

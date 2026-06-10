@@ -195,7 +195,7 @@ pub(super) fn resolve_worker_task_id(
     }
 
     bail!(
-        "No doing/todo tasks found to infer a worker task id. Provide --task-id (e.g., RQ-0001) to preview the worker prompt."
+        "No doing/todo tasks found to infer a worker task id. Provide --task-id (e.g., CL-0001) to preview the worker prompt."
     )
 }
 

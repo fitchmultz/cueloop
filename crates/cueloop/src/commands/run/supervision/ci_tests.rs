@@ -109,7 +109,7 @@ fn resolved_with_ci_command(
         queue: QueueConfig {
             file: Some(PathBuf::from(".cueloop/queue.json")),
             done_file: Some(PathBuf::from(".cueloop/done.json")),
-            id_prefix: Some("RQ".to_string()),
+            id_prefix: Some("CL".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
             task_count_warning_threshold: Some(500),
@@ -125,7 +125,7 @@ fn resolved_with_ci_command(
         repo_root: repo_root.to_path_buf(),
         queue_path: repo_root.join(".cueloop/queue.json"),
         done_path: repo_root.join(".cueloop/done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(repo_root.join(".cueloop/config.json")),

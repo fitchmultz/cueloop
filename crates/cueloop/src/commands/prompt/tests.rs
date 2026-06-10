@@ -66,7 +66,7 @@ fn make_resolved(temp: &TempDir) -> Resolved {
         repo_root,
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -78,8 +78,8 @@ fn resolve_worker_task_id_trims_explicit_task_id() {
     let temp = TempDir::new().expect("tempdir");
     let resolved = make_resolved(&temp);
     let id =
-        resolve_worker_task_id(&resolved, Some("  RQ-0009  ".to_string())).expect("should trim");
-    assert_eq!(id, "RQ-0009");
+        resolve_worker_task_id(&resolved, Some("  CL-0009  ".to_string())).expect("should trim");
+    assert_eq!(id, "CL-0009");
 }
 
 #[test]
@@ -89,14 +89,14 @@ fn resolve_worker_task_id_prefers_doing() {
     let queue_file = QueueFile {
         version: 1,
         tasks: vec![
-            make_task("RQ-0001", TaskStatus::Todo),
-            make_task("RQ-0002", TaskStatus::Doing),
+            make_task("CL-0001", TaskStatus::Todo),
+            make_task("CL-0002", TaskStatus::Doing),
         ],
     };
     queue::save_queue(&resolved.queue_path, &queue_file).expect("save queue");
 
     let id = resolve_worker_task_id(&resolved, None).expect("should resolve doing");
-    assert_eq!(id, "RQ-0002");
+    assert_eq!(id, "CL-0002");
 }
 
 #[test]
@@ -104,8 +104,8 @@ fn resolve_worker_task_id_returns_runnable_todo() {
     let temp = TempDir::new().expect("tempdir");
     let resolved = make_resolved(&temp);
 
-    let mut todo = make_task("RQ-0003", TaskStatus::Todo);
-    todo.depends_on = vec!["RQ-0002".to_string()];
+    let mut todo = make_task("CL-0003", TaskStatus::Todo);
+    todo.depends_on = vec!["CL-0002".to_string()];
 
     let queue_file = QueueFile {
         version: 1,
@@ -113,11 +113,11 @@ fn resolve_worker_task_id_returns_runnable_todo() {
     };
     let done_file = QueueFile {
         version: 1,
-        tasks: vec![make_task("RQ-0002", TaskStatus::Done)],
+        tasks: vec![make_task("CL-0002", TaskStatus::Done)],
     };
     queue::save_queue(&resolved.queue_path, &queue_file).expect("save queue");
     queue::save_queue(&resolved.done_path, &done_file).expect("save done");
 
     let id = resolve_worker_task_id(&resolved, None).expect("should resolve todo");
-    assert_eq!(id, "RQ-0003");
+    assert_eq!(id, "CL-0003");
 }

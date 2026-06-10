@@ -56,7 +56,7 @@ pub(crate) fn ensure_task_id<'a>(task_id: &'a str, operation: &str) -> Result<&'
     let trimmed = task_id.trim();
     if trimmed.is_empty() {
         bail!(
-            "Queue {} failed: missing task_id. Provide a valid ID (e.g., 'RQ-0001').",
+            "Queue {} failed: missing task_id. Provide a valid ID (e.g., 'CL-0001').",
             operation
         );
     }

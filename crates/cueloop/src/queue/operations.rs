@@ -57,7 +57,7 @@ use crate::error_messages::task_not_found_with_operation;
 #[derive(Debug, thiserror::Error)]
 pub enum QueueQueryError {
     #[error(
-        "Queue query failed (operation={operation}): missing target_task_id. Example: --target RQ-0001."
+        "Queue query failed (operation={operation}): missing target_task_id. Example: --target CL-0001."
     )]
     MissingTargetTaskId { operation: String },
 

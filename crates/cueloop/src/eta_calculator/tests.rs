@@ -30,7 +30,7 @@ fn create_test_history() -> ExecutionHistory {
     for index in 0..3 {
         entries.push(ExecutionEntry {
             timestamp: format!("2026-01-{:02}T12:00:00Z", 31 - index),
-            task_id: format!("RQ-{index:04}"),
+            task_id: format!("CL-{index:04}"),
             runner: "codex".to_string(),
             model: "sonnet".to_string(),
             phase_count: 3,
@@ -227,7 +227,7 @@ fn estimate_new_task_total_confidence_levels() {
     let mut history = ExecutionHistory::default();
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-31T12:00:00Z".to_string(),
-        task_id: "RQ-0001".to_string(),
+        task_id: "CL-0001".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 3,
@@ -252,7 +252,7 @@ fn estimate_new_task_total_confidence_levels() {
     for index in 0..5 {
         history.entries.push(ExecutionEntry {
             timestamp: format!("2026-01-{:02}T12:00:00Z", 31 - index),
-            task_id: format!("RQ-{index:04}"),
+            task_id: format!("CL-{index:04}"),
             runner: "codex".to_string(),
             model: "sonnet".to_string(),
             phase_count: 3,
@@ -292,7 +292,7 @@ fn estimate_new_task_total_phase_variations() {
     let mut history = ExecutionHistory::default();
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-31T12:00:00Z".to_string(),
-        task_id: "RQ-0001".to_string(),
+        task_id: "CL-0001".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 1,
@@ -305,7 +305,7 @@ fn estimate_new_task_total_phase_variations() {
     });
     history.entries.push(ExecutionEntry {
         timestamp: "2026-01-31T12:00:00Z".to_string(),
-        task_id: "RQ-0002".to_string(),
+        task_id: "CL-0002".to_string(),
         runner: "codex".to_string(),
         model: "sonnet".to_string(),
         phase_count: 2,

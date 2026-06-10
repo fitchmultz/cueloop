@@ -99,7 +99,7 @@ fn run_tutorial_non_interactive(keep_sandbox: bool) -> Result<()> {
     )?;
 
     // Add task
-    let task_id = "RQ-0001";
+    let task_id = "CL-0001";
     let task = crate::contracts::Task {
         id: task_id.to_string(),
         title: "Tutorial task".to_string(),

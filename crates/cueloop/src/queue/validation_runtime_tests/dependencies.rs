@@ -27,13 +27,13 @@ use crate::queue::validation::validate_queue_set;
 
 #[test]
 fn validate_warns_on_dependency_to_rejected_task() {
-    let mut rejected = task_with("RQ-0002", TaskStatus::Rejected, vec![]);
+    let mut rejected = task_with("CL-0002", TaskStatus::Rejected, vec![]);
     rejected.completed_at = Some("2026-01-18T00:00:00Z".to_string());
 
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
             rejected,
         ],
     };
@@ -42,12 +42,12 @@ fn validate_warns_on_dependency_to_rejected_task() {
         tasks: vec![],
     };
 
-    let warnings = validate_queue_set(&active, Some(&done), "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, Some(&done), "CL", 4, 10)
         .expect("Should not error on rejected dependency");
     assert!(
         warnings
             .iter()
-            .any(|warning| warning.task_id == "RQ-0001" && warning.message.contains("rejected")),
+            .any(|warning| warning.task_id == "CL-0001" && warning.message.contains("rejected")),
         "Should warn about dependency on rejected task"
     );
 }
@@ -57,23 +57,23 @@ fn validate_warns_on_deep_dependency_chain() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Todo, vec!["RQ-0003".to_string()]),
-            task_with_deps("RQ-0003", TaskStatus::Todo, vec!["RQ-0004".to_string()]),
-            task_with_deps("RQ-0004", TaskStatus::Todo, vec!["RQ-0005".to_string()]),
-            task_with_deps("RQ-0005", TaskStatus::Todo, vec!["RQ-0006".to_string()]),
-            task_with_deps("RQ-0006", TaskStatus::Todo, vec!["RQ-0007".to_string()]),
-            task_with_deps("RQ-0007", TaskStatus::Todo, vec!["RQ-0008".to_string()]),
-            task_with_deps("RQ-0008", TaskStatus::Todo, vec!["RQ-0009".to_string()]),
-            task_with_deps("RQ-0009", TaskStatus::Todo, vec!["RQ-0010".to_string()]),
-            task_with_deps("RQ-0010", TaskStatus::Todo, vec!["RQ-0011".to_string()]),
-            task_with_deps("RQ-0011", TaskStatus::Todo, vec!["RQ-0012".to_string()]),
-            task_with_deps("RQ-0012", TaskStatus::Todo, vec![]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Todo, vec!["CL-0003".to_string()]),
+            task_with_deps("CL-0003", TaskStatus::Todo, vec!["CL-0004".to_string()]),
+            task_with_deps("CL-0004", TaskStatus::Todo, vec!["CL-0005".to_string()]),
+            task_with_deps("CL-0005", TaskStatus::Todo, vec!["CL-0006".to_string()]),
+            task_with_deps("CL-0006", TaskStatus::Todo, vec!["CL-0007".to_string()]),
+            task_with_deps("CL-0007", TaskStatus::Todo, vec!["CL-0008".to_string()]),
+            task_with_deps("CL-0008", TaskStatus::Todo, vec!["CL-0009".to_string()]),
+            task_with_deps("CL-0009", TaskStatus::Todo, vec!["CL-0010".to_string()]),
+            task_with_deps("CL-0010", TaskStatus::Todo, vec!["CL-0011".to_string()]),
+            task_with_deps("CL-0011", TaskStatus::Todo, vec!["CL-0012".to_string()]),
+            task_with_deps("CL-0012", TaskStatus::Todo, vec![]),
         ],
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on deep chain");
+        validate_queue_set(&active, None, "CL", 4, 10).expect("Should not error on deep chain");
     assert!(
         warnings
             .iter()
@@ -88,14 +88,14 @@ fn validate_allows_shallow_dependency_chain() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Todo, vec!["RQ-0003".to_string()]),
-            task_with_deps("RQ-0003", TaskStatus::Todo, vec![]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Todo, vec!["CL-0003".to_string()]),
+            task_with_deps("CL-0003", TaskStatus::Todo, vec![]),
         ],
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on shallow chain");
+        validate_queue_set(&active, None, "CL", 4, 10).expect("Should not error on shallow chain");
     assert!(
         !warnings
             .iter()
@@ -109,14 +109,14 @@ fn validate_allows_expected_incomplete_dependency_chain() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Todo, vec!["RQ-0003".to_string()]),
-            task_with_deps("RQ-0003", TaskStatus::Todo, vec![]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Todo, vec!["CL-0003".to_string()]),
+            task_with_deps("CL-0003", TaskStatus::Todo, vec![]),
         ],
     };
 
     let warnings =
-        validate_queue_set(&active, None, "RQ", 4, 10).expect("Should not error on queued chain");
+        validate_queue_set(&active, None, "CL", 4, 10).expect("Should not error on queued chain");
     assert!(
         !warnings
             .iter()
@@ -132,13 +132,13 @@ fn validate_draft_only_dependency_tree_suppresses_blocked_chain_noise() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Draft, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Draft, vec!["RQ-0003".to_string()]),
-            task_with_deps("RQ-0003", TaskStatus::Draft, vec![]),
+            task_with_deps("CL-0001", TaskStatus::Draft, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Draft, vec!["CL-0003".to_string()]),
+            task_with_deps("CL-0003", TaskStatus::Draft, vec![]),
         ],
     };
 
-    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, None, "CL", 4, 10)
         .expect("draft-only dependency tree should remain structurally valid");
 
     assert!(
@@ -155,16 +155,16 @@ fn validate_todo_blocked_by_draft_dependency_stays_quiet() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Draft, vec![]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Draft, vec![]),
         ],
     };
 
-    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, None, "CL", 4, 10)
         .expect("mixed todo/draft dependency should stay structurally valid");
 
     assert!(
-        !warnings.iter().any(|warning| warning.task_id == "RQ-0001"
+        !warnings.iter().any(|warning| warning.task_id == "CL-0001"
             && warning.message.contains("all dependency paths")),
         "todo blocked by draft dependency is expected queue state, not validation noise: {:?}",
         warnings
@@ -176,17 +176,17 @@ fn validate_draft_missing_dependency_still_errors() {
     let active = QueueFile {
         version: 1,
         tasks: vec![task_with_deps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Draft,
-            vec!["RQ-9999".to_string()],
+            vec!["CL-9999".to_string()],
         )],
     };
 
-    let error = validate_queue_set(&active, None, "RQ", 4, 10)
+    let error = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("missing draft dependency should remain a structural error");
 
     assert!(
-        error.to_string().contains("non-existent task RQ-9999"),
+        error.to_string().contains("non-existent task CL-9999"),
         "unexpected error: {error:?}"
     );
 }
@@ -196,12 +196,12 @@ fn validate_draft_dependency_cycle_still_errors() {
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Draft, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Draft, vec!["RQ-0001".to_string()]),
+            task_with_deps("CL-0001", TaskStatus::Draft, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Draft, vec!["CL-0001".to_string()]),
         ],
     };
 
-    let error = validate_queue_set(&active, None, "RQ", 4, 10)
+    let error = validate_queue_set(&active, None, "CL", 4, 10)
         .expect_err("draft dependency cycles should remain structural errors");
 
     assert!(
@@ -212,14 +212,14 @@ fn validate_draft_dependency_cycle_still_errors() {
 
 #[test]
 fn validate_allows_unblocked_chain_with_done_task() {
-    let mut done_task = task_with("RQ-0003", TaskStatus::Done, vec![]);
+    let mut done_task = task_with("CL-0003", TaskStatus::Done, vec![]);
     done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
 
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Todo, vec!["RQ-0003".to_string()]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Todo, vec!["CL-0003".to_string()]),
         ],
     };
     let done = QueueFile {
@@ -227,7 +227,7 @@ fn validate_allows_unblocked_chain_with_done_task() {
         tasks: vec![done_task],
     };
 
-    let warnings = validate_queue_set(&active, Some(&done), "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, Some(&done), "CL", 4, 10)
         .expect("Should not error on unblocked chain");
     assert!(
         !warnings
@@ -240,19 +240,19 @@ fn validate_allows_unblocked_chain_with_done_task() {
 
 #[test]
 fn validate_detects_transitive_rejected_dependency() {
-    let mut rejected = task_with("RQ-0003", TaskStatus::Rejected, vec![]);
+    let mut rejected = task_with("CL-0003", TaskStatus::Rejected, vec![]);
     rejected.completed_at = Some("2026-01-18T00:00:00Z".to_string());
 
     let active = QueueFile {
         version: 1,
         tasks: vec![
-            task_with_deps("RQ-0001", TaskStatus::Todo, vec!["RQ-0002".to_string()]),
-            task_with_deps("RQ-0002", TaskStatus::Todo, vec!["RQ-0003".to_string()]),
+            task_with_deps("CL-0001", TaskStatus::Todo, vec!["CL-0002".to_string()]),
+            task_with_deps("CL-0002", TaskStatus::Todo, vec!["CL-0003".to_string()]),
             rejected,
         ],
     };
 
-    let warnings = validate_queue_set(&active, None, "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, None, "CL", 4, 10)
         .expect("Should not error on rejected dependency");
     assert!(
         warnings
@@ -265,15 +265,15 @@ fn validate_detects_transitive_rejected_dependency() {
 
 #[test]
 fn validate_no_warnings_for_valid_dependencies() {
-    let mut done_task = task_with("RQ-0002", TaskStatus::Done, vec![]);
+    let mut done_task = task_with("CL-0002", TaskStatus::Done, vec![]);
     done_task.completed_at = Some("2026-01-18T00:00:00Z".to_string());
 
     let active = QueueFile {
         version: 1,
         tasks: vec![task_with_deps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
-            vec!["RQ-0002".to_string()],
+            vec!["CL-0002".to_string()],
         )],
     };
     let done = QueueFile {
@@ -281,7 +281,7 @@ fn validate_no_warnings_for_valid_dependencies() {
         tasks: vec![done_task],
     };
 
-    let warnings = validate_queue_set(&active, Some(&done), "RQ", 4, 10)
+    let warnings = validate_queue_set(&active, Some(&done), "CL", 4, 10)
         .expect("Should not error on valid dependencies");
     assert!(
         warnings.is_empty(),

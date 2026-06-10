@@ -51,7 +51,7 @@ CueLoop uses two primary queue files:
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0001",
+      "id": "CL-0001",
       "title": "Implement feature X",
       "status": "todo",
       "priority": "high",
@@ -173,7 +173,7 @@ This prevents new tasks from jumping ahead of work already in progress.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Unique task identifier (e.g., "RQ-0001") |
+| `id` | string | Unique task identifier (e.g., "CL-0001") |
 | `title` | string | Brief task description |
 | `created_at` | string | RFC3339 UTC timestamp when task was created |
 | `updated_at` | string | RFC3339 UTC timestamp of last modification |
@@ -560,13 +560,13 @@ Totals (15 tasks)
 
 🟧 Stale Tasks
 ---------------
-  RQ-0005  todo       18d 2h        Update dependencies
-  RQ-0007  doing      21d 15h       Refactor auth module
+  CL-0005  todo       18d 2h        Update dependencies
+  CL-0007  doing      21d 15h       Refactor auth module
 
 🟨 Warning Tasks
 ---------------
-  RQ-0010  todo       9d 4h         Fix logging format
-  RQ-0012  todo       11d 8h        Add metrics endpoint
+  CL-0010  todo       9d 4h         Fix logging format
+  CL-0012  todo       11d 8h        Add metrics endpoint
 ```
 
 ### Configuring Thresholds
@@ -609,7 +609,7 @@ Aging is calculated from different timestamps based on status:
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0001",
+      "id": "CL-0001",
       "title": "Fix login bug",
       "created_at": "2026-01-15T10:00:00Z",
       "updated_at": "2026-01-15T10:00:00Z"
@@ -625,7 +625,7 @@ Aging is calculated from different timestamps based on status:
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0001",
+      "id": "CL-0001",
       "title": "Implement OAuth2 authentication",
       "status": "doing",
       "priority": "high",
@@ -648,9 +648,9 @@ Aging is calculated from different timestamps based on status:
         "PKCE flow required for security"
       ],
       "request": "Add OAuth2 login with GitHub and Google",
-      "depends_on": ["RQ-0000"],
-      "blocks": ["RQ-0002"],
-      "relates_to": ["RQ-0003"],
+      "depends_on": ["CL-0000"],
+      "blocks": ["CL-0002"],
+      "relates_to": ["CL-0003"],
       "custom_fields": {
         "owner": "security-team",
         "sprint": "S1"
@@ -671,7 +671,7 @@ Aging is calculated from different timestamps based on status:
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0000",
+      "id": "CL-0000",
       "title": "Setup project structure",
       "status": "done",
       "created_at": "2026-01-01T00:00:00Z",
@@ -707,7 +707,7 @@ cueloop queue next
 cueloop run one
 
 # Mark complete and archive
-cueloop task done RQ-0001
+cueloop task done CL-0001
 cueloop queue archive
 ```
 

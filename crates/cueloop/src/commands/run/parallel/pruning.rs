@@ -82,8 +82,8 @@ mod tests {
             state::ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "main".to_string());
 
         let mut worker = WorkerRecord::new(
-            "RQ-0001",
-            PathBuf::from("/nonexistent/path/RQ-0001"),
+            "CL-0001",
+            PathBuf::from("/nonexistent/path/CL-0001"),
             timeutil::now_utc_rfc3339_or_fallback(),
         );
         worker.mark_completed(timeutil::now_utc_rfc3339_or_fallback());
@@ -93,14 +93,14 @@ mod tests {
 
         assert!(dropped.is_empty());
         assert_eq!(state_file.workers.len(), 1);
-        assert_eq!(state_file.workers[0].task_id, "RQ-0001");
+        assert_eq!(state_file.workers[0].task_id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn prune_stale_workers_retains_active() -> Result<()> {
         let temp = TempDir::new()?;
-        let workspace_path = temp.path().join("RQ-0002");
+        let workspace_path = temp.path().join("CL-0002");
         std::fs::create_dir_all(&workspace_path)?;
 
         let mut state_file =
@@ -108,7 +108,7 @@ mod tests {
 
         // Active worker (not terminal)
         let worker = WorkerRecord::new(
-            "RQ-0002",
+            "CL-0002",
             workspace_path,
             timeutil::now_utc_rfc3339_or_fallback(),
         );

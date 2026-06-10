@@ -486,7 +486,7 @@ Templates use these placeholders that are replaced at generation time:
 | `{ci_troubleshooting}` | Troubleshooting guidance derived from the rendered CI command state |
 | `{package_name}` | Project name in kebab-case |
 | `{module_name}` | Project name in snake_case |
-| `{id_prefix}` | Task ID prefix from config (default: `RQ`) |
+| `{id_prefix}` | Task ID prefix from config or inferred existing queue state (default: `CL`) |
 | `{version}` | CueLoop version number |
 | `{timestamp}` | Generation timestamp (RFC3339) |
 | `{template_version}` | Template version for tracking |

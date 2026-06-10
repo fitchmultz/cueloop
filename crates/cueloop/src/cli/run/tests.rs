@@ -100,13 +100,13 @@ fn run_one_non_interactive_with_id_parses() {
         "one",
         "--non-interactive",
         "--id",
-        "RQ-0001",
+        "CL-0001",
     ]);
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::One(one_args) => {
                 assert!(one_args.non_interactive);
-                assert_eq!(one_args.id, Some("RQ-0001".to_string()));
+                assert_eq!(one_args.id, Some("CL-0001".to_string()));
             }
             _ => panic!("expected RunCommand::One"),
         },
@@ -128,12 +128,12 @@ fn run_one_dry_run_parses() {
 
 #[test]
 fn run_one_dry_run_with_id_parses() {
-    let cli = Cli::parse_from(["cueloop", "run", "one", "--dry-run", "--id", "RQ-0001"]);
+    let cli = Cli::parse_from(["cueloop", "run", "one", "--dry-run", "--id", "CL-0001"]);
     match cli.command {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::One(one_args) => {
                 assert!(one_args.dry_run);
-                assert_eq!(one_args.id, Some("RQ-0001".to_string()));
+                assert_eq!(one_args.id, Some("CL-0001".to_string()));
             }
             _ => panic!("expected RunCommand::One"),
         },
@@ -167,7 +167,7 @@ fn run_one_help_includes_dry_run_examples() {
 
     assert!(help.contains("cueloop run one --dry-run"));
     assert!(help.contains("cueloop run one --dry-run --include-draft"));
-    assert!(help.contains("cueloop run one --dry-run --id RQ-0001"));
+    assert!(help.contains("cueloop run one --dry-run --id CL-0001"));
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn run_one_parallel_worker_with_coordinator_paths_parses() {
         "one",
         "--parallel-worker",
         "--id",
-        "RQ-0001",
+        "CL-0001",
         "--coordinator-queue-path",
         "/path/to/queue.json",
         "--coordinator-done-path",
@@ -225,7 +225,7 @@ fn run_one_parallel_worker_with_coordinator_paths_parses() {
         crate::cli::Command::Run(run_args) => match run_args.command {
             RunCommand::One(one_args) => {
                 assert!(one_args.parallel_worker);
-                assert_eq!(one_args.id, Some("RQ-0001".to_string()));
+                assert_eq!(one_args.id, Some("CL-0001".to_string()));
                 assert_eq!(
                     one_args.coordinator_queue_path,
                     Some(PathBuf::from("/path/to/queue.json"))
@@ -251,7 +251,7 @@ fn run_one_parallel_worker_requires_coordinator_paths() {
             "one",
             "--parallel-worker",
             "--id",
-            "RQ-0001"
+            "CL-0001"
         ])
         .is_err()
     );
@@ -266,7 +266,7 @@ fn run_one_parallel_worker_requires_both_coordinator_paths() {
             "one",
             "--parallel-worker",
             "--id",
-            "RQ-0001",
+            "CL-0001",
             "--coordinator-queue-path",
             "/path/to/queue.json",
         ])
@@ -283,7 +283,7 @@ fn run_one_parallel_worker_requires_target_branch() {
             "one",
             "--parallel-worker",
             "--id",
-            "RQ-0001",
+            "CL-0001",
             "--coordinator-queue-path",
             "/path/to/queue.json",
             "--coordinator-done-path",

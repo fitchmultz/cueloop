@@ -142,9 +142,9 @@ Hooks:
                    Args: <TASK_ID> <OUTPUT_FILE>
 
 Examples:
-  processor.sh validate_task RQ-0001 /tmp/task.json
-  processor.sh pre_prompt RQ-0001 /tmp/prompt.txt
-  processor.sh post_run RQ-0001 /tmp/output.ndjson
+  processor.sh validate_task CL-0001 /tmp/task.json
+  processor.sh pre_prompt CL-0001 /tmp/prompt.txt
+  processor.sh post_run CL-0001 /tmp/output.ndjson
   processor.sh help
 
 Exit Codes:

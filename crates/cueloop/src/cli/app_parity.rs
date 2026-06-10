@@ -78,6 +78,7 @@ macro_rules! scenario {
 }
 
 pub const APP_PARITY_COMMAND_GUARD: &[&str] = &[
+    "agent",
     "app",
     "cleanup",
     "cli-spec",

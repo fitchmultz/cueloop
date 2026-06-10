@@ -79,7 +79,7 @@ pub fn replay_failed_deliveries(
              \n\
              cueloop webhook replay --id <failure-id>     # replay specific failure\n\
              cueloop webhook replay --event task.done     # replay all task.done failures\n\
-             cueloop webhook replay --task-id RQ-0001     # replay failures for a task\n\
+             cueloop webhook replay --task-id CL-0001     # replay failures for a task\n\
              cueloop webhook replay --id a,b,c --limit 5  # replay up to 5 specific failures"
         );
     }

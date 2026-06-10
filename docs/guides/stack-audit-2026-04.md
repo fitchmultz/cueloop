@@ -106,7 +106,7 @@ High-level checklist:
 - Rustdoc: review whether deprecated item hiding and changed unstable search ranking affect generated docs or contributor expectations.
 - Compatibility: audit array coercion inference changes, stricter `$crate` self-import errors, rare const-padding errors, the `ambiguous_glob_imported_traits` future-incompatibility warning, stricter lifetime-bound and visibility import checking, `Eq::assert_receiver_is_total_eq` deprecation/future warnings on manual impls, non-exhaustive enum discriminant reads, removal of accidental `mut ref` shorthand allowance, derive-helper/built-in attribute conflict warnings, and JSON target spec gating behind unstable options.
 
-Existing queue follow-ups RQ-0051 through RQ-0055 covered the modernization and compatibility work planned after the historical Rust 1.95.0 baseline cutover.
+Existing queue follow-ups CL-0051 through CL-0055 covered the modernization and compatibility work planned after the historical Rust 1.95.0 baseline cutover.
 
 ## Rust 1.95.0 Dependency, Security, Clippy, and Rustdoc Refresh
 

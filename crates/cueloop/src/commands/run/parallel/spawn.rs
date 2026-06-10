@@ -69,11 +69,11 @@ mod tests {
         let temp = TempDir::new()?;
         let mut guard = create_test_cleanup_guard(&temp);
         let workspace_root = temp.path().join("workspaces");
-        let workspace_path = workspace_root.join("RQ-0001");
+        let workspace_path = workspace_root.join("CL-0001");
 
         let result = spawn_worker_with_registered_workspace(
             &mut guard,
-            "RQ-0001",
+            "CL-0001",
             || {
                 std::fs::create_dir_all(&workspace_path)?;
                 Ok(git::WorkspaceSpec {
@@ -96,12 +96,12 @@ mod tests {
         let temp = TempDir::new()?;
         let mut guard = create_test_cleanup_guard(&temp);
         let workspace_root = temp.path().join("workspaces");
-        let workspace_path = workspace_root.join("RQ-0002");
+        let workspace_path = workspace_root.join("CL-0002");
         let spawn_called = Cell::new(false);
 
         let result = spawn_worker_with_registered_workspace(
             &mut guard,
-            "RQ-0002",
+            "CL-0002",
             || {
                 std::fs::create_dir_all(&workspace_path)?;
                 Ok(git::WorkspaceSpec {

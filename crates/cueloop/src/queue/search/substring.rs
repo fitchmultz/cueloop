@@ -113,56 +113,56 @@ mod tests {
 
     #[test]
     fn search_tasks_substring_case_insensitive() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix login bug".to_string();
         t1.evidence = vec!["Users report authentication failure".to_string()];
         t1.plan = vec!["Debug auth service".to_string()];
         t1.notes = vec!["Check token expiration".to_string()];
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Update docs".to_string();
         t2.evidence = vec!["Documentation needs refresh".to_string()];
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
         let results = search_tasks(tasks, "LOGIN", false, false)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn search_tasks_substring_case_sensitive() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix Login bug".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Fix login bug".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
         let results = search_tasks(tasks, "Login", false, true)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn search_tasks_regex_valid_pattern() -> Result<()> {
-        let mut t1 = task("RQ-0001");
-        t1.title = "Fix RQ-1234 bug".to_string();
+        let mut t1 = task("CL-0001");
+        t1.title = "Fix CL-1234 bug".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Update docs".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
-        let results = search_tasks(tasks, r"RQ-\d{4}", true, false)?;
+        let results = search_tasks(tasks, r"CL-\d{4}", true, false)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn search_tasks_regex_invalid_pattern() {
-        let t1 = task("RQ-0001");
+        let t1 = task("CL-0001");
         let tasks: Vec<&Task> = vec![&t1];
         let err = search_tasks(tasks, r"(?P<unclosed", true, false).unwrap_err();
         let msg = format!("{err}");
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn search_tasks_matches_all_fields() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication".to_string();
         t1.evidence = vec!["Login fails".to_string()];
         t1.plan = vec!["Debug token".to_string()];
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn search_tasks_empty_query_returns_empty() -> Result<()> {
-        let t1 = task("RQ-0001");
+        let t1 = task("CL-0001");
         let tasks: Vec<&Task> = vec![&t1];
         let results = search_tasks(tasks.iter().copied(), "", false, false)?;
         assert_eq!(results.len(), 0);
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn search_tasks_no_match_returns_empty() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn search_tasks_regex_case_sensitive_flag() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix LOGIN bug".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];

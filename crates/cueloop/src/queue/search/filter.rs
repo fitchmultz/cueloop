@@ -92,15 +92,15 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![
-                task_with_scope("RQ-0001", vec!["crates/cueloop".to_string()]),
-                task_with_scope("RQ-0002", vec!["docs/cli".to_string()]),
-                task_with_scope("RQ-0003", vec!["crates/auth".to_string()]),
+                task_with_scope("CL-0001", vec!["crates/cueloop".to_string()]),
+                task_with_scope("CL-0002", vec!["docs/cli".to_string()]),
+                task_with_scope("CL-0003", vec!["crates/auth".to_string()]),
             ],
         };
 
         let results = filter_tasks(&queue, &[], &[], &["crates/cueloop".to_string()], None);
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
     }
 
     #[test]
@@ -108,14 +108,14 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![
-                task_with_scope("RQ-0001", vec!["CRATES/CUELOOP".to_string()]),
-                task_with_scope("RQ-0002", vec!["docs/cli".to_string()]),
+                task_with_scope("CL-0001", vec!["CRATES/CUELOOP".to_string()]),
+                task_with_scope("CL-0002", vec!["docs/cli".to_string()]),
             ],
         };
 
         let results = filter_tasks(&queue, &[], &[], &["crates/cueloop".to_string()], None);
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
     }
 
     #[test]
@@ -123,15 +123,15 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![
-                task_with_scope("RQ-0001", vec!["crates/cueloop/src/cli".to_string()]),
-                task_with_scope("RQ-0002", vec!["docs/cli".to_string()]),
-                task_with_scope("RQ-0003", vec!["crates/auth".to_string()]),
+                task_with_scope("CL-0001", vec!["crates/cueloop/src/cli".to_string()]),
+                task_with_scope("CL-0002", vec!["docs/cli".to_string()]),
+                task_with_scope("CL-0003", vec!["crates/auth".to_string()]),
             ],
         };
 
         let results = filter_tasks(&queue, &[], &[], &["crates/cueloop".to_string()], None);
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
     }
 
     #[test]
@@ -139,9 +139,9 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![
-                task_with_scope("RQ-0001", vec!["crates/cueloop".to_string()]),
-                task_with_scope("RQ-0002", vec!["docs".to_string()]),
-                task_with_scope("RQ-0003", vec!["crates/auth".to_string()]),
+                task_with_scope("CL-0001", vec!["crates/cueloop".to_string()]),
+                task_with_scope("CL-0002", vec!["docs".to_string()]),
+                task_with_scope("CL-0003", vec!["crates/auth".to_string()]),
             ],
         };
 
@@ -153,8 +153,8 @@ mod tests {
             None,
         );
         assert_eq!(results.len(), 2);
-        assert!(results.iter().any(|t| t.id == "RQ-0001"));
-        assert!(results.iter().any(|t| t.id == "RQ-0002"));
+        assert!(results.iter().any(|t| t.id == "CL-0001"));
+        assert!(results.iter().any(|t| t.id == "CL-0002"));
     }
 
     #[test]
@@ -162,8 +162,8 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![
-                task_with_scope("RQ-0001", vec!["crates/cueloop".to_string()]),
-                task_with_scope("RQ-0002", vec!["docs/cli".to_string()]),
+                task_with_scope("CL-0001", vec!["crates/cueloop".to_string()]),
+                task_with_scope("CL-0002", vec!["docs/cli".to_string()]),
             ],
         };
 
@@ -177,25 +177,25 @@ mod tests {
             version: 1,
             tasks: vec![
                 task_with_tags_scope_status(
-                    "RQ-0001",
+                    "CL-0001",
                     vec!["rust".to_string()],
                     vec!["crates/cueloop".to_string()],
                     TaskStatus::Todo,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0002",
+                    "CL-0002",
                     vec!["docs".to_string()],
                     vec!["docs".to_string()],
                     TaskStatus::Done,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0003",
+                    "CL-0003",
                     vec!["rust".to_string()],
                     vec!["crates".to_string()],
                     TaskStatus::Doing,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0004",
+                    "CL-0004",
                     vec!["rust".to_string()],
                     vec!["crates/cueloop".to_string()],
                     TaskStatus::Todo,
@@ -211,8 +211,8 @@ mod tests {
             None,
         );
         assert_eq!(results.len(), 2);
-        assert!(results.iter().any(|t| t.id == "RQ-0001"));
-        assert!(results.iter().any(|t| t.id == "RQ-0004"));
+        assert!(results.iter().any(|t| t.id == "CL-0001"));
+        assert!(results.iter().any(|t| t.id == "CL-0004"));
     }
 
     #[test]
@@ -220,9 +220,9 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![
-                task_with_tags_scope_status("RQ-0001", vec![], vec![], TaskStatus::Todo),
-                task_with_tags_scope_status("RQ-0002", vec![], vec![], TaskStatus::Doing),
-                task_with_tags_scope_status("RQ-0003", vec![], vec![], TaskStatus::Todo),
+                task_with_tags_scope_status("CL-0001", vec![], vec![], TaskStatus::Todo),
+                task_with_tags_scope_status("CL-0002", vec![], vec![], TaskStatus::Doing),
+                task_with_tags_scope_status("CL-0003", vec![], vec![], TaskStatus::Todo),
             ],
         };
 
@@ -237,19 +237,19 @@ mod tests {
             version: 1,
             tasks: vec![
                 task_with_tags_scope_status(
-                    "RQ-0001",
+                    "CL-0001",
                     vec!["rust".to_string()],
                     vec![],
                     TaskStatus::Todo,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0002",
+                    "CL-0002",
                     vec!["docs".to_string()],
                     vec![],
                     TaskStatus::Todo,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0003",
+                    "CL-0003",
                     vec!["RUST".to_string()],
                     vec![],
                     TaskStatus::Doing,
@@ -259,8 +259,8 @@ mod tests {
 
         let results = filter_tasks(&queue, &[], &["rust".to_string()], &[], None);
         assert_eq!(results.len(), 2);
-        assert!(results.iter().any(|t| t.id == "RQ-0001"));
-        assert!(results.iter().any(|t| t.id == "RQ-0003"));
+        assert!(results.iter().any(|t| t.id == "CL-0001"));
+        assert!(results.iter().any(|t| t.id == "CL-0003"));
     }
 
     #[test]
@@ -269,19 +269,19 @@ mod tests {
             version: 1,
             tasks: vec![
                 task_with_tags_scope_status(
-                    "RQ-0001",
+                    "CL-0001",
                     vec!["rust".to_string()],
                     vec!["crates/cueloop".to_string()],
                     TaskStatus::Todo,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0002",
+                    "CL-0002",
                     vec!["rust".to_string()],
                     vec!["crates/cueloop".to_string()],
                     TaskStatus::Todo,
                 ),
                 task_with_tags_scope_status(
-                    "RQ-0003",
+                    "CL-0003",
                     vec!["rust".to_string()],
                     vec!["crates/cueloop".to_string()],
                     TaskStatus::Todo,

@@ -157,6 +157,7 @@ fn run(args: Vec<OsString>, is_machine_command: bool) -> Result<()> {
         cli::Command::Machine(args) => cli::machine::handle_machine(*args, cli.force),
         cli::Command::Run(args) => cli::run::handle_run(args.command, cli.force),
         cli::Command::Task(args) => cli::task::handle_task(*args, cli.force),
+        cli::Command::Agent(args) => cli::agent_ledger::handle_agent(args, cli.force),
         cli::Command::Scan(args) => cli::scan::handle_scan(args, cli.force),
         cli::Command::Init(args) => cli::init::handle_init(args, cli.force),
         cli::Command::App(args) => cli::app::handle_app(args.command),

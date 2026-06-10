@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn task_defaults_to_medium_priority() {
         use crate::contracts::TaskPriority;
-        let task = task("RQ-0001");
+        let task = task("CL-0001");
         assert_eq!(task.priority, TaskPriority::Medium);
     }
 
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_fixes_trailing_comma_in_array() {
-        let input = r#"{"tasks": [{"id": "RQ-0001", "tags": ["a", "b",]}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "tags": ["a", "b",]}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains("\"tags\": [\"a\", \"b\"]"));
         assert!(!repaired.contains("\"b\","));
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_fixes_trailing_comma_in_object() {
-        let input = r#"{"tasks": [{"id": "RQ-0001", "title": "Test",}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "title": "Test",}]}"#;
         let repaired = attempt_json_repair(input).expect("should repair");
         assert!(repaired.contains("\"title\": \"Test\"}"));
         assert!(!repaired.contains("\"Test\","));
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn attempt_json_repair_returns_none_for_valid_json() {
-        let input = r#"{"tasks": [{"id": "RQ-0001", "title": "Test"}]}"#;
+        let input = r#"{"tasks": [{"id": "CL-0001", "title": "Test"}]}"#;
         assert!(attempt_json_repair(input).is_none());
     }
 }

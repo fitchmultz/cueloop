@@ -19,6 +19,7 @@
 //! Invariants/Assumptions:
 //! - Keep behavior aligned with CueLoop's canonical CLI, machine-contract, and queue semantics.
 
+pub mod agent;
 pub mod app;
 pub mod cleanup;
 pub mod cli_spec;

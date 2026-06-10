@@ -316,7 +316,7 @@ fn cli_parses_machine_task_lifecycle_commands() {
         "machine",
         "task",
         "done",
-        "RQ-0001",
+        "CL-0001",
         "--note",
         "verified",
         "--dry-run",
@@ -326,7 +326,7 @@ fn cli_parses_machine_task_lifecycle_commands() {
         Command::Machine(args) => match args.command {
             machine::MachineCommand::Task(args) => match args.command {
                 machine::MachineTaskCommand::Done(args) => {
-                    assert_eq!(args.task_id, "RQ-0001");
+                    assert_eq!(args.task_id, "CL-0001");
                     assert_eq!(args.notes, vec!["verified"]);
                     assert!(args.dry_run);
                 }
@@ -347,7 +347,7 @@ fn cli_parses_machine_task_followups_apply() {
         "followups",
         "apply",
         "--task",
-        "RQ-0001",
+        "CL-0001",
         "--input",
         "followups.json",
         "--dry-run",
@@ -358,7 +358,7 @@ fn cli_parses_machine_task_followups_apply() {
             machine::MachineCommand::Task(args) => match args.command {
                 machine::MachineTaskCommand::Followups(args) => match args.command {
                     machine::MachineTaskFollowupsCommand::Apply(args) => {
-                        assert_eq!(args.task, "RQ-0001");
+                        assert_eq!(args.task, "CL-0001");
                         assert_eq!(
                             args.input.as_deref(),
                             Some(std::path::Path::new("followups.json"))
@@ -376,11 +376,11 @@ fn cli_parses_machine_task_followups_apply() {
 
 #[test]
 fn cli_parses_run_one_id() {
-    let cli = Cli::try_parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "run", "one", "--id", "CL-0001"]).expect("parse");
     match cli.command {
         Command::Run(args) => match args.command {
             run::RunCommand::One(args) => {
-                assert_eq!(args.id.as_deref(), Some("RQ-0001"));
+                assert_eq!(args.id.as_deref(), Some("CL-0001"));
             }
             _ => panic!("expected run one command"),
         },
@@ -404,11 +404,11 @@ fn cli_parses_task_update_without_id() {
 
 #[test]
 fn cli_parses_task_update_with_id() {
-    let cli = Cli::try_parse_from(["cueloop", "task", "update", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "update", "CL-0001"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Update(args)) => {
-                assert_eq!(args.task_id.as_deref(), Some("RQ-0001"));
+                assert_eq!(args.task_id.as_deref(), Some("CL-0001"));
             }
             _ => panic!("expected task update command"),
         },
@@ -457,11 +457,11 @@ fn cli_parses_task_default_subcommand() {
 
 #[test]
 fn cli_parses_task_ready_subcommand() {
-    let cli = Cli::try_parse_from(["cueloop", "task", "ready", "RQ-0005"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "ready", "CL-0005"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Ready(args)) => {
-                assert_eq!(args.task_id, "RQ-0005");
+                assert_eq!(args.task_id, "CL-0005");
             }
             _ => panic!("expected task ready command"),
         },
@@ -471,11 +471,11 @@ fn cli_parses_task_ready_subcommand() {
 
 #[test]
 fn cli_parses_task_done_subcommand() {
-    let cli = Cli::try_parse_from(["cueloop", "task", "done", "RQ-0001"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "done", "CL-0001"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Done(args)) => {
-                assert_eq!(args.task_id, "RQ-0001");
+                assert_eq!(args.task_id, "CL-0001");
             }
             _ => panic!("expected task done command"),
         },
@@ -485,11 +485,11 @@ fn cli_parses_task_done_subcommand() {
 
 #[test]
 fn cli_parses_task_reject_subcommand() {
-    let cli = Cli::try_parse_from(["cueloop", "task", "reject", "RQ-0002"]).expect("parse");
+    let cli = Cli::try_parse_from(["cueloop", "task", "reject", "CL-0002"]).expect("parse");
     match cli.command {
         Command::Task(args) => match args.command {
             Some(task::TaskCommand::Reject(args)) => {
-                assert_eq!(args.task_id, "RQ-0002");
+                assert_eq!(args.task_id, "CL-0002");
             }
             _ => panic!("expected task reject command"),
         },
@@ -499,7 +499,7 @@ fn cli_parses_task_reject_subcommand() {
 
 #[test]
 fn cli_rejects_queue_set_status_subcommand() {
-    let result = Cli::try_parse_from(["cueloop", "queue", "set-status", "RQ-0001", "doing"]);
+    let result = Cli::try_parse_from(["cueloop", "queue", "set-status", "CL-0001", "doing"]);
     assert!(result.is_err(), "expected queue set-status to be rejected");
     let msg = result
         .err()
@@ -550,7 +550,7 @@ fn cli_rejects_removed_tui_command() {
 
 #[test]
 fn cli_rejects_run_loop_with_id_flag() {
-    let err = Cli::try_parse_from(["cueloop", "run", "loop", "--id", "RQ-0001"])
+    let err = Cli::try_parse_from(["cueloop", "run", "loop", "--id", "CL-0001"])
         .err()
         .expect("parse failure");
     let msg = err.to_string();

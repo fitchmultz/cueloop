@@ -23,7 +23,7 @@ use crate::cli::task::args::types::TaskStatusArg;
 
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n cueloop task show RQ-0001\n cueloop task show RQ-0001 --format compact"
+    after_long_help = "Examples:\n cueloop task show CL-0001\n cueloop task show CL-0001 --format compact"
 )]
 pub struct TaskShowArgs {
     /// Task ID to show.
@@ -79,7 +79,7 @@ pub struct TaskDoneArgs {
 #[derive(Args)]
 #[command(
     about = "Mark a task as started (sets started_at and moves to doing)",
-    after_long_help = "Examples:\n cueloop task start RQ-0001\n cueloop task start --reset RQ-0001"
+    after_long_help = "Examples:\n cueloop task start CL-0001\n cueloop task start --reset CL-0001"
 )]
 pub struct TaskStartArgs {
     /// Task ID to start.
@@ -104,7 +104,7 @@ pub struct TaskRejectArgs {
 
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  cueloop task schedule RQ-0001 '2026-02-01T09:00:00Z'\n  cueloop task schedule RQ-0001 'tomorrow 9am'\n  cueloop task schedule RQ-0001 'in 2 hours'\n  cueloop task schedule RQ-0001 'next monday'\n  cueloop task schedule RQ-0001 --clear"
+    after_long_help = "Examples:\n  cueloop task schedule CL-0001 '2026-02-01T09:00:00Z'\n  cueloop task schedule CL-0001 'tomorrow 9am'\n  cueloop task schedule CL-0001 'in 2 hours'\n  cueloop task schedule CL-0001 'next monday'\n  cueloop task schedule CL-0001 --clear"
 )]
 pub struct TaskScheduleArgs {
     /// Task ID to schedule.

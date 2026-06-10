@@ -121,17 +121,17 @@ mod tests {
             version: 1,
             tasks: vec![
                 Task {
-                    id: "RQ-0001".to_string(),
+                    id: "CL-0001".to_string(),
                     title: "Task 1".to_string(),
                     ..Default::default()
                 },
                 Task {
-                    id: "RQ-0002".to_string(),
+                    id: "CL-0002".to_string(),
                     title: "Task 2".to_string(),
                     ..Default::default()
                 },
                 Task {
-                    id: "RQ-0003".to_string(),
+                    id: "CL-0003".to_string(),
                     title: "Task 3".to_string(),
                     ..Default::default()
                 },
@@ -140,7 +140,7 @@ mod tests {
 
         let result = batch_delete_tasks(
             &mut queue,
-            &["RQ-0001".to_string(), "RQ-0002".to_string()],
+            &["CL-0001".to_string(), "CL-0002".to_string()],
             false,
         )
         .unwrap();
@@ -148,7 +148,7 @@ mod tests {
         assert_eq!(result.succeeded, 2);
         assert_eq!(result.failed, 0);
         assert_eq!(queue.tasks.len(), 1);
-        assert_eq!(queue.tasks[0].id, "RQ-0003");
+        assert_eq!(queue.tasks[0].id, "CL-0003");
     }
 
     #[test]
@@ -156,7 +156,7 @@ mod tests {
         let mut queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Task 1".to_string(),
                 ..Default::default()
             }],
@@ -164,7 +164,7 @@ mod tests {
 
         let result = batch_delete_tasks(
             &mut queue,
-            &["RQ-0001".to_string(), "RQ-9999".to_string()],
+            &["CL-0001".to_string(), "CL-9999".to_string()],
             false,
         );
         assert!(result.is_err());
@@ -175,7 +175,7 @@ mod tests {
         let mut queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Task 1".to_string(),
                 plan: vec!["Step 1".to_string()],
                 ..Default::default()
@@ -184,7 +184,7 @@ mod tests {
 
         let result = batch_plan_append(
             &mut queue,
-            &["RQ-0001".to_string()],
+            &["CL-0001".to_string()],
             &["Step 2".to_string(), "Step 3".to_string()],
             "2026-02-05T00:00:00Z",
             false,
@@ -203,7 +203,7 @@ mod tests {
         let mut queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Task 1".to_string(),
                 plan: vec!["Step 2".to_string()],
                 ..Default::default()
@@ -212,7 +212,7 @@ mod tests {
 
         let result = batch_plan_prepend(
             &mut queue,
-            &["RQ-0001".to_string()],
+            &["CL-0001".to_string()],
             &["Step 1".to_string()],
             "2026-02-05T00:00:00Z",
             false,
@@ -230,8 +230,8 @@ mod tests {
     #[test]
     fn batch_result_collector_records_success() {
         let mut collector = BatchResultCollector::new(2, false, "test");
-        collector.record_success("RQ-0001".to_string(), Vec::new());
-        collector.record_success("RQ-0002".to_string(), vec!["RQ-0003".to_string()]);
+        collector.record_success("CL-0001".to_string(), Vec::new());
+        collector.record_success("CL-0002".to_string(), vec!["CL-0003".to_string()]);
         let result = collector.finish();
         assert_eq!(result.total, 2);
         assert_eq!(result.succeeded, 2);
@@ -243,7 +243,7 @@ mod tests {
     fn batch_result_collector_records_failure() {
         let mut collector = BatchResultCollector::new(1, true, "test");
         collector
-            .record_failure("RQ-0001".to_string(), "error msg".to_string())
+            .record_failure("CL-0001".to_string(), "error msg".to_string())
             .expect("record_failure should succeed with continue_on_error=true");
         let result = collector.finish();
         assert_eq!(result.total, 1);
@@ -255,19 +255,19 @@ mod tests {
     #[test]
     fn batch_result_collector_atomic_mode_fails_on_error() {
         let mut collector = BatchResultCollector::new(1, false, "test");
-        let result = collector.record_failure("RQ-0001".to_string(), "error".to_string());
+        let result = collector.record_failure("CL-0001".to_string(), "error".to_string());
         assert!(result.is_err());
     }
 
     #[test]
     fn preprocess_batch_ids_deduplicates() {
         let ids = vec![
-            "RQ-0001".to_string(),
-            "RQ-0001".to_string(),
-            "RQ-0002".to_string(),
+            "CL-0001".to_string(),
+            "CL-0001".to_string(),
+            "CL-0002".to_string(),
         ];
         let result = preprocess_batch_ids(&ids, "test").unwrap();
-        assert_eq!(result, vec!["RQ-0001", "RQ-0002"]);
+        assert_eq!(result, vec!["CL-0001", "CL-0002"]);
     }
 
     #[test]
@@ -279,11 +279,11 @@ mod tests {
     #[test]
     fn batch_result_collector_mixed_results() {
         let mut collector = BatchResultCollector::new(3, true, "test");
-        collector.record_success("RQ-0001".to_string(), Vec::new());
+        collector.record_success("CL-0001".to_string(), Vec::new());
         collector
-            .record_failure("RQ-0002".to_string(), "error".to_string())
+            .record_failure("CL-0002".to_string(), "error".to_string())
             .expect("record_failure should succeed with continue_on_error=true");
-        collector.record_success("RQ-0003".to_string(), vec!["RQ-0004".to_string()]);
+        collector.record_success("CL-0003".to_string(), vec!["CL-0004".to_string()]);
         let result = collector.finish();
         assert_eq!(result.total, 3);
         assert_eq!(result.succeeded, 2);
@@ -296,30 +296,30 @@ mod tests {
     fn batch_result_collector_error_message_content() {
         let mut collector = BatchResultCollector::new(1, true, "test");
         collector
-            .record_failure("RQ-0001".to_string(), "task not found".to_string())
+            .record_failure("CL-0001".to_string(), "task not found".to_string())
             .expect("record_failure should succeed with continue_on_error=true");
         let result = collector.finish();
-        assert_eq!(result.results[0].task_id, "RQ-0001");
+        assert_eq!(result.results[0].task_id, "CL-0001");
         assert_eq!(result.results[0].error.as_ref().unwrap(), "task not found");
     }
 
     #[test]
     fn preprocess_batch_ids_trims_whitespace() {
-        let ids = vec!["  RQ-0001  ".to_string(), "RQ-0002".to_string()];
+        let ids = vec!["  CL-0001  ".to_string(), "CL-0002".to_string()];
         let result = preprocess_batch_ids(&ids, "test").unwrap();
-        assert_eq!(result, vec!["RQ-0001", "RQ-0002"]);
+        assert_eq!(result, vec!["CL-0001", "CL-0002"]);
     }
 
     #[test]
     fn preprocess_batch_ids_preserves_order() {
         let ids = vec![
-            "RQ-0003".to_string(),
-            "RQ-0001".to_string(),
-            "RQ-0003".to_string(),
-            "RQ-0002".to_string(),
+            "CL-0003".to_string(),
+            "CL-0001".to_string(),
+            "CL-0003".to_string(),
+            "CL-0002".to_string(),
         ];
         let result = preprocess_batch_ids(&ids, "test").unwrap();
-        assert_eq!(result, vec!["RQ-0003", "RQ-0001", "RQ-0002"]);
+        assert_eq!(result, vec!["CL-0003", "CL-0001", "CL-0002"]);
     }
 
     #[test]
@@ -327,7 +327,7 @@ mod tests {
         let mut queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Task 1".to_string(),
                 plan: vec!["Step 1".to_string()],
                 ..Default::default()
@@ -336,7 +336,7 @@ mod tests {
 
         let result = batch_plan_append(
             &mut queue,
-            &["RQ-0001".to_string(), "RQ-9999".to_string()],
+            &["CL-0001".to_string(), "CL-9999".to_string()],
             &["Step 2".to_string()],
             "2026-02-05T00:00:00Z",
             false,
@@ -351,7 +351,7 @@ mod tests {
         let mut queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Task 1".to_string(),
                 plan: vec!["Step 1".to_string()],
                 ..Default::default()
@@ -360,7 +360,7 @@ mod tests {
 
         let result = batch_plan_prepend(
             &mut queue,
-            &["RQ-0001".to_string(), "RQ-9999".to_string()],
+            &["CL-0001".to_string(), "CL-9999".to_string()],
             &["Step 0".to_string()],
             "2026-02-05T00:00:00Z",
             false,
@@ -376,16 +376,16 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Task 1".to_string(),
                 ..Default::default()
             }],
         };
 
-        let result = validate_task_ids_exist(&queue, &["RQ-0001".to_string()]);
+        let result = validate_task_ids_exist(&queue, &["CL-0001".to_string()]);
         assert!(result.is_ok());
 
-        let result = validate_task_ids_exist(&queue, &["RQ-9999".to_string()]);
+        let result = validate_task_ids_exist(&queue, &["CL-9999".to_string()]);
         assert!(result.is_err());
     }
 }

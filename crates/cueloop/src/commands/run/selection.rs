@@ -97,7 +97,7 @@ mod tests {
 
     fn task_with_status(status: TaskStatus) -> Task {
         Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             status,
             kind: Default::default(),
             title: "Test task".to_string(),
@@ -159,7 +159,7 @@ mod tests {
 
     fn base_task() -> Task {
         Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             status: TaskStatus::Todo,
             kind: Default::default(),
             title: "Test task".to_string(),
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_finds_target() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![base_task()]);
-        let idx = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), false)?;
+        let idx = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)?;
         assert_eq!(idx, Some(0));
         Ok(())
     }
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_errors_when_target_missing() {
         let queue_file = queue_with_tasks(vec![base_task()]);
-        let err = select_run_one_task_index(&queue_file, None, Some("RQ-9999"), false)
+        let err = select_run_one_task_index(&queue_file, None, Some("CL-9999"), false)
             .expect_err("missing target should error");
         assert!(
             matches!(
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_errors_when_target_done() {
         let queue_file = queue_with_tasks(vec![task_with_status(TaskStatus::Done)]);
-        let err = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), false)
+        let err = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)
             .expect_err("done target should error");
         assert!(
             matches!(
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_errors_when_target_rejected() {
         let queue_file = queue_with_tasks(vec![task_with_status(TaskStatus::Rejected)]);
-        let err = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), false)
+        let err = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)
             .expect_err("rejected target should error");
         assert!(
             matches!(
@@ -251,9 +251,9 @@ mod tests {
     #[test]
     fn select_run_one_task_index_errors_when_dependencies_unmet() {
         let mut task = base_task();
-        task.depends_on = vec!["RQ-0002".to_string()];
+        task.depends_on = vec!["CL-0002".to_string()];
         let queue_file = queue_with_tasks(vec![task]);
-        let err = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), false)
+        let err = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)
             .expect_err("blocked target should error");
         assert!(
             matches!(
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_allows_doing() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![task_with_status(TaskStatus::Doing)]);
-        let idx = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), false)?;
+        let idx = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)?;
         assert_eq!(idx, Some(0));
         Ok(())
     }
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_rejects_draft_without_flag() {
         let queue_file = queue_with_tasks(vec![task_with_status(TaskStatus::Draft)]);
-        let err = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), false)
+        let err = select_run_one_task_index(&queue_file, None, Some("CL-0001"), false)
             .expect_err("draft target should error");
         assert!(
             matches!(
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn select_run_one_task_index_allows_draft_with_flag() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![task_with_status(TaskStatus::Draft)]);
-        let idx = select_run_one_task_index(&queue_file, None, Some("RQ-0001"), true)?;
+        let idx = select_run_one_task_index(&queue_file, None, Some("CL-0001"), true)?;
         assert_eq!(idx, Some(0));
         Ok(())
     }
@@ -305,8 +305,8 @@ mod tests {
     #[test]
     fn select_run_one_task_index_prefers_doing_over_todo() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![
-            task_with_id_status("RQ-0001", TaskStatus::Todo),
-            task_with_id_status("RQ-0002", TaskStatus::Doing),
+            task_with_id_status("CL-0001", TaskStatus::Todo),
+            task_with_id_status("CL-0002", TaskStatus::Doing),
         ]);
         let idx = select_run_one_task_index(&queue_file, None, None, false)?;
         assert_eq!(idx, Some(1));
@@ -316,8 +316,8 @@ mod tests {
     #[test]
     fn select_run_one_task_index_prefers_todo_over_draft() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![
-            task_with_id_status("RQ-0001", TaskStatus::Draft),
-            task_with_id_status("RQ-0002", TaskStatus::Todo),
+            task_with_id_status("CL-0001", TaskStatus::Draft),
+            task_with_id_status("CL-0002", TaskStatus::Todo),
         ]);
         let idx = select_run_one_task_index(&queue_file, None, None, true)?;
         assert_eq!(idx, Some(1));
@@ -327,11 +327,11 @@ mod tests {
     #[test]
     fn select_run_one_task_index_excluding_skips_in_flight() -> anyhow::Result<()> {
         let queue_file = queue_with_tasks(vec![
-            task_with_id_status("RQ-0001", TaskStatus::Todo),
-            task_with_id_status("RQ-0002", TaskStatus::Todo),
+            task_with_id_status("CL-0001", TaskStatus::Todo),
+            task_with_id_status("CL-0002", TaskStatus::Todo),
         ]);
         let mut in_flight = HashSet::new();
-        in_flight.insert("RQ-0001".to_string());
+        in_flight.insert("CL-0001".to_string());
 
         let idx = select_run_one_task_index_excluding(&queue_file, None, false, &in_flight)?;
         assert_eq!(idx, Some(1));
@@ -341,15 +341,15 @@ mod tests {
     #[test]
     fn select_run_one_task_index_allows_rejected_dependency() -> anyhow::Result<()> {
         let mut task = base_task();
-        task.depends_on = vec!["RQ-0002".to_string()];
+        task.depends_on = vec!["CL-0002".to_string()];
 
-        let mut dep = task_with_id_status("RQ-0002", TaskStatus::Rejected);
+        let mut dep = task_with_id_status("CL-0002", TaskStatus::Rejected);
         dep.completed_at = Some("2026-01-18T00:00:00Z".to_string());
 
         let queue_file = queue_with_tasks(vec![task]);
         let done_file = queue_with_tasks(vec![dep]);
 
-        let idx = select_run_one_task_index(&queue_file, Some(&done_file), Some("RQ-0001"), false)?;
+        let idx = select_run_one_task_index(&queue_file, Some(&done_file), Some("CL-0001"), false)?;
         assert_eq!(idx, Some(0));
         Ok(())
     }

@@ -136,7 +136,7 @@ pub fn phase_create_task(
     prompter.info(&format!("Created task: {}", task_id.bright_green()));
     prompter.info("");
     prompter.info("Task details:");
-    prompter.info("  ID: RQ-0001");
+    prompter.info("  ID: CL-0001");
     prompter.info("  Title: Add a farewell function");
     prompter.info("  Description: Create a farewell() function in src/lib.rs");
     prompter.info("  Priority: medium");
@@ -152,7 +152,7 @@ fn add_tutorial_task(sandbox: &TutorialSandbox) -> Result<String> {
     let queue_path = crate::config::project_runtime_dir(&sandbox.path).join("queue.jsonc");
 
     let task = crate::contracts::Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Add a farewell function".to_string(),
         description: Some(
             "Create a farewell() function in src/lib.rs that returns a goodbye message."
@@ -193,7 +193,7 @@ fn add_tutorial_task(sandbox: &TutorialSandbox) -> Result<String> {
 
     crate::queue::save_queue(&queue_path, &queue).context("save queue with tutorial task")?;
 
-    Ok("RQ-0001".to_string())
+    Ok("CL-0001".to_string())
 }
 
 /// Run the dry-run phase.

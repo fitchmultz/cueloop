@@ -180,11 +180,11 @@ mod tests {
     fn parent_detection_no_parent() {
         let active = QueueFile {
             version: 1,
-            tasks: vec![make_task("RQ-0001", None)],
+            tasks: vec![make_task("CL-0001", None)],
         };
         let idx = HierarchyIndex::build(&active, None);
 
-        let task = idx.get("RQ-0001").unwrap();
+        let task = idx.get("CL-0001").unwrap();
         assert!(task.task.parent_id.is_none());
     }
 
@@ -193,18 +193,18 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                make_task("RQ-0001", None),
-                make_task("RQ-0002", Some("RQ-0001")),
+                make_task("CL-0001", None),
+                make_task("CL-0002", Some("CL-0001")),
             ],
         };
         let idx = HierarchyIndex::build(&active, None);
 
-        let task = idx.get("RQ-0002").unwrap();
-        assert_eq!(task.task.parent_id.as_deref(), Some("RQ-0001"));
+        let task = idx.get("CL-0002").unwrap();
+        assert_eq!(task.task.parent_id.as_deref(), Some("CL-0001"));
 
-        let children = idx.children_of("RQ-0001");
+        let children = idx.children_of("CL-0001");
         assert_eq!(children.len(), 1);
-        assert_eq!(children[0].task.id, "RQ-0002");
+        assert_eq!(children[0].task.id, "CL-0002");
     }
 
     #[test]
@@ -212,15 +212,15 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                make_task("RQ-0001", None),
-                make_task("RQ-0002", Some("RQ-0001")),
-                make_task("RQ-0003", Some("RQ-0001")),
-                make_task("RQ-0004", Some("RQ-0001")),
+                make_task("CL-0001", None),
+                make_task("CL-0002", Some("CL-0001")),
+                make_task("CL-0003", Some("CL-0001")),
+                make_task("CL-0004", Some("CL-0001")),
             ],
         };
         let idx = HierarchyIndex::build(&active, None);
 
-        let children = idx.children_of("RQ-0001");
+        let children = idx.children_of("CL-0001");
         assert_eq!(children.len(), 3);
 
         // Each child has 2 siblings

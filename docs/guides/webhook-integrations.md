@@ -179,8 +179,8 @@ python slack_proxy.py
 # Test the proxy locally
 curl -X POST http://localhost:5000/webhook \
   -H "Content-Type: application/json" \
-  -H "X-CueLoop-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Test task"}' | openssl dgst -sha256 | sed 's/.* //')" \
-  -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Test task","previous_status":"doing","current_status":"done"}'
+  -H "X-CueLoop-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"CL-0001","task_title":"Test task"}' | openssl dgst -sha256 | sed 's/.* //')" \
+  -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"CL-0001","task_title":"Test task","previous_status":"doing","current_status":"done"}'
 ```
 
 ---
@@ -350,8 +350,8 @@ python discord_proxy.py
 ```bash
 curl -X POST http://localhost:5001/webhook \
   -H "Content-Type: application/json" \
-  -H "X-CueLoop-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Add webhook integration docs"}' | openssl dgst -sha256 | sed 's/.* //')" \
-  -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"RQ-0001","task_title":"Add webhook integration docs","previous_status":"doing","current_status":"done"}'
+  -H "X-CueLoop-Signature: sha256=$(echo -n '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"CL-0001","task_title":"Add webhook integration docs"}' | openssl dgst -sha256 | sed 's/.* //')" \
+  -d '{"event":"task_completed","timestamp":"2026-02-15T12:00:00Z","task_id":"CL-0001","task_title":"Add webhook integration docs","previous_status":"doing","current_status":"done"}'
 ```
 
 ---
@@ -574,7 +574,7 @@ curl -X POST http://localhost:5000/webhook \
   -d '{
     "event": "task_completed",
     "timestamp": "2026-02-15T12:00:00Z",
-    "task_id": "RQ-0001",
+    "task_id": "CL-0001",
     "task_title": "Test task",
     "previous_status": "doing",
     "current_status": "done"

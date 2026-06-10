@@ -29,7 +29,7 @@ For each hook invocation:
 Arguments:
 
 1. `HOOK`: `validate_task`, `pre_prompt`, or `post_run`
-2. `TASK_ID`: task ID (for example `RQ-0001`)
+2. `TASK_ID`: task ID (for example `CL-0001`)
 3. `FILEPATH`: temporary file path with hook input
 
 Execution context:

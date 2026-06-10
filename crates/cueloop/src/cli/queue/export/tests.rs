@@ -49,7 +49,7 @@ fn create_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
         scheduled_start: None,
         estimated_minutes: None,
         actual_minutes: None,
-        depends_on: vec!["RQ-0001".to_string()],
+        depends_on: vec!["CL-0001".to_string()],
         blocks: vec![],
         relates_to: vec![],
         duplicates: None,
@@ -60,12 +60,12 @@ fn create_test_task(id: &str, title: &str, status: TaskStatus) -> Task {
 
 #[test]
 fn csv_export_includes_all_fields() {
-    let task = create_test_task("RQ-0002", "Test Task", TaskStatus::Todo);
+    let task = create_test_task("CL-0002", "Test Task", TaskStatus::Todo);
     let csv = render_export(crate::cli::queue::QueueExportFormat::Csv, &[&task]).unwrap();
 
     assert!(csv.contains("id,title,status,priority"));
     assert!(csv.contains("parent_id"));
-    assert!(csv.contains("RQ-0002"));
+    assert!(csv.contains("CL-0002"));
     assert!(csv.contains("Test Task"));
     assert!(csv.contains("todo"));
     assert!(csv.contains("medium"));
@@ -75,7 +75,7 @@ fn csv_export_includes_all_fields() {
 
 #[test]
 fn tsv_export_uses_tab_delimiter() {
-    let task = create_test_task("RQ-0001", "Test", TaskStatus::Done);
+    let task = create_test_task("CL-0001", "Test", TaskStatus::Done);
     let tsv = render_export(crate::cli::queue::QueueExportFormat::Tsv, &[&task]).unwrap();
 
     assert!(tsv.contains("id\ttitle\tstatus"));
@@ -84,12 +84,12 @@ fn tsv_export_uses_tab_delimiter() {
 
 #[test]
 fn json_export_produces_valid_json() {
-    let task = create_test_task("RQ-0001", "Test Task", TaskStatus::Todo);
+    let task = create_test_task("CL-0001", "Test Task", TaskStatus::Todo);
     let json = render_export(crate::cli::queue::QueueExportFormat::Json, &[&task]).unwrap();
 
     assert!(json.starts_with('['));
     assert!(json.ends_with(']'));
-    assert!(json.contains("RQ-0001"));
+    assert!(json.contains("CL-0001"));
     assert!(json.contains("Test Task"));
 }
 
@@ -110,22 +110,22 @@ fn parse_date_filter_rejects_invalid() {
 
 #[test]
 fn markdown_export_produces_valid_table() {
-    let task1 = create_test_task("RQ-0001", "First Task", TaskStatus::Todo);
-    let task2 = create_test_task("RQ-0002", "Second Task", TaskStatus::Doing);
+    let task1 = create_test_task("CL-0001", "First Task", TaskStatus::Todo);
+    let task2 = create_test_task("CL-0002", "Second Task", TaskStatus::Doing);
     let markdown =
         render_export(crate::cli::queue::QueueExportFormat::Md, &[&task1, &task2]).unwrap();
 
     assert!(markdown.contains("| ID | Status | Priority | Title |"));
     assert!(markdown.contains("|---|---|---"));
-    assert!(markdown.contains("RQ-0001"));
+    assert!(markdown.contains("CL-0001"));
     assert!(markdown.contains("First Task"));
     assert!(markdown.contains("todo"));
-    assert!(markdown.contains("RQ-0002"));
+    assert!(markdown.contains("CL-0002"));
 }
 
 #[test]
 fn markdown_export_escapes_pipes() {
-    let task = create_test_task("RQ-0001", "Task | With | Pipes", TaskStatus::Todo);
+    let task = create_test_task("CL-0001", "Task | With | Pipes", TaskStatus::Todo);
     let markdown = render_export(crate::cli::queue::QueueExportFormat::Md, &[&task]).unwrap();
 
     assert!(markdown.contains("Task \\| With \\| Pipes"));
@@ -133,20 +133,20 @@ fn markdown_export_escapes_pipes() {
 
 #[test]
 fn markdown_export_is_deterministic() {
-    let task1 = create_test_task("RQ-0002", "Second", TaskStatus::Todo);
-    let task2 = create_test_task("RQ-0001", "First", TaskStatus::Todo);
+    let task1 = create_test_task("CL-0002", "Second", TaskStatus::Todo);
+    let task2 = create_test_task("CL-0001", "First", TaskStatus::Todo);
 
     let first = render_export(crate::cli::queue::QueueExportFormat::Md, &[&task1, &task2]).unwrap();
     let second =
         render_export(crate::cli::queue::QueueExportFormat::Md, &[&task1, &task2]).unwrap();
 
     assert_eq!(first, second);
-    assert!(first.find("RQ-0001").unwrap() < first.find("RQ-0002").unwrap());
+    assert!(first.find("CL-0001").unwrap() < first.find("CL-0002").unwrap());
 }
 
 #[test]
 fn github_issue_body_omits_empty_list_sections() {
-    let mut task = create_test_task("RQ-0001", "Test", TaskStatus::Todo);
+    let mut task = create_test_task("CL-0001", "Test", TaskStatus::Todo);
     task.plan.clear();
     task.evidence = vec!["Some evidence".to_string()];
 
@@ -157,10 +157,10 @@ fn github_issue_body_omits_empty_list_sections() {
 
 #[test]
 fn github_export_produces_valid_markdown() {
-    let task = create_test_task("RQ-0001", "Test Task", TaskStatus::Todo);
+    let task = create_test_task("CL-0001", "Test Task", TaskStatus::Todo);
     let github = render_export(crate::cli::queue::QueueExportFormat::Gh, &[&task]).unwrap();
 
-    assert!(github.contains("## RQ-0001: Test Task"));
+    assert!(github.contains("## CL-0001: Test Task"));
     assert!(github.contains("**Status:**"));
     assert!(github.contains("**Priority:**"));
     assert!(github.contains("### Plan"));
@@ -169,8 +169,8 @@ fn github_export_produces_valid_markdown() {
 
 #[test]
 fn github_export_multiple_tasks_separates_with_hr() {
-    let task1 = create_test_task("RQ-0001", "First", TaskStatus::Todo);
-    let task2 = create_test_task("RQ-0002", "Second", TaskStatus::Todo);
+    let task1 = create_test_task("CL-0001", "First", TaskStatus::Todo);
+    let task2 = create_test_task("CL-0002", "Second", TaskStatus::Todo);
     let github =
         render_export(crate::cli::queue::QueueExportFormat::Gh, &[&task1, &task2]).unwrap();
 

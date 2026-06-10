@@ -187,7 +187,7 @@ struct KanbanColumnView: View {
         status: .todo,
         tasks: [
             CueLoopTask(
-                id: "RQ-0001",
+                id: "CL-0001",
                 status: .todo,
                 title: "Build Kanban board view",
                 priority: .high,
@@ -196,7 +196,7 @@ struct KanbanColumnView: View {
                 updatedAt: Date()
             ),
             CueLoopTask(
-                id: "RQ-0002",
+                id: "CL-0002",
                 status: .todo,
                 title: "Add drag and drop support",
                 priority: .medium,

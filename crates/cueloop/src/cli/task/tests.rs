@@ -31,10 +31,10 @@ fn task_update_help_mentions_rp_examples() {
         .expect("task update subcommand");
     let help = update.render_long_help().to_string();
 
-    assert!(help.contains("cueloop task update --repo-prompt plan RQ-0001"));
-    assert!(help.contains("cueloop task update --repo-prompt off --fields scope,evidence RQ-0001"));
+    assert!(help.contains("cueloop task update --repo-prompt plan CL-0001"));
+    assert!(help.contains("cueloop task update --repo-prompt off --fields scope,evidence CL-0001"));
     assert!(
-        help.contains("cueloop task update --approval-mode auto-edits --runner claude RQ-0001")
+        help.contains("cueloop task update --approval-mode auto-edits --runner claude CL-0001")
     );
 }
 
@@ -47,21 +47,21 @@ fn task_show_help_mentions_examples() {
         .expect("task show subcommand");
     let help = show.render_long_help().to_string();
 
-    assert!(help.contains("cueloop task show RQ-0001"));
+    assert!(help.contains("cueloop task show CL-0001"));
     assert!(help.contains("--format compact"));
 }
 
 #[test]
 fn task_details_alias_parses() {
     let cli = Cli::try_parse_from([
-        "cueloop", "task", "details", "RQ-0001", "--format", "compact",
+        "cueloop", "task", "details", "CL-0001", "--format", "compact",
     ])
     .expect("parse");
 
     match cli.command {
         crate::cli::Command::Task(args) => match args.command {
             Some(crate::cli::task::TaskCommand::Show(args)) => {
-                assert_eq!(args.task_id, "RQ-0001");
+                assert_eq!(args.task_id, "CL-0001");
                 assert_eq!(args.format, QueueShowFormat::Compact);
             }
             _ => panic!("expected task show command"),
@@ -110,7 +110,7 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
         "decompose",
         "--preview",
         "--attach-to",
-        "RQ-0042",
+        "CL-0042",
         "--child-policy",
         "append",
         "--parent-status",
@@ -136,7 +136,7 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
         "tools",
         "--approval-mode",
         "auto-edits",
-        "RQ-0001",
+        "CL-0001",
     ])
     .expect("parse");
 
@@ -144,7 +144,7 @@ fn task_decompose_parses_preview_runner_overrides_and_limits() {
         crate::cli::Command::Task(args) => match args.command {
             Some(crate::cli::task::TaskCommand::Decompose(args)) => {
                 assert!(args.preview);
-                assert_eq!(args.attach_to.as_deref(), Some("RQ-0042"));
+                assert_eq!(args.attach_to.as_deref(), Some("CL-0042"));
                 assert_eq!(
                     args.child_policy,
                     crate::cli::task::TaskDecomposeChildPolicyArg::Append
@@ -183,7 +183,7 @@ fn task_decompose_parses_from_file_with_existing_flags() {
         "--from-file",
         "docs/plan.md",
         "--attach-to",
-        "RQ-0042",
+        "CL-0042",
         "--with-dependencies",
         "--format",
         "json",
@@ -198,7 +198,7 @@ fn task_decompose_parses_from_file_with_existing_flags() {
                     Some(std::path::Path::new("docs/plan.md"))
                 );
                 assert!(args.source.is_empty());
-                assert_eq!(args.attach_to.as_deref(), Some("RQ-0042"));
+                assert_eq!(args.attach_to.as_deref(), Some("CL-0042"));
                 assert!(args.with_dependencies);
                 assert_eq!(args.format, crate::cli::task::TaskDecomposeFormatArg::Json);
             }
@@ -256,7 +256,7 @@ fn task_decompose_help_mentions_write_and_attach_examples() {
     let help = decompose.render_long_help().to_string();
 
     assert!(help.contains("Improve webhook reliability\" --write"));
-    assert!(help.contains("--attach-to RQ-0042"));
+    assert!(help.contains("--attach-to CL-0042"));
     assert!(help.contains("--format json"));
     assert!(help.contains("--parent-status draft --leaf-status todo"));
     assert!(help.contains("--from-file"));
@@ -271,7 +271,7 @@ fn task_followups_apply_parses_source_input_dry_run_and_format() {
         "followups",
         "apply",
         "--task",
-        "RQ-0135",
+        "CL-0135",
         "--input",
         "/tmp/followups.json",
         "--dry-run",
@@ -284,7 +284,7 @@ fn task_followups_apply_parses_source_input_dry_run_and_format() {
         crate::cli::Command::Task(args) => match args.command {
             Some(crate::cli::task::TaskCommand::Followups(args)) => match args.command {
                 crate::cli::task::TaskFollowupsCommand::Apply(args) => {
-                    assert_eq!(args.task, "RQ-0135");
+                    assert_eq!(args.task, "CL-0135");
                     assert_eq!(
                         args.input.as_deref(),
                         Some(std::path::Path::new("/tmp/followups.json"))
@@ -341,7 +341,7 @@ fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
         "auto-edits",
         "--sandbox",
         "disabled",
-        "RQ-0001",
+        "CL-0001",
     ])
     .expect("parse");
 
@@ -366,8 +366,8 @@ fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
         "--dry-run",
         "priority",
         "high",
-        "RQ-0001",
-        "RQ-0002",
+        "CL-0001",
+        "CL-0002",
     ])
     .expect("parse");
 
@@ -376,7 +376,7 @@ fn task_update_and_edit_parse_dry_run_and_runner_overrides() {
             Some(crate::cli::task::TaskCommand::Edit(args)) => {
                 assert!(args.dry_run);
                 assert_eq!(args.field, TaskEditFieldArg::Priority);
-                assert_eq!(args.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                assert_eq!(args.task_ids, vec!["CL-0001", "CL-0002"]);
             }
             _ => panic!("expected task edit command"),
         },
@@ -419,13 +419,13 @@ fn task_clone_parses_flags_and_help_examples() {
         "--title-prefix",
         "[Follow-up] ",
         "--dry-run",
-        "RQ-0001",
+        "CL-0001",
     ])
     .expect("parse");
     match cli.command {
         crate::cli::Command::Task(args) => match args.command {
             Some(crate::cli::task::TaskCommand::Clone(args)) => {
-                assert_eq!(args.task_id, "RQ-0001");
+                assert_eq!(args.task_id, "CL-0001");
                 assert_eq!(args.status, Some(TaskStatusArg::Todo));
                 assert_eq!(args.title_prefix, Some("[Follow-up] ".to_string()));
                 assert!(args.dry_run);
@@ -441,7 +441,7 @@ fn task_clone_parses_flags_and_help_examples() {
         .find_subcommand_mut("clone")
         .expect("task clone subcommand");
     let help = clone.render_long_help().to_string();
-    assert!(help.contains("cueloop task clone RQ-0001"));
+    assert!(help.contains("cueloop task clone CL-0001"));
     assert!(help.contains("--status"));
     assert!(help.contains("--title-prefix"));
     assert!(help.contains("cueloop task duplicate"));
@@ -456,8 +456,8 @@ fn task_batch_parses_status_and_edit_modes() {
         "--continue-on-error",
         "status",
         "doing",
-        "RQ-0001",
-        "RQ-0002",
+        "CL-0001",
+        "CL-0002",
     ])
     .expect("parse");
     match cli.command {
@@ -467,7 +467,7 @@ fn task_batch_parses_status_and_edit_modes() {
                 match args.operation {
                     BatchOperation::Status(status_args) => {
                         assert_eq!(status_args.status, TaskStatusArg::Doing);
-                        assert_eq!(status_args.select.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                        assert_eq!(status_args.select.task_ids, vec!["CL-0001", "CL-0002"]);
                     }
                     _ => panic!("expected batch status operation"),
                 }
@@ -485,8 +485,8 @@ fn task_batch_parses_status_and_edit_modes() {
         "edit",
         "priority",
         "high",
-        "RQ-0001",
-        "RQ-0002",
+        "CL-0001",
+        "CL-0002",
     ])
     .expect("parse");
     match cli.command {
@@ -496,7 +496,7 @@ fn task_batch_parses_status_and_edit_modes() {
                 match args.operation {
                     BatchOperation::Edit(edit_args) => {
                         assert_eq!(edit_args.field, TaskEditFieldArg::Priority);
-                        assert_eq!(edit_args.select.task_ids, vec!["RQ-0001", "RQ-0002"]);
+                        assert_eq!(edit_args.select.task_ids, vec!["CL-0001", "CL-0002"]);
                     }
                     _ => panic!("expected batch edit operation"),
                 }

@@ -240,11 +240,11 @@ mod tests {
     fn render_children_direct_empty() {
         let active = QueueFile {
             version: 1,
-            tasks: vec![make_task("RQ-0001", None)],
+            tasks: vec![make_task("CL-0001", None)],
         };
         let idx = HierarchyIndex::build(&active, None);
 
-        let output = render_children_direct(&idx, "RQ-0001", TaskRelationFormat::Compact).unwrap();
+        let output = render_children_direct(&idx, "CL-0001", TaskRelationFormat::Compact).unwrap();
         assert_eq!(output, "No children.");
     }
 
@@ -253,15 +253,15 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                make_task("RQ-0001", None),
-                make_task("RQ-0002", Some("RQ-0001")),
+                make_task("CL-0001", None),
+                make_task("CL-0002", Some("CL-0001")),
             ],
         };
         let idx = HierarchyIndex::build(&active, None);
 
-        let output = render_children_direct(&idx, "RQ-0001", TaskRelationFormat::Compact).unwrap();
-        assert!(output.contains("RQ-0002"));
-        assert!(output.contains("Task RQ-0002"));
+        let output = render_children_direct(&idx, "CL-0001", TaskRelationFormat::Compact).unwrap();
+        assert!(output.contains("CL-0002"));
+        assert!(output.contains("Task CL-0002"));
     }
 
     #[test]
@@ -269,14 +269,14 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                make_task("RQ-0001", None),
-                make_task("RQ-0002", Some("RQ-0001")),
+                make_task("CL-0001", None),
+                make_task("CL-0002", Some("CL-0001")),
             ],
         };
         let idx = HierarchyIndex::build(&active, None);
 
-        let output = render_children_direct(&idx, "RQ-0001", TaskRelationFormat::Json).unwrap();
-        assert!(output.contains("RQ-0002"));
+        let output = render_children_direct(&idx, "CL-0001", TaskRelationFormat::Json).unwrap();
+        assert!(output.contains("CL-0002"));
         assert!(output.contains("[")); // JSON array
     }
 
@@ -286,14 +286,14 @@ mod tests {
         let active = QueueFile {
             version: 1,
             tasks: vec![
-                make_task("RQ-0001", Some("RQ-0002")),
-                make_task("RQ-0002", Some("RQ-0001")),
+                make_task("CL-0001", Some("CL-0002")),
+                make_task("CL-0002", Some("CL-0001")),
             ],
         };
         let idx = HierarchyIndex::build(&active, None);
 
         let output =
-            render_children_recursive(&idx, "RQ-0001", false, TaskRelationFormat::Json).unwrap();
+            render_children_recursive(&idx, "CL-0001", false, TaskRelationFormat::Json).unwrap();
         assert!(output.contains("\"cycle\": true"), "output={output}");
     }
 }

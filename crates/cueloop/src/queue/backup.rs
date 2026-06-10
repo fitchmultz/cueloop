@@ -164,7 +164,7 @@ mod tests {
             &queue_path,
             &QueueFile {
                 version: 1,
-                tasks: vec![task("RQ-0001")],
+                tasks: vec![task("CL-0001")],
             },
         )?;
 
@@ -176,7 +176,7 @@ mod tests {
         let backup_queue: QueueFile =
             serde_json::from_str(&std::fs::read_to_string(&backup_path)?)?;
         assert_eq!(backup_queue.tasks.len(), 1);
-        assert_eq!(backup_queue.tasks[0].id, "RQ-0001");
+        assert_eq!(backup_queue.tasks[0].id, "CL-0001");
 
         Ok(())
     }
@@ -224,7 +224,7 @@ mod tests {
             &queue_path,
             &QueueFile {
                 version: 1,
-                tasks: vec![task("RQ-0001")],
+                tasks: vec![task("CL-0001")],
             },
         )?;
 

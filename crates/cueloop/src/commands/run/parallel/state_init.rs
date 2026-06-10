@@ -220,8 +220,8 @@ mod tests {
         let state = ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "old".to_string());
         // Add a completed worker (terminal state)
         let mut worker = super::super::WorkerRecord::new(
-            "RQ-0001",
-            repo_root.join("workspaces/RQ-0001"),
+            "CL-0001",
+            repo_root.join("workspaces/CL-0001"),
             "2026-02-20T00:00:00Z".to_string(),
         );
         worker.mark_completed("2026-02-20T01:00:00Z".to_string());
@@ -268,7 +268,7 @@ mod tests {
     fn target_branch_mismatch_errors_when_active_workers() -> Result<()> {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
-        let workspace_path = repo_root.join("workspaces").join("RQ-0001");
+        let workspace_path = repo_root.join("workspaces").join("CL-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
         let state_path = state::state_file_path(repo_root);
@@ -278,7 +278,7 @@ mod tests {
 
         // Add an active (non-terminal) worker
         let worker = super::super::WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             workspace_path,
             timeutil::now_utc_rfc3339_or_fallback(),
         );
@@ -305,7 +305,7 @@ mod tests {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let workspace_root = repo_root.join("workspaces");
-        let workspace_path = workspace_root.join("RQ-0001");
+        let workspace_path = workspace_root.join("CL-0001");
         std::fs::create_dir_all(&workspace_path)?;
         std::fs::write(workspace_path.join("README.md"), "stale workspace")?;
 
@@ -313,7 +313,7 @@ mod tests {
             ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "main".to_string());
 
         let mut worker = super::super::WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             workspace_path.clone(),
             "2026-02-20T00:00:00Z".to_string(),
         );
@@ -322,7 +322,7 @@ mod tests {
 
         let removed = cleanup_terminal_workspaces(&state, &workspace_root);
 
-        assert_eq!(removed, vec!["RQ-0001"]);
+        assert_eq!(removed, vec!["CL-0001"]);
         assert!(!workspace_path.exists());
         Ok(())
     }
@@ -332,7 +332,7 @@ mod tests {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let workspace_root = repo_root.join("workspaces");
-        let workspace_path = workspace_root.join("RQ-0001");
+        let workspace_path = workspace_root.join("CL-0001");
         std::fs::create_dir_all(&workspace_path)?;
 
         let mut state =
@@ -340,7 +340,7 @@ mod tests {
 
         // Active (non-terminal) worker
         let worker = super::super::WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             workspace_path.clone(),
             "2026-02-20T00:00:00Z".to_string(),
         );
@@ -358,14 +358,14 @@ mod tests {
         let temp = TempDir::new()?;
         let repo_root = temp.path();
         let workspace_root = repo_root.join("workspaces");
-        let workspace_path = workspace_root.join("RQ-0007");
+        let workspace_path = workspace_root.join("CL-0007");
         std::fs::create_dir_all(&workspace_path)?;
 
         let mut state =
             ParallelStateFile::new("2026-02-20T00:00:00Z".to_string(), "main".to_string());
 
         let mut worker = super::super::WorkerRecord::new(
-            "RQ-0007",
+            "CL-0007",
             workspace_path.clone(),
             "2026-02-20T00:00:00Z".to_string(),
         );

@@ -56,7 +56,7 @@ This page explains how task statuses and priorities describe work state in CueLo
 - Any → `draft`: Task needs redefinition
 
 **CURRENTLY IMPLEMENTED BEHAVIOR:**
-- Status cycling via CLI (`cueloop task edit RQ-0001 status` with no value) cycles: `todo` → `doing` → `done` → `rejected` → `draft` → `todo`
+- Status cycling via CLI (`cueloop task edit CL-0001 status` with no value) cycles: `todo` → `doing` → `done` → `rejected` → `draft` → `todo`
 - Direct status setting validates the target status is valid
 - `started_at` is automatically set when transitioning to `doing`
 - `completed_at` is automatically set when transitioning to `done` or `rejected`

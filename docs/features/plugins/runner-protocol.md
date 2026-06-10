@@ -97,7 +97,7 @@ Runners must emit newline-delimited JSON objects. CueLoop parses and displays th
 **7. Session markers**
 
 ```json
-{"type": "session", "id": "RQ-0001-p2-1704153600"}
+{"type": "session", "id": "CL-0001-p2-1704153600"}
 ```
 
 ## Session IDs
@@ -115,7 +115,7 @@ Session ID format:
 {task_id}-p{phase}-{timestamp}
 ```
 
-Example: `RQ-0001-p2-1704153600`
+Example: `CL-0001-p2-1704153600`
 
 ## Related Docs
 

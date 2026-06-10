@@ -19,7 +19,8 @@
 
 use super::*;
 use crate::queue::operations::{
-    TaskFieldEdit, TaskMutationRequest, TaskMutationSpec, apply_task_mutation_request,
+    TaskFieldEdit, TaskFieldEditMode, TaskMutationRequest, TaskMutationSpec,
+    apply_task_mutation_request,
 };
 
 #[test]
@@ -39,14 +40,17 @@ fn task_mutation_request_applies_multiple_fields_atomically() {
                 TaskFieldEdit {
                     field: "title".to_string(),
                     value: "Updated task".to_string(),
+                    mode: TaskFieldEditMode::Set,
                 },
                 TaskFieldEdit {
                     field: "priority".to_string(),
                     value: "high".to_string(),
+                    mode: TaskFieldEditMode::Set,
                 },
                 TaskFieldEdit {
                     field: "description".to_string(),
                     value: "Updated description".to_string(),
+                    mode: TaskFieldEditMode::Set,
                 },
             ],
         }],
@@ -87,6 +91,7 @@ fn task_mutation_request_conflict_keeps_queue_unchanged() {
             edits: vec![TaskFieldEdit {
                 field: "title".to_string(),
                 value: "Should not apply".to_string(),
+                mode: TaskFieldEditMode::Set,
             }],
         }],
     };
@@ -124,6 +129,7 @@ fn task_mutation_request_status_doing_sets_started_at_once() {
             edits: vec![TaskFieldEdit {
                 field: "status".to_string(),
                 value: "doing".to_string(),
+                mode: TaskFieldEditMode::Set,
             }],
         }],
     };

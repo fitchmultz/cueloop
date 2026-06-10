@@ -27,9 +27,9 @@ The primary execution constraint. A task with `depends_on` cannot run until all 
 
 ```json
 {
-  "id": "RQ-0003",
+  "id": "CL-0003",
   "title": "Implement API endpoint",
-  "depends_on": ["RQ-0001", "RQ-0002"]
+  "depends_on": ["CL-0001", "CL-0002"]
 }
 ```
 
@@ -44,9 +44,9 @@ Semantic blocking—the inverse of `depends_on`. Task A `blocks` Task B means Ta
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Design database schema",
-  "blocks": ["RQ-0002", "RQ-0003"]
+  "blocks": ["CL-0002", "CL-0003"]
 }
 ```
 
@@ -63,9 +63,9 @@ Expresses semantic relationships without execution constraints.
 
 ```json
 {
-  "id": "RQ-0005",
+  "id": "CL-0005",
   "title": "Update documentation",
-  "relates_to": ["RQ-0003", "RQ-0004"]
+  "relates_to": ["CL-0003", "CL-0004"]
 }
 ```
 
@@ -80,9 +80,9 @@ Indicates that a task duplicates the work of another task.
 
 ```json
 {
-  "id": "RQ-0006",
+  "id": "CL-0006",
   "title": "Fix login bug (duplicate)",
-  "duplicates": "RQ-0005"
+  "duplicates": "CL-0005"
 }
 ```
 
@@ -145,8 +145,8 @@ These are logged but don't prevent operations:
 $ cueloop queue validate
 
 # Example output with warnings
-[WARN] [RQ-0005] Task RQ-0005 depends on rejected task RQ-0002. This dependency will never be satisfied.
-[WARN] [RQ-0001] Task RQ-0001 has a dependency chain depth of 12, which exceeds the configured maximum of 10.
+[WARN] [CL-0005] Task CL-0005 depends on rejected task CL-0002. This dependency will never be satisfied.
+[WARN] [CL-0001] Task CL-0001 has a dependency chain depth of 12, which exceeds the configured maximum of 10.
 ```
 
 ## Dependency Graph
@@ -161,7 +161,7 @@ Internally, CueLoop represents tasks as a **Directed Acyclic Graph (DAG)**. The 
 
 ```
 ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│  RQ-0001    │────────▶│  RQ-0002    │────────▶│  RQ-0003    │
+│  CL-0001    │────────▶│  CL-0002    │────────▶│  CL-0003    │
 │  (root)     │         │             │         │  (leaf)     │
 └─────────────┘         └─────────────┘         └─────────────┘
         │                                               ▲
@@ -184,14 +184,14 @@ CueLoop provides multiple ways to visualize dependencies:
 Default output of `cueloop queue graph`:
 
 ```bash
-$ cueloop queue graph --task RQ-0003
+$ cueloop queue graph --task CL-0003
 
-Dependency tree for RQ-0003: Implement API endpoint
+Dependency tree for CL-0003: Implement API endpoint
 
 Tasks this task depends on (upstream):
-* RQ-0003: Implement API endpoint [⏳]
-  └─ RQ-0002: Design API schema [✅]
-     └─ RQ-0001: Define requirements [✅]
+* CL-0003: Implement API endpoint [⏳]
+  └─ CL-0002: Design API schema [✅]
+     └─ CL-0001: Define requirements [✅]
 
 Critical path from this task: 3 tasks
   Status: Unblocked
@@ -226,25 +226,25 @@ The DOT output includes:
 For programmatic access:
 
 ```bash
-$ cueloop queue graph --format json --task RQ-0003
+$ cueloop queue graph --format json --task CL-0003
 ```
 
 ```json
 {
-  "task": "RQ-0003",
+  "task": "CL-0003",
   "title": "Implement API endpoint",
   "status": "todo",
   "critical": true,
   "relationship": "depends_on",
   "related_tasks": [
     {
-      "id": "RQ-0002",
+      "id": "CL-0002",
       "title": "Design API schema",
       "status": "done",
       "critical": true
     },
     {
-      "id": "RQ-0001",
+      "id": "CL-0001",
       "title": "Define requirements",
       "status": "done",
       "critical": true
@@ -266,7 +266,7 @@ $ cueloop queue graph --include-done
 $ cueloop queue graph --critical
 
 # Show reverse dependencies (what this task blocks)
-$ cueloop queue graph --task RQ-0001 --reverse
+$ cueloop queue graph --task CL-0001 --reverse
 ```
 
 ## Critical Path Analysis
@@ -292,10 +292,10 @@ Summary:
 In tree view, critical path tasks are marked with `*`:
 
 ```
-* RQ-0005: Integration testing [⏳]
-  └─ * RQ-0004: Implement service [🔄]
-     └─ * RQ-0002: Design schema [✅]
-        └─ RQ-0001: Requirements [✅]
+* CL-0005: Integration testing [⏳]
+  └─ * CL-0004: Implement service [🔄]
+     └─ * CL-0002: Design schema [✅]
+        └─ CL-0001: Requirements [✅]
 ```
 
 ### Impact
@@ -333,7 +333,7 @@ $ cueloop queue explain --include-draft
 Queue Runnability Report (generated at 2026-02-07T10:30:00Z)
 
 Selection: include_draft=false, prefer_doing=true
-Selected task: RQ-0004 (status: Doing)
+Selected task: CL-0004 (status: Doing)
 
 Summary:
   Total tasks: 8
@@ -341,12 +341,12 @@ Summary:
   Blocked by dependencies: 4
 
 Blocking reasons (first 10 candidates):
-  RQ-0005 (status: Todo):
+  CL-0005 (status: Todo):
     - Blocked by unmet dependencies:
-      * RQ-0004: status is 'Doing' (must be done/rejected)
-  RQ-0006 (status: Todo):
+      * CL-0004: status is 'Doing' (must be done/rejected)
+  CL-0006 (status: Todo):
     - Blocked by unmet dependencies:
-      * RQ-0005: status is 'Todo' (must be done/rejected)
+      * CL-0005: status is 'Todo' (must be done/rejected)
 
 Hints:
   - Run 'cueloop queue graph --task <ID>' to visualize dependencies
@@ -362,7 +362,7 @@ Hints:
   "selection": {
     "include_draft": false,
     "prefer_doing": true,
-    "selected_task_id": "RQ-0004",
+    "selected_task_id": "CL-0004",
     "selected_task_status": "Doing"
   },
   "summary": {
@@ -375,7 +375,7 @@ Hints:
   },
   "tasks": [
     {
-      "id": "RQ-0005",
+      "id": "CL-0005",
       "status": "Todo",
       "runnable": false,
       "reasons": [
@@ -384,7 +384,7 @@ Hints:
           "dependencies": [
             {
               "kind": "not_complete",
-              "id": "RQ-0004",
+              "id": "CL-0004",
               "status": "Doing"
             }
           ]
@@ -440,39 +440,39 @@ It's important to distinguish between **structural hierarchy** (`parent_id`) and
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Implement user authentication epic",
   "status": "doing"
 },
 {
-  "id": "RQ-0002",
+  "id": "CL-0002",
   "title": "Design auth schema",
   "status": "done",
-  "parent_id": "RQ-0001"
+  "parent_id": "CL-0001"
 },
 {
-  "id": "RQ-0003",
+  "id": "CL-0003",
   "title": "Implement login endpoint",
   "status": "todo",
-  "parent_id": "RQ-0001",
-  "depends_on": ["RQ-0002"]
+  "parent_id": "CL-0001",
+  "depends_on": ["CL-0002"]
 },
 {
-  "id": "RQ-0004",
+  "id": "CL-0004",
   "title": "Implement logout endpoint",
   "status": "todo",
-  "parent_id": "RQ-0001",
-  "depends_on": ["RQ-0002"]
+  "parent_id": "CL-0001",
+  "depends_on": ["CL-0002"]
 }
 ```
 
 **Structure**:
-- RQ-0001 (epic)
-  - RQ-0002 (child)
-  - RQ-0003 (child, depends on RQ-0002)
-  - RQ-0004 (child, depends on RQ-0002)
+- CL-0001 (epic)
+  - CL-0002 (child)
+  - CL-0003 (child, depends on CL-0002)
+  - CL-0004 (child, depends on CL-0002)
 
-**Execution**: RQ-0002 → (RQ-0003, RQ-0004 can run in any order)
+**Execution**: CL-0002 → (CL-0003, CL-0004 can run in any order)
 
 ## Practical Examples
 
@@ -481,44 +481,44 @@ It's important to distinguish between **structural hierarchy** (`parent_id`) and
 ```json
 [
   {
-    "id": "RQ-0001",
+    "id": "CL-0001",
     "title": "Define API specification",
     "status": "done",
     "depends_on": []
   },
   {
-    "id": "RQ-0002",
+    "id": "CL-0002",
     "title": "Design database schema",
     "status": "done",
-    "depends_on": ["RQ-0001"]
+    "depends_on": ["CL-0001"]
   },
   {
-    "id": "RQ-0003",
+    "id": "CL-0003",
     "title": "Implement backend service",
     "status": "doing",
-    "depends_on": ["RQ-0002"]
+    "depends_on": ["CL-0002"]
   },
   {
-    "id": "RQ-0004",
+    "id": "CL-0004",
     "title": "Implement frontend components",
     "status": "todo",
-    "depends_on": ["RQ-0001"]
+    "depends_on": ["CL-0001"]
   },
   {
-    "id": "RQ-0005",
+    "id": "CL-0005",
     "title": "Integration testing",
     "status": "todo",
-    "depends_on": ["RQ-0003", "RQ-0004"]
+    "depends_on": ["CL-0003", "CL-0004"]
   }
 ]
 ```
 
 **Visualization**:
 ```
-RQ-0001 (Define API)
-    ├── RQ-0002 (Design schema) ──▶ RQ-0003 (Backend) ──┐
-    │                                                    ├──▶ RQ-0005 (Testing)
-    └── RQ-0004 (Frontend) ──────────────────────────────┘
+CL-0001 (Define API)
+    ├── CL-0002 (Design schema) ──▶ CL-0003 (Backend) ──┐
+    │                                                    ├──▶ CL-0005 (Testing)
+    └── CL-0004 (Frontend) ──────────────────────────────┘
 ```
 
 ### Example 2: Handling Circular Dependencies
@@ -534,7 +534,7 @@ RQ-0001 (Define API)
 # Attempting to validate with circular dependency
 $ cueloop queue validate
 
-Error: Circular dependency detected involving task RQ-0001. 
+Error: Circular dependency detected involving task CL-0001.
 Task dependencies must form a DAG (no cycles). 
 Review the depends_on fields to break the cycle.
 ```
@@ -542,24 +542,24 @@ Review the depends_on fields to break the cycle.
 **Fixing a circular dependency**:
 
 ```json
-// BEFORE: Circular (RQ-0001 → RQ-0002 → RQ-0001)
+// BEFORE: Circular (CL-0001 → CL-0002 → CL-0001)
 {
-  "id": "RQ-0001",
-  "depends_on": ["RQ-0002"]
+  "id": "CL-0001",
+  "depends_on": ["CL-0002"]
 }
 {
-  "id": "RQ-0002",
-  "depends_on": ["RQ-0001"]
+  "id": "CL-0002",
+  "depends_on": ["CL-0001"]
 }
 
-// AFTER: Linear (RQ-0001 → RQ-0002)
+// AFTER: Linear (CL-0001 → CL-0002)
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "depends_on": []
 }
 {
-  "id": "RQ-0002",
-  "depends_on": ["RQ-0001"]
+  "id": "CL-0002",
+  "depends_on": ["CL-0001"]
 }
 ```
 
@@ -579,13 +579,13 @@ Summary:
 
 Dependency Chains:
 
-* RQ-0006: Deploy to production [⏳]
-  └─ * RQ-0005: Run integration tests [⏳]
-     └─ * RQ-0004: Implement feature [🔄]
-        └─ * RQ-0003: Setup environment [✅]
+* CL-0006: Deploy to production [⏳]
+  └─ * CL-0005: Run integration tests [⏳]
+     └─ * CL-0004: Implement feature [🔄]
+        └─ * CL-0003: Setup environment [✅]
 
-RQ-0002: Write documentation [⏳]
-  └─ RQ-0001: Define requirements [✅]
+CL-0002: Write documentation [⏳]
+  └─ CL-0001: Define requirements [✅]
 
 Legend:
   * = on critical path
@@ -593,35 +593,35 @@ Legend:
 ```
 
 **Analysis**:
-- RQ-0003, RQ-0004, RQ-0005, RQ-0006 are on the critical path
-- RQ-0002 is not critical (can run in parallel with RQ-0003)
-- Completing RQ-0004 unblocks the longest chain
+- CL-0003, CL-0004, CL-0005, CL-0006 are on the critical path
+- CL-0002 is not critical (can run in parallel with CL-0003)
+- Completing CL-0004 unblocks the longest chain
 
 ### Example 4: Dependency on Rejected Task
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Research approach A",
   "status": "rejected"
 },
 {
-  "id": "RQ-0002",
+  "id": "CL-0002",
   "title": "Implement approach B",
   "status": "todo",
-  "depends_on": ["RQ-0001"]
+  "depends_on": ["CL-0001"]
 }
 ```
 
 **Warning issued**:
 ```
-[WARN] [RQ-0002] Task RQ-0002 depends on rejected task RQ-0001. 
+[WARN] [CL-0002] Task CL-0002 depends on rejected task CL-0001.
 This dependency will never be satisfied.
 ```
 
 **Behavior**:
-- RQ-0002 is considered **runnable** because `rejected` satisfies the dependency constraint
-- Warning alerts you to review if RQ-0002 should also be rejected
+- CL-0002 is considered **runnable** because `rejected` satisfies the dependency constraint
+- Warning alerts you to review if CL-0002 should also be rejected
 
 ## Best Practices
 

@@ -94,8 +94,8 @@ fn task_insert_creates_tasks_and_queue_validates() -> Result<()> {
     let document: Value = serde_json::from_str(&stdout)?;
     assert_eq!(document["version"], TASK_INSERT_VERSION);
     assert_eq!(document["created_count"], 2);
-    assert_eq!(document["tasks"][0]["task"]["id"], "RQ-0001");
-    assert_eq!(document["tasks"][1]["task"]["id"], "RQ-0002");
+    assert_eq!(document["tasks"][0]["task"]["id"], "CL-0001");
+    assert_eq!(document["tasks"][1]["task"]["id"], "CL-0002");
 
     let (validate_status, validate_stdout, validate_stderr) =
         test_support::run_in_dir(dir.path(), &["queue", "validate"]);
@@ -141,7 +141,7 @@ fn task_insert_dry_run_does_not_mutate_queue() -> Result<()> {
 
     let document: Value = serde_json::from_str(&stdout)?;
     assert_eq!(document["dry_run"], true);
-    assert_eq!(document["tasks"][0]["task"]["id"], "RQ-0001");
+    assert_eq!(document["tasks"][0]["task"]["id"], "CL-0001");
     assert_eq!(read_queue(dir.path())?.tasks.len(), before.tasks.len());
     Ok(())
 }
@@ -197,8 +197,8 @@ fn task_insert_allocates_fresh_ids_for_sequential_requests() -> Result<()> {
 
     let first_document: Value = serde_json::from_str(&first_stdout)?;
     let second_document: Value = serde_json::from_str(&second_stdout)?;
-    assert_eq!(first_document["tasks"][0]["task"]["id"], "RQ-0001");
-    assert_eq!(second_document["tasks"][0]["task"]["id"], "RQ-0002");
+    assert_eq!(first_document["tasks"][0]["task"]["id"], "CL-0001");
+    assert_eq!(second_document["tasks"][0]["task"]["id"], "CL-0002");
 
     let (validate_status, _validate_stdout, validate_stderr) =
         test_support::run_in_dir(dir.path(), &["queue", "validate"]);
@@ -273,7 +273,7 @@ fn task_insert_can_run_under_supervisor_queue_lock() -> Result<()> {
 
     let document: Value = serde_json::from_str(&stdout)?;
     assert_eq!(document["created_count"], 1);
-    assert_eq!(document["tasks"][0]["task"]["id"], "RQ-0001");
+    assert_eq!(document["tasks"][0]["task"]["id"], "CL-0001");
     assert_eq!(read_queue(dir.path())?.tasks.len(), 1);
     Ok(())
 }

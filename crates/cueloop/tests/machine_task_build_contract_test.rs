@@ -37,7 +37,7 @@ cat <<'JSON' > .cueloop/queue.jsonc
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0001",
+      "id": "CL-0001",
       "status": "todo",
       "title": "Built by noisy runner",
       "priority": "medium",
@@ -94,7 +94,7 @@ echo '{"type":"item.completed","item":{"type":"agent_message","text":"created ta
         serde_json::from_str(&stdout).context("parse machine task build stdout as JSON")?;
     assert_eq!(document.version, MACHINE_TASK_BUILD_VERSION);
     assert_eq!(document.result.created_count, 1);
-    assert_eq!(document.result.task_ids, vec!["RQ-0001".to_string()]);
+    assert_eq!(document.result.task_ids, vec!["CL-0001".to_string()]);
     assert_eq!(document.result.tasks[0].title, "Built by noisy runner");
 
     Ok(())

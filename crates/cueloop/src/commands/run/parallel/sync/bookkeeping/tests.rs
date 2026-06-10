@@ -29,7 +29,7 @@ fn test_resolved(repo_root: &Path) -> config::Resolved {
         repo_root: repo_root.to_path_buf(),
         queue_path: repo_root.join(".cueloop/queue.jsonc"),
         done_path: repo_root.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -101,17 +101,17 @@ fn reconciles_two_ignored_jsonc_workers_without_last_writer_wins() -> Result<()>
         &QueueFile {
             version: 1,
             tasks: vec![
-                task("RQ-0001", TaskStatus::Todo),
-                task("RQ-0002", TaskStatus::Todo),
+                task("CL-0001", TaskStatus::Todo),
+                task("CL-0002", TaskStatus::Todo),
             ],
         },
     )?;
     queue::save_queue(&resolved.done_path, &QueueFile::default())?;
 
     let worker_one =
-        worker_with_done_snapshot(&temp, "RQ-0001", vec![task("RQ-0001", TaskStatus::Done)])?;
+        worker_with_done_snapshot(&temp, "CL-0001", vec![task("CL-0001", TaskStatus::Done)])?;
     let worker_two =
-        worker_with_done_snapshot(&temp, "RQ-0002", vec![task("RQ-0002", TaskStatus::Done)])?;
+        worker_with_done_snapshot(&temp, "CL-0002", vec![task("CL-0002", TaskStatus::Done)])?;
     let queue_lock = crate::queue::acquire_queue_lock(&repo_root, "test", false)?;
 
     let authority = reconcile_successful_workers(
@@ -119,11 +119,11 @@ fn reconciles_two_ignored_jsonc_workers_without_last_writer_wins() -> Result<()>
         &queue_lock,
         &[
             SuccessfulWorkerBookkeeping {
-                task_id: "RQ-0001".to_string(),
+                task_id: "CL-0001".to_string(),
                 workspace_path: worker_one,
             },
             SuccessfulWorkerBookkeeping {
-                task_id: "RQ-0002".to_string(),
+                task_id: "CL-0002".to_string(),
                 workspace_path: worker_two,
             },
         ],
@@ -137,7 +137,7 @@ fn reconciles_two_ignored_jsonc_workers_without_last_writer_wins() -> Result<()>
     );
     assert_eq!(
         ids(&queue::load_queue(&resolved.done_path)?),
-        vec!["RQ-0001".to_string(), "RQ-0002".to_string()]
+        vec!["CL-0001".to_string(), "CL-0002".to_string()]
     );
     assert!(crate::undo::undo_cache_dir(&repo_root).exists());
     Ok(())
@@ -152,18 +152,18 @@ fn successful_worker_missing_done_entry_fails_without_mutating_coordinator() -> 
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0001", TaskStatus::Todo)],
+            tasks: vec![task("CL-0001", TaskStatus::Todo)],
         },
     )?;
     queue::save_queue(&resolved.done_path, &QueueFile::default())?;
-    let worker = worker_with_done_snapshot(&temp, "RQ-0001", Vec::new())?;
+    let worker = worker_with_done_snapshot(&temp, "CL-0001", Vec::new())?;
     let queue_lock = crate::queue::acquire_queue_lock(&repo_root, "test", false)?;
 
     let err = reconcile_successful_workers(
         &resolved,
         &queue_lock,
         &[SuccessfulWorkerBookkeeping {
-            task_id: "RQ-0001".to_string(),
+            task_id: "CL-0001".to_string(),
             workspace_path: worker,
         }],
         "test parallel reconciliation",
@@ -173,7 +173,7 @@ fn successful_worker_missing_done_entry_fails_without_mutating_coordinator() -> 
     assert!(err.to_string().contains("did not archive its task"));
     assert_eq!(
         ids(&queue::load_queue(&resolved.queue_path)?),
-        vec!["RQ-0001".to_string()]
+        vec!["CL-0001".to_string()]
     );
     assert_eq!(
         ids(&queue::load_queue(&resolved.done_path)?),
@@ -191,16 +191,16 @@ fn successful_worker_duplicate_done_entry_fails() -> Result<()> {
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0001", TaskStatus::Todo)],
+            tasks: vec![task("CL-0001", TaskStatus::Todo)],
         },
     )?;
     queue::save_queue(&resolved.done_path, &QueueFile::default())?;
     let worker = worker_with_done_snapshot(
         &temp,
-        "RQ-0001",
+        "CL-0001",
         vec![
-            task("RQ-0001", TaskStatus::Done),
-            task("RQ-0001", TaskStatus::Done),
+            task("CL-0001", TaskStatus::Done),
+            task("CL-0001", TaskStatus::Done),
         ],
     )?;
     let queue_lock = crate::queue::acquire_queue_lock(&repo_root, "test", false)?;
@@ -209,7 +209,7 @@ fn successful_worker_duplicate_done_entry_fails() -> Result<()> {
         &resolved,
         &queue_lock,
         &[SuccessfulWorkerBookkeeping {
-            task_id: "RQ-0001".to_string(),
+            task_id: "CL-0001".to_string(),
             workspace_path: worker,
         }],
         "test parallel reconciliation",
@@ -229,20 +229,20 @@ fn successful_worker_non_done_terminal_status_fails() -> Result<()> {
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![task("RQ-0001", TaskStatus::Todo)],
+            tasks: vec![task("CL-0001", TaskStatus::Todo)],
         },
     )?;
     queue::save_queue(&resolved.done_path, &QueueFile::default())?;
-    let mut rejected = task("RQ-0001", TaskStatus::Rejected);
+    let mut rejected = task("CL-0001", TaskStatus::Rejected);
     rejected.completed_at = Some("2026-04-27T00:01:00Z".to_string());
-    let worker = worker_with_done_snapshot(&temp, "RQ-0001", vec![rejected])?;
+    let worker = worker_with_done_snapshot(&temp, "CL-0001", vec![rejected])?;
     let queue_lock = crate::queue::acquire_queue_lock(&repo_root, "test", false)?;
 
     let err = reconcile_successful_workers(
         &resolved,
         &queue_lock,
         &[SuccessfulWorkerBookkeeping {
-            task_id: "RQ-0001".to_string(),
+            task_id: "CL-0001".to_string(),
             workspace_path: worker,
         }],
         "test parallel reconciliation",

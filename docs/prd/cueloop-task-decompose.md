@@ -86,9 +86,9 @@ so that I can preserve the original task context while making the work more acti
 
 #### Acceptance Criteria
 
-- Running `cueloop task decompose RQ-0123` previews child tasks under the existing task.
+- Running `cueloop task decompose CL-0123` previews child tasks under the existing task.
 - By default, the existing task is preserved as the parent rather than rejected or archived.
-- Generated child tasks use `parent_id = RQ-0123`.
+- Generated child tasks use `parent_id = CL-0123`.
 - The preserved source task is marked `kind: group` when write mode turns it into a decomposition umbrella.
 - The command refuses to mutate a non-existent task ID.
 - The command refuses to decompose tasks from the done archive unless an explicit opt-in is provided in a future or explicit override mode.
@@ -116,7 +116,7 @@ so that I can expand an established plan without replacing the parent itself.
 
 #### Acceptance Criteria
 
-- Running `cueloop task decompose --attach-to RQ-0042 "Plan webhook reliability work"` previews a new subtree under `RQ-0042`.
+- Running `cueloop task decompose --attach-to CL-0042 "Plan webhook reliability work"` previews a new subtree under `CL-0042`.
 - When `--write` is provided, CueLoop creates a new root child under the attach target and nests descendants beneath that new root.
 - When the attach target already has children, `--child-policy fail|append|replace` governs write behavior deterministically.
 - `--child-policy replace` refuses the write when tasks outside the subtree still reference descendant IDs that would be removed.
@@ -182,13 +182,13 @@ so that it does not mutate queue state unless I explicitly request it.
 ```bash
 cueloop task decompose "Build OAuth login with GitHub and Google"
 cueloop task decompose "Improve webhook reliability" --write
-cueloop task decompose RQ-0123 --max-depth 3 --preview
-cueloop task decompose RQ-0123 --child-policy append --with-dependencies --write
+cueloop task decompose CL-0123 --max-depth 3 --preview
+cueloop task decompose CL-0123 --child-policy append --with-dependencies --write
 cueloop task decompose --from-file docs/plans/oauth.md
 cueloop task decompose --from-file docs/plans/oauth.md --preview
-cueloop task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
+cueloop task decompose --from-file docs/plans/oauth.md --attach-to CL-0042 --child-policy append --write
 cueloop task decompose --from-file docs/plans/oauth.md --format json
-cueloop task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
+cueloop task decompose --attach-to CL-0042 --format json "Plan webhook reliability work"
 ```
 
 ### Preview Output Expectations

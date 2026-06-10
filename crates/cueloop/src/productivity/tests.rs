@@ -65,7 +65,7 @@ fn test_load_stats_empty_cache() {
     let stats = load_productivity_stats(temp.path()).unwrap();
     assert_eq!(stats.total_completed, 0);
     assert!(stats.daily.is_empty());
-    // CRITICAL: Default last_updated_at must never be empty (regression test for RQ-0636)
+    // CRITICAL: Default last_updated_at must never be empty (regression test for CL-0636)
     assert!(
         !stats.last_updated_at.is_empty(),
         "Default last_updated_at should never be empty"
@@ -75,7 +75,7 @@ fn test_load_stats_empty_cache() {
 #[test]
 fn test_record_task_completion() {
     let temp = TempDir::new().unwrap();
-    let task = create_test_task("RQ-0001", "Test task");
+    let task = create_test_task("CL-0001", "Test task");
 
     let result = record_task_completion(&task, temp.path()).unwrap();
 
@@ -88,7 +88,7 @@ fn test_record_task_completion() {
     let stats = load_productivity_stats(temp.path()).unwrap();
     assert_eq!(stats.total_completed, 1);
 
-    // CRITICAL: All persisted timestamps must be non-empty (regression test for RQ-0636)
+    // CRITICAL: All persisted timestamps must be non-empty (regression test for CL-0636)
     assert!(
         !stats.last_updated_at.is_empty(),
         "last_updated_at should never be empty"
@@ -109,7 +109,7 @@ fn test_milestone_detection() {
 
     // Complete 10 tasks
     for i in 1..=10 {
-        let task = create_test_task(&format!("RQ-{:04}", i), "Test task");
+        let task = create_test_task(&format!("CL-{:04}", i), "Test task");
         let result = record_task_completion(&task, temp.path()).unwrap();
 
         if i == 10 {
@@ -123,7 +123,7 @@ fn test_milestone_detection() {
 #[test]
 fn test_duplicate_completion_ignored() {
     let temp = TempDir::new().unwrap();
-    let task = create_test_task("RQ-0001", "Test task");
+    let task = create_test_task("CL-0001", "Test task");
 
     // Record same task twice
     record_task_completion(&task, temp.path()).unwrap();
@@ -349,7 +349,7 @@ fn test_update_streak_invalid_today_is_noop() {
 fn test_record_task_completion_by_id() {
     let temp = TempDir::new().unwrap();
 
-    let result = record_task_completion_by_id("RQ-0001", "Test task", temp.path()).unwrap();
+    let result = record_task_completion_by_id("CL-0001", "Test task", temp.path()).unwrap();
 
     assert_eq!(result.total_completed, 1);
     assert_eq!(result.new_streak, 1);
@@ -386,7 +386,7 @@ fn test_old_daily_stats_get_pruned() {
                 date: date.clone(),
                 completed_count: 1,
                 tasks: vec![CompletedTaskRef {
-                    id: format!("RQ-{:04}", i),
+                    id: format!("CL-{:04}", i),
                     title: "Old task".to_string(),
                     completed_at: format!("{}T12:00:00Z", date),
                 }],

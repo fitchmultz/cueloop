@@ -75,9 +75,9 @@ fn task_with(id: &str, status: TaskStatus, tags: Vec<String>) -> Task {
 #[test]
 fn prune_by_age_only() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-10T12:00:00Z"),
-        done_task_with_completed("RQ-0003", "2026-01-19T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-10T12:00:00Z"),
+        done_task_with_completed("CL-0003", "2026-01-19T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -98,19 +98,19 @@ fn prune_by_age_only() {
     let mut done = load_queue(&done_path).unwrap();
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
-    assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0001"]);
     assert_eq!(report.kept_ids.len(), 2);
-    assert!(report.kept_ids.contains(&"RQ-0002".to_string()));
-    assert!(report.kept_ids.contains(&"RQ-0003".to_string()));
+    assert!(report.kept_ids.contains(&"CL-0002".to_string()));
+    assert!(report.kept_ids.contains(&"CL-0003".to_string()));
     assert_eq!(done.tasks.len(), 2);
 }
 
 #[test]
 fn prune_by_status_only() {
     let mut tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-10T12:00:00Z"),
-        task_with("RQ-0003", TaskStatus::Rejected, vec!["done".to_string()]),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-10T12:00:00Z"),
+        task_with("CL-0003", TaskStatus::Rejected, vec!["done".to_string()]),
     ];
     tasks[2].completed_at = Some("2026-01-15T12:00:00Z".to_string());
 
@@ -132,7 +132,7 @@ fn prune_by_status_only() {
     let mut done = load_queue(&done_path).unwrap();
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
-    assert_eq!(report.pruned_ids, vec!["RQ-0003"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0003"]);
     assert_eq!(report.kept_ids.len(), 2);
     assert_eq!(done.tasks.len(), 2);
 }
@@ -140,10 +140,10 @@ fn prune_by_status_only() {
 #[test]
 fn prune_keep_last_protects_recent() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-10T12:00:00Z"),
-        done_task_with_completed("RQ-0003", "2026-01-15T12:00:00Z"),
-        done_task_with_completed("RQ-0004", "2026-01-19T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-10T12:00:00Z"),
+        done_task_with_completed("CL-0003", "2026-01-15T12:00:00Z"),
+        done_task_with_completed("CL-0004", "2026-01-19T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -165,21 +165,21 @@ fn prune_keep_last_protects_recent() {
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
     assert_eq!(report.kept_ids.len(), 2);
-    assert!(report.kept_ids.contains(&"RQ-0003".to_string()));
-    assert!(report.kept_ids.contains(&"RQ-0004".to_string()));
+    assert!(report.kept_ids.contains(&"CL-0003".to_string()));
+    assert!(report.kept_ids.contains(&"CL-0004".to_string()));
     assert_eq!(report.pruned_ids.len(), 2);
-    assert!(report.pruned_ids.contains(&"RQ-0001".to_string()));
-    assert!(report.pruned_ids.contains(&"RQ-0002".to_string()));
+    assert!(report.pruned_ids.contains(&"CL-0001".to_string()));
+    assert!(report.pruned_ids.contains(&"CL-0002".to_string()));
     assert_eq!(done.tasks.len(), 2);
 }
 
 #[test]
 fn prune_keep_last_with_duplicate_ids() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-10T12:00:00Z"),
-        done_task_with_completed("RQ-0003", "2026-01-15T12:00:00Z"),
-        done_task_with_completed("RQ-0003", "2026-01-19T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-10T12:00:00Z"),
+        done_task_with_completed("CL-0003", "2026-01-15T12:00:00Z"),
+        done_task_with_completed("CL-0003", "2026-01-19T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -203,19 +203,19 @@ fn prune_keep_last_with_duplicate_ids() {
     assert_eq!(report.kept_ids.len(), 2);
     assert_eq!(report.pruned_ids.len(), 2);
     assert_eq!(done.tasks.len(), 2);
-    assert_eq!(done.tasks[0].id, "RQ-0003");
-    assert_eq!(done.tasks[1].id, "RQ-0003");
-    assert_eq!(report.kept_ids, vec!["RQ-0003", "RQ-0003"]);
-    assert_eq!(report.pruned_ids, vec!["RQ-0001", "RQ-0002"]);
+    assert_eq!(done.tasks[0].id, "CL-0003");
+    assert_eq!(done.tasks[1].id, "CL-0003");
+    assert_eq!(report.kept_ids, vec!["CL-0003", "CL-0003"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0001", "CL-0002"]);
 }
 
 #[test]
 fn prune_combined_age_and_status() {
     let mut tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-10T12:00:00Z"),
-        task_with("RQ-0003", TaskStatus::Rejected, vec!["done".to_string()]),
-        task_with("RQ-0004", TaskStatus::Rejected, vec!["done".to_string()]),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-10T12:00:00Z"),
+        task_with("CL-0003", TaskStatus::Rejected, vec!["done".to_string()]),
+        task_with("CL-0004", TaskStatus::Rejected, vec!["done".to_string()]),
     ];
     tasks[2].completed_at = Some("2026-01-05T12:00:00Z".to_string());
     tasks[3].completed_at = Some("2026-01-15T12:00:00Z".to_string());
@@ -238,7 +238,7 @@ fn prune_combined_age_and_status() {
     let mut done = load_queue(&done_path).unwrap();
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
-    assert_eq!(report.pruned_ids, vec!["RQ-0003"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0003"]);
     assert_eq!(report.kept_ids.len(), 3);
     assert_eq!(done.tasks.len(), 3);
 }
@@ -246,9 +246,9 @@ fn prune_combined_age_and_status() {
 #[test]
 fn prune_missing_completed_at_kept_for_safety() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_missing_completed("RQ-0002"),
-        done_task_with_completed("RQ-0003", "2026-01-18T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_missing_completed("CL-0002"),
+        done_task_with_completed("CL-0003", "2026-01-18T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -269,18 +269,18 @@ fn prune_missing_completed_at_kept_for_safety() {
     let mut done = load_queue(&done_path).unwrap();
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
-    assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0001"]);
     assert_eq!(report.kept_ids.len(), 2);
-    assert!(report.kept_ids.contains(&"RQ-0002".to_string()));
-    assert!(report.kept_ids.contains(&"RQ-0003".to_string()));
+    assert!(report.kept_ids.contains(&"CL-0002".to_string()));
+    assert!(report.kept_ids.contains(&"CL-0003".to_string()));
     assert_eq!(done.tasks.len(), 2);
 }
 
 #[test]
 fn prune_dry_run_does_not_write_to_disk() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-18T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-18T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -300,7 +300,7 @@ fn prune_dry_run_does_not_write_to_disk() {
 
     let report = prune_done_tasks_at(&done_path, options, fixed_now()).unwrap();
 
-    assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0001"]);
 
     let done_after = load_queue(&done_path).unwrap();
     assert_eq!(done_after.tasks.len(), 2);
@@ -309,9 +309,9 @@ fn prune_dry_run_does_not_write_to_disk() {
 #[test]
 fn prune_preserves_original_order() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-16T12:00:00Z"),
-        done_task_with_completed("RQ-0003", "2026-01-18T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-16T12:00:00Z"),
+        done_task_with_completed("CL-0003", "2026-01-18T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -333,16 +333,16 @@ fn prune_preserves_original_order() {
 
     let done_after = load_queue(&done_path).unwrap();
     assert_eq!(done_after.tasks.len(), 2);
-    assert_eq!(done_after.tasks[0].id, "RQ-0002");
-    assert_eq!(done_after.tasks[1].id, "RQ-0003");
+    assert_eq!(done_after.tasks[0].id, "CL-0002");
+    assert_eq!(done_after.tasks[1].id, "CL-0003");
 }
 
 #[test]
 fn prune_with_keep_last_and_age_combines_filters() {
     let tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        done_task_with_completed("RQ-0002", "2026-01-10T12:00:00Z"),
-        done_task_with_completed("RQ-0003", "2026-01-15T12:00:00Z"),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        done_task_with_completed("CL-0002", "2026-01-10T12:00:00Z"),
+        done_task_with_completed("CL-0003", "2026-01-15T12:00:00Z"),
     ];
 
     let temp_dir = TempDir::new().unwrap();
@@ -364,17 +364,17 @@ fn prune_with_keep_last_and_age_combines_filters() {
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
     assert_eq!(report.pruned_ids.len(), 2);
-    assert!(report.pruned_ids.contains(&"RQ-0001".to_string()));
-    assert!(report.pruned_ids.contains(&"RQ-0002".to_string()));
-    assert_eq!(report.kept_ids, vec!["RQ-0003"]);
+    assert!(report.pruned_ids.contains(&"CL-0001".to_string()));
+    assert!(report.pruned_ids.contains(&"CL-0002".to_string()));
+    assert_eq!(report.kept_ids, vec!["CL-0003"]);
     assert_eq!(done.tasks.len(), 1);
 }
 
 #[test]
 fn prune_invalid_completed_at_kept_for_safety() {
     let mut tasks = vec![
-        done_task_with_completed("RQ-0001", "2026-01-01T12:00:00Z"),
-        task_with("RQ-0002", TaskStatus::Done, vec!["done".to_string()]),
+        done_task_with_completed("CL-0001", "2026-01-01T12:00:00Z"),
+        task_with("CL-0002", TaskStatus::Done, vec!["done".to_string()]),
     ];
     tasks[1].completed_at = Some("not-a-valid-timestamp".to_string());
 
@@ -396,7 +396,7 @@ fn prune_invalid_completed_at_kept_for_safety() {
     let mut done = load_queue(&done_path).unwrap();
     let report = prune_done_queue_at(&mut done.tasks, &options, fixed_now()).unwrap();
 
-    assert_eq!(report.pruned_ids, vec!["RQ-0001"]);
-    assert_eq!(report.kept_ids, vec!["RQ-0002"]);
+    assert_eq!(report.pruned_ids, vec!["CL-0001"]);
+    assert_eq!(report.kept_ids, vec!["CL-0002"]);
     assert_eq!(done.tasks.len(), 1);
 }

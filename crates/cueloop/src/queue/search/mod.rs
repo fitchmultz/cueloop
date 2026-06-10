@@ -68,10 +68,10 @@ mod tests {
 
     #[test]
     fn search_tasks_with_options_fuzzy_mode() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Update docs".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
@@ -84,16 +84,16 @@ mod tests {
 
         let results = search_tasks_with_options(tasks.iter().copied(), "auth", &options)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn search_tasks_with_options_regex_mode() -> Result<()> {
-        let mut t1 = task("RQ-0001");
-        t1.title = "Fix RQ-1234 bug".to_string();
+        let mut t1 = task("CL-0001");
+        t1.title = "Fix CL-1234 bug".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Update docs".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
@@ -104,18 +104,18 @@ mod tests {
             scopes: vec![],
         };
 
-        let results = search_tasks_with_options(tasks.iter().copied(), r"RQ-\d{4}", &options)?;
+        let results = search_tasks_with_options(tasks.iter().copied(), r"CL-\d{4}", &options)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn search_tasks_with_options_substring_mode() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Update docs".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
@@ -128,7 +128,7 @@ mod tests {
 
         let results = search_tasks_with_options(tasks.iter().copied(), "auth", &options)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].id, "RQ-0001");
+        assert_eq!(results[0].id, "CL-0001");
         Ok(())
     }
 }

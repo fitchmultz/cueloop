@@ -103,7 +103,7 @@ When `git_publish_mode` is `commit_and_push` and a task completes successfully:
 
 1. **Commit**: All changes are committed with a formatted message:
    ```
-   RQ-0001: Add user authentication feature
+   CL-0001: Add user authentication feature
    ```
 
 2. **Push**: Commits are pushed to the configured upstream
@@ -273,7 +273,7 @@ Phase 3 writes a completion signal to `.cueloop/cache/completions/{TASK_ID}.json
 
 ```json
 {
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "status": "done",
   "notes": ["Reviewed and approved"],
   "runner_used": "claude",
@@ -393,7 +393,7 @@ Supervision emits webhook events for external integrations:
 {
   "event": "phase_completed",
   "timestamp": "2024-01-15T10:30:00Z",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "task_title": "Add feature",
   "phase": 3,
   "phase_count": 3,
@@ -604,7 +604,7 @@ cueloop run one --no-notify
 ```bash
 # Manually commit and push
 git add -A
-git commit -m "RQ-0001: Task title"
+git commit -m "CL-0001: Task title"
 git push
 ```
 
@@ -618,7 +618,7 @@ git push
 cueloop run parallel status
 
 # Retry blocked worker integration
-cueloop run parallel retry --task RQ-0001
+cueloop run parallel retry --task CL-0001
 ```
 
 ### Push Fails with No Upstream

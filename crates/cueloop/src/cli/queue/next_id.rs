@@ -192,7 +192,7 @@ mod tests {
             repo_root: repo_root.to_path_buf(),
             queue_path,
             done_path,
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: None,
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn test_single_id_runs_successfully() {
         let temp = TempDir::new().unwrap();
-        let resolved = setup_test_queue(&temp, vec![task("RQ-0001", TaskStatus::Todo)]);
+        let resolved = setup_test_queue(&temp, vec![task("CL-0001", TaskStatus::Todo)]);
 
         let args = QueueNextIdArgs { count: 1 };
         let result = handle(&resolved, args);
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn test_multiple_ids_runs_successfully() {
         let temp = TempDir::new().unwrap();
-        let resolved = setup_test_queue(&temp, vec![task("RQ-0005", TaskStatus::Todo)]);
+        let resolved = setup_test_queue(&temp, vec![task("CL-0005", TaskStatus::Todo)]);
 
         let args = QueueNextIdArgs { count: 3 };
         let result = handle(&resolved, args);
@@ -306,7 +306,7 @@ mod tests {
             repo_root: repo_root.to_path_buf(),
             queue_path,
             done_path,
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: None,
@@ -316,56 +316,56 @@ mod tests {
     #[test]
     fn test_duplicate_ids_in_queue_returns_next_id() {
         let temp = TempDir::new().unwrap();
-        // Setup queue with duplicate IDs: RQ-0001, RQ-0002, RQ-0001
+        // Setup queue with duplicate IDs: CL-0001, CL-0002, CL-0001
         let queue_tasks = vec![
-            task("RQ-0001", TaskStatus::Todo),
-            task("RQ-0002", TaskStatus::Todo),
-            task("RQ-0001", TaskStatus::Todo), // duplicate
+            task("CL-0001", TaskStatus::Todo),
+            task("CL-0002", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Todo), // duplicate
         ];
         let resolved = setup_test_queues(&temp, queue_tasks, vec![]);
 
         let args = QueueNextIdArgs { count: 1 };
         let result = handle(&resolved, args);
 
-        // Should succeed and return RQ-0003 (max is 0002, plus 1)
+        // Should succeed and return CL-0003 (max is 0002, plus 1)
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_duplicate_ids_across_queue_and_done_returns_next_id() {
         let temp = TempDir::new().unwrap();
-        // Setup: RQ-0001 in queue.json, RQ-0001 and RQ-0005 in done.json
-        let queue_tasks = vec![task("RQ-0001", TaskStatus::Todo)];
+        // Setup: CL-0001 in queue.json, CL-0001 and CL-0005 in done.json
+        let queue_tasks = vec![task("CL-0001", TaskStatus::Todo)];
         let done_tasks = vec![
-            task("RQ-0001", TaskStatus::Done), // duplicate across files
-            task("RQ-0005", TaskStatus::Done),
+            task("CL-0001", TaskStatus::Done), // duplicate across files
+            task("CL-0005", TaskStatus::Done),
         ];
         let resolved = setup_test_queues(&temp, queue_tasks, done_tasks);
 
         let args = QueueNextIdArgs { count: 1 };
         let result = handle(&resolved, args);
 
-        // Should succeed and return RQ-0006 (max is 0005, plus 1)
+        // Should succeed and return CL-0006 (max is 0005, plus 1)
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_multiple_duplicates_returns_correct_next_id() {
         let temp = TempDir::new().unwrap();
-        // Setup: RQ-0001, RQ-0002, RQ-0001, RQ-0003, RQ-0002 (duplicates of 1 and 2)
+        // Setup: CL-0001, CL-0002, CL-0001, CL-0003, CL-0002 (duplicates of 1 and 2)
         let queue_tasks = vec![
-            task("RQ-0001", TaskStatus::Todo),
-            task("RQ-0002", TaskStatus::Todo),
-            task("RQ-0001", TaskStatus::Todo), // duplicate of 1
-            task("RQ-0003", TaskStatus::Todo),
-            task("RQ-0002", TaskStatus::Todo), // duplicate of 2
+            task("CL-0001", TaskStatus::Todo),
+            task("CL-0002", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Todo), // duplicate of 1
+            task("CL-0003", TaskStatus::Todo),
+            task("CL-0002", TaskStatus::Todo), // duplicate of 2
         ];
         let resolved = setup_test_queues(&temp, queue_tasks, vec![]);
 
         let args = QueueNextIdArgs { count: 1 };
         let result = handle(&resolved, args);
 
-        // Should succeed and return RQ-0004 (max is 0003, plus 1)
+        // Should succeed and return CL-0004 (max is 0003, plus 1)
         assert!(result.is_ok());
     }
 
@@ -373,18 +373,18 @@ mod tests {
     fn test_next_id_considers_done_even_with_queue_errors() {
         let temp = TempDir::new().unwrap();
         // Setup: Invalid/duplicate IDs in queue.json
-        // Setup: Valid high-numbered task in done.json (RQ-0100)
+        // Setup: Valid high-numbered task in done.json (CL-0100)
         let queue_tasks = vec![
-            task("RQ-0001", TaskStatus::Todo),
-            task("RQ-0001", TaskStatus::Todo), // duplicate
+            task("CL-0001", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Todo), // duplicate
         ];
-        let done_tasks = vec![task("RQ-0100", TaskStatus::Done)];
+        let done_tasks = vec![task("CL-0100", TaskStatus::Done)];
         let resolved = setup_test_queues(&temp, queue_tasks, done_tasks);
 
         let args = QueueNextIdArgs { count: 1 };
         let result = handle(&resolved, args);
 
-        // Should still return RQ-0101 (not RQ-0002) because done.json is considered
+        // Should still return CL-0101 (not CL-0002) because done.json is considered
         assert!(result.is_ok());
     }
 
@@ -393,16 +393,16 @@ mod tests {
         let temp = TempDir::new().unwrap();
         // Edge case: all tasks in queue are duplicates of the same ID
         let queue_tasks = vec![
-            task("RQ-0001", TaskStatus::Todo),
-            task("RQ-0001", TaskStatus::Todo),
-            task("RQ-0001", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Todo),
         ];
         let resolved = setup_test_queues(&temp, queue_tasks, vec![]);
 
         let args = QueueNextIdArgs { count: 1 };
         let result = handle(&resolved, args);
 
-        // Should succeed and return RQ-0002
+        // Should succeed and return CL-0002
         assert!(result.is_ok());
     }
 
@@ -411,8 +411,8 @@ mod tests {
         let temp = TempDir::new().unwrap();
         // Rejected tasks should still count toward duplicate detection
         let queue_tasks = vec![
-            task("RQ-0001", TaskStatus::Todo),
-            task("RQ-0001", TaskStatus::Rejected), // duplicate, though rejected
+            task("CL-0001", TaskStatus::Todo),
+            task("CL-0001", TaskStatus::Rejected), // duplicate, though rejected
         ];
         let resolved = setup_test_queues(&temp, queue_tasks, vec![]);
 

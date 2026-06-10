@@ -117,7 +117,7 @@ pub struct PhaseInvocation<'a> {
 /// Generate a unique session ID for runner session resumption.
 ///
 /// Format: <task_id>-p<phase>-<timestamp>
-/// Example: RQ-0001-p2-1704153600
+/// Example: CL-0001-p2-1704153600
 pub(crate) fn generate_phase_session_id(task_id: &str, phase: u8) -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let timestamp = SystemTime::now()

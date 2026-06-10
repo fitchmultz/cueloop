@@ -26,9 +26,9 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 
 ```json
 {
-  "id": "RQ-0003",
+  "id": "CL-0003",
   "title": "Implement API endpoint",
-  "depends_on": ["RQ-0001", "RQ-0002"]
+  "depends_on": ["CL-0001", "CL-0002"]
 }
 ```
 
@@ -46,9 +46,9 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 
 ```json
 {
-  "id": "RQ-0001",
+  "id": "CL-0001",
   "title": "Design database schema",
-  "blocks": ["RQ-0002", "RQ-0003"]
+  "blocks": ["CL-0002", "CL-0003"]
 }
 ```
 
@@ -60,7 +60,8 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 **Relationship to `depends_on`:**
 - `blocks` is semantically inverse of `depends_on`
 - If A `blocks` B, then B should logically `depends_on` A
-- CueLoop validates consistency but does not enforce bidirectional links
+- CueLoop treats reverse `blocks` edges as runnability constraints even when the inverse `depends_on` edge is not present
+- Agents and humans should still keep both directions consistent when manually editing relationship graphs because it makes the queue easier to audit
 
 ### Related Tasks (`relates_to`)
 
@@ -70,9 +71,9 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 
 ```json
 {
-  "id": "RQ-0005",
+  "id": "CL-0005",
   "title": "Refactor auth module",
-  "relates_to": ["RQ-0003", "RQ-0004"]
+  "relates_to": ["CL-0003", "CL-0004"]
 }
 ```
 
@@ -88,9 +89,9 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 
 ```json
 {
-  "id": "RQ-0006",
+  "id": "CL-0006",
   "title": "Fix login bug",
-  "duplicates": "RQ-0005"
+  "duplicates": "CL-0005"
 }
 ```
 
@@ -107,9 +108,9 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 
 ```json
 {
-  "id": "RQ-0002",
+  "id": "CL-0002",
   "title": "Implement Part A",
-  "parent_id": "RQ-0001"
+  "parent_id": "CL-0001"
 }
 ```
 
@@ -127,15 +128,15 @@ This page defines CueLoop task relationships: `depends_on`, `blocks`, `relates_t
 **CLI Navigation:**
 ```bash
 # List children
-cueloop task children RQ-0001
-cueloop task children RQ-0001 --recursive
+cueloop task children CL-0001
+cueloop task children CL-0001 --recursive
 
 # Show parent
-cueloop task parent RQ-0002
+cueloop task parent CL-0002
 
 # Visualize hierarchy
 cueloop queue tree
-cueloop queue tree --root RQ-0001
+cueloop queue tree --root CL-0001
 ```
 
 ### Relationship Comparison

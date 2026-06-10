@@ -39,7 +39,7 @@ fn create_test_resolved(temp_dir: &TempDir) -> crate::config::Resolved {
         repo_root: repo_root.to_path_buf(),
         queue_path: cueloop_dir.join("queue.jsonc"),
         done_path: cueloop_dir.join("done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(cueloop_dir.join("config.jsonc")),
@@ -121,7 +121,7 @@ fn build_validate_document_ready_queue_offers_resume_and_mutation_preview() {
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![test_task("RQ-0001", "Ready task")],
+            tasks: vec![test_task("CL-0001", "Ready task")],
         },
     )
     .expect("save queue");
@@ -149,12 +149,12 @@ fn build_validate_document_ready_queue_offers_resume_and_mutation_preview() {
 fn build_validate_document_all_draft_queue_offers_activation_guidance() {
     let temp_dir = TempDir::new().expect("temp dir");
     let resolved = create_test_resolved(&temp_dir);
-    let mut group = test_task("RQ-0001", "Draft group");
+    let mut group = test_task("CL-0001", "Draft group");
     group.status = TaskStatus::Draft;
     group.kind = crate::contracts::TaskKind::Group;
-    let mut leaf = test_task("RQ-0002", "Draft leaf");
+    let mut leaf = test_task("CL-0002", "Draft leaf");
     leaf.status = TaskStatus::Draft;
-    leaf.parent_id = Some("RQ-0001".to_string());
+    leaf.parent_id = Some("CL-0001".to_string());
     save_queue(
         &resolved.queue_path,
         &QueueFile {
@@ -181,11 +181,11 @@ fn build_validate_document_all_draft_queue_offers_activation_guidance() {
         blocking.message,
         "No runnable tasks because all tasks are draft."
     );
-    assert_eq!(blocking.task_id.as_deref(), Some("RQ-0002"));
+    assert_eq!(blocking.task_id.as_deref(), Some("CL-0002"));
     assert_eq!(document.continuation.blocking.as_ref(), Some(blocking));
     assert_eq!(
         document.continuation.next_steps[0].command,
-        "cueloop task ready RQ-0002"
+        "cueloop task ready CL-0002"
     );
 }
 
@@ -197,7 +197,7 @@ fn build_repair_document_dry_run_reports_recoverable_repairs() -> anyhow::Result
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![test_task("RQ-0001", "Already valid")],
+            tasks: vec![test_task("CL-0001", "Already valid")],
         },
     )?;
     save_queue(&resolved.done_path, &QueueFile::default())?;
@@ -254,7 +254,7 @@ fn build_undo_document_list_with_snapshots_offers_preview_and_restore() -> anyho
         &resolved.queue_path,
         &QueueFile {
             version: 1,
-            tasks: vec![test_task("RQ-0001", "Checkpointed task")],
+            tasks: vec![test_task("CL-0001", "Checkpointed task")],
         },
     )?;
     save_queue(&resolved.done_path, &QueueFile::default())?;

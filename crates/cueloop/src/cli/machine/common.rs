@@ -53,6 +53,12 @@ pub(crate) use commands::*;
 
 const MACHINE_PARALLEL_MIN_WORKERS: u8 = 2;
 
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct MachineQueueReadOptions {
+    pub active_only: bool,
+    pub done_limit: Option<usize>,
+}
+
 pub(super) fn build_config_resolve_document(
     resolved: &config::Resolved,
     repo_trusted: bool,
@@ -97,11 +103,12 @@ pub(super) fn machine_safety_context(resolved: &config::Resolved) -> Result<(boo
 
 pub(super) fn build_queue_read_document(
     resolved: &config::Resolved,
+    options: MachineQueueReadOptions,
 ) -> Result<MachineQueueReadDocument> {
     let active = queue::load_queue(&resolved.queue_path)?;
-    let done = queue::load_queue_or_default(&resolved.done_path)?;
+    let mut done = queue::load_queue_or_default(&resolved.done_path)?;
     let done_ref = done_queue_ref(&done, &resolved.done_path);
-    let options = RunnableSelectionOptions::new(false, true);
+    let selection_options = RunnableSelectionOptions::new(false, true);
     let validation = queue::validate_queue_set(
         &active,
         done_ref,
@@ -112,7 +119,7 @@ pub(super) fn build_queue_read_document(
 
     let (next_runnable_task_id, runnability) = match validation {
         Ok(_) => {
-            let runnability = queue_runnability_report(&active, done_ref, options)?;
+            let runnability = queue_runnability_report(&active, done_ref, selection_options)?;
             let next_runnable_task_id = queue::operations::next_runnable_task(&active, done_ref)
                 .map(|task| task.id.clone());
             (next_runnable_task_id, serde_json::to_value(runnability)?)
@@ -121,10 +128,19 @@ pub(super) fn build_queue_read_document(
             let blocking = queue_validation_failed_state(err.to_string());
             (
                 None,
-                validation_failed_runnability(&active, options, blocking)?,
+                validation_failed_runnability(&active, selection_options, blocking)?,
             )
         }
     };
+
+    if options.active_only {
+        done.tasks.clear();
+    } else if let Some(limit) = options.done_limit {
+        let len = done.tasks.len();
+        if len > limit {
+            done.tasks.drain(0..len - limit);
+        }
+    }
 
     Ok(MachineQueueReadDocument {
         version: crate::contracts::MACHINE_QUEUE_READ_VERSION,
@@ -186,7 +202,7 @@ pub(super) fn build_workspace_overview_document(
 ) -> Result<MachineWorkspaceOverviewDocument> {
     Ok(MachineWorkspaceOverviewDocument {
         version: MACHINE_WORKSPACE_OVERVIEW_VERSION,
-        queue: build_queue_read_document(resolved)?,
+        queue: build_queue_read_document(resolved, MachineQueueReadOptions::default())?,
         config: build_config_resolve_document(resolved, repo_trusted, dirty_repo, resume_preview)?,
     })
 }
@@ -420,7 +436,7 @@ mod tests {
             repo_root: repo_root.to_path_buf(),
             queue_path: repo_root.join(".cueloop/queue.jsonc"),
             done_path: repo_root.join(".cueloop/done.jsonc"),
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),

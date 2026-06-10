@@ -75,8 +75,8 @@ fn cache_phase2_final_response_writes_detected_message() -> Result<()> {
         r#"{"type":"item.completed","item":{"type":"agent_message","text":"Final answer"}}"#,
         "\n"
     );
-    cache_phase2_final_response(temp.path(), "RQ-0001", stdout)?;
-    let cached = promptflow::read_phase2_final_response_cache(temp.path(), "RQ-0001")?;
+    cache_phase2_final_response(temp.path(), "CL-0001", stdout)?;
+    let cached = promptflow::read_phase2_final_response_cache(temp.path(), "CL-0001")?;
     assert_eq!(cached, "Final answer");
     Ok(())
 }
@@ -85,15 +85,15 @@ fn cache_phase2_final_response_writes_detected_message() -> Result<()> {
 fn cache_phase2_final_response_writes_fallback_when_missing() -> Result<()> {
     let temp = TempDir::new()?;
     let stdout = r#"{"type":"tool_use","tool_name":"read"}"#;
-    cache_phase2_final_response(temp.path(), "RQ-0001", stdout)?;
-    let cached = promptflow::read_phase2_final_response_cache(temp.path(), "RQ-0001")?;
+    cache_phase2_final_response(temp.path(), "CL-0001", stdout)?;
+    let cached = promptflow::read_phase2_final_response_cache(temp.path(), "CL-0001")?;
     assert_eq!(cached, PHASE2_FINAL_RESPONSE_FALLBACK);
     Ok(())
 }
 
 #[test]
 fn generate_phase_session_id_uses_task_phase_and_timestamp_format() {
-    let task_id = "RQ-0001";
+    let task_id = "CL-0001";
     let session_id = generate_phase_session_id(task_id, 2);
     let prefix = format!("{task_id}-p2-");
     assert!(
@@ -114,7 +114,7 @@ fn generate_phase_session_id_uses_task_phase_and_timestamp_format() {
 
 #[test]
 fn phase_session_id_for_runner_returns_for_managed_session_runners() {
-    let task_id = "RQ-0009";
+    let task_id = "CL-0009";
     let kimi_id = phase_session_id_for_runner(Runner::Kimi, task_id, 2);
     assert!(
         kimi_id.is_some(),
@@ -148,7 +148,7 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
     cfg.queue = QueueConfig {
         file: Some(PathBuf::from(".cueloop/queue.jsonc")),
         done_file: Some(PathBuf::from(".cueloop/done.jsonc")),
-        id_prefix: Some("RQ".to_string()),
+        id_prefix: Some("CL".to_string()),
         id_width: Some(4),
         size_warning_threshold_kb: Some(500),
         task_count_warning_threshold: Some(500),
@@ -162,7 +162,7 @@ fn resolved_for_repo(repo_root: PathBuf, opencode_bin: &Path) -> crate::config::
         repo_root: repo_root.clone(),
         queue_path: repo_root.join(".cueloop/queue.jsonc"),
         done_path: repo_root.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
@@ -175,7 +175,7 @@ fn resolved_for_completion(repo_root: PathBuf) -> crate::config::Resolved {
         repo_root: repo_root.clone(),
         queue_path: repo_root.join(".cueloop/queue.jsonc"),
         done_path: repo_root.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(repo_root.join(".cueloop/config.jsonc")),
@@ -185,7 +185,7 @@ fn resolved_for_completion(repo_root: PathBuf) -> crate::config::Resolved {
 fn write_queue_and_done(repo_root: &Path, status: TaskStatus) -> Result<()> {
     std::fs::create_dir_all(repo_root.join(".cueloop"))?;
     let task = Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         status,
         kind: Default::default(),
         title: "Test task".to_string(),

@@ -279,8 +279,8 @@ mod tests {
     #[test]
     fn phase2_final_response_cache_round_trip() -> Result<()> {
         let dir = TempDir::new()?;
-        write_phase2_final_response_cache(dir.path(), "RQ-0001", "done")?;
-        let read = read_phase2_final_response_cache(dir.path(), "RQ-0001")?;
+        write_phase2_final_response_cache(dir.path(), "CL-0001", "done")?;
+        let read = read_phase2_final_response_cache(dir.path(), "CL-0001")?;
         assert_eq!(read, "done");
         Ok(())
     }
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn phase2_final_response_cache_missing_is_error() -> Result<()> {
         let dir = TempDir::new()?;
-        let err = read_phase2_final_response_cache(dir.path(), "RQ-0001").unwrap_err();
+        let err = read_phase2_final_response_cache(dir.path(), "CL-0001").unwrap_err();
         assert!(
             err.to_string()
                 .contains("Phase 2 final response cache not found")
@@ -299,12 +299,12 @@ mod tests {
     #[test]
     fn phase2_final_response_cache_empty_is_error() -> Result<()> {
         let dir = TempDir::new()?;
-        let path = phase2_final_response_cache_path(dir.path(), "RQ-0001");
+        let path = phase2_final_response_cache_path(dir.path(), "CL-0001");
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
         std::fs::write(&path, "")?;
-        let err = read_phase2_final_response_cache(dir.path(), "RQ-0001").unwrap_err();
+        let err = read_phase2_final_response_cache(dir.path(), "CL-0001").unwrap_err();
         assert!(
             err.to_string()
                 .contains("Phase 2 final response cache is empty")

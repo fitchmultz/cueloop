@@ -25,9 +25,11 @@
 use crate::contracts::QueueFile;
 use crate::queue::TaskEditKey;
 use anyhow::{Context, Result, anyhow, bail};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct TaskMutationRequest {
     #[serde(default = "task_mutation_request_version")]
     pub version: u8,
@@ -37,7 +39,8 @@ pub struct TaskMutationRequest {
     pub tasks: Vec<TaskMutationSpec>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct TaskMutationSpec {
     pub task_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -46,11 +49,22 @@ pub struct TaskMutationSpec {
     pub edits: Vec<TaskFieldEdit>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct TaskFieldEdit {
     pub field: String,
     #[serde(default)]
     pub value: String,
+    #[serde(default)]
+    pub mode: TaskFieldEditMode,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskFieldEditMode {
+    #[default]
+    Set,
+    Append,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -69,6 +83,8 @@ pub struct TaskMutationTaskReport {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TaskMutationError {
+    #[error("Unsupported task mutation request version {version}; expected 1.")]
+    UnsupportedVersion { version: u8 },
     #[error("Task mutation request must include at least one task.")]
     EmptyRequest,
     #[error("Task mutation for {task_id} must include at least one edit.")]
@@ -105,6 +121,13 @@ pub fn apply_task_mutation_request(
     id_width: usize,
     max_dependency_depth: u8,
 ) -> Result<TaskMutationReport> {
+    if request.version != task_mutation_request_version() {
+        return Err(TaskMutationError::UnsupportedVersion {
+            version: request.version,
+        }
+        .into());
+    }
+
     if request.tasks.is_empty() {
         return Err(TaskMutationError::EmptyRequest.into());
     }
@@ -164,17 +187,30 @@ fn apply_request_into_queue(
                     edit.field, task.task_id
                 )
             })?;
-            super::edit::apply_task_edit(
-                queue,
-                done,
-                &task.task_id,
-                key,
-                &edit.value,
-                now_rfc3339,
-                id_prefix,
-                id_width,
-                max_dependency_depth,
-            )?;
+            match edit.mode {
+                TaskFieldEditMode::Set => super::edit::apply_task_edit(
+                    queue,
+                    done,
+                    &task.task_id,
+                    key,
+                    &edit.value,
+                    now_rfc3339,
+                    id_prefix,
+                    id_width,
+                    max_dependency_depth,
+                )?,
+                TaskFieldEditMode::Append => append_task_field(
+                    queue,
+                    done,
+                    &task.task_id,
+                    key,
+                    &edit.value,
+                    now_rfc3339,
+                    id_prefix,
+                    id_width,
+                    max_dependency_depth,
+                )?,
+            }
         }
 
         reports.push(TaskMutationTaskReport {
@@ -188,6 +224,70 @@ fn apply_request_into_queue(
         atomic: request.atomic,
         tasks: reports,
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_task_field(
+    queue: &mut QueueFile,
+    done: Option<&QueueFile>,
+    task_id: &str,
+    key: TaskEditKey,
+    value: &str,
+    now_rfc3339: &str,
+    id_prefix: &str,
+    id_width: usize,
+    max_dependency_depth: u8,
+) -> Result<()> {
+    let needle = task_id.trim();
+    if needle.is_empty() {
+        bail!("Task mutation append is missing task_id.");
+    }
+    let index = queue
+        .tasks
+        .iter()
+        .position(|task| task.id.trim() == needle)
+        .ok_or_else(|| anyhow!("{}", crate::error_messages::task_not_found_in_queue(needle)))?;
+    let previous = queue.tasks[index].clone();
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        bail!(
+            "Task mutation append for {needle} field {} requires a non-empty value.",
+            key.as_str()
+        );
+    }
+
+    {
+        let task = queue
+            .tasks
+            .get_mut(index)
+            .ok_or_else(|| anyhow!("{}", crate::error_messages::task_not_found_in_queue(needle)))?;
+        let appended = crate::redaction::redact_text(trimmed);
+        match key {
+            TaskEditKey::Tags => task.tags.push(appended),
+            TaskEditKey::Scope => task.scope.push(appended),
+            TaskEditKey::Evidence => task.evidence.push(appended),
+            TaskEditKey::Plan => task.plan.push(appended),
+            TaskEditKey::Notes => task.notes.push(appended),
+            TaskEditKey::DependsOn => task.depends_on.push(appended),
+            TaskEditKey::Blocks => task.blocks.push(appended),
+            TaskEditKey::RelatesTo => task.relates_to.push(appended),
+            other => bail!(
+                "Task mutation append does not support field {}; use mode=set.",
+                other.as_str()
+            ),
+        }
+        task.updated_at = Some(now_rfc3339.to_string());
+    }
+
+    match crate::queue::validate_queue_set(queue, done, id_prefix, id_width, max_dependency_depth) {
+        Ok(warnings) => crate::queue::log_warnings(&warnings),
+        Err(err) => {
+            queue.tasks[index] = previous;
+            return Err(err);
+        }
+    }
+
+    Ok(())
 }
 
 fn ensure_expected_updated_at(queue: &QueueFile, task: &TaskMutationSpec) -> Result<()> {

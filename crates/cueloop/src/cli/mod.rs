@@ -24,6 +24,7 @@
 mod args;
 mod helpers;
 
+pub mod agent_ledger;
 pub mod app;
 pub mod app_parity;
 pub mod cleanup;

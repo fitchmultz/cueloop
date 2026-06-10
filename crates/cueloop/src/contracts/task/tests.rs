@@ -66,7 +66,7 @@ fn task_priority_from_str_empty_string_errors() {
 
 #[test]
 fn task_kind_defaults_to_work_item_when_missing() {
-    let raw = r#"{"id":"RQ-0001","title":"t"}"#;
+    let raw = r#"{"id":"CL-0001","title":"t"}"#;
     let task: Task = serde_json::from_str(raw).expect("deserialize");
     assert_eq!(task.kind, TaskKind::WorkItem);
     assert!(task.is_executable_work_item());
@@ -74,19 +74,19 @@ fn task_kind_defaults_to_work_item_when_missing() {
 
 #[test]
 fn task_kind_deserializes_group_and_rejects_invalid_values() {
-    let raw = r#"{"id":"RQ-0001","title":"t","kind":"group"}"#;
+    let raw = r#"{"id":"CL-0001","title":"t","kind":"group"}"#;
     let task: Task = serde_json::from_str(raw).expect("deserialize group");
     assert_eq!(task.kind, TaskKind::Group);
     assert!(!task.is_executable_work_item());
 
-    let invalid = r#"{"id":"RQ-0001","title":"t","kind":"umbrella"}"#;
+    let invalid = r#"{"id":"CL-0001","title":"t","kind":"umbrella"}"#;
     assert!(serde_json::from_str::<Task>(invalid).is_err());
 }
 
 #[test]
 fn task_kind_omits_default_work_item_when_serializing() {
     let task = Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Work".to_string(),
         kind: TaskKind::WorkItem,
         ..Default::default()
@@ -98,7 +98,7 @@ fn task_kind_omits_default_work_item_when_serializing() {
 #[test]
 fn task_kind_serializes_group_as_snake_case() {
     let task = Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Group".to_string(),
         kind: TaskKind::Group,
         ..Default::default()
@@ -110,7 +110,7 @@ fn task_kind_serializes_group_as_snake_case() {
 #[test]
 fn task_custom_fields_deserialize_coerces_scalars_to_strings() {
     let raw = r#"{
-            "id": "RQ-0001",
+            "id": "CL-0001",
             "title": "t",
             "custom_fields": {
                 "guide_line_count": 1411,
@@ -138,7 +138,7 @@ fn task_custom_fields_deserialize_coerces_scalars_to_strings() {
 
 #[test]
 fn task_custom_fields_deserialize_rejects_null() {
-    let raw = r#"{"id":"RQ-0001","title":"t","custom_fields":{"x":null}}"#;
+    let raw = r#"{"id":"CL-0001","title":"t","custom_fields":{"x":null}}"#;
     let err = serde_json::from_str::<Task>(raw).unwrap_err();
     let err_msg = err.to_string().to_lowercase();
     assert!(
@@ -155,7 +155,7 @@ fn task_custom_fields_deserialize_rejects_null() {
 
 #[test]
 fn task_custom_fields_deserialize_rejects_custom_fields_null() {
-    let raw = r#"{"id":"RQ-0001","title":"t","custom_fields":null}"#;
+    let raw = r#"{"id":"CL-0001","title":"t","custom_fields":null}"#;
     let err = serde_json::from_str::<Task>(raw).unwrap_err();
     let err_msg = err.to_string().to_lowercase();
     assert!(
@@ -172,7 +172,7 @@ fn task_custom_fields_deserialize_rejects_custom_fields_null() {
 
 #[test]
 fn task_custom_fields_deserialize_rejects_custom_fields_non_object() {
-    let raw = r#"{"id":"RQ-0001","title":"t","custom_fields":123}"#;
+    let raw = r#"{"id":"CL-0001","title":"t","custom_fields":123}"#;
     let err = serde_json::from_str::<Task>(raw).unwrap_err();
     let err_msg = err.to_string().to_lowercase();
     assert!(
@@ -189,8 +189,8 @@ fn task_custom_fields_deserialize_rejects_custom_fields_non_object() {
 
 #[test]
 fn task_custom_fields_deserialize_rejects_object_and_array_values() {
-    let raw_obj = r#"{"id":"RQ-0001","title":"t","custom_fields":{"x":{"a":1}}}"#;
-    let raw_arr = r#"{"id":"RQ-0001","title":"t","custom_fields":{"x":[1,2]}}"#;
+    let raw_obj = r#"{"id":"CL-0001","title":"t","custom_fields":{"x":{"a":1}}}"#;
+    let raw_arr = r#"{"id":"CL-0001","title":"t","custom_fields":{"x":[1,2]}}"#;
 
     let err_obj = serde_json::from_str::<Task>(raw_obj).unwrap_err();
     let err_arr = serde_json::from_str::<Task>(raw_arr).unwrap_err();
@@ -217,7 +217,7 @@ fn task_custom_fields_serializes_as_strings() {
     custom_fields.insert("enabled".to_string(), "true".to_string());
 
     let task = Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Test".to_string(),
         custom_fields,
         ..Default::default()
@@ -231,7 +231,7 @@ fn task_custom_fields_serializes_as_strings() {
 #[test]
 fn task_agent_deserializes_phases_and_phase_overrides() {
     let raw = r#"{
-            "id":"RQ-0001",
+            "id":"CL-0001",
             "title":"Task with agent overrides",
             "agent":{
                 "runner":"codex",
@@ -266,7 +266,7 @@ fn task_agent_deserializes_phases_and_phase_overrides() {
 #[test]
 fn task_agent_omits_default_phase_and_effort_fields_when_serializing() {
     let task = Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Serialize defaults".to_string(),
         agent: Some(crate::contracts::TaskAgent {
             runner: Some(Runner::Codex),

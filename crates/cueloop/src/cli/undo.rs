@@ -138,7 +138,7 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-0001".to_string(),
+                id: "CL-0001".to_string(),
                 title: "Test task".to_string(),
                 status: TaskStatus::Todo,
                 kind: Default::default(),
@@ -174,7 +174,7 @@ mod tests {
             repo_root: repo_root.to_path_buf(),
             queue_path,
             done_path,
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path: None,

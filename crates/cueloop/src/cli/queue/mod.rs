@@ -113,7 +113,7 @@ pub fn handle_queue(cmd: QueueCommand, force: bool) -> Result<()> {
 #[derive(Args)]
 #[command(
     about = "Inspect and manage the task queue",
-    after_long_help = "Examples:\n  cueloop queue list\n  cueloop queue list --status todo --tag rust\n  cueloop queue show RQ-0008\n  cueloop queue next --with-title\n  cueloop queue next-id\n  cueloop queue archive"
+    after_long_help = "Examples:\n  cueloop queue list\n  cueloop queue list --status todo --tag rust\n  cueloop queue show CL-0008\n  cueloop queue next --with-title\n  cueloop queue next-id\n  cueloop queue archive"
 )]
 pub struct QueueArgs {
     #[command(subcommand)]
@@ -154,7 +154,7 @@ pub enum QueueCommand {
 
     /// Search tasks by content (title, evidence, plan, notes, request, tags, scope, custom fields).
     #[command(
-        after_long_help = "Examples:\n cueloop queue search \"authentication\"\n cueloop queue search \"RQ-\\d{4}\" --regex\n cueloop queue search \"TODO\" --match-case\n cueloop queue search \"fix\" --status todo --tag rust\n cueloop queue search \"refactor\" --scope crates/cueloop --tag rust\n cueloop queue search \"auth bug\" --fuzzy\n cueloop queue search \"fuzzy search\" --fuzzy --match-case"
+        after_long_help = "Examples:\n cueloop queue search \"authentication\"\n cueloop queue search \"CL-\\d{4}\" --regex\n cueloop queue search \"TODO\" --match-case\n cueloop queue search \"fix\" --status todo --tag rust\n cueloop queue search \"refactor\" --scope crates/cueloop --tag rust\n cueloop queue search \"auth bug\" --fuzzy\n cueloop queue search \"fuzzy search\" --fuzzy --match-case"
     )]
     Search(QueueSearchArgs),
 
@@ -212,13 +212,13 @@ Examples:\n  cueloop queue unlock --dry-run\n  cueloop queue unlock --yes\n  cue
 
     /// Visualize task dependencies as a graph.
     #[command(
-        after_long_help = "Examples:\n cueloop queue graph\n cueloop queue graph --task RQ-0001\n cueloop queue graph --format dot\n cueloop queue graph --critical\n cueloop queue graph --reverse --task RQ-0001"
+        after_long_help = "Examples:\n cueloop queue graph\n cueloop queue graph --task CL-0001\n cueloop queue graph --format dot\n cueloop queue graph --critical\n cueloop queue graph --reverse --task CL-0001"
     )]
     Graph(QueueGraphArgs),
 
     /// Export task data to CSV, TSV, JSON, Markdown, or GitHub issue format.
     #[command(
-        after_long_help = "Examples:\n cueloop queue export\n cueloop queue export --format csv --output tasks.csv\n cueloop queue export --format json --status done\n cueloop queue export --format tsv --tag rust --tag cli\n cueloop queue export --format md --status todo\n cueloop queue export --format gh --id-pattern RQ-0001\n cueloop queue export --include-archive --format csv\n cueloop queue export --format csv --created-after 2026-01-01"
+        after_long_help = "Examples:\n cueloop queue export\n cueloop queue export --format csv --output tasks.csv\n cueloop queue export --format json --status done\n cueloop queue export --format tsv --tag rust --tag cli\n cueloop queue export --format md --status todo\n cueloop queue export --format gh --id-pattern CL-0001\n cueloop queue export --include-archive --format csv\n cueloop queue export --format csv --created-after 2026-01-01"
     )]
     Export(QueueExportArgs),
 
@@ -242,7 +242,7 @@ Examples:\n  cueloop queue unlock --dry-run\n  cueloop queue unlock --yes\n  cue
 
     /// Render a parent/child hierarchy tree (based on parent_id).
     #[command(
-        after_long_help = "Examples:\n  cueloop queue tree\n  cueloop queue tree --include-done\n  cueloop queue tree --root RQ-0001\n  cueloop queue tree --max-depth 25"
+        after_long_help = "Examples:\n  cueloop queue tree\n  cueloop queue tree --include-done\n  cueloop queue tree --root CL-0001\n  cueloop queue tree --max-depth 25"
     )]
     Tree(QueueTreeArgs),
 
@@ -256,7 +256,7 @@ Each section includes a 'status' field ('ok' or 'unavailable') for graceful part
 
     /// Publish tasks to GitHub Issues.
     #[command(
-        after_long_help = "Examples:\n  cueloop queue issue publish RQ-0655\n  cueloop queue issue publish RQ-0655 --dry-run\n  cueloop queue issue publish RQ-0655 --label bug --assignee @me\n  cueloop queue issue publish RQ-0655 --repo owner/repo\n  cueloop queue issue publish-many --status todo --tag bug --dry-run\n  cueloop queue issue publish-many --status todo --execute --force"
+        after_long_help = "Examples:\n  cueloop queue issue publish CL-0655\n  cueloop queue issue publish CL-0655 --dry-run\n  cueloop queue issue publish CL-0655 --label bug --assignee @me\n  cueloop queue issue publish CL-0655 --repo owner/repo\n  cueloop queue issue publish-many --status todo --tag bug --dry-run\n  cueloop queue issue publish-many --status todo --execute --force"
     )]
     Issue(QueueIssueArgs),
 }

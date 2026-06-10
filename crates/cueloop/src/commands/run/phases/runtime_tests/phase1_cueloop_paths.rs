@@ -46,7 +46,7 @@ fn phase1_allows_arbitrary_cueloop_file_changes() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 state="{root}/.cueloop/state/worker.json"
 echo '{{"v":2}}' > "$state"
 echo "plan content" > "$plan"
@@ -84,7 +84,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,

@@ -269,7 +269,7 @@ mod tests {
         let queue = QueueFile {
             version: 1,
             tasks: vec![Task {
-                id: "RQ-1".into(),
+                id: "CL-1".into(),
                 ..Default::default()
             }],
         };
@@ -277,11 +277,11 @@ mod tests {
             version: 1,
             tasks: vec![
                 Task {
-                    id: "RQ-2".into(),
+                    id: "CL-2".into(),
                     ..Default::default()
                 },
                 Task {
-                    id: "RQ-3".into(),
+                    id: "CL-3".into(),
                     ..Default::default()
                 },
             ],
@@ -300,19 +300,19 @@ mod tests {
         let day_three = start + Duration::days(2) + Duration::hours(1);
 
         let t1 = test_task(
-            "RQ-001",
+            "CL-001",
             TaskStatus::Done,
             Some(crate::timeutil::format_rfc3339(day_one).unwrap()),
             Some(crate::timeutil::format_rfc3339(day_two).unwrap()),
         );
         let t2 = test_task(
-            "RQ-002",
+            "CL-002",
             TaskStatus::Todo,
             Some(crate::timeutil::format_rfc3339(day_three).unwrap()),
             None,
         );
         let t3 = test_task(
-            "RQ-003",
+            "CL-003",
             TaskStatus::Done,
             Some(crate::timeutil::format_rfc3339(day_two).unwrap()),
             Some(crate::timeutil::format_rfc3339(day_three).unwrap()),
@@ -349,11 +349,11 @@ mod tests {
             .find(|d| d.date == day_three_key)
             .expect("day three present");
 
-        assert!(day_one_report.created.contains(&"RQ-001".to_string()));
-        assert!(day_two_report.created.contains(&"RQ-003".to_string()));
-        assert!(day_two_report.completed.contains(&"RQ-001".to_string()));
-        assert!(day_three_report.created.contains(&"RQ-002".to_string()));
-        assert!(day_three_report.completed.contains(&"RQ-003".to_string()));
+        assert!(day_one_report.created.contains(&"CL-001".to_string()));
+        assert!(day_two_report.created.contains(&"CL-003".to_string()));
+        assert!(day_two_report.completed.contains(&"CL-001".to_string()));
+        assert!(day_three_report.created.contains(&"CL-002".to_string()));
+        assert!(day_three_report.completed.contains(&"CL-003".to_string()));
     }
 
     #[test]
@@ -379,7 +379,7 @@ mod tests {
         let old_str = crate::timeutil::format_rfc3339(old_timestamp).unwrap();
 
         let task = test_task(
-            "RQ-OLD",
+            "CL-OLD",
             TaskStatus::Done,
             Some(old_str.clone()),
             Some(old_str),
@@ -393,8 +393,8 @@ mod tests {
         let report = build_history_report_at(&queue, None, 7, now);
 
         for day in &report.days {
-            assert!(!day.created.contains(&"RQ-OLD".to_string()));
-            assert!(!day.completed.contains(&"RQ-OLD".to_string()));
+            assert!(!day.created.contains(&"CL-OLD".to_string()));
+            assert!(!day.completed.contains(&"CL-OLD".to_string()));
         }
     }
 
@@ -405,7 +405,7 @@ mod tests {
         let future_str = crate::timeutil::format_rfc3339(future_timestamp).unwrap();
 
         let task = test_task(
-            "RQ-FUTURE",
+            "CL-FUTURE",
             TaskStatus::Done,
             Some(future_str.clone()),
             Some(future_str),
@@ -419,8 +419,8 @@ mod tests {
         let report = build_history_report_at(&queue, None, 3, now);
 
         for day in &report.days {
-            assert!(!day.created.contains(&"RQ-FUTURE".to_string()));
-            assert!(!day.completed.contains(&"RQ-FUTURE".to_string()));
+            assert!(!day.created.contains(&"CL-FUTURE".to_string()));
+            assert!(!day.completed.contains(&"CL-FUTURE".to_string()));
         }
     }
 }

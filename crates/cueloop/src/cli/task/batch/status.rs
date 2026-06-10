@@ -53,6 +53,7 @@ pub(super) fn handle_status(
                     status,
                     &ctx.now,
                     note.map(|n| vec![n.to_string()]).as_deref().unwrap_or(&[]),
+                    &[],
                     &ctx.resolved.id_prefix,
                     ctx.resolved.id_width,
                     ctx.max_depth,

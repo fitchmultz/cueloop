@@ -40,7 +40,7 @@ pub struct TaskFollowupsArgs {
 pub enum TaskFollowupsCommand {
     /// Apply a followups@v1 proposal into the queue.
     #[command(
-        after_long_help = "Examples:\n cueloop task followups apply --task RQ-0135\n cueloop task followups apply --task RQ-0135 --dry-run\n cueloop task followups apply --task RQ-0135 --input /tmp/followups.json --format json"
+        after_long_help = "Examples:\n cueloop task followups apply --task CL-0135\n cueloop task followups apply --task CL-0135 --dry-run\n cueloop task followups apply --task CL-0135 --input /tmp/followups.json --format json"
     )]
     Apply(TaskFollowupsApplyArgs),
 }

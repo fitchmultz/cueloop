@@ -42,7 +42,7 @@ fn create_test_resolved(temp_dir: &TempDir) -> Resolved {
         repo_root: temp_dir.path().to_path_buf(),
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,

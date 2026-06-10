@@ -32,7 +32,7 @@ fn phase1_followup_allows_preexisting_iteration_dirty_state() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 echo "plan content iteration 2" > "$plan"
 echo '{{"type":"text","part":{{"text":"ok"}}}}'
 echo '{{"type":"session","sessionID":"sess-123"}}'
@@ -68,7 +68,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -138,14 +138,14 @@ fn phase1_followup_allows_preexisting_dirty_queue_refresh() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 queue="{root}/.cueloop/queue.jsonc"
 cat > "$queue" <<'EOF'
 {{
   "version": 1,
   "tasks": [
     {{
-      "id": "RQ-0001"
+      "id": "CL-0001"
     }}
   ]
 }}
@@ -185,7 +185,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -254,7 +254,7 @@ fn phase1_followup_allows_preexisting_dirty_arbitrary_cueloop_file() -> Result<(
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 state="{root}/.cueloop/state/worker.json"
 echo '{{"v":2}}' > "$state"
 echo "plan content iteration 2" > "$plan"
@@ -292,7 +292,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,
@@ -352,7 +352,7 @@ fn phase1_followup_rejects_new_disallowed_dirty_paths() -> Result<()> {
     let script = format!(
         r#"#!/bin/sh
 set -e
-plan="{root}/.cueloop/cache/plans/RQ-0001.md"
+plan="{root}/.cueloop/cache/plans/CL-0001.md"
 disallowed="{root}/src/new_file.rs"
 mkdir -p "$(dirname "$disallowed")"
 echo "disallowed" > "$disallowed"
@@ -391,7 +391,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
         resolved: &resolved,
         settings: &settings,
         bins,
-        task_id: "RQ-0001",
+        task_id: "CL-0001",
         task_title: None,
         base_prompt: "base prompt",
         policy: &policy,

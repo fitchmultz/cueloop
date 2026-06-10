@@ -90,35 +90,35 @@ mod tests {
 
     #[test]
     fn fuzzy_search_basic_match() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication bug".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "Update documentation".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2];
         let results = fuzzy_search_tasks(tasks.iter().copied(), "auth bug", false)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].1.id, "RQ-0001");
+        assert_eq!(results[0].1.id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn fuzzy_search_typo_tolerance() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Implement fuzzy search".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];
         // Typo: "fzy" should still match "fuzzy"
         let results = fuzzy_search_tasks(tasks.iter().copied(), "fzy srch", false)?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].1.id, "RQ-0001");
+        assert_eq!(results[0].1.id, "CL-0001");
         Ok(())
     }
 
     #[test]
     fn fuzzy_search_case_insensitive() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix LOGIN Bug".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];
@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn fuzzy_search_case_sensitive() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix LOGIN Bug".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn fuzzy_search_empty_query_returns_empty() -> Result<()> {
-        let t1 = task("RQ-0001");
+        let t1 = task("CL-0001");
         let tasks: Vec<&Task> = vec![&t1];
         let results = fuzzy_search_tasks(tasks.iter().copied(), "", false)?;
         assert_eq!(results.len(), 0);
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn fuzzy_search_no_match_returns_empty() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication".to_string();
 
         let tasks: Vec<&Task> = vec![&t1];
@@ -165,13 +165,13 @@ mod tests {
 
     #[test]
     fn fuzzy_search_scores_sorted() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "fuzzy search implementation".to_string();
 
-        let mut t2 = task("RQ-0002");
+        let mut t2 = task("CL-0002");
         t2.title = "something else entirely".to_string();
 
-        let mut t3 = task("RQ-0003");
+        let mut t3 = task("CL-0003");
         t3.title = "fuzzy search and more".to_string();
 
         let tasks: Vec<&Task> = vec![&t1, &t2, &t3];
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn fuzzy_search_matches_all_fields() -> Result<()> {
-        let mut t1 = task("RQ-0001");
+        let mut t1 = task("CL-0001");
         t1.title = "Fix authentication".to_string();
         t1.evidence = vec!["Login fails".to_string()];
         t1.plan = vec!["Debug token".to_string()];

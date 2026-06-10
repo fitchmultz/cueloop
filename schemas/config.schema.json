@@ -183,7 +183,7 @@
         "auto_archive_terminal_after_days": null,
         "done_file": ".cueloop/done.jsonc",
         "file": ".cueloop/queue.jsonc",
-        "id_prefix": "RQ",
+        "id_prefix": "CL",
         "id_width": 4,
         "max_dependency_depth": 10,
         "size_warning_threshold_kb": 500,
@@ -1097,7 +1097,7 @@
           "default": null
         },
         "id_prefix": {
-          "description": "ID prefix (default: \"RQ\").",
+          "description": "ID prefix (default: \"CL\").",
           "type": [
             "string",
             "null"
@@ -1105,7 +1105,7 @@
           "default": null
         },
         "id_width": {
-          "description": "Zero pad width for the numeric suffix (default: 4 -> RQ-0001).",
+          "description": "Zero pad width for the numeric suffix (default: 4 -> CL-0001).",
           "type": [
             "integer",
             "null"

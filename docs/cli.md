@@ -22,6 +22,7 @@ These are available on most commands:
 ## Core Commands
 
 - `cueloop queue` - Inspect and manage queue/done files
+- `cueloop agent` - Durable task-ledger commands for already-running agents; does not spawn runners
 - `cueloop config` - Show resolved config, schema, paths, profiles, repo trust (`config trust init`)
 - `cueloop run` - Execute tasks (`one`, `loop`, `resume`, `parallel`)
 - `cueloop task` - Build/create and manage task lifecycle
@@ -66,6 +67,25 @@ cueloop init --non-interactive
 `cueloop init` creates or updates local repository trust (`.cueloop/trust.jsonc`), refreshes the generated runtime README, and adds the trust file to `.gitignore`. Use `cueloop config trust init` only for trust-only repair in an already-initialized repo.
 
 Interactive init can optionally enable the CI gate and record argv for your check command (defaults stay off in non-interactive init). It can also select extra ignored files for parallel workers; manual additions belong in trusted `parallel.ignored_file_allowlist` and follow the small-file allowlist contract in [Ignored local file sync](configuration/queue-and-parallel.md#ignored-local-file-sync).
+
+### Agent ledger tracking
+
+Use this path when the current agent or human is doing the work and CueLoop should only track durable queue state:
+
+```bash
+cueloop task "Stabilize flaky CI test"
+cueloop agent overview --format json
+cueloop agent next --with-title
+cueloop agent claim CL-0001 --owner "$USER-session" --ttl-minutes 120
+cueloop agent start CL-0001 --note "Started in current session"
+cueloop agent note CL-0001 "Found root cause"
+cueloop agent evidence CL-0001 "cargo test passed"
+cueloop agent handoff CL-0001 --next "Run final gate" --format json
+cueloop agent complete CL-0001 --evidence "make agent-ci passed"
+cueloop agent validate
+```
+
+`cueloop agent complete` requires explicit evidence and archives through the same done-file path as `cueloop task done`.
 
 ### Create and Run
 
@@ -127,7 +147,7 @@ For automation, the same model is exposed through:
 
 - `cueloop machine run ...` NDJSON `blocked_state_changed` / `blocked_state_cleared` events
 - `cueloop machine run ...` terminal summaries via `blocking`
-- `cueloop machine queue read` via `runnability.summary.blocking`
+- `cueloop machine queue read` via `runnability.summary.blocking` (`--active-only` and `--done-limit <N>` keep agent reads compact)
 
 ### Execution Shape
 
@@ -172,14 +192,14 @@ cueloop task build "Refactor queue parsing"
 cueloop task insert --input /tmp/task-insert.json
 cueloop task decompose "Build OAuth login with GitHub and Google"
 cueloop task decompose --from-file docs/plans/oauth.md
-cueloop task decompose --from-file docs/plans/oauth.md --attach-to RQ-0042 --child-policy append --write
-cueloop task decompose RQ-0001 --child-policy append --with-dependencies --write
+cueloop task decompose --from-file docs/plans/oauth.md --attach-to CL-0042 --child-policy append --write
+cueloop task decompose CL-0001 --child-policy append --with-dependencies --write
 cueloop task decompose --write --parent-status draft --leaf-status todo "Plan webhook reliability work"
-cueloop task ready RQ-0003
-cueloop task decompose --attach-to RQ-0042 --format json "Plan webhook reliability work"
-cueloop task start RQ-0001
-cueloop task status doing RQ-0001
-cueloop task done RQ-0001 --note "Verified with make agent-ci"
+cueloop task ready CL-0003
+cueloop task decompose --attach-to CL-0042 --format json "Plan webhook reliability work"
+cueloop task start CL-0001
+cueloop task status doing CL-0001
+cueloop task done CL-0001 --note "Verified with make agent-ci"
 ```
 
 On macOS, the app exposes the same workflow through `Decompose Task...` in the Task menu, command palette, queue toolbar, and task context menus, including a plan-file picker that passes `--from-file` to the machine API.
@@ -200,7 +220,7 @@ Expected result: every meaningful plan section appears as a task or a documented
 
 Preview-only decomposition saves an exact replay checkpoint under `.cueloop/cache/decompose-previews/` and prints a copy/pasteable continuation command with the checkpoint ID.
 
-Decomposition status controls are explicit and opt-in. `--status <STATUS>` applies to every generated node by default; `--parent-status <STATUS>` overrides generated group/non-leaf nodes; `--leaf-status <STATUS>` overrides generated leaf work items. Plain `--write` remains review-first and writes generated tasks as `draft`. To make leaf work immediately runnable while keeping parent/group nodes as drafts, use `--parent-status draft --leaf-status todo`. If a write leaves every generated task in `draft`, the continuation output prints an exact activation command such as `cueloop task ready RQ-0003` for the first actionable leaf. `cueloop queue validate` and `cueloop queue explain` use the same calm activation guidance instead of reporting an all-draft decomposition as dependency failure.
+Decomposition status controls are explicit and opt-in. `--status <STATUS>` applies to every generated node by default; `--parent-status <STATUS>` overrides generated group/non-leaf nodes; `--leaf-status <STATUS>` overrides generated leaf work items. Plain `--write` remains review-first and writes generated tasks as `draft`. To make leaf work immediately runnable while keeping parent/group nodes as drafts, use `--parent-status draft --leaf-status todo`. If a write leaves every generated task in `draft`, the continuation output prints an exact activation command such as `cueloop task ready CL-0003` for the first actionable leaf. `cueloop queue validate` and `cueloop queue explain` use the same calm activation guidance instead of reporting an all-draft decomposition as dependency failure.
 
 ### Diagnostics
 
@@ -228,8 +248,8 @@ cueloop task decompose --format json "Improve webhook reliability"
 cueloop task decompose --from-file docs/plans/oauth.md --format json
 cueloop task decompose --write "Improve webhook reliability"
 cueloop task decompose --write --from-preview <CHECKPOINT_ID>
-cueloop task followups apply --task RQ-0135
-cueloop task followups apply --task RQ-0135 --dry-run --format json
+cueloop task followups apply --task CL-0135
+cueloop task followups apply --task CL-0135 --dry-run --format json
 cueloop undo --list
 cueloop undo --dry-run
 ```
@@ -247,6 +267,8 @@ Machine clients should prefer `cueloop machine task show`, lifecycle commands (`
 ```bash
 cueloop machine system info
 cueloop machine queue read
+cueloop machine queue read --active-only
+cueloop machine queue read --done-limit 5
 cueloop machine queue validate
 cueloop machine queue repair --dry-run
 cueloop machine queue undo --dry-run
@@ -256,14 +278,14 @@ cueloop machine task create --input task-create.json
 cueloop machine task build --input task-build-request.json
 cueloop machine task insert --input task-insert.json
 cueloop machine task mutate --input request.json
-cueloop machine task show RQ-0001
-cueloop machine task start RQ-0001 --note "Started by current agent"
-cueloop machine task done RQ-0001 --note "Verified with make agent-ci"
-cueloop machine task followups apply --task RQ-0001 --dry-run
-cueloop machine task followups apply --task RQ-0001
+cueloop machine task show CL-0001
+cueloop machine task start CL-0001 --note "Started by current agent"
+cueloop machine task done CL-0001 --evidence "Verified with make agent-ci"
+cueloop machine task followups apply --task CL-0001 --dry-run
+cueloop machine task followups apply --task CL-0001
 cueloop machine task decompose --from-file docs/plans/oauth.md --with-dependencies
 cueloop machine task decompose --write --from-preview <CHECKPOINT_ID>
-cueloop machine run one --resume --id RQ-0001
+cueloop machine run one --resume --id CL-0001
 cueloop machine run loop --resume --max-tasks 5
 cueloop machine run loop --resume --max-tasks 0 --parallel 2
 cueloop machine run stop
@@ -277,7 +299,7 @@ Machine run loops use the same convention: `--max-tasks 0` means unlimited execu
 ```bash
 cueloop run loop --parallel 4 --max-tasks 8
 cueloop run parallel status --json
-cueloop run parallel retry --task RQ-0007
+cueloop run parallel retry --task CL-0007
 ```
 
 Parallel direct-push execution is experimental. Keep it out of default onboarding paths and opt in only when the repository and branch policy are ready for it.

@@ -26,7 +26,9 @@ use serde_json::{Value as JsonValue, json};
 
 use super::queue_docs::{build_repair_document, build_undo_document, build_validate_document};
 use crate::cli::machine::args::{MachineQueueArgs, MachineQueueCommand};
-use crate::cli::machine::common::{build_queue_read_document, done_queue_ref};
+use crate::cli::machine::common::{
+    MachineQueueReadOptions, build_queue_read_document, done_queue_ref,
+};
 use crate::cli::machine::io::print_json;
 use crate::contracts::{
     MACHINE_DASHBOARD_READ_VERSION, MACHINE_GRAPH_READ_VERSION,
@@ -40,7 +42,13 @@ use crate::queue::graph::{
 pub(crate) fn handle_queue(args: MachineQueueArgs, force: bool) -> Result<()> {
     let resolved = crate::config::resolve_from_cwd()?;
     match args.command {
-        MachineQueueCommand::Read => print_json(&build_queue_read_document(&resolved)?),
+        MachineQueueCommand::Read(args) => print_json(&build_queue_read_document(
+            &resolved,
+            MachineQueueReadOptions {
+                active_only: args.active_only,
+                done_limit: args.done_limit,
+            },
+        )?),
         MachineQueueCommand::Graph => {
             let (active, done) = crate::cli::load_and_validate_queues_read_only(&resolved, true)?;
             let done_ref = done

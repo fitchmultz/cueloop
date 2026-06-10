@@ -301,7 +301,7 @@ mod tests {
         let future = (OffsetDateTime::now_utc() + time::Duration::hours(24))
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap();
-        let task = make_task("RQ-0001", TaskStatus::Todo, Some(&future));
+        let task = make_task("CL-0001", TaskStatus::Todo, Some(&future));
         assert!(is_task_scheduled_for_future(&task));
     }
 
@@ -310,13 +310,13 @@ mod tests {
         let past = (OffsetDateTime::now_utc() - time::Duration::hours(24))
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap();
-        let task = make_task("RQ-0001", TaskStatus::Todo, Some(&past));
+        let task = make_task("CL-0001", TaskStatus::Todo, Some(&past));
         assert!(!is_task_scheduled_for_future(&task));
     }
 
     #[test]
     fn test_is_task_scheduled_for_future_with_no_schedule() {
-        let task = make_task("RQ-0001", TaskStatus::Todo, None);
+        let task = make_task("CL-0001", TaskStatus::Todo, None);
         assert!(!is_task_scheduled_for_future(&task));
     }
 
@@ -325,7 +325,7 @@ mod tests {
         let past = (OffsetDateTime::now_utc() - time::Duration::hours(24))
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap();
-        let task = make_task("RQ-0001", TaskStatus::Todo, Some(&past));
+        let task = make_task("CL-0001", TaskStatus::Todo, Some(&past));
         let active = QueueFile {
             version: 1,
             tasks: vec![task.clone()],
@@ -338,7 +338,7 @@ mod tests {
         let future = (OffsetDateTime::now_utc() + time::Duration::hours(24))
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap();
-        let task = make_task("RQ-0001", TaskStatus::Todo, Some(&future));
+        let task = make_task("CL-0001", TaskStatus::Todo, Some(&future));
         let active = QueueFile {
             version: 1,
             tasks: vec![task.clone()],
@@ -356,12 +356,12 @@ mod tests {
             .unwrap();
 
         let tasks = vec![
-            make_task("RQ-0001", TaskStatus::Todo, Some(&future)), // scheduled future
-            make_task("RQ-0002", TaskStatus::Todo, Some(&past)),   // scheduled past (runnable)
+            make_task("CL-0001", TaskStatus::Todo, Some(&future)), // scheduled future
+            make_task("CL-0002", TaskStatus::Todo, Some(&past)),   // scheduled past (runnable)
         ];
         let active = QueueFile { version: 1, tasks };
 
-        // Should select RQ-0002 (index 1) since RQ-0001 is scheduled for future
+        // Should select CL-0002 (index 1) since CL-0001 is scheduled for future
         let idx =
             select_runnable_task_index(&active, None, RunnableSelectionOptions::new(false, false));
         assert_eq!(idx, Some(1));
@@ -374,8 +374,8 @@ mod tests {
             .unwrap();
 
         let tasks = vec![
-            make_task("RQ-0001", TaskStatus::Todo, Some(&future)),
-            make_task("RQ-0002", TaskStatus::Todo, Some(&future)),
+            make_task("CL-0001", TaskStatus::Todo, Some(&future)),
+            make_task("CL-0002", TaskStatus::Todo, Some(&future)),
         ];
         let active = QueueFile { version: 1, tasks };
 

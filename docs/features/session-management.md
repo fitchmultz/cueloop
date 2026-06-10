@@ -64,7 +64,7 @@ This file is created when a task starts and is normally cleared when the run com
 {
   "version": 1,
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "run_started_at": "2026-02-07T10:00:00.000000000Z",
   "last_updated_at": "2026-02-07T10:30:00.000000000Z",
   "iterations_planned": 2,
@@ -195,8 +195,8 @@ This prevents headless automation from silently discarding or duplicating interr
     "status": "refusing_to_resume",
     "scope": "run_session",
     "reason": "session_timed_out_requires_confirmation",
-    "task_id": "RQ-0001",
-    "message": "Resume: refusing to continue timed-out session RQ-0001 without explicit confirmation.",
+    "task_id": "CL-0001",
+    "message": "Resume: refusing to continue timed-out session CL-0001 without explicit confirmation.",
     "detail": "The saved session is 48 hour(s) old, exceeding the configured 24-hour safety threshold."
   }
 }
@@ -213,14 +213,14 @@ This preview is **read-only**: it must not clear or rewrite saved session state.
   "version": 3,
   "kind": "resume_decision",
   "timestamp": "2026-04-26T06:00:00Z",
-  "task_id": "RQ-0001",
-  "message": "Resume: continuing the interrupted session for task RQ-0001.",
+  "task_id": "CL-0001",
+  "message": "Resume: continuing the interrupted session for task CL-0001.",
   "payload": {
     "status": "resuming_same_session",
     "scope": "run_session",
     "reason": "session_valid",
-    "task_id": "RQ-0001",
-    "message": "Resume: continuing the interrupted session for task RQ-0001.",
+    "task_id": "CL-0001",
+    "message": "Resume: continuing the interrupted session for task CL-0001.",
     "detail": "Saved session is current and will resume from phase 2 with 1 completed loop task(s)."
   }
 }
@@ -262,7 +262,7 @@ For runners that support explicit session IDs (notably **Kimi**), CueLoop uses d
 Example:
 
 ```text
-RQ-0001-p2-1704153600
+CL-0001-p2-1704153600
 ```
 
 This keeps planning / implementation / review recovery isolated from each other.

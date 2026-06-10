@@ -239,10 +239,10 @@ mod tests {
         let mut queue = empty_queue();
         queue
             .tasks
-            .push(task_with_status("RQ-0001", TaskStatus::Todo));
+            .push(task_with_status("CL-0001", TaskStatus::Todo));
         queue
             .tasks
-            .push(task_with_status("RQ-0002", TaskStatus::Done));
+            .push(task_with_status("CL-0002", TaskStatus::Done));
 
         let report = build_dashboard_report(&queue, None, None, 7);
 
@@ -300,7 +300,7 @@ mod tests {
         let queue = empty_queue();
         let done = QueueFile {
             version: 1,
-            tasks: vec![task_with_status("RQ-0001", TaskStatus::Done)],
+            tasks: vec![task_with_status("CL-0001", TaskStatus::Done)],
         };
 
         let report = build_dashboard_report(&queue, Some(&done), None, 7);

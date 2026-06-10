@@ -288,8 +288,8 @@ fn task_help_mentions_default_and_explicit_build() {
     assert_contains(&combined, "build");
     assert_contains(&combined, "insert");
     assert_contains(&combined, "template");
-    assert_contains(&combined, "done --note \"Build checks pass\" RQ-0001");
-    assert_contains(&combined, "split --number 3 RQ-0001");
+    assert_contains(&combined, "done --note \"Build checks pass\" CL-0001");
+    assert_contains(&combined, "split --number 3 CL-0001");
 }
 
 #[test]
@@ -346,7 +346,7 @@ fn task_show_help_mentions_examples() {
 
     let combined = format!("{stdout}\n{stderr}");
 
-    assert_contains(&combined, "cueloop task show RQ-0001");
+    assert_contains(&combined, "cueloop task show CL-0001");
     assert_contains(&combined, "--format");
     assert_contains(&combined, "compact");
 }

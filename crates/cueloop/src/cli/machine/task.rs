@@ -124,6 +124,7 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             &args.task_id,
             TaskStatus::Doing,
             &args.notes,
+            &args.evidence,
             args.dry_run,
             force,
         )?),
@@ -132,6 +133,7 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             &args.task_id,
             TaskStatus::Done,
             &args.notes,
+            &args.evidence,
             args.dry_run,
             force,
         )?),
@@ -140,6 +142,7 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
             &args.task_id,
             TaskStatus::Rejected,
             &args.notes,
+            &args.evidence,
             args.dry_run,
             force,
         )?),
@@ -150,6 +153,7 @@ pub(super) fn handle_task(args: MachineTaskArgs, force: bool) -> Result<()> {
                 &args.task_id,
                 status,
                 &args.notes,
+                &args.evidence,
                 args.dry_run,
                 force,
             )?)
@@ -277,6 +281,7 @@ fn update_task_lifecycle(
     task_id: &str,
     status: TaskStatus,
     notes: &[String],
+    evidence: &[String],
     dry_run: bool,
     force: bool,
 ) -> Result<MachineTaskLifecycleDocument> {
@@ -290,11 +295,12 @@ fn update_task_lifecycle(
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("Task {task_id} was not found in the active queue."))?;
         let now = timeutil::now_utc_rfc3339()?;
-        apply_lifecycle_preview(&mut task, status, notes, &now);
+        apply_lifecycle_preview(&mut task, status, notes, evidence, &now);
         return Ok(build_task_lifecycle_document(
             task_id,
             status,
             notes,
+            evidence,
             Some(task),
             terminal,
             true,
@@ -316,6 +322,7 @@ fn update_task_lifecycle(
                     status,
                     &now,
                     notes,
+                    evidence,
                     &resolved.id_prefix,
                     resolved.id_width,
                     resolved.queue_max_dependency_depth(),
@@ -330,7 +337,7 @@ fn update_task_lifecycle(
             .find(|task| task.id == task_id)
             .cloned();
         return Ok(build_task_lifecycle_document(
-            task_id, status, notes, task, true, false,
+            task_id, status, notes, evidence, task, true, false,
         ));
     }
 
@@ -355,6 +362,7 @@ fn update_task_lifecycle(
             if result.has_failures() {
                 bail!("task status update failed for {task_id}");
             }
+            append_evidence(&mut queue_file, task_id, evidence)?;
             updated_task = queue_file
                 .tasks
                 .iter()
@@ -368,13 +376,20 @@ fn update_task_lifecycle(
         task_id,
         status,
         notes,
+        evidence,
         updated_task,
         false,
         false,
     ))
 }
 
-fn apply_lifecycle_preview(task: &mut Task, status: TaskStatus, notes: &[String], now: &str) {
+fn apply_lifecycle_preview(
+    task: &mut Task,
+    status: TaskStatus,
+    notes: &[String],
+    evidence: &[String],
+    now: &str,
+) {
     task.status = status;
     task.updated_at = Some(now.to_string());
     if status == TaskStatus::Doing && task.started_at.is_none() {
@@ -383,7 +398,37 @@ fn apply_lifecycle_preview(task: &mut Task, status: TaskStatus, notes: &[String]
     if matches!(status, TaskStatus::Done | TaskStatus::Rejected) {
         task.completed_at = Some(now.to_string());
     }
-    task.notes.extend(notes.iter().cloned());
+    task.notes
+        .extend(notes.iter().map(|note| crate::redaction::redact_text(note)));
+    task.evidence.extend(
+        evidence
+            .iter()
+            .map(|item| crate::redaction::redact_text(item))
+            .filter(|item| !item.trim().is_empty()),
+    );
+}
+
+fn append_evidence(
+    queue_file: &mut crate::contracts::QueueFile,
+    task_id: &str,
+    evidence: &[String],
+) -> Result<()> {
+    if evidence.is_empty() {
+        return Ok(());
+    }
+    let task = queue_file
+        .tasks
+        .iter_mut()
+        .find(|task| task.id == task_id)
+        .ok_or_else(|| anyhow::anyhow!("Task {task_id} was not found in the active queue."))?;
+    for item in evidence {
+        let redacted = crate::redaction::redact_text(item);
+        let trimmed = redacted.trim();
+        if !trimmed.is_empty() {
+            task.evidence.push(trimmed.to_string());
+        }
+    }
+    Ok(())
 }
 
 fn joined_note(notes: &[String]) -> Option<String> {
@@ -404,6 +449,7 @@ fn build_task_lifecycle_document(
     task_id: &str,
     status: TaskStatus,
     notes: &[String],
+    evidence: &[String],
     task: Option<Task>,
     archived: bool,
     dry_run: bool,
@@ -416,6 +462,7 @@ fn build_task_lifecycle_document(
         status: status.as_str().to_string(),
         task,
         notes: notes.to_vec(),
+        evidence: evidence.to_vec(),
         archived,
         continuation: MachineContinuationSummary {
             headline: format!("Task {task_id} {verb} marked {status}."),

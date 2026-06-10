@@ -76,7 +76,7 @@ fn create_test_resolved(temp: &TempDir) -> Result<Resolved> {
         repo_root,
         queue_path: cueloop_dir.join("queue.json"),
         done_path: cueloop_dir.join("done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -92,7 +92,7 @@ fn restore_queue_from_backup_success() -> Result<()> {
     let original = QueueFile {
         version: 1,
         tasks: vec![task_with_timestamps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             Some("2026-01-18T00:00:00Z"),
             Some("2026-01-18T00:00:00Z"),
@@ -107,7 +107,7 @@ fn restore_queue_from_backup_success() -> Result<()> {
 
     let restored = queue::load_queue(&queue_path)?;
     assert_eq!(restored.tasks.len(), 1);
-    assert_eq!(restored.tasks[0].id, "RQ-0001");
+    assert_eq!(restored.tasks[0].id, "CL-0001");
     Ok(())
 }
 
@@ -119,7 +119,7 @@ fn load_validate_and_save_queue_restores_on_parse_failure() -> Result<()> {
     let initial = QueueFile {
         version: 1,
         tasks: vec![task_with_timestamps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             Some("2026-01-18T00:00:00Z"),
             Some("2026-01-18T00:00:00Z"),
@@ -145,7 +145,7 @@ fn load_validate_and_save_queue_restores_on_parse_failure() -> Result<()> {
     let restored_content = std::fs::read_to_string(&resolved.queue_path)?;
     let restored: QueueFile = serde_json::from_str(&restored_content)?;
     assert_eq!(restored.tasks.len(), 1);
-    assert_eq!(restored.tasks[0].id, "RQ-0001");
+    assert_eq!(restored.tasks[0].id, "CL-0001");
     Ok(())
 }
 
@@ -157,7 +157,7 @@ fn load_validate_and_save_queue_restores_on_validation_failure() -> Result<()> {
     let initial = QueueFile {
         version: 1,
         tasks: vec![task_with_timestamps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             Some("2026-01-18T00:00:00Z"),
             Some("2026-01-18T00:00:00Z"),
@@ -170,7 +170,7 @@ fn load_validate_and_save_queue_restores_on_validation_failure() -> Result<()> {
 
     std::fs::write(
         &resolved.queue_path,
-        r#"{"version":1,"tasks":[{"id":"RQ-0001","title":"Test","status":"todo","tags":[],"scope":[],"evidence":[],"plan":[],"notes":[],"depends_on":[],"blocks":[],"relates_to":[],"custom_fields":{}}]}"#,
+        r#"{"version":1,"tasks":[{"id":"CL-0001","title":"Test","status":"todo","tags":[],"scope":[],"evidence":[],"plan":[],"notes":[],"depends_on":[],"blocks":[],"relates_to":[],"custom_fields":{}}]}"#,
     )?;
 
     let result = load_validate_and_save_queue_after_update(&resolved, &backup_path, 10);
@@ -186,7 +186,7 @@ fn load_validate_and_save_queue_restores_on_validation_failure() -> Result<()> {
     let restored_content = std::fs::read_to_string(&resolved.queue_path)?;
     let restored: QueueFile = serde_json::from_str(&restored_content)?;
     assert_eq!(restored.tasks.len(), 1);
-    assert_eq!(restored.tasks[0].id, "RQ-0001");
+    assert_eq!(restored.tasks[0].id, "CL-0001");
     Ok(())
 }
 
@@ -200,7 +200,7 @@ fn update_task_rejects_stray_non_queue_mutations() -> Result<()> {
     let initial = QueueFile {
         version: 1,
         tasks: vec![task_with_timestamps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             Some("2026-01-18T00:00:00Z"),
             Some("2026-01-18T00:00:00Z"),
@@ -223,7 +223,7 @@ fn update_task_rejects_stray_non_queue_mutations() -> Result<()> {
         serde_json::json!({
             "version": 1,
             "tasks": [{
-                "id": "RQ-0001",
+                "id": "CL-0001",
                 "status": "todo",
                 "title": "Updated title",
                 "priority": "medium",
@@ -273,7 +273,7 @@ echo '{{"type":"item.completed","item":{{"type":"agent_message","text":"updated 
         dry_run: false,
     };
 
-    let err = update_task(&resolved, "RQ-0001", &settings)
+    let err = update_task(&resolved, "CL-0001", &settings)
         .expect_err("task update should fail on stray mutation");
     let message = format!("{err:#}");
     assert!(message.contains("Queue-only mutation boundary violated."));
@@ -296,7 +296,7 @@ fn load_validate_and_save_queue_succeeds_with_valid_queue() -> Result<()> {
     let initial = QueueFile {
         version: 1,
         tasks: vec![task_with_timestamps(
-            "RQ-0001",
+            "CL-0001",
             TaskStatus::Todo,
             Some("2026-01-18T00:00:00Z"),
             Some("2026-01-18T00:00:00Z"),
@@ -311,7 +311,7 @@ fn load_validate_and_save_queue_succeeds_with_valid_queue() -> Result<()> {
         version: 1,
         tasks: vec![{
             let mut task = task_with_timestamps(
-                "RQ-0001",
+                "CL-0001",
                 TaskStatus::Todo,
                 Some("2026-01-18T00:00:00Z"),
                 Some("2026-01-19T00:00:00Z"),

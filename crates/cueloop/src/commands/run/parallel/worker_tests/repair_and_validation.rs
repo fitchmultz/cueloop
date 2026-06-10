@@ -34,7 +34,7 @@ fn select_next_task_locked_uses_done_file_for_dependency_resolution() -> Result<
 
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
-        id: "RQ-0002".to_string(),
+        id: "CL-0002".to_string(),
         title: "Blocked by dependency".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -52,7 +52,7 @@ fn select_next_task_locked_uses_done_file_for_dependency_resolution() -> Result<
         completed_at: None,
         started_at: None,
         scheduled_start: None,
-        depends_on: vec!["RQ-0001".to_string()],
+        depends_on: vec!["CL-0001".to_string()],
         blocks: vec![],
         relates_to: vec![],
         duplicates: None,
@@ -65,7 +65,7 @@ fn select_next_task_locked_uses_done_file_for_dependency_resolution() -> Result<
 
     let mut done_file = QueueFile::default();
     done_file.tasks.push(Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Completed dependency".to_string(),
         description: None,
         status: TaskStatus::Done,
@@ -99,7 +99,7 @@ fn select_next_task_locked_uses_done_file_for_dependency_resolution() -> Result<
         repo_root: repo_root.clone(),
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -111,7 +111,7 @@ fn select_next_task_locked_uses_done_file_for_dependency_resolution() -> Result<
 
     assert_eq!(
         result,
-        Some(("RQ-0002".to_string(), "Blocked by dependency".to_string()))
+        Some(("CL-0002".to_string(), "Blocked by dependency".to_string()))
     );
     Ok(())
 }
@@ -132,7 +132,7 @@ fn select_next_task_locked_rejects_non_utc_done_timestamps_without_persisting() 
 
     let mut queue_file = QueueFile::default();
     queue_file.tasks.push(Task {
-        id: "RQ-0002".to_string(),
+        id: "CL-0002".to_string(),
         title: "Ready task".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -150,7 +150,7 @@ fn select_next_task_locked_rejects_non_utc_done_timestamps_without_persisting() 
         completed_at: None,
         started_at: None,
         scheduled_start: None,
-        depends_on: vec!["RQ-0001".to_string()],
+        depends_on: vec!["CL-0001".to_string()],
         blocks: vec![],
         relates_to: vec![],
         duplicates: None,
@@ -163,7 +163,7 @@ fn select_next_task_locked_rejects_non_utc_done_timestamps_without_persisting() 
 
     let mut done_file = QueueFile::default();
     done_file.tasks.push(Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Completed dependency".to_string(),
         description: None,
         status: TaskStatus::Done,
@@ -197,7 +197,7 @@ fn select_next_task_locked_rejects_non_utc_done_timestamps_without_persisting() 
         repo_root: repo_root.clone(),
         queue_path,
         done_path: done_path.clone(),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -238,7 +238,7 @@ fn parallel_select_next_task_locked_repairs_trailing_commas() -> Result<()> {
     std::fs::create_dir_all(&cueloop_dir)?;
 
     let queue_path = cueloop_dir.join("queue.json");
-    let malformed = r#"{"version": 1, "tasks": [{"id": "RQ-0001", "title": "Test task", "status": "todo", "tags": ["bug",], "scope": ["file",], "evidence": ["observed",], "plan": ["do thing",], "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",}]}"#;
+    let malformed = r#"{"version": 1, "tasks": [{"id": "CL-0001", "title": "Test task", "status": "todo", "tags": ["bug",], "scope": ["file",], "evidence": ["observed",], "plan": ["do thing",], "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",}]}"#;
     std::fs::write(&queue_path, malformed)?;
 
     let resolved = config::Resolved {
@@ -246,7 +246,7 @@ fn parallel_select_next_task_locked_repairs_trailing_commas() -> Result<()> {
         repo_root: repo_root.clone(),
         queue_path,
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -258,7 +258,7 @@ fn parallel_select_next_task_locked_repairs_trailing_commas() -> Result<()> {
 
     assert!(result.is_some());
     let (task_id, task_title) = result.unwrap();
-    assert_eq!(task_id, "RQ-0001");
+    assert_eq!(task_id, "CL-0001");
     assert_eq!(task_title, "Test task");
 
     Ok(())
@@ -276,7 +276,7 @@ fn parallel_select_next_task_locked_rejects_semantically_invalid_queue() -> Resu
 
     let queue_path = cueloop_dir.join("queue.json");
     // Intentionally missing created_at / updated_at (should fail semantic validation).
-    let invalid = r#"{"version": 1, "tasks": [{"id": "RQ-0001", "title": "Test task", "status": "todo", "tags": ["bug"], "scope": ["file"], "evidence": [], "plan": []}]}"#;
+    let invalid = r#"{"version": 1, "tasks": [{"id": "CL-0001", "title": "Test task", "status": "todo", "tags": ["bug"], "scope": ["file"], "evidence": [], "plan": []}]}"#;
     std::fs::write(&queue_path, invalid)?;
 
     let resolved = config::Resolved {
@@ -284,7 +284,7 @@ fn parallel_select_next_task_locked_rejects_semantically_invalid_queue() -> Resu
         repo_root: repo_root.clone(),
         queue_path,
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,

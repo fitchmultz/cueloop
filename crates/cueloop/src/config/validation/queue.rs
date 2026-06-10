@@ -23,7 +23,7 @@ use crate::contracts::{QueueAgingThresholds, QueueConfig};
 use anyhow::{Result, bail};
 use std::path::Path;
 
-pub const ERR_EMPTY_QUEUE_ID_PREFIX: &str = "Empty queue.id_prefix: prefix is required if specified. Set a non-empty prefix (e.g., 'RQ') in .cueloop/config.jsonc or via --id-prefix.";
+pub const ERR_EMPTY_QUEUE_ID_PREFIX: &str = "Empty queue.id_prefix: prefix is required if specified. Set a non-empty prefix (e.g., 'CL') in .cueloop/config.jsonc or via --id-prefix.";
 pub const ERR_INVALID_QUEUE_ID_WIDTH: &str = "Invalid queue.id_width: width must be greater than 0. Set a valid width (e.g., 4) in .cueloop/config.jsonc or via --id-width.";
 pub const ERR_EMPTY_QUEUE_FILE: &str = "Empty queue.file: path is required if specified. Specify a valid path (e.g., '.cueloop/queue.jsonc') in .cueloop/config.jsonc or via --queue-file.";
 pub const ERR_EMPTY_QUEUE_DONE_FILE: &str = "Empty queue.done_file: path is required if specified. Specify a valid path (e.g., '.cueloop/done.jsonc') in .cueloop/config.jsonc or via --done-file.";

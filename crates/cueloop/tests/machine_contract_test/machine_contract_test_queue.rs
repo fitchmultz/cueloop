@@ -20,9 +20,10 @@
 //! - Contract assertions preserve the historical flat suite behavior exactly.
 
 use super::machine_contract_test_support::{
-    run_in_dir, setup_cueloop_repo, trust_project_commands,
+    make_test_task, run_in_dir, setup_cueloop_repo, trust_project_commands, write_done, write_queue,
 };
 use anyhow::{Context, Result};
+use cueloop::contracts::TaskStatus;
 use serde_json::Value;
 
 const SENSITIVE_PROJECT_CONFIG: &str = r#"{
@@ -49,6 +50,73 @@ fn machine_queue_read_returns_versioned_snapshot() -> Result<()> {
     assert!(document["paths"]["queue_path"].is_string());
     assert!(document["active"]["tasks"].is_array());
     assert!(document["done"]["tasks"].is_array());
+    Ok(())
+}
+
+#[test]
+fn machine_queue_read_treats_reverse_blocks_as_runnability_constraints() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+    let mut blocker = make_test_task("RQ-0001", "Design first", TaskStatus::Todo);
+    blocker.blocks = vec!["RQ-0002".to_string()];
+    let blocked = make_test_task("RQ-0002", "Implement second", TaskStatus::Todo);
+    write_queue(dir.path(), &[blocker, blocked])?;
+
+    let (status, stdout, stderr) = run_in_dir(dir.path(), &["machine", "queue", "read"]);
+    assert!(
+        status.success(),
+        "machine queue read failed\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["next_runnable_task_id"], "RQ-0001");
+    let blocked_row = document["runnability"]["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == "RQ-0002")
+        .expect("blocked row");
+    assert_eq!(blocked_row["runnable"], false);
+    assert_eq!(
+        blocked_row["reasons"][0]["dependencies"][0]["id"],
+        "RQ-0001"
+    );
+    Ok(())
+}
+
+#[test]
+fn machine_queue_read_can_omit_or_limit_done_archive_for_compact_agent_reads() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+    write_done(
+        dir.path(),
+        &[
+            make_test_task("RQ-0001", "Done one", TaskStatus::Done),
+            make_test_task("RQ-0002", "Done two", TaskStatus::Done),
+        ],
+    )?;
+
+    let (active_status, active_stdout, active_stderr) =
+        run_in_dir(dir.path(), &["machine", "queue", "read", "--active-only"]);
+    assert!(
+        active_status.success(),
+        "machine queue read --active-only failed\nstdout:\n{active_stdout}\nstderr:\n{active_stderr}"
+    );
+    let active_document: Value = serde_json::from_str(&active_stdout)?;
+    assert_eq!(
+        active_document["done"]["tasks"].as_array().unwrap().len(),
+        0
+    );
+
+    let (limit_status, limit_stdout, limit_stderr) = run_in_dir(
+        dir.path(),
+        &["machine", "queue", "read", "--done-limit", "1"],
+    );
+    assert!(
+        limit_status.success(),
+        "machine queue read --done-limit failed\nstdout:\n{limit_stdout}\nstderr:\n{limit_stderr}"
+    );
+    let limit_document: Value = serde_json::from_str(&limit_stdout)?;
+    let limited_tasks = limit_document["done"]["tasks"].as_array().unwrap();
+    assert_eq!(limited_tasks.len(), 1);
+    assert_eq!(limited_tasks[0]["id"], "RQ-0002");
     Ok(())
 }
 

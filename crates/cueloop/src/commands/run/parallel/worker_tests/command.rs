@@ -31,7 +31,7 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
         repo_root: temp.path().to_path_buf(),
         queue_path: cueloop_dir.join("queue.json"),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -41,7 +41,7 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     let cmd = build_worker_command(
         &resolved,
         &workspace_path,
-        "RQ-1234",
+        "CL-1234",
         "main",
         &overrides,
         true,
@@ -96,7 +96,7 @@ fn build_worker_command_sets_cwd_and_args() -> Result<()> {
     );
 
     let id_pos = args.iter().position(|arg| arg == "--id").expect("--id");
-    assert_eq!(args.get(id_pos + 1), Some(&"RQ-1234".to_string()));
+    assert_eq!(args.get(id_pos + 1), Some(&"CL-1234".to_string()));
 
     // Verify workspace queue/done paths are passed via CLI flags
     let expected_workspace_queue = workspace_path.join(".cueloop").join("queue.json");
@@ -147,7 +147,7 @@ fn build_worker_command_maps_custom_queue_done_paths_into_workspace() -> Result<
         repo_root: repo_root.clone(),
         queue_path: repo_root.join("queue/active.json"),
         done_path: repo_root.join("archive/done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -157,7 +157,7 @@ fn build_worker_command_maps_custom_queue_done_paths_into_workspace() -> Result<
     let cmd = build_worker_command(
         &resolved,
         &workspace_path,
-        "RQ-1234",
+        "CL-1234",
         "main",
         &overrides,
         false,
@@ -207,7 +207,7 @@ fn build_worker_command_emits_git_publish_mode_commit_and_push_when_overridden()
         repo_root: temp.path().to_path_buf(),
         queue_path: cueloop_dir.join("queue.json"),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -220,7 +220,7 @@ fn build_worker_command_emits_git_publish_mode_commit_and_push_when_overridden()
     let cmd = build_worker_command(
         &resolved,
         &workspace_path,
-        "RQ-1234",
+        "CL-1234",
         "main",
         &overrides,
         false,
@@ -246,7 +246,7 @@ fn build_worker_command_emits_git_publish_mode_off_when_overridden() -> Result<(
         repo_root: temp.path().to_path_buf(),
         queue_path: cueloop_dir.join("queue.json"),
         done_path: cueloop_dir.join("done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -259,7 +259,7 @@ fn build_worker_command_emits_git_publish_mode_off_when_overridden() -> Result<(
     let cmd = build_worker_command(
         &resolved,
         &workspace_path,
-        "RQ-1234",
+        "CL-1234",
         "main",
         &overrides,
         false,

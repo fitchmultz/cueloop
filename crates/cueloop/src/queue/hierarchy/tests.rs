@@ -39,41 +39,41 @@ fn make_active_queue(tasks: Vec<Task>) -> QueueFile {
 #[test]
 fn hierarchy_index_builds_correctly() {
     let tasks = vec![
-        make_task("RQ-0001", None),
-        make_task("RQ-0002", Some("RQ-0001")),
-        make_task("RQ-0003", Some("RQ-0001")),
+        make_task("CL-0001", None),
+        make_task("CL-0002", Some("CL-0001")),
+        make_task("CL-0003", Some("CL-0001")),
     ];
     let active = make_active_queue(tasks);
 
     let idx = HierarchyIndex::build(&active, None);
 
-    assert_eq!(idx.children_of("RQ-0001").len(), 2);
-    assert!(idx.children_of("RQ-0002").is_empty());
-    assert!(idx.get("RQ-0001").is_some());
-    assert!(idx.get("RQ-0002").is_some());
+    assert_eq!(idx.children_of("CL-0001").len(), 2);
+    assert!(idx.children_of("CL-0002").is_empty());
+    assert!(idx.get("CL-0001").is_some());
+    assert!(idx.get("CL-0002").is_some());
 }
 
 #[test]
 fn children_preserve_file_order() {
     let tasks = vec![
-        make_task("RQ-0001", None),
-        make_task("RQ-0003", Some("RQ-0001")),
-        make_task("RQ-0002", Some("RQ-0001")),
+        make_task("CL-0001", None),
+        make_task("CL-0003", Some("CL-0001")),
+        make_task("CL-0002", Some("CL-0001")),
     ];
     let active = make_active_queue(tasks);
 
     let idx = HierarchyIndex::build(&active, None);
-    let children = idx.children_of("RQ-0001");
+    let children = idx.children_of("CL-0001");
 
-    assert_eq!(children[0].task.id, "RQ-0003");
-    assert_eq!(children[1].task.id, "RQ-0002");
+    assert_eq!(children[0].task.id, "CL-0003");
+    assert_eq!(children[1].task.id, "CL-0002");
 }
 
 #[test]
 fn orphan_detection_works() {
     let tasks = vec![
-        make_task("RQ-0001", None),
-        make_task("RQ-0002", Some("RQ-9999")),
+        make_task("CL-0001", None),
+        make_task("CL-0002", Some("CL-9999")),
     ];
     let active = make_active_queue(tasks);
 
@@ -84,23 +84,23 @@ fn orphan_detection_works() {
         .iter()
         .map(|root| root.task.id.as_str())
         .collect();
-    assert!(roots.contains(&"RQ-0002"));
+    assert!(roots.contains(&"CL-0002"));
 
     let output = render_tree(
         &idx,
-        &["RQ-0002"],
+        &["CL-0002"],
         10,
         true,
         |_task, _depth, _is_cycle, orphan_parent| {
             format!("orphan_parent={}", orphan_parent.unwrap_or("<none>"))
         },
     );
-    assert!(output.contains("orphan_parent=RQ-9999"));
+    assert!(output.contains("orphan_parent=CL-9999"));
 }
 
 #[test]
 fn empty_parent_id_treated_as_unset() {
-    let mut task = make_task("RQ-0001", None);
+    let mut task = make_task("CL-0001", None);
     task.parent_id = Some("   ".to_string());
 
     let active = make_active_queue(vec![task]);
@@ -113,16 +113,16 @@ fn empty_parent_id_treated_as_unset() {
 fn cycle_detection_finds_simple_cycle() {
     let tasks = [
         Task {
-            id: "RQ-0001".to_string(),
-            parent_id: Some("RQ-0002".to_string()),
+            id: "CL-0001".to_string(),
+            parent_id: Some("CL-0002".to_string()),
             title: "Task 1".to_string(),
             created_at: Some("2026-01-01T00:00:00Z".to_string()),
             updated_at: Some("2026-01-01T00:00:00Z".to_string()),
             ..Default::default()
         },
         Task {
-            id: "RQ-0002".to_string(),
-            parent_id: Some("RQ-0001".to_string()),
+            id: "CL-0002".to_string(),
+            parent_id: Some("CL-0001".to_string()),
             title: "Task 2".to_string(),
             created_at: Some("2026-01-01T00:00:00Z".to_string()),
             updated_at: Some("2026-01-01T00:00:00Z".to_string()),
@@ -140,8 +140,8 @@ fn cycle_detection_finds_simple_cycle() {
 #[test]
 fn cycle_detection_finds_self_cycle() {
     let tasks = [Task {
-        id: "RQ-0001".to_string(),
-        parent_id: Some("RQ-0001".to_string()),
+        id: "CL-0001".to_string(),
+        parent_id: Some("CL-0001".to_string()),
         title: "Task 1".to_string(),
         created_at: Some("2026-01-01T00:00:00Z".to_string()),
         updated_at: Some("2026-01-01T00:00:00Z".to_string()),
@@ -152,14 +152,14 @@ fn cycle_detection_finds_self_cycle() {
     let cycles = detect_parent_cycles(&task_refs);
 
     assert_eq!(cycles.len(), 1);
-    assert_eq!(cycles[0], vec!["RQ-0001"]);
+    assert_eq!(cycles[0], vec!["CL-0001"]);
 }
 
 #[test]
 fn roots_includes_orphans() {
     let tasks = vec![
-        make_task("RQ-0001", None),
-        make_task("RQ-0002", Some("RQ-9999")),
+        make_task("CL-0001", None),
+        make_task("CL-0002", Some("CL-9999")),
     ];
     let active = make_active_queue(tasks);
 
@@ -171,80 +171,80 @@ fn roots_includes_orphans() {
 
 #[test]
 fn active_done_combined_ordering() {
-    let active = make_active_queue(vec![make_task("RQ-0001", None)]);
+    let active = make_active_queue(vec![make_task("CL-0001", None)]);
     let done = QueueFile {
         version: 1,
-        tasks: vec![make_task("RQ-0002", Some("RQ-0001"))],
+        tasks: vec![make_task("CL-0002", Some("CL-0001"))],
     };
 
     let idx = HierarchyIndex::build(&active, Some(&done));
 
-    assert!(idx.get("RQ-0001").is_some());
-    assert!(idx.get("RQ-0002").is_some());
+    assert!(idx.get("CL-0001").is_some());
+    assert!(idx.get("CL-0002").is_some());
 
-    let root = idx.get("RQ-0001").unwrap();
-    let child = idx.get("RQ-0002").unwrap();
+    let root = idx.get("CL-0001").unwrap();
+    let child = idx.get("CL-0002").unwrap();
     assert!(root.order < child.order);
 }
 
 #[test]
 fn tree_rendering_produces_output() {
     let tasks = vec![
-        make_task("RQ-0001", None),
-        make_task("RQ-0002", Some("RQ-0001")),
+        make_task("CL-0001", None),
+        make_task("CL-0002", Some("CL-0001")),
     ];
     let active = make_active_queue(tasks);
     let idx = HierarchyIndex::build(&active, None);
 
     let output = render_tree(
         &idx,
-        &["RQ-0001"],
+        &["CL-0001"],
         10,
         true,
         |task, depth, _is_cycle, _orphan| format!("{}{}", "  ".repeat(depth), task.id),
     );
 
-    assert!(output.contains("RQ-0001"));
-    assert!(output.contains("  RQ-0002"));
+    assert!(output.contains("CL-0001"));
+    assert!(output.contains("  CL-0002"));
 }
 
 #[test]
 fn tree_rendering_respects_max_depth() {
     let tasks = vec![
-        make_task("RQ-0001", None),
-        make_task("RQ-0002", Some("RQ-0001")),
-        make_task("RQ-0003", Some("RQ-0002")),
+        make_task("CL-0001", None),
+        make_task("CL-0002", Some("CL-0001")),
+        make_task("CL-0003", Some("CL-0002")),
     ];
     let active = make_active_queue(tasks);
     let idx = HierarchyIndex::build(&active, None);
 
     let output = render_tree(
         &idx,
-        &["RQ-0001"],
+        &["CL-0001"],
         1,
         true,
         |task, depth, _is_cycle, _orphan| format!("{}{}", "  ".repeat(depth), task.id),
     );
 
-    assert!(output.contains("RQ-0001"));
-    assert!(output.contains("RQ-0002"));
-    assert!(!output.contains("RQ-0003"));
+    assert!(output.contains("CL-0001"));
+    assert!(output.contains("CL-0002"));
+    assert!(!output.contains("CL-0003"));
 }
 
 #[test]
 fn tree_rendering_handles_cycles() {
     let tasks = vec![
         Task {
-            id: "RQ-0001".to_string(),
-            parent_id: Some("RQ-0002".to_string()),
+            id: "CL-0001".to_string(),
+            parent_id: Some("CL-0002".to_string()),
             title: "Task 1".to_string(),
             created_at: Some("2026-01-01T00:00:00Z".to_string()),
             updated_at: Some("2026-01-01T00:00:00Z".to_string()),
             ..Default::default()
         },
         Task {
-            id: "RQ-0002".to_string(),
-            parent_id: Some("RQ-0001".to_string()),
+            id: "CL-0002".to_string(),
+            parent_id: Some("CL-0001".to_string()),
             title: "Task 2".to_string(),
             created_at: Some("2026-01-01T00:00:00Z".to_string()),
             updated_at: Some("2026-01-01T00:00:00Z".to_string()),
@@ -256,7 +256,7 @@ fn tree_rendering_handles_cycles() {
 
     let output = render_tree(
         &idx,
-        &["RQ-0001"],
+        &["CL-0001"],
         10,
         true,
         |task, depth, is_cycle, _orphan| {
@@ -265,6 +265,6 @@ fn tree_rendering_handles_cycles() {
         },
     );
 
-    assert!(output.contains("RQ-0001"));
+    assert!(output.contains("CL-0001"));
     assert!(output.contains("(cycle)"));
 }

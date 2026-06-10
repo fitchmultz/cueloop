@@ -88,6 +88,16 @@ fn append_redacted_notes(task: &mut Task, notes: &[String]) {
     }
 }
 
+fn append_redacted_evidence(task: &mut Task, evidence: &[String]) {
+    for item in evidence {
+        let redacted = redaction::redact_text(item);
+        let trimmed = redacted.trim();
+        if !trimmed.is_empty() {
+            task.evidence.push(trimmed.to_string());
+        }
+    }
+}
+
 /// Complete a single task and move it to the done archive.
 ///
 /// Validates that the task exists in the active queue, is in a valid
@@ -102,7 +112,8 @@ fn append_redacted_notes(task: &mut Task, notes: &[String]) {
 /// * `status` - Terminal status (Done or Rejected)
 /// * `now_rfc3339` - Current UTC timestamp as RFC3339 string
 /// * `notes` - Optional notes to append to the task
-/// * `id_prefix` - Expected task ID prefix (e.g., "RQ")
+/// * `evidence` - Optional verification evidence to append to the task
+/// * `id_prefix` - Expected task ID prefix (e.g., "CL")
 /// * `id_width` - Expected numeric width for task IDs (e.g., 4)
 /// * `max_dependency_depth` - Maximum dependency depth for validation
 /// * `custom_fields_patch` - Optional custom fields to apply to the task (observational data)
@@ -114,6 +125,7 @@ pub fn complete_task(
     status: TaskStatus,
     now_rfc3339: &str,
     notes: &[String],
+    evidence: &[String],
     id_prefix: &str,
     id_width: usize,
     max_dependency_depth: u8,
@@ -137,7 +149,7 @@ pub fn complete_task(
     let needle = task_id.trim();
     if needle.is_empty() {
         bail!(
-            "Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'RQ-0001')."
+            "Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'CL-0001')."
         );
     }
 
@@ -175,6 +187,7 @@ pub fn complete_task(
 
     apply_status_fields(&mut completed_task, status, now_rfc3339)?;
     append_redacted_notes(&mut completed_task, notes);
+    append_redacted_evidence(&mut completed_task, evidence);
 
     // Apply custom fields patch for observational analytics
     if let Some(patch) = custom_fields_patch {
@@ -212,7 +225,7 @@ pub fn set_status(
     let needle = task_id.trim();
     if needle.is_empty() {
         bail!(
-            "Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'RQ-0001')."
+            "Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'CL-0001')."
         );
     }
 
@@ -236,7 +249,7 @@ pub fn promote_draft_to_todo(
     let needle = task_id.trim();
     if needle.is_empty() {
         bail!(
-            "Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'RQ-0001')."
+            "Missing task_id: a task ID is required for this operation. Provide a valid ID (e.g., 'CL-0001')."
         );
     }
 

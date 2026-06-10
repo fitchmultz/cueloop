@@ -94,7 +94,7 @@ mod tests {
         let repo_root = temp.path();
         let done_path = repo_root.join(".cueloop/done.json");
         std::fs::create_dir_all(repo_root.join(".cueloop"))?;
-        write_done_file(&done_path, "RQ-0001", TaskStatus::Done)?;
+        write_done_file(&done_path, "CL-0001", TaskStatus::Done)?;
 
         let mut timings = RunExecutionTimings::default();
         timings.record_runner_duration(
@@ -105,13 +105,13 @@ mod tests {
         );
 
         assert!(try_record_execution_history_for_cli_run(
-            repo_root, &done_path, "RQ-0001", 2, timings
+            repo_root, &done_path, "CL-0001", 2, timings
         )?);
 
         let history = execution_history::load_execution_history(&repo_root.join(".cueloop/cache"))?;
         assert_eq!(history.entries.len(), 1);
         let entry = &history.entries[0];
-        assert_eq!(entry.task_id, "RQ-0001");
+        assert_eq!(entry.task_id, "CL-0001");
         assert_eq!(entry.runner, "codex");
         assert_eq!(entry.model, "gpt-5.3");
         assert_eq!(entry.phase_count, 2);
@@ -128,7 +128,7 @@ mod tests {
         let repo_root = temp.path();
         let done_path = repo_root.join(".cueloop/done.json");
         std::fs::create_dir_all(repo_root.join(".cueloop"))?;
-        write_done_file(&done_path, "RQ-0001", TaskStatus::Rejected)?;
+        write_done_file(&done_path, "CL-0001", TaskStatus::Rejected)?;
 
         let mut timings = RunExecutionTimings::default();
         timings.record_runner_duration(
@@ -139,7 +139,7 @@ mod tests {
         );
 
         assert!(!try_record_execution_history_for_cli_run(
-            repo_root, &done_path, "RQ-0001", 2, timings
+            repo_root, &done_path, "CL-0001", 2, timings
         )?);
         assert!(
             !repo_root
@@ -155,7 +155,7 @@ mod tests {
         let repo_root = temp.path();
         let done_path = repo_root.join(".cueloop/done.json");
         std::fs::create_dir_all(repo_root.join(".cueloop"))?;
-        write_done_file(&done_path, "RQ-0001", TaskStatus::Done)?;
+        write_done_file(&done_path, "CL-0001", TaskStatus::Done)?;
 
         let mut timings = RunExecutionTimings::default();
         timings.record_runner_duration(
@@ -172,7 +172,7 @@ mod tests {
         );
 
         assert!(!try_record_execution_history_for_cli_run(
-            repo_root, &done_path, "RQ-0001", 2, timings
+            repo_root, &done_path, "CL-0001", 2, timings
         )?);
         assert!(
             !repo_root
@@ -188,7 +188,7 @@ mod tests {
         let repo_root = temp.path();
         let done_path = repo_root.join(".cueloop/done.json");
         std::fs::create_dir_all(repo_root.join(".cueloop"))?;
-        write_done_file(&done_path, "RQ-0001", TaskStatus::Done)?;
+        write_done_file(&done_path, "CL-0001", TaskStatus::Done)?;
 
         for _ in 0..2 {
             let mut timings = RunExecutionTimings::default();
@@ -199,7 +199,7 @@ mod tests {
                 Duration::from_secs(1),
             );
             assert!(try_record_execution_history_for_cli_run(
-                repo_root, &done_path, "RQ-0001", 2, timings
+                repo_root, &done_path, "CL-0001", 2, timings
             )?);
         }
 

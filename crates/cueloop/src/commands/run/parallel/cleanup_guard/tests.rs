@@ -83,12 +83,12 @@ fn guard_cleanup_kills_worker_and_clears_state() -> Result<()> {
     let temp = TempDir::new()?;
     let mut guard = create_test_guard(&temp);
 
-    let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
-    let workspace_path = temp.path().join("workspaces").join("RQ-0001");
+    let pid = register_sleeping_worker(&mut guard, &temp, "CL-0001")?;
+    let workspace_path = temp.path().join("workspaces").join("CL-0001");
     guard
         .state_file_mut()
         .upsert_worker(state::WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             workspace_path.clone(),
             "2026-02-20T00:00:00Z".to_string(),
         ));
@@ -121,7 +121,7 @@ fn guard_disarm_prevents_cleanup() -> Result<()> {
     let temp = TempDir::new()?;
     let mut guard = create_test_guard(&temp);
 
-    let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
+    let pid = register_sleeping_worker(&mut guard, &temp, "CL-0001")?;
 
     guard.mark_completed();
     drop(guard);
@@ -142,7 +142,7 @@ fn guard_cleanup_is_idempotent() -> Result<()> {
     let temp = TempDir::new()?;
     let mut guard = create_test_guard(&temp);
 
-    let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
+    let pid = register_sleeping_worker(&mut guard, &temp, "CL-0001")?;
 
     guard.cleanup()?;
 
@@ -163,7 +163,7 @@ fn guard_cleanup_runs_on_drop() -> Result<()> {
     let temp = TempDir::new()?;
 
     let mut guard = create_test_guard(&temp);
-    let pid = register_sleeping_worker(&mut guard, &temp, "RQ-0001")?;
+    let pid = register_sleeping_worker(&mut guard, &temp, "CL-0001")?;
 
     assert_eq!(
         lock::pid_is_running(pid),
@@ -188,21 +188,21 @@ fn guard_cleanup_retains_terminal_workers_for_status_retry() -> Result<()> {
     let temp = TempDir::new()?;
     let mut guard = create_test_guard(&temp);
 
-    let running_workspace = temp.path().join("workspaces").join("RQ-0001");
-    let completed_workspace = temp.path().join("workspaces").join("RQ-0002");
+    let running_workspace = temp.path().join("workspaces").join("CL-0001");
+    let completed_workspace = temp.path().join("workspaces").join("CL-0002");
     std::fs::create_dir_all(&running_workspace)?;
     std::fs::create_dir_all(&completed_workspace)?;
 
     guard
         .state_file_mut()
         .upsert_worker(state::WorkerRecord::new(
-            "RQ-0001",
+            "CL-0001",
             running_workspace,
             "2026-02-20T00:00:00Z".to_string(),
         ));
 
     let mut completed = state::WorkerRecord::new(
-        "RQ-0002",
+        "CL-0002",
         completed_workspace,
         "2026-02-20T00:00:00Z".to_string(),
     );
@@ -212,7 +212,7 @@ fn guard_cleanup_retains_terminal_workers_for_status_retry() -> Result<()> {
     guard.cleanup()?;
 
     assert_eq!(guard.state_file.workers.len(), 1);
-    assert_eq!(guard.state_file.workers[0].task_id, "RQ-0002");
+    assert_eq!(guard.state_file.workers[0].task_id, "CL-0002");
     assert!(guard.state_file.workers[0].is_terminal());
     Ok(())
 }
@@ -222,11 +222,11 @@ fn guard_cleanup_retains_blocked_workspace_for_retry() -> Result<()> {
     let temp = TempDir::new()?;
     let mut guard = create_test_guard(&temp);
 
-    let blocked_workspace = temp.path().join("workspaces").join("RQ-0099");
+    let blocked_workspace = temp.path().join("workspaces").join("CL-0099");
     std::fs::create_dir_all(&blocked_workspace)?;
 
     guard.register_workspace(
-        "RQ-0099".to_string(),
+        "CL-0099".to_string(),
         WorkspaceSpec {
             path: blocked_workspace.clone(),
             branch: "main".to_string(),
@@ -234,7 +234,7 @@ fn guard_cleanup_retains_blocked_workspace_for_retry() -> Result<()> {
     );
 
     let mut blocked = state::WorkerRecord::new(
-        "RQ-0099",
+        "CL-0099",
         blocked_workspace.clone(),
         "2026-02-20T00:00:00Z".to_string(),
     );

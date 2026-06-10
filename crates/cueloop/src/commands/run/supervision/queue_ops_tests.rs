@@ -32,7 +32,7 @@ use tempfile::TempDir;
 
 fn write_queue(repo_root: &Path, status: TaskStatus) -> Result<()> {
     let task = Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         status,
         kind: Default::default(),
         title: "Test task".to_string(),
@@ -112,7 +112,7 @@ fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
         queue: QueueConfig {
             file: Some(PathBuf::from(".cueloop/queue.json")),
             done_file: Some(PathBuf::from(".cueloop/done.json")),
-            id_prefix: Some("RQ".to_string()),
+            id_prefix: Some("CL".to_string()),
             id_width: Some(4),
             size_warning_threshold_kb: Some(500),
             task_count_warning_threshold: Some(500),
@@ -128,7 +128,7 @@ fn resolved_for_repo(repo_root: &Path) -> crate::config::Resolved {
         repo_root: repo_root.to_path_buf(),
         queue_path: repo_root.join(".cueloop/queue.json"),
         done_path: repo_root.join(".cueloop/done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: Some(repo_root.join(".cueloop/config.json")),
@@ -146,7 +146,7 @@ fn maintain_and_validate_queues_backfills_missing_completed_at() -> Result<()> {
     let task = queue_file
         .tasks
         .iter()
-        .find(|t| t.id == "RQ-0001")
+        .find(|t| t.id == "CL-0001")
         .expect("expected task in queue");
     let completed_at = task
         .completed_at
@@ -167,7 +167,7 @@ fn find_task_status_finds_in_queue() -> Result<()> {
     let done_file = QueueFile::default();
 
     let (status, title, in_done) =
-        find_task_status(&queue_file, &done_file, "RQ-0001").expect("should find task");
+        find_task_status(&queue_file, &done_file, "CL-0001").expect("should find task");
 
     assert_eq!(status, TaskStatus::Todo);
     assert_eq!(title, "Test task");
@@ -194,7 +194,7 @@ fn find_task_status_finds_in_done() -> Result<()> {
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
 
     let (status, title, in_done) =
-        find_task_status(&queue_file, &done_file, "RQ-0001").expect("should find task");
+        find_task_status(&queue_file, &done_file, "CL-0001").expect("should find task");
 
     assert_eq!(status, TaskStatus::Done);
     assert_eq!(title, "Test task");
@@ -208,7 +208,7 @@ fn find_task_status_returns_none_for_missing() {
     let queue_file = QueueFile::default();
     let done_file = QueueFile::default();
 
-    let result = find_task_status(&queue_file, &done_file, "RQ-9999");
+    let result = find_task_status(&queue_file, &done_file, "CL-9999");
     assert!(result.is_none());
 }
 
@@ -217,7 +217,7 @@ fn require_task_status_errors_for_missing() {
     let queue_file = QueueFile::default();
     let done_file = QueueFile::default();
 
-    let err = require_task_status(&queue_file, &done_file, "RQ-9999").unwrap_err();
+    let err = require_task_status(&queue_file, &done_file, "CL-9999").unwrap_err();
     assert!(err.to_string().contains("not found"));
 }
 
@@ -228,12 +228,12 @@ fn build_post_run_queue_mutation_plan_marks_pending_completion_as_mutating() -> 
 
     let queue_file = queue::load_queue(&temp.path().join(".cueloop/queue.json"))?;
     let done_file = QueueFile::default();
-    let plan = build_post_run_queue_mutation_plan(&queue_file, &done_file, "RQ-0001")?;
+    let plan = build_post_run_queue_mutation_plan(&queue_file, &done_file, "CL-0001")?;
 
     assert_eq!(plan.task_status, TaskStatus::Todo);
     assert!(plan.mark_task_done);
     assert!(plan.will_mutate_queue_files());
-    assert_eq!(plan.archive_candidate_ids, vec!["RQ-0001".to_string()]);
+    assert_eq!(plan.archive_candidate_ids, vec!["CL-0001".to_string()]);
 
     Ok(())
 }
@@ -254,7 +254,7 @@ fn build_post_run_queue_mutation_plan_detects_archived_done_noop() -> Result<()>
 
     let queue_file = queue::load_queue(&resolved.queue_path)?;
     let done_file = queue::load_queue_or_default(&resolved.done_path)?;
-    let plan = build_post_run_queue_mutation_plan(&queue_file, &done_file, "RQ-0001")?;
+    let plan = build_post_run_queue_mutation_plan(&queue_file, &done_file, "CL-0001")?;
 
     assert!(plan.task_already_archived_done());
     assert!(!plan.mark_task_done);
@@ -275,7 +275,7 @@ fn ensure_task_done_clean_or_bail_marks_done_when_needed() -> Result<()> {
     let changed = ensure_task_done_clean_or_bail(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         false,
     )?;
@@ -283,7 +283,7 @@ fn ensure_task_done_clean_or_bail_marks_done_when_needed() -> Result<()> {
     assert!(changed);
 
     let queue_file = queue::load_queue(&resolved.queue_path)?;
-    let task = queue_file.tasks.iter().find(|t| t.id == "RQ-0001").unwrap();
+    let task = queue_file.tasks.iter().find(|t| t.id == "CL-0001").unwrap();
     assert_eq!(task.status, TaskStatus::Done);
 
     Ok(())
@@ -300,7 +300,7 @@ fn ensure_task_done_clean_or_bail_no_change_when_already_done() -> Result<()> {
     let changed = ensure_task_done_clean_or_bail(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Done,
         false,
     )?;
@@ -321,7 +321,7 @@ fn ensure_task_done_clean_or_bail_errors_on_inconsistency() -> Result<()> {
     let err = ensure_task_done_clean_or_bail(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         true,
     )
@@ -343,7 +343,7 @@ fn ensure_task_done_dirty_or_revert_marks_done_when_not_archived() -> Result<()>
     ensure_task_done_dirty_or_revert(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         false,
         crate::contracts::GitRevertMode::Disabled,
@@ -354,7 +354,7 @@ fn ensure_task_done_dirty_or_revert_marks_done_when_not_archived() -> Result<()>
     let task = persisted
         .tasks
         .iter()
-        .find(|task| task.id == "RQ-0001")
+        .find(|task| task.id == "CL-0001")
         .expect("expected task to persist");
     assert_eq!(task.status, TaskStatus::Done);
     assert!(task.completed_at.is_some());
@@ -377,7 +377,7 @@ fn ensure_task_done_dirty_or_revert_disabled_keeps_dirty_changes_on_inconsistenc
     let err = ensure_task_done_dirty_or_revert(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         true,
         crate::contracts::GitRevertMode::Disabled,
@@ -411,7 +411,7 @@ fn ensure_task_done_dirty_or_revert_enabled_reverts_dirty_changes_on_inconsisten
     let err = ensure_task_done_dirty_or_revert(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         true,
         crate::contracts::GitRevertMode::Enabled,
@@ -455,7 +455,7 @@ fn ensure_task_done_dirty_or_revert_ask_uses_prompt_handler() -> Result<()> {
     let err = ensure_task_done_dirty_or_revert(
         &resolved,
         &mut queue_file,
-        "RQ-0001",
+        "CL-0001",
         TaskStatus::Todo,
         true,
         crate::contracts::GitRevertMode::Ask,

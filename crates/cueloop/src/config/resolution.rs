@@ -121,6 +121,7 @@ fn resolve_from_cwd_internal(
     let mut project_layer: Option<ConfigLayer> = None;
     let mut queue_file_explicit = false;
     let mut done_file_explicit = false;
+    let mut id_prefix_explicit = false;
 
     for path in &global_layer_paths {
         log::debug!("checking global config at: {}", path.display());
@@ -130,6 +131,7 @@ fn resolve_from_cwd_internal(
                 .with_context(|| format!("load global config {}", path.display()))?;
             queue_file_explicit |= layer.queue.file.is_some();
             done_file_explicit |= layer.queue.done_file.is_some();
+            id_prefix_explicit |= layer.queue.id_prefix.is_some();
             cfg = apply_layer(cfg, layer)
                 .with_context(|| format!("apply global config {}", path.display()))?;
         }
@@ -142,6 +144,7 @@ fn resolve_from_cwd_internal(
             .with_context(|| format!("load project config {}", project_path.display()))?;
         queue_file_explicit |= layer.queue.file.is_some();
         done_file_explicit |= layer.queue.done_file.is_some();
+        id_prefix_explicit |= layer.queue.id_prefix.is_some();
         project_layer = Some(layer.clone());
         cfg = apply_layer(cfg, layer)
             .with_context(|| format!("apply project config {}", project_path.display()))?;
@@ -164,10 +167,15 @@ fn resolve_from_cwd_internal(
             .with_context(|| "validate instruction_files from config")?;
     }
 
-    let id_prefix = resolve_id_prefix(&cfg)?;
     let id_width = resolve_id_width(&cfg)?;
     let queue_path = resolve_queue_path_with_source(&repo_root, &cfg, queue_file_explicit)?;
     let done_path = resolve_done_path_with_source(&repo_root, &cfg, done_file_explicit)?;
+    let id_prefix = if id_prefix_explicit {
+        resolve_id_prefix(&cfg)?
+    } else {
+        infer_existing_id_prefix(&queue_path, &done_path)?
+            .unwrap_or_else(|| DEFAULT_ID_PREFIX.to_string())
+    };
     let resolved_global_path = global_layer_paths
         .iter()
         .rev()
@@ -224,6 +232,51 @@ pub fn resolve_id_prefix(cfg: &Config) -> Result<String> {
     validate_queue_id_prefix_override(cfg.queue.id_prefix.as_deref())?;
     let raw = cfg.queue.id_prefix.as_deref().unwrap_or(DEFAULT_ID_PREFIX);
     Ok(raw.trim().to_uppercase())
+}
+
+fn infer_existing_id_prefix(queue_path: &Path, done_path: &Path) -> Result<Option<String>> {
+    let mut inferred = None;
+    for path in [queue_path, done_path] {
+        let Some(prefix) = infer_id_prefix_from_queue_file(path)? else {
+            continue;
+        };
+        match inferred.as_deref() {
+            None => inferred = Some(prefix),
+            Some(existing) if existing == prefix => {}
+            Some(_) => return Ok(None),
+        }
+    }
+    Ok(inferred)
+}
+
+fn infer_id_prefix_from_queue_file(path: &Path) -> Result<Option<String>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let raw = std::fs::read_to_string(path)
+        .with_context(|| format!("read queue file for id-prefix inference {}", path.display()))?;
+    let Ok(queue) =
+        crate::jsonc::parse_jsonc::<crate::contracts::QueueFile>(&raw, "queue id-prefix inference")
+    else {
+        return Ok(None);
+    };
+
+    let mut prefix = None;
+    for task in queue.tasks {
+        let Some((raw_prefix, number)) = task.id.split_once('-') else {
+            continue;
+        };
+        if raw_prefix.trim().is_empty() || number.trim().is_empty() {
+            continue;
+        }
+        let normalized = raw_prefix.trim().to_uppercase();
+        match prefix.as_deref() {
+            None => prefix = Some(normalized),
+            Some(existing) if existing == normalized => {}
+            Some(_) => return Ok(None),
+        }
+    }
+    Ok(prefix)
 }
 
 /// Resolve the queue ID width from config.

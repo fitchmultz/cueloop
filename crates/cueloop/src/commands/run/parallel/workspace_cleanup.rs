@@ -72,7 +72,7 @@ mod tests {
             git_test::git_output(temp.path(), &["rev-parse", "--abbrev-ref", "HEAD"])?;
         let workspace_root = temp.path().join("workspaces");
 
-        let spec = git::create_workspace_at(temp.path(), &workspace_root, "RQ-TEST", &base_branch)?;
+        let spec = git::create_workspace_at(temp.path(), &workspace_root, "CL-TEST", &base_branch)?;
         assert!(spec.path.exists());
 
         remove_workspace_best_effort(&workspace_root, &spec, "test cleanup");
@@ -88,7 +88,7 @@ mod tests {
         std::fs::create_dir_all(&workspace_root).unwrap();
 
         let spec = git::WorkspaceSpec {
-            path: workspace_root.join("RQ-NONEXISTENT"),
+            path: workspace_root.join("CL-NONEXISTENT"),
             branch: "main".to_string(),
         };
 

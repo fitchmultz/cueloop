@@ -313,14 +313,14 @@ mod tests {
             crate::timeutil::format_rfc3339(start + Duration::days(1) + Duration::hours(18))
                 .unwrap();
 
-        let t1 = test_task("RQ-001", Some(three_days_ago_str.clone()), None);
+        let t1 = test_task("CL-001", Some(three_days_ago_str.clone()), None);
         let t2 = test_task(
-            "RQ-002",
+            "CL-002",
             Some(three_days_ago_str),
             Some(day_three_start_str),
         );
         let t3 = test_task(
-            "RQ-003",
+            "CL-003",
             Some(day_two_midday_str),
             Some(day_two_evening_str),
         );
@@ -360,7 +360,7 @@ mod tests {
         let timestamp_str = crate::timeutil::format_rfc3339(now - Duration::days(1)).unwrap();
 
         let tasks: Vec<Task> = (0..45)
-            .map(|i| test_task(&format!("RQ-{:03}", i), Some(timestamp_str.clone()), None))
+            .map(|i| test_task(&format!("CL-{:03}", i), Some(timestamp_str.clone()), None))
             .collect();
 
         let queue = queue_with(tasks);

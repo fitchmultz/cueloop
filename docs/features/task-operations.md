@@ -27,7 +27,7 @@ This page shows how operators create and mutate CueLoop tasks from the CLI and t
 | Template | `cueloop task template build <name>` | From predefined template |
 | Refactor Scan | `cueloop task refactor` | Auto-generate from large files |
 | Import | `cueloop queue import` | Bulk import from CSV/JSON |
-| Clone | `cueloop task clone RQ-0001` | Duplicate existing task |
+| Clone | `cueloop task clone CL-0001` | Duplicate existing task |
 | App (macOS) | `cueloop app open` | Visual task creation and triage |
 
 ### Direct CLI Creation
@@ -128,13 +128,13 @@ cueloop queue import --format json --input tasks.json --on-duplicate rename
 
 ```bash
 # Clone existing task
-cueloop task clone RQ-0001
+cueloop task clone CL-0001
 
 # Clone with status override
-cueloop task clone RQ-0001 --status todo
+cueloop task clone CL-0001 --status todo
 
 # Clone with title prefix
-cueloop task clone RQ-0001 --title-prefix "[Follow-up] "
+cueloop task clone CL-0001 --title-prefix "[Follow-up] "
 ```
 
 Creates a new task with copied fields (except ID and timestamps) and a reference in `relates_to`.
@@ -147,18 +147,18 @@ Creates a new task with copied fields (except ID and timestamps) and a reference
 
 ```bash
 # Edit single field
-cueloop task edit priority high RQ-0001
-cueloop task edit status doing RQ-0001
-cueloop task edit tags "rust,cli" RQ-0001
+cueloop task edit priority high CL-0001
+cueloop task edit status doing CL-0001
+cueloop task edit tags "rust,cli" CL-0001
 
 # Edit multiple tasks
-cueloop task edit priority low RQ-0001 RQ-0002 RQ-0003
+cueloop task edit priority low CL-0001 CL-0002 CL-0003
 
 # Edit by tag filter
 cueloop task edit status doing --tag-filter rust
 
 # Dry run to preview
-cueloop task edit scope "src/auth.rs" RQ-0001 --dry-run
+cueloop task edit scope "src/auth.rs" CL-0001 --dry-run
 ```
 
 ### Editable Fields
@@ -173,38 +173,38 @@ cueloop task edit scope "src/auth.rs" RQ-0001 --dry-run
 | `evidence` | comma/newline separated | `logs/error.txt` |
 | `plan` | comma/newline separated | `Step 1, Step 2` |
 | `notes` | comma/newline separated | `Note 1; Note 2` |
-| `depends_on` | comma/newline separated | `RQ-0001,RQ-0002` |
-| `blocks` | comma/newline separated | `RQ-0003` |
-| `relates_to` | comma/newline separated | `RQ-0004` |
-| `duplicates` | string or empty | `RQ-0005`, `""` |
+| `depends_on` | comma/newline separated | `CL-0001,CL-0002` |
+| `blocks` | comma/newline separated | `CL-0003` |
+| `relates_to` | comma/newline separated | `CL-0004` |
+| `duplicates` | string or empty | `CL-0005`, `""` |
 | `custom_fields` | key=value pairs | `severity=high,owner=cueloop` |
 
 ### Custom Field Editing
 
 ```bash
 # Set custom fields
-cueloop task field severity high RQ-0001
-cueloop task field owner platform RQ-0001
-cueloop task field story-points 5 RQ-0001
+cueloop task field severity high CL-0001
+cueloop task field owner platform CL-0001
+cueloop task field story-points 5 CL-0001
 
 # Set on multiple tasks
-cueloop task field sprint 24 RQ-0001 RQ-0002 RQ-0003
+cueloop task field sprint 24 CL-0001 CL-0002 CL-0003
 ```
 
 ### AI-Powered Update
 
 ```bash
 # AI updates fields based on repository state
-cueloop task update RQ-0001
+cueloop task update CL-0001
 
 # Update specific fields
-cueloop task update RQ-0001 --fields scope,evidence
+cueloop task update CL-0001 --fields scope,evidence
 
 # Update all tasks
 cueloop task update --fields all
 
 # Dry run
-cueloop task update RQ-0001 --dry-run
+cueloop task update CL-0001 --dry-run
 ```
 
 Uses the prompt at `.cueloop/prompts/task_updater.md` to guide AI field updates.
@@ -213,16 +213,16 @@ Uses the prompt at `.cueloop/prompts/task_updater.md` to guide AI field updates.
 
 ```bash
 # Batch status change
-cueloop task batch status doing RQ-0001 RQ-0002
+cueloop task batch status doing CL-0001 CL-0002
 
 # Batch with tag filter
 cueloop task batch status done --tag-filter "completed"
 
 # Batch field edit
-cueloop task batch edit priority high RQ-0001 RQ-0002
+cueloop task batch edit priority high CL-0001 CL-0002
 
 # Continue on error
-cueloop task batch status doing RQ-0001 RQ-0002 --continue-on-error
+cueloop task batch status doing CL-0001 CL-0002 --continue-on-error
 
 # Dry run
 cueloop task batch edit priority low --tag-filter backlog --dry-run
@@ -307,17 +307,17 @@ EOF
 |-----------|---------|
 | Create task | `cueloop task "description"` |
 | Build with AI | `cueloop task build "description"` |
-| Show task | `cueloop task show RQ-0001` |
-| Edit field | `cueloop task edit <field> <value> RQ-0001` |
-| Set custom field | `cueloop task field <key> <value> RQ-0001` |
-| Change status | `cueloop task status <status> RQ-0001` |
-| Mark done | `cueloop task done RQ-0001` |
-| Clone task | `cueloop task clone RQ-0001` |
-| Add dependency | `cueloop task edit depends_on "RQ-0001,RQ-0002" RQ-0003` |
-| Relate tasks | `cueloop task relate RQ-0001 RQ-0002` |
-| Mark duplicate | `cueloop task mark-duplicate RQ-0001 RQ-0002` |
-| List children | `cueloop task children RQ-0001` |
-| Show parent | `cueloop task parent RQ-0002` |
+| Show task | `cueloop task show CL-0001` |
+| Edit field | `cueloop task edit <field> <value> CL-0001` |
+| Set custom field | `cueloop task field <key> <value> CL-0001` |
+| Change status | `cueloop task status <status> CL-0001` |
+| Mark done | `cueloop task done CL-0001` |
+| Clone task | `cueloop task clone CL-0001` |
+| Add dependency | `cueloop task edit depends_on "CL-0001,CL-0002" CL-0003` |
+| Relate tasks | `cueloop task relate CL-0001 CL-0002` |
+| Mark duplicate | `cueloop task mark-duplicate CL-0001 CL-0002` |
+| List children | `cueloop task children CL-0001` |
+| Show parent | `cueloop task parent CL-0002` |
 | Validate queue | `cueloop queue validate` |
 
 ---

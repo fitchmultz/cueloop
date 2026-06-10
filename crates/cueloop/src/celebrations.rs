@@ -215,21 +215,21 @@ mod tests {
 
     #[test]
     fn test_celebrate_standard_includes_task_info() {
-        let result = celebrate_standard("RQ-0001", "Test task");
-        assert!(result.contains("RQ-0001"));
+        let result = celebrate_standard("CL-0001", "Test task");
+        assert!(result.contains("CL-0001"));
         assert!(result.contains("Test task"));
         assert!(result.contains("completed"));
     }
 
     #[test]
     fn test_celebrate_streak_includes_streak_count() {
-        let result = celebrate_streak("RQ-0001", "Test task", 5);
+        let result = celebrate_streak("CL-0001", "Test task", 5);
         assert!(result.contains("5-day streak"));
     }
 
     #[test]
     fn test_celebrate_milestone_includes_threshold() {
-        let result = celebrate_milestone("RQ-0001", "Test task", 100, 3);
+        let result = celebrate_milestone("CL-0001", "Test task", 100, 3);
         assert!(result.contains("100"));
         assert!(result.contains("Milestone"));
         assert!(result.contains("3-day streak"));
@@ -251,7 +251,7 @@ mod tests {
             total_completed: 10,
         };
 
-        let result = celebrate_task_completion("RQ-0010", "Milestone task", &completion_result);
+        let result = celebrate_task_completion("CL-0010", "Milestone task", &completion_result);
         assert!(result.contains("Milestone"));
         assert!(result.contains("10"));
         assert!(result.contains("3-day streak"));
@@ -266,7 +266,7 @@ mod tests {
             total_completed: 15,
         };
 
-        let result = celebrate_task_completion("RQ-0015", "Streak task", &completion_result);
+        let result = celebrate_task_completion("CL-0015", "Streak task", &completion_result);
         assert!(result.contains("5-day streak"));
         assert!(!result.contains("Milestone"));
     }

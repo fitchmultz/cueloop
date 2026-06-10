@@ -33,7 +33,7 @@ use super::QueueShowFormat;
 /// Arguments for `cueloop queue show`.
 #[derive(Args)]
 #[command(
-    after_long_help = "Examples:\n  cueloop queue show RQ-0001\n  cueloop queue show RQ-0001 --format compact"
+    after_long_help = "Examples:\n  cueloop queue show CL-0001\n  cueloop queue show CL-0001 --format compact"
 )]
 pub struct QueueShowArgs {
     /// Task ID to show.

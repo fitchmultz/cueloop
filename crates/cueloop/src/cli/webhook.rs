@@ -41,7 +41,7 @@ pub enum WebhookCommand {
     Status(StatusArgs),
     /// Replay failed webhook deliveries with explicit targeting.
     #[command(
-        after_long_help = "Examples:\n  cueloop webhook replay --id wf-1700000000-1 --dry-run\n  cueloop webhook replay --event task_completed --limit 5\n  cueloop webhook replay --task-id RQ-0814 --max-replay-attempts 3"
+        after_long_help = "Examples:\n  cueloop webhook replay --id wf-1700000000-1 --dry-run\n  cueloop webhook replay --event task_completed --limit 5\n  cueloop webhook replay --task-id CL-0814 --max-replay-attempts 3"
     )]
     Replay(ReplayArgs),
 }

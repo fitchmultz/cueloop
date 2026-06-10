@@ -89,7 +89,7 @@ The plan is stored as non-empty Markdown in `.cueloop/cache/plans/<TASK_ID>.md`.
 CueLoop does not parse a fixed heading structure; the layout below is an illustrative example, not a required format:
 
 ```markdown
-# Implementation Plan for RQ-0001
+# Implementation Plan for CL-0001
 
 ## Analysis
 [Agent's analysis of the task]
@@ -452,10 +452,10 @@ CueLoop generates unique session IDs for crash recovery:
 
 ```
 Format: {task_id}-p{phase}-{timestamp}
-Example: RQ-0001-p2-1704153600
+Example: CL-0001-p2-1704153600
 ```
 
-- `task_id`: The task being executed (e.g., `RQ-0001`)
+- `task_id`: The task being executed (e.g., `CL-0001`)
 - `phase`: Phase number (`0` for single-phase, `1`, `2`, or `3`)
 - `timestamp`: Unix epoch seconds when the phase started
 
@@ -479,8 +479,8 @@ Session management is primarily for **Kimi** (which doesn't emit session IDs in 
 ### Crash Recovery Flow
 
 ```
-1. Phase 2 starts → Generate session ID: RQ-0001-p2-1704153600
-2. Runner executes with --session RQ-0001-p2-1704153600
+1. Phase 2 starts → Generate session ID: CL-0001-p2-1704153600
+2. Runner executes with --session CL-0001-p2-1704153600
 3. CI fails → Continue session stored
 4. Crash or interruption
 5. User runs: cueloop run resume
@@ -494,9 +494,9 @@ Session state is persisted to `.cueloop/cache/session.jsonc`:
 
 ```json
 {
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "phase": 2,
-  "session_id": "RQ-0001-p2-1704153600",
+  "session_id": "CL-0001-p2-1704153600",
   "runner": "kimi",
   "model": "kimi-for-coding",
   "ci_failure_retry_count": 1
@@ -546,7 +546,7 @@ Phase transitions emit webhook events (opt-in):
 ```json
 {
   "event": "phase_started",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "phase": 2,
   "phase_count": 3,
   "runner": "kimi",
@@ -557,7 +557,7 @@ Phase transitions emit webhook events (opt-in):
 ```json
 {
   "event": "phase_completed",
-  "task_id": "RQ-0001",
+  "task_id": "CL-0001",
   "phase": 2,
   "phase_count": 3,
   "duration_ms": 12500,
@@ -691,7 +691,7 @@ Error: Phase 1 violated plan-only contract
 If Phase 3 loops indefinitely:
 
 ```
-Phase 3 incomplete: task RQ-0001 is not archived with a terminal status
+Phase 3 incomplete: task CL-0001 is not archived with a terminal status
 ```
 
 **Solutions**:

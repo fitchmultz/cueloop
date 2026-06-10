@@ -92,7 +92,7 @@ echo '{{"type":"session","sessionID":"sess-123"}}'
     post_run_supervise(
         &resolved,
         None,
-        "RQ-0001",
+        "CL-0001",
         GitRevertMode::Ask,
         crate::contracts::GitPublishMode::Off,
         PushPolicy::RequireUpstream,

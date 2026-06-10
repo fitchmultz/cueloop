@@ -86,13 +86,13 @@ fn integration_config_default_backoff() {
 
 #[test]
 fn remediation_handoff_builder() {
-    let handoff = RemediationHandoff::new("RQ-0001", "Test Task", "main", 2, 5)
+    let handoff = RemediationHandoff::new("CL-0001", "Test Task", "main", 2, 5)
         .with_conflicts(vec!["src/lib.rs".into(), "src/main.rs".into()])
         .with_git_status("UU src/lib.rs\nUU src/main.rs".into())
         .with_phase_summary("Implemented feature X".into())
         .with_task_intent("Complete feature X implementation".into());
 
-    assert_eq!(handoff.task_id, "RQ-0001");
+    assert_eq!(handoff.task_id, "CL-0001");
     assert_eq!(handoff.task_title, "Test Task");
     assert_eq!(handoff.target_branch, "main");
     assert_eq!(handoff.attempt, 2);
@@ -104,7 +104,7 @@ fn remediation_handoff_builder() {
 
 #[test]
 fn remediation_handoff_with_ci() {
-    let handoff = RemediationHandoff::new("RQ-0001", "Test", "main", 1, 5).with_ci_context(
+    let handoff = RemediationHandoff::new("CL-0001", "Test", "main", 1, 5).with_ci_context(
         "make ci".into(),
         "test failed".into(),
         1,
@@ -122,7 +122,7 @@ fn integration_prompt_contains_mandatory_contract() {
     let queue_path = crate::testsupport::path::portable_abs_path("queue.json");
     let done_path = crate::testsupport::path::portable_abs_path("done.json");
     let prompt = build_agent_integration_prompt(
-        "RQ-0001",
+        "CL-0001",
         "Implement feature",
         "main",
         &queue_path,
@@ -147,7 +147,7 @@ fn integration_prompt_uses_explicit_target_branch_for_integration() {
     let queue_path = crate::testsupport::path::portable_abs_path("queue.json");
     let done_path = crate::testsupport::path::portable_abs_path("done.json");
     let prompt = build_agent_integration_prompt(
-        "RQ-0001",
+        "CL-0001",
         "Implement feature",
         "release/2026",
         &queue_path,
@@ -171,7 +171,7 @@ fn integration_prompt_sanitizes_nul_bytes() {
     let queue_path = crate::testsupport::path::portable_abs_path("queue.json");
     let done_path = crate::testsupport::path::portable_abs_path("done.json");
     let prompt = build_agent_integration_prompt(
-        "RQ-0001",
+        "CL-0001",
         "NUL test",
         "main",
         &queue_path,
@@ -222,7 +222,7 @@ fn integration_config_uses_explicit_target_branch() -> anyhow::Result<()> {
         repo_root: dir.path().to_path_buf(),
         queue_path: dir.path().join(".cueloop/queue.json"),
         done_path: dir.path().join(".cueloop/done.json"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -249,7 +249,7 @@ fn task_archived_validation_uses_resolved_paths_not_workspace_local_files() -> a
     let mut coordinator_queue_file = QueueFile::default();
     coordinator_queue_file
         .tasks
-        .push(make_task("RQ-0001", TaskStatus::Todo));
+        .push(make_task("CL-0001", TaskStatus::Todo));
     crate::queue::save_queue(&coordinator_queue, &coordinator_queue_file)?;
     crate::queue::save_queue(&coordinator_done, &QueueFile::default())?;
 
@@ -257,7 +257,7 @@ fn task_archived_validation_uses_resolved_paths_not_workspace_local_files() -> a
     let mut workspace_done_file = QueueFile::default();
     workspace_done_file
         .tasks
-        .push(make_task("RQ-0001", TaskStatus::Done));
+        .push(make_task("CL-0001", TaskStatus::Done));
     crate::queue::save_queue(&workspace_done, &workspace_done_file)?;
 
     let resolved = crate::config::Resolved {
@@ -265,13 +265,13 @@ fn task_archived_validation_uses_resolved_paths_not_workspace_local_files() -> a
         repo_root: worker_workspace,
         queue_path: coordinator_queue.clone(),
         done_path: coordinator_done,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
     };
 
-    let err = validate_task_archived(&resolved, "RQ-0001")
+    let err = validate_task_archived(&resolved, "CL-0001")
         .expect_err("validation should use resolved queue path");
     let msg = err.to_string();
     assert!(
@@ -304,7 +304,7 @@ fn queue_done_semantics_validation_uses_resolved_paths() -> anyhow::Result<()> {
     let mut valid_queue = QueueFile::default();
     valid_queue
         .tasks
-        .push(make_task("RQ-0001", TaskStatus::Todo));
+        .push(make_task("CL-0001", TaskStatus::Todo));
     crate::queue::save_queue(&workspace_queue, &valid_queue)?;
     crate::queue::save_queue(&workspace_done, &QueueFile::default())?;
 
@@ -313,7 +313,7 @@ fn queue_done_semantics_validation_uses_resolved_paths() -> anyhow::Result<()> {
         repo_root: worker_workspace.clone(),
         queue_path: coordinator_queue,
         done_path: coordinator_done,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -327,9 +327,9 @@ fn queue_done_semantics_validation_uses_resolved_paths() -> anyhow::Result<()> {
 #[test]
 fn blocked_marker_roundtrip() -> anyhow::Result<()> {
     let temp = TempDir::new()?;
-    super::persistence::write_blocked_push_marker(temp.path(), "RQ-0001", "blocked reason", 5, 5)?;
+    super::persistence::write_blocked_push_marker(temp.path(), "CL-0001", "blocked reason", 5, 5)?;
     let marker = read_blocked_push_marker(temp.path())?.expect("marker should exist");
-    assert_eq!(marker.task_id, "RQ-0001");
+    assert_eq!(marker.task_id, "CL-0001");
     assert_eq!(marker.reason, "blocked reason");
     assert_eq!(marker.attempt, 5);
     assert_eq!(marker.max_attempts, 5);
@@ -354,14 +354,14 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     let mut target_queue = QueueFile::default();
     target_queue
         .tasks
-        .push(make_task("RQ-0001", TaskStatus::Todo));
+        .push(make_task("CL-0001", TaskStatus::Todo));
     target_queue
         .tasks
-        .push(make_task("RQ-0003", TaskStatus::Todo));
+        .push(make_task("CL-0003", TaskStatus::Todo));
     let mut target_done = QueueFile::default();
     target_done
         .tasks
-        .push(make_task("RQ-0002", TaskStatus::Done));
+        .push(make_task("CL-0002", TaskStatus::Done));
     crate::queue::save_queue(&seed.join(".cueloop/queue.jsonc"), &target_queue)?;
     crate::queue::save_queue(&seed.join(".cueloop/done.jsonc"), &target_done)?;
     std::fs::write(seed.join("README.md"), "base\n")?;
@@ -380,13 +380,13 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     let mut stale_queue = QueueFile::default();
     stale_queue
         .tasks
-        .push(make_task("RQ-0001", TaskStatus::Todo));
+        .push(make_task("CL-0001", TaskStatus::Todo));
     stale_queue
         .tasks
-        .push(make_task("RQ-0002", TaskStatus::Todo));
+        .push(make_task("CL-0002", TaskStatus::Todo));
     stale_queue
         .tasks
-        .push(make_task("RQ-0003", TaskStatus::Todo));
+        .push(make_task("CL-0003", TaskStatus::Todo));
     crate::queue::save_queue(&worker.join(".cueloop/queue.jsonc"), &stale_queue)?;
     crate::queue::save_queue(&worker.join(".cueloop/done.jsonc"), &QueueFile::default())?;
     std::fs::write(worker.join("work.txt"), "worker implementation\n")?;
@@ -397,7 +397,7 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
         repo_root: worker.clone(),
         queue_path: worker.join(".cueloop/queue.jsonc"),
         done_path: worker.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -410,7 +410,7 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
         ci_label: "disabled".to_string(),
     };
 
-    let result = finalize_bookkeeping_and_push(&resolved, "RQ-0001", &config)?;
+    let result = finalize_bookkeeping_and_push(&resolved, "CL-0001", &config)?;
     assert!(
         result.pushed,
         "machine integration should push successfully"
@@ -432,9 +432,9 @@ fn machine_bookkeeping_rebuilds_from_latest_target_before_push() -> anyhow::Resu
     let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
     let remote_done: QueueFile = serde_json::from_str(&remote_done_json)?;
 
-    assert_eq!(remote_subject, "cueloop: archive RQ-0001 queue bookkeeping");
-    assert_eq!(task_ids(&remote_queue), vec!["RQ-0003"]);
-    assert_eq!(task_ids(&remote_done), vec!["RQ-0002", "RQ-0001"]);
+    assert_eq!(remote_subject, "cueloop: archive CL-0001 queue bookkeeping");
+    assert_eq!(task_ids(&remote_queue), vec!["CL-0003"]);
+    assert_eq!(task_ids(&remote_done), vec!["CL-0002", "CL-0001"]);
     Ok(())
 }
 
@@ -450,7 +450,7 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
     git_test::init_repo(&seed)?;
     git_test::add_remote(&seed, "origin", &remote)?;
 
-    let mut source = make_task("RQ-0001", TaskStatus::Todo);
+    let mut source = make_task("CL-0001", TaskStatus::Todo);
     source.request = Some("Audit docs and create follow-up work".to_string());
     let target_queue = QueueFile {
         version: 1,
@@ -472,14 +472,14 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
     git_test::configure_user(&worker)?;
     std::fs::write(worker.join("work.txt"), "worker implementation\n")?;
     git_test::commit_all(&worker, "worker implementation")?;
-    write_parallel_followups(&worker, "RQ-0001", valid_parallel_followups())?;
+    write_parallel_followups(&worker, "CL-0001", valid_parallel_followups())?;
 
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
         queue_path: worker.join(".cueloop/queue.jsonc"),
         done_path: worker.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -492,7 +492,7 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
         ci_label: "disabled".to_string(),
     };
 
-    let result = finalize_bookkeeping_and_push(&resolved, "RQ-0001", &config)?;
+    let result = finalize_bookkeeping_and_push(&resolved, "CL-0001", &config)?;
     assert!(result.pushed);
 
     git_test::git_run(&worker, &["fetch", "origin", &branch])?;
@@ -507,15 +507,15 @@ fn machine_bookkeeping_applies_parallel_followup_proposal_before_push() -> anyho
     let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
     let remote_done: QueueFile = serde_json::from_str(&remote_done_json)?;
 
-    assert_eq!(task_ids(&remote_queue), vec!["RQ-0002", "RQ-0003"]);
-    assert_eq!(task_ids(&remote_done), vec!["RQ-0001"]);
+    assert_eq!(task_ids(&remote_queue), vec!["CL-0002", "CL-0003"]);
+    assert_eq!(task_ids(&remote_done), vec!["CL-0001"]);
     assert_eq!(
         remote_queue.tasks[0].request.as_deref(),
         Some("Audit docs and create follow-up work")
     );
-    assert_eq!(remote_queue.tasks[0].relates_to, vec!["RQ-0001"]);
-    assert_eq!(remote_queue.tasks[1].depends_on, vec!["RQ-0002"]);
-    assert!(!crate::queue::default_followups_path(&worker, "RQ-0001").exists());
+    assert_eq!(remote_queue.tasks[0].relates_to, vec!["CL-0001"]);
+    assert_eq!(remote_queue.tasks[1].depends_on, vec!["CL-0002"]);
+    assert!(!crate::queue::default_followups_path(&worker, "CL-0001").exists());
     Ok(())
 }
 
@@ -531,7 +531,7 @@ fn machine_bookkeeping_keeps_followup_proposal_until_push_succeeds() -> anyhow::
     git_test::init_repo(&seed)?;
     git_test::add_remote(&seed, "origin", &remote)?;
 
-    let mut source = make_task("RQ-0001", TaskStatus::Todo);
+    let mut source = make_task("CL-0001", TaskStatus::Todo);
     source.request = Some("Audit docs and create follow-up work".to_string());
     crate::queue::save_queue(
         &seed.join(".cueloop/queue.jsonc"),
@@ -553,25 +553,25 @@ fn machine_bookkeeping_keeps_followup_proposal_until_push_succeeds() -> anyhow::
     let worker = temp.path().join("worker");
     git_test::clone_repo(&remote, &worker)?;
     git_test::configure_user(&worker)?;
-    let proposal_path = write_parallel_followups(&worker, "RQ-0001", valid_parallel_followups())?;
+    let proposal_path = write_parallel_followups(&worker, "CL-0001", valid_parallel_followups())?;
 
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
         queue_path: worker.join(".cueloop/queue.jsonc"),
         done_path: worker.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
     };
 
-    let report = rebuild_bookkeeping_from_target(&resolved, "RQ-0001", &branch)?;
+    let report = rebuild_bookkeeping_from_target(&resolved, "CL-0001", &branch)?;
 
     assert!(report.is_some());
     assert!(proposal_path.exists());
     let queue = crate::queue::load_queue(&resolved.queue_path)?;
-    assert_eq!(task_ids(&queue), vec!["RQ-0002", "RQ-0003"]);
+    assert_eq!(task_ids(&queue), vec!["CL-0002", "CL-0003"]);
     Ok(())
 }
 
@@ -589,7 +589,7 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
 
     let target_queue = QueueFile {
         version: 1,
-        tasks: vec![make_task("RQ-0001", TaskStatus::Todo)],
+        tasks: vec![make_task("CL-0001", TaskStatus::Todo)],
     };
     crate::queue::save_queue(&seed.join(".cueloop/queue.jsonc"), &target_queue)?;
     crate::queue::save_queue(&seed.join(".cueloop/done.jsonc"), &QueueFile::default())?;
@@ -610,14 +610,14 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
 
     let mut proposal = valid_parallel_followups();
     proposal["tasks"][0]["depends_on_keys"] = serde_json::json!(["missing-key"]);
-    let proposal_path = write_parallel_followups(&worker, "RQ-0001", proposal)?;
+    let proposal_path = write_parallel_followups(&worker, "CL-0001", proposal)?;
 
     let resolved = crate::config::Resolved {
         config: crate::contracts::Config::default(),
         repo_root: worker.clone(),
         queue_path: worker.join(".cueloop/queue.jsonc"),
         done_path: worker.join(".cueloop/done.jsonc"),
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path: None,
@@ -630,7 +630,7 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
         ci_label: "disabled".to_string(),
     };
 
-    let result = finalize_bookkeeping_and_push(&resolved, "RQ-0001", &config)?;
+    let result = finalize_bookkeeping_and_push(&resolved, "CL-0001", &config)?;
     assert!(!result.pushed);
     assert!(
         result
@@ -646,14 +646,14 @@ fn machine_bookkeeping_blocks_invalid_parallel_followup_proposal() -> anyhow::Re
         &["show", &format!("origin/{branch}:.cueloop/queue.jsonc")],
     )?;
     let remote_queue: QueueFile = serde_json::from_str(&remote_queue_json)?;
-    assert_eq!(task_ids(&remote_queue), vec!["RQ-0001"]);
+    assert_eq!(task_ids(&remote_queue), vec!["CL-0001"]);
     Ok(())
 }
 
 fn valid_parallel_followups() -> serde_json::Value {
     serde_json::json!({
         "version": 1,
-        "source_task_id": "RQ-0001",
+        "source_task_id": "CL-0001",
         "tasks": [
             {
                 "key": "docs-hierarchy",

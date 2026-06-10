@@ -89,7 +89,7 @@ fn create_and_remove_workspace_round_trips() -> Result<()> {
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".cueloop/workspaces/parallel");
 
-    let spec = create_workspace_at(temp.path(), &root, "RQ-0001", &base_branch)?;
+    let spec = create_workspace_at(temp.path(), &root, "CL-0001", &base_branch)?;
     assert!(spec.path.exists(), "workspace path should exist");
     assert_eq!(spec.branch, base_branch);
 
@@ -104,10 +104,10 @@ fn create_workspace_reuses_existing_and_cleans() -> Result<()> {
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".cueloop/workspaces/parallel");
 
-    let first = create_workspace_at(temp.path(), &root, "RQ-0001", &base_branch)?;
+    let first = create_workspace_at(temp.path(), &root, "CL-0001", &base_branch)?;
     std::fs::write(first.path.join("dirty.txt"), "dirty")?;
 
-    let second = create_workspace_at(temp.path(), &root, "RQ-0001", &base_branch)?;
+    let second = create_workspace_at(temp.path(), &root, "CL-0001", &base_branch)?;
     assert_eq!(first.path, second.path);
     assert!(!second.path.join("dirty.txt").exists());
     assert_eq!(second.branch, base_branch);
@@ -128,7 +128,7 @@ fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() ->
 
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".cueloop/workspaces/parallel");
-    let first = create_workspace_at(temp.path(), &root, "RQ-0009", &base_branch)?;
+    let first = create_workspace_at(temp.path(), &root, "CL-0009", &base_branch)?;
 
     git_test::git_run(&first.path, &["checkout", "-b", "stale-no-config"])?;
     git_test::git_run(&first.path, &["rm", "--cached", ".cueloop/config.jsonc"])?;
@@ -154,7 +154,7 @@ fn create_workspace_reuses_existing_with_conflicting_untracked_tracked_path() ->
         "expected stale branch to have untracked .cueloop/config.jsonc, got: {stale_status}"
     );
 
-    let second = create_workspace_at(temp.path(), &root, "RQ-0009", &base_branch)?;
+    let second = create_workspace_at(temp.path(), &root, "CL-0009", &base_branch)?;
     assert_eq!(first.path, second.path);
     let status_after = git_test::git_output(
         &second.path,
@@ -176,7 +176,7 @@ fn create_workspace_with_existing_branch() -> Result<()> {
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".cueloop/workspaces/parallel");
 
-    let spec = create_workspace_at(temp.path(), &root, "RQ-0002", &base_branch)?;
+    let spec = create_workspace_at(temp.path(), &root, "CL-0002", &base_branch)?;
     assert!(spec.path.exists());
     assert_eq!(spec.branch, base_branch);
 
@@ -194,7 +194,7 @@ fn create_workspace_requires_origin_remote() -> Result<()> {
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".cueloop/workspaces/parallel");
 
-    let err = create_workspace_at(temp.path(), &root, "RQ-0003", &base_branch)
+    let err = create_workspace_at(temp.path(), &root, "CL-0003", &base_branch)
         .expect_err("missing origin should fail");
     assert!(err.to_string().contains("origin"));
     Ok(())
@@ -206,7 +206,7 @@ fn remove_workspace_requires_force_when_dirty() -> Result<()> {
     let base_branch = current_branch(temp.path())?;
     let root = temp.path().join(".cueloop/workspaces/parallel");
 
-    let spec = create_workspace_at(temp.path(), &root, "RQ-0004", &base_branch)?;
+    let spec = create_workspace_at(temp.path(), &root, "CL-0004", &base_branch)?;
     std::fs::write(spec.path.join("dirty.txt"), "dirty")?;
     let err = remove_workspace(&root, &spec, false).expect_err("dirty should fail");
     assert!(err.to_string().contains("dirty"));
@@ -220,7 +220,7 @@ fn remove_workspace_requires_force_when_dirty() -> Result<()> {
 fn ensure_workspace_exists_creates_missing_workspace() -> Result<()> {
     let temp = seeded_repo()?;
     let branch = current_branch(temp.path())?;
-    let workspace_path = temp.path().join("workspaces/RQ-0001");
+    let workspace_path = temp.path().join("workspaces/CL-0001");
 
     ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
 
@@ -238,7 +238,7 @@ fn ensure_workspace_exists_creates_missing_workspace() -> Result<()> {
 fn ensure_workspace_exists_reuses_existing_and_cleans() -> Result<()> {
     let temp = seeded_repo()?;
     let branch = current_branch(temp.path())?;
-    let workspace_path = temp.path().join("workspaces/RQ-0001");
+    let workspace_path = temp.path().join("workspaces/CL-0001");
 
     ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
     std::fs::write(workspace_path.join("dirty.txt"), "dirty")?;
@@ -256,7 +256,7 @@ fn ensure_workspace_exists_reuses_existing_and_cleans() -> Result<()> {
 fn ensure_workspace_exists_replaces_invalid_workspace() -> Result<()> {
     let temp = seeded_repo()?;
     let branch = current_branch(temp.path())?;
-    let workspace_path = temp.path().join("workspaces/RQ-0001");
+    let workspace_path = temp.path().join("workspaces/CL-0001");
 
     std::fs::create_dir_all(&workspace_path)?;
     std::fs::write(workspace_path.join("some_file.txt"), "content")?;
@@ -272,7 +272,7 @@ fn ensure_workspace_exists_replaces_invalid_workspace() -> Result<()> {
 fn ensure_workspace_exists_replaces_unusable_git_workspace() -> Result<()> {
     let temp = seeded_repo()?;
     let branch = current_branch(temp.path())?;
-    let workspace_path = temp.path().join("workspaces/RQ-0005");
+    let workspace_path = temp.path().join("workspaces/CL-0005");
 
     ensure_workspace_exists(temp.path(), &workspace_path, &branch)?;
 
@@ -308,7 +308,7 @@ fn ensure_workspace_exists_fails_without_origin() -> Result<()> {
     git_test::commit_all(temp.path(), "init")?;
 
     let branch = current_branch(temp.path())?;
-    let workspace_path = temp.path().join("workspaces/RQ-0001");
+    let workspace_path = temp.path().join("workspaces/CL-0001");
 
     let err = ensure_workspace_exists(temp.path(), &workspace_path, &branch)
         .expect_err("should fail without origin");

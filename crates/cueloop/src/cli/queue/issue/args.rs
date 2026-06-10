@@ -45,13 +45,13 @@ pub enum QueueIssueCommand {
 #[derive(Args, Clone)]
 #[command(after_long_help = "Examples:\n\
   # Preview rendered markdown for a task\n\
-  cueloop queue issue publish RQ-0655 --dry-run\n\
+  cueloop queue issue publish CL-0655 --dry-run\n\
   # Create/update issue metadata and persist custom_fields\n\
-  cueloop queue issue publish RQ-0655\n\
+  cueloop queue issue publish CL-0655\n\
   # Add labels/assignees\n\
-  cueloop queue issue publish RQ-0655 --label bug --assignee @me\n\
+  cueloop queue issue publish CL-0655 --label bug --assignee @me\n\
   # Target another repo\n\
-  cueloop queue issue publish RQ-0655 --repo owner/repo")]
+  cueloop queue issue publish CL-0655 --repo owner/repo")]
 pub struct QueueIssuePublishArgs {
     /// Task ID to publish.
     pub task_id: String,
@@ -79,7 +79,7 @@ pub struct QueueIssuePublishArgs {
   # Safe preview from todo backlog\n\
   cueloop queue issue publish-many --status todo --tag bug --dry-run\n\
   # Publish selected slice with regex and labels\n\
-  cueloop queue issue publish-many --status todo --tag bug --id-pattern '^RQ-08' --label triage\n\
+  cueloop queue issue publish-many --status todo --tag bug --id-pattern '^CL-08' --label triage\n\
   # Execute publish with confirmation override\n\
   cueloop queue issue publish-many --status todo --execute --force")]
 pub struct QueueIssuePublishManyArgs {

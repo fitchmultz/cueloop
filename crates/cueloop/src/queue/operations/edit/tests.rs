@@ -24,7 +24,7 @@ use std::collections::HashMap;
 
 fn test_task() -> Task {
     Task {
-        id: "RQ-0001".to_string(),
+        id: "CL-0001".to_string(),
         title: "Test task".to_string(),
         description: None,
         status: TaskStatus::Todo,
@@ -68,17 +68,17 @@ fn preview_task_edit_shows_title_change() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Title,
         "New title",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
     .expect("preview should succeed");
 
-    assert_eq!(preview.task_id, "RQ-0001");
+    assert_eq!(preview.task_id, "CL-0001");
     assert_eq!(preview.field, "title");
     assert_eq!(preview.old_value, "Test task");
     assert_eq!(preview.new_value, "New title");
@@ -92,11 +92,11 @@ fn preview_task_edit_shows_status_change() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Status,
         "doing",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -115,11 +115,11 @@ fn preview_task_edit_shows_priority_change() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Priority,
         "high",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -138,11 +138,11 @@ fn preview_task_edit_shows_tags_change() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Tags,
         "bug, urgent",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -161,11 +161,11 @@ fn preview_task_edit_validates_empty_title() {
     let result = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Title,
         "",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     );
@@ -183,11 +183,11 @@ fn preview_task_edit_fails_for_missing_task() {
     let result = preview_task_edit(
         &queue,
         None,
-        "RQ-9999",
+        "CL-9999",
         TaskEditKey::Title,
         "New title",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     );
@@ -205,11 +205,11 @@ fn preview_task_edit_validates_invalid_status() {
     let result = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Status,
         "invalid_status",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     );
@@ -232,11 +232,11 @@ fn preview_task_edit_clears_request_with_empty_string() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Request,
         "",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -255,11 +255,11 @@ fn preview_task_edit_shows_custom_fields_change() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::CustomFields,
         "severity=high, owner=cueloop",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -289,11 +289,11 @@ fn preview_task_edit_shows_agent_override_change() {
     let preview = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Agent,
         input,
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -320,11 +320,11 @@ fn apply_task_edit_clears_agent_override_with_empty_value() {
     apply_task_edit(
         &mut queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Agent,
         "",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -380,11 +380,11 @@ fn preview_task_edit_invalid_priority_includes_canonical_parser_error() {
     let err = preview_task_edit(
         &queue,
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Priority,
         "nope",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -436,11 +436,11 @@ fn preview_and_apply_cycle_status_in_the_same_order() {
         let preview = preview_task_edit(
             &apply_queue,
             None,
-            "RQ-0001",
+            "CL-0001",
             TaskEditKey::Status,
             "", // empty => cycle
             &now,
-            "RQ",
+            "CL",
             4,
             10,
         )
@@ -449,11 +449,11 @@ fn preview_and_apply_cycle_status_in_the_same_order() {
         apply_task_edit(
             &mut apply_queue,
             None,
-            "RQ-0001",
+            "CL-0001",
             TaskEditKey::Status,
             "", // empty => cycle
             &now,
-            "RQ",
+            "CL",
             4,
             10,
         )
@@ -471,11 +471,11 @@ fn preview_and_apply_invalid_status_share_canonical_parse_error() {
     let preview_err = preview_task_edit(
         &test_queue(),
         None,
-        "RQ-0001",
+        "CL-0001",
         TaskEditKey::Status,
         "paused",
         &now,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -486,11 +486,11 @@ fn preview_and_apply_invalid_status_share_canonical_parse_error() {
         apply_task_edit(
             &mut q,
             None,
-            "RQ-0001",
+            "CL-0001",
             TaskEditKey::Status,
             "paused",
             &now,
-            "RQ",
+            "CL",
             4,
             10,
         )

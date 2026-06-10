@@ -62,7 +62,7 @@ mod tests {
 
     fn test_task() -> Task {
         Task {
-            id: "RQ-0001".to_string(),
+            id: "CL-0001".to_string(),
             status: TaskStatus::Todo,
             kind: Default::default(),
             title: "Test title".to_string(),

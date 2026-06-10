@@ -55,6 +55,7 @@ pub fn should_refresh_readme_for_command(command: &crate::cli::Command) -> bool 
         command,
         cli::Command::Run(_)
             | cli::Command::Task(_)
+            | cli::Command::Agent(_)
             | cli::Command::Scan(_)
             | cli::Command::Prompt(_)
             | cli::Command::Prd(_)
@@ -376,7 +377,7 @@ mod tests {
         let cli = crate::cli::Cli::parse_from(["cueloop", "scan", "--focus", "x"]);
         assert!(should_refresh_readme_for_command(&cli.command));
 
-        let cli = crate::cli::Cli::parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "run", "one", "--id", "CL-0001"]);
         assert!(should_refresh_readme_for_command(&cli.command));
 
         let cli =
@@ -398,7 +399,7 @@ mod tests {
 
     #[test]
     fn startup_sanity_mode_classifies_commands() {
-        let cli = crate::cli::Cli::parse_from(["cueloop", "run", "one", "--id", "RQ-0001"]);
+        let cli = crate::cli::Cli::parse_from(["cueloop", "run", "one", "--id", "CL-0001"]);
         assert_eq!(
             startup_sanity_mode(&cli.command),
             StartupSanityMode::Mutating

@@ -196,10 +196,10 @@ if __name__ == '__main__':
 echo "Test prompt" | ~/.config/cueloop/plugins/my.plugin/runner.sh run --model test
 
 # Test processor hook
-~/.config/cueloop/plugins/my.plugin/processor.sh validate_task RQ-0001 /tmp/test-task.json
+~/.config/cueloop/plugins/my.plugin/processor.sh validate_task CL-0001 /tmp/test-task.json
 
 # Debug environment variables
-CUELOOP_LOG=debug cueloop run one --id RQ-0001
+CUELOOP_LOG=debug cueloop run one --id CL-0001
 
 # Check plugin discovery
 cueloop plugin list

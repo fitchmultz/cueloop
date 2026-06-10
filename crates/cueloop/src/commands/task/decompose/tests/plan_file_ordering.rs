@@ -194,7 +194,7 @@ fn write_task_decomposition_plan_file_preserves_full_ordered_plan_coverage() -> 
     assert_eq!(queue_file.tasks[3].depends_on, vec![phase_2_id.clone()]);
     assert_eq!(queue_file.tasks[4].depends_on, vec![phase_3_id.clone()]);
 
-    queue::validation::validate_queue_set(&queue_file, None, "RQ", 4, 10)?;
+    queue::validation::validate_queue_set(&queue_file, None, "CL", 4, 10)?;
     Ok(())
 }
 

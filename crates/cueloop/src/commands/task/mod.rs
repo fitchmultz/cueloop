@@ -82,7 +82,7 @@ mod tests {
             .queue
             .id_prefix
             .clone()
-            .unwrap_or_else(|| "RQ".to_string());
+            .unwrap_or_else(|| "CL".to_string());
         let id_width = config.queue.id_width.unwrap_or(4) as usize;
 
         (

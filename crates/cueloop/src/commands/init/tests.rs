@@ -36,7 +36,7 @@ fn resolved_for(dir: &TempDir) -> crate::config::Resolved {
         repo_root,
         queue_path,
         done_path,
-        id_prefix: "RQ".to_string(),
+        id_prefix: "CL".to_string(),
         id_width: 4,
         global_config_path: None,
         project_config_path,
@@ -110,7 +110,7 @@ fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0001",
+      "id": "CL-0001",
       "status": "todo",
       "title": "Keep",
       "tags": ["code"],
@@ -128,7 +128,7 @@ fn init_skips_existing_when_not_forced() -> anyhow::Result<()> {
   "version": 1,
   "tasks": [
     {
-      "id": "RQ-0002",
+      "id": "CL-0002",
       "status": "done",
       "title": "Done",
       "tags": ["code"],
@@ -208,7 +208,7 @@ fn init_overwrites_when_forced() -> anyhow::Result<()> {
         cfg.queue.done_file,
         Some(std::path::PathBuf::from(".cueloop/done.jsonc"))
     );
-    assert_eq!(cfg.queue.id_prefix, Some("RQ".to_string()));
+    assert_eq!(cfg.queue.id_prefix, Some("CL".to_string()));
     assert_eq!(cfg.queue.id_width, Some(4));
     assert_eq!(cfg.agent.runner, Some(crate::contracts::Runner::Pi));
     assert_eq!(

@@ -224,7 +224,7 @@ mod tests {
             repo_root,
             queue_path,
             done_path,
-            id_prefix: "RQ".to_string(),
+            id_prefix: "CL".to_string(),
             id_width: 4,
             global_config_path: None,
             project_config_path,

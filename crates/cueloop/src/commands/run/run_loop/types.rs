@@ -89,8 +89,8 @@ mod tests {
             blocking: Box::new(BlockingState::runner_recovery(
                 "run_session",
                 "session_timed_out_requires_confirmation",
-                Some("RQ-1234".to_string()),
-                "Resume: refusing to continue timed-out session RQ-1234 without explicit confirmation.",
+                Some("CL-1234".to_string()),
+                "Resume: refusing to continue timed-out session CL-1234 without explicit confirmation.",
                 "The saved session is too old.",
             )),
         };
@@ -99,7 +99,7 @@ mod tests {
             .expect_err("runner recovery should stay terminal outside machine surfaces");
         assert!(
             err.to_string()
-                .contains("Resume: refusing to continue timed-out session RQ-1234")
+                .contains("Resume: refusing to continue timed-out session CL-1234")
         );
     }
 

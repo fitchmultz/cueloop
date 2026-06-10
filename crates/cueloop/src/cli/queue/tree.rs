@@ -31,7 +31,7 @@ use crate::queue::hierarchy::{HierarchyIndex, TaskSource, detect_parent_cycles, 
 #[derive(Args)]
 #[command(
     about = "Render a parent/child hierarchy tree (based on parent_id)",
-    after_long_help = "Examples:\n  cueloop queue tree\n  cueloop queue tree --include-done\n  cueloop queue tree --root RQ-0001\n  cueloop queue tree --max-depth 25"
+    after_long_help = "Examples:\n  cueloop queue tree\n  cueloop queue tree --include-done\n  cueloop queue tree --root CL-0001\n  cueloop queue tree --max-depth 25"
 )]
 pub struct QueueTreeArgs {
     #[arg(long, value_name = "TASK_ID")]
@@ -180,11 +180,11 @@ mod tests {
     #[test]
     fn tree_args_with_root() {
         let args = QueueTreeArgs {
-            root: Some("RQ-0001".to_string()),
+            root: Some("CL-0001".to_string()),
             include_done: true,
             max_depth: 10,
         };
-        assert_eq!(args.root, Some("RQ-0001".to_string()));
+        assert_eq!(args.root, Some("CL-0001".to_string()));
         assert_eq!(args.max_depth, 10);
         assert!(args.include_done);
     }

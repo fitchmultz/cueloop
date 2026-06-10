@@ -83,7 +83,7 @@ fn generate_single_task_includes_all_data() {
         &["feature".to_string()],
         &QueueFile::default(),
         None,
-        "RQ",
+        "CL",
         4,
         10,
     )
@@ -128,7 +128,7 @@ fn generate_multi_tasks_creates_per_story() {
         &[],
         &QueueFile::default(),
         None,
-        "RQ",
+        "CL",
         4,
         10,
     )

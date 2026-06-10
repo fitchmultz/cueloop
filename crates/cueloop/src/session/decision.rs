@@ -498,14 +498,14 @@ mod tests {
     #[test]
     fn fresh_start_resolution_preview_keeps_session_cache() {
         let temp_dir = tempfile::TempDir::new().expect("tempdir");
-        let session = test_session("RQ-0001");
+        let session = test_session("CL-0001");
         save_session(temp_dir.path(), &session).expect("save session");
 
         let resolution = fresh_start_resolution(
             temp_dir.path(),
             ResumeDecisionMode::Preview,
             ResumeReason::SessionDeclined,
-            Some("RQ-0001".to_string()),
+            Some("CL-0001".to_string()),
             "preview".to_string(),
             "detail".to_string(),
         )
@@ -521,14 +521,14 @@ mod tests {
     #[test]
     fn fresh_start_resolution_execute_clears_session_cache() {
         let temp_dir = tempfile::TempDir::new().expect("tempdir");
-        let session = test_session("RQ-0001");
+        let session = test_session("CL-0001");
         save_session(temp_dir.path(), &session).expect("save session");
 
         fresh_start_resolution(
             temp_dir.path(),
             ResumeDecisionMode::Execute,
             ResumeReason::SessionDeclined,
-            Some("RQ-0001".to_string()),
+            Some("CL-0001".to_string()),
             "execute".to_string(),
             "detail".to_string(),
         )
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn maybe_clear_session_preview_is_noop() {
         let temp_dir = tempfile::TempDir::new().expect("tempdir");
-        let session = test_session("RQ-0001");
+        let session = test_session("CL-0001");
         save_session(temp_dir.path(), &session).expect("save session");
 
         maybe_clear_session(temp_dir.path(), ResumeDecisionMode::Preview).expect("clear preview");
@@ -553,7 +553,7 @@ mod tests {
         let temp_dir = tempfile::TempDir::new().expect("tempdir");
         let queue = QueueFile {
             version: 1,
-            tasks: vec![test_task("RQ-0001", TaskStatus::Todo)],
+            tasks: vec![test_task("CL-0001", TaskStatus::Todo)],
         };
 
         let resolution = resolve_run_session_decision(

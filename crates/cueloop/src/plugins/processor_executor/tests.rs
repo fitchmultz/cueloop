@@ -119,7 +119,7 @@ fn test_no_enabled_processors_is_noop() {
     let registry = PluginRegistry::load(tmp.path(), &cfg).unwrap();
 
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
-    let task = create_test_task("RQ-0001");
+    let task = create_test_task("CL-0001");
     exec.validate_task(&task).unwrap();
 }
 
@@ -135,7 +135,7 @@ TASK_ID="$2"
 FILE="$3"
 
 if [ "$HOOK" = "validate_task" ]; then
-    grep '"id": "RQ-0001"' "$FILE" > /dev/null || exit 1
+    grep '"id": "CL-0001"' "$FILE" > /dev/null || exit 1
 fi
 exit 0
 "#;
@@ -155,7 +155,7 @@ exit 0
     assert!(registry.is_enabled("test.plugin"));
 
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
-    let task = create_test_task("RQ-0001");
+    let task = create_test_task("CL-0001");
     exec.validate_task(&task).unwrap();
 }
 
@@ -205,7 +205,7 @@ exit 0
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
 
     let original_prompt = "Original prompt";
-    let final_prompt = exec.pre_prompt("RQ-0001", original_prompt).unwrap();
+    let final_prompt = exec.pre_prompt("CL-0001", original_prompt).unwrap();
 
     assert!(final_prompt.contains("Original prompt"));
     assert!(final_prompt.contains("[PROCESSED BY test.plugin]"));
@@ -262,7 +262,7 @@ exit 0
     assert!(registry.is_enabled("b.plugin"));
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
 
-    let final_prompt = exec.pre_prompt("RQ-0001", "X").unwrap();
+    let final_prompt = exec.pre_prompt("CL-0001", "X").unwrap();
     assert_eq!(final_prompt, "XAB");
 }
 
@@ -292,7 +292,7 @@ exit 0
     assert!(registry.is_enabled("test.plugin"));
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
 
-    let _ = exec.pre_prompt("RQ-0001", "test").unwrap();
+    let _ = exec.pre_prompt("CL-0001", "test").unwrap();
     assert!(!std::path::Path::new("/tmp/should_not_exist.txt").exists());
 }
 
@@ -322,7 +322,7 @@ exit 1
     assert!(registry.is_enabled("test.plugin"));
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
 
-    let task = create_test_task("RQ-0001");
+    let task = create_test_task("CL-0001");
     let err = exec.validate_task(&task).unwrap_err();
     let err_str = err.to_string();
     assert!(err_str.contains("test.plugin"));
@@ -354,6 +354,6 @@ exit 0
     let registry = PluginRegistry::load(tmp.path(), &cfg).unwrap();
     let exec = ProcessorExecutor::new(tmp.path(), &registry);
 
-    let final_prompt = exec.pre_prompt("RQ-0001", "").unwrap();
+    let final_prompt = exec.pre_prompt("CL-0001", "").unwrap();
     assert_eq!(final_prompt.trim(), "manifest");
 }

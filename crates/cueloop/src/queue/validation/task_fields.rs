@@ -27,7 +27,7 @@ use time::UtcOffset;
 pub(crate) fn validate_task_required_fields(index: usize, task: &Task) -> Result<()> {
     if task.id.trim().is_empty() {
         bail!(
-            "Missing task ID: task at index {} is missing an 'id' field. Add a valid ID (e.g., 'RQ-0001') to the task.",
+            "Missing task ID: task at index {} is missing an 'id' field. Add a valid ID (e.g., 'CL-0001') to the task.",
             index
         );
     }
