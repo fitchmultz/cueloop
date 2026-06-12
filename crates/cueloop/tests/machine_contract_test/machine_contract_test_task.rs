@@ -19,7 +19,9 @@
 //! - Input payload shapes and assertions match the legacy suite exactly.
 //! - Repo setup flows through the shared public CLI bootstrap helpers.
 
-use super::machine_contract_test_support::{run_in_dir, setup_cueloop_repo, write_json_file};
+use super::machine_contract_test_support::{
+    make_test_task, run_in_dir, setup_cueloop_repo, write_json_file, write_queue,
+};
 use anyhow::Result;
 use cueloop::contracts::{TaskPriority, TaskStatus};
 use serde_json::Value;
@@ -336,8 +338,9 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
         .expect("inserted task id")
         .to_string();
 
+    let padded_task_id = format!(" {task_id} ");
     let (show_status, show_stdout, show_stderr) =
-        run_in_dir(dir.path(), &["machine", "task", "show", &task_id]);
+        run_in_dir(dir.path(), &["machine", "task", "show", &padded_task_id]);
     assert!(
         show_status.success(),
         "machine task show failed\nstdout:\n{show_stdout}\nstderr:\n{show_stderr}"
@@ -347,13 +350,36 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
     assert_eq!(shown["location"], "active");
     assert_eq!(shown["task"]["title"], "Lifecycle task");
 
+    let (dry_run_status, dry_run_stdout, dry_run_stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "start",
+            &padded_task_id,
+            "--note",
+            "Dry-run start by machine API",
+            "--dry-run",
+        ],
+    );
+    assert!(
+        dry_run_status.success(),
+        "machine task dry-run start failed\nstdout:\n{dry_run_stdout}\nstderr:\n{dry_run_stderr}"
+    );
+    let dry_run_started: Value = serde_json::from_str(&dry_run_stdout)?;
+    assert_eq!(dry_run_started["dry_run"], true);
+    assert_eq!(
+        dry_run_started["task"]["status"],
+        TaskStatus::Doing.as_str()
+    );
+
     let (start_status, start_stdout, start_stderr) = run_in_dir(
         dir.path(),
         &[
             "machine",
             "task",
             "start",
-            &task_id,
+            &padded_task_id,
             "--note",
             "Started by machine API",
         ],
@@ -374,7 +400,7 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
             "machine",
             "task",
             "done",
-            &task_id,
+            &padded_task_id,
             "--note",
             "Verified by machine API",
             "--evidence",
@@ -397,7 +423,7 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
     );
 
     let (show_done_status, show_done_stdout, show_done_stderr) =
-        run_in_dir(dir.path(), &["machine", "task", "show", &task_id]);
+        run_in_dir(dir.path(), &["machine", "task", "show", &padded_task_id]);
     assert!(
         show_done_status.success(),
         "machine task show done failed\nstdout:\n{show_done_stdout}\nstderr:\n{show_done_stderr}"
@@ -405,6 +431,39 @@ fn machine_task_show_and_lifecycle_round_trip() -> Result<()> {
     let shown_done: Value = serde_json::from_str(&show_done_stdout)?;
     assert_eq!(shown_done["location"], "done");
 
+    Ok(())
+}
+
+#[test]
+fn machine_task_non_terminal_lifecycle_preserves_legacy_no_full_validation_write() -> Result<()> {
+    let dir = setup_cueloop_repo()?;
+    let target = make_test_task("CL-0001", "Target task", TaskStatus::Todo);
+    let unrelated_invalid = make_test_task(
+        "bad-id",
+        "Pre-existing unrelated invalidity",
+        TaskStatus::Todo,
+    );
+    write_queue(dir.path(), &[target, unrelated_invalid])?;
+
+    let (status, stdout, stderr) = run_in_dir(
+        dir.path(),
+        &[
+            "machine",
+            "task",
+            "start",
+            "CL-0001",
+            "--note",
+            "legacy no full validation write",
+        ],
+    );
+
+    assert!(
+        status.success(),
+        "machine task start should ignore unrelated pre-existing queue invalidity\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    let document: Value = serde_json::from_str(&stdout)?;
+    assert_eq!(document["task"]["id"], "CL-0001");
+    assert_eq!(document["task"]["status"], TaskStatus::Doing.as_str());
     Ok(())
 }
 

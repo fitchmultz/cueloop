@@ -33,32 +33,46 @@ pub struct BinaryStatus {
     pub error: Option<String>,
 }
 
+pub(crate) const RUNNER_BINARY_PROBE_FALLBACKS: &[&[&str]] =
+    &[&["--version"], &["-V"], &["--help"], &["help"]];
+
 /// Check if a runner binary is installed by trying common version/help flags.
 ///
-/// Tries the following in order: --version, -V, --help, help
+/// Tries the following in order: --version, -V, --help, help.
 pub fn check_runner_binary(bin: &str) -> BinaryStatus {
-    let fallbacks: &[&[&str]] = &[&["--version"], &["-V"], &["--help"], &["help"]];
+    match probe_runner_binary(bin) {
+        Ok(output) => BinaryStatus {
+            installed: true,
+            version: extract_version(&output),
+            error: None,
+        },
+        Err(_) => BinaryStatus {
+            installed: false,
+            version: None,
+            error: Some(format!("binary '{}' not found or not executable", bin)),
+        },
+    }
+}
 
-    for args in fallbacks {
-        match try_command(bin, args) {
-            Ok(output) => {
-                // Try to extract version from output
-                let version = extract_version(&output);
-                return BinaryStatus {
-                    installed: true,
-                    version,
-                    error: None,
-                };
-            }
-            Err(_) => continue,
+pub(crate) fn probe_runner_binary(bin: &str) -> anyhow::Result<String> {
+    for args in RUNNER_BINARY_PROBE_FALLBACKS {
+        if let Ok(output) = try_command(bin, args) {
+            return Ok(output);
         }
     }
 
-    BinaryStatus {
-        installed: false,
-        version: None,
-        error: Some(format!("binary '{}' not found or not executable", bin)),
-    }
+    Err(anyhow::anyhow!(
+        "tried: {}",
+        runner_binary_probe_attempts_summary()
+    ))
+}
+
+pub(crate) fn runner_binary_probe_attempts_summary() -> String {
+    RUNNER_BINARY_PROBE_FALLBACKS
+        .iter()
+        .map(|args| args.join(" "))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn try_command(bin: &str, args: &[&str]) -> anyhow::Result<String> {
@@ -140,12 +154,40 @@ fn extract_semver(s: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn binary_detection_handles_missing_binary() {
         let status = check_runner_binary("nonexistent_binary_12345");
         assert!(!status.installed);
         assert!(status.error.is_some());
+        assert_eq!(
+            status.error.as_deref(),
+            Some("binary 'nonexistent_binary_12345' not found or not executable")
+        );
+    }
+
+    #[test]
+    fn probe_runner_binary_uses_fallbacks_in_order_until_success() -> anyhow::Result<()> {
+        let temp = tempfile::TempDir::new()?;
+        let script = temp.path().join("runner");
+        let log = temp.path().join("calls.log");
+        let mut file = std::fs::File::create(&script)?;
+        writeln!(
+            file,
+            "#!/bin/sh\necho \"$1\" >> \"{}\"\ncase \"$1\" in --help) echo runner help; exit 0;; *) echo fail >&2; exit 2;; esac",
+            log.display()
+        )?;
+        let mut perms = std::fs::metadata(&script)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script, perms)?;
+
+        let output = probe_runner_binary(script.to_str().expect("utf-8 script path"))?;
+
+        assert!(output.contains("runner help"));
+        assert_eq!(std::fs::read_to_string(log)?, "--version\n-V\n--help\n");
+        Ok(())
     }
 
     #[test]

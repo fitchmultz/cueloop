@@ -69,6 +69,7 @@ mod edit;
 mod fields;
 mod followups;
 mod insert;
+mod lifecycle;
 mod materialize;
 mod mutation;
 mod query;

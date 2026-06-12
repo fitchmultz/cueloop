@@ -69,7 +69,15 @@ $(SRCROOT)/../../crates/cueloop/src/cli/machine/queue_docs/support.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/machine/queue_docs/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/machine/run.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/machine/task.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/build.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/machine/task/continuation.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/create_insert.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/decompose.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/documents.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/followups.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/lifecycle.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/mutation.rs
+$(SRCROOT)/../../crates/cueloop/src/cli/machine/task/parsing.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/machine/task/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/migrate.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/mod.rs
@@ -196,6 +204,10 @@ $(SRCROOT)/../../crates/cueloop/src/cli/watch.rs
 $(SRCROOT)/../../crates/cueloop/src/cli/webhook.rs
 $(SRCROOT)/../../crates/cueloop/src/cli_entrypoint.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/agent.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/agent/documents.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/agent/mutations.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/agent/read_model.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/agent/render.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/app/launch_plan.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/app/mod.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/app/model.rs
@@ -238,7 +250,12 @@ $(SRCROOT)/../../crates/cueloop/src/commands/doctor/mod.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/doctor/output.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/doctor/project.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/doctor/queue.rs
-$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner/binary.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner/cursor.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner/instructions.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner/mod.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner/model.rs
+$(SRCROOT)/../../crates/cueloop/src/commands/doctor/runner/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/doctor/tests.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/doctor/types.rs
 $(SRCROOT)/../../crates/cueloop/src/commands/init/gitignore.rs
@@ -688,6 +705,7 @@ $(SRCROOT)/../../crates/cueloop/src/queue/operations/edit/validate_input.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/fields.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/followups.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/insert.rs
+$(SRCROOT)/../../crates/cueloop/src/queue/operations/lifecycle.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/materialize.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/mutation.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/mutation/helpers.rs
@@ -705,6 +723,7 @@ $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/edit.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/fields.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/followups.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/insert.rs
+$(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/lifecycle.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/materialize.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/mod.rs
 $(SRCROOT)/../../crates/cueloop/src/queue/operations/tests/mutation.rs
