@@ -43,7 +43,7 @@ final class SettingsViewModelTests: XCTestCase {
                     reasoningEffortSupported: true,
                     supportsArbitraryModel: true,
                     allowedModels: [],
-                    defaultModel: "zai/glm-5.1"
+                    defaultModel: "zai/glm-5.2"
                 ),
                 MachineRunnerOption(
                     id: "acme.runner",
@@ -64,7 +64,7 @@ final class SettingsViewModelTests: XCTestCase {
         let workspace = makeWorkspace()
         workspace.runState.currentRunnerConfig = Workspace.RunnerConfig(
             runner: "pi",
-            model: "zai/glm-5.1",
+            model: "zai/glm-5.2",
             executionControls: makeExecutionControls()
         )
 
@@ -75,7 +75,7 @@ final class SettingsViewModelTests: XCTestCase {
             viewModel.runnerChoices.map(\.displayName),
             ["Pi Coding Agent", "Acme Runner"]
         )
-        XCTAssertEqual(viewModel.suggestedModels, ["zai/glm-5.1"])
+        XCTAssertEqual(viewModel.suggestedModels, ["zai/glm-5.2"])
     }
 
     func testSettingsKeepsConfiguredUnknownRunnerSelectable() {
@@ -112,7 +112,7 @@ final class SettingsViewModelTests: XCTestCase {
         let workspace = makeWorkspace()
         workspace.runState.currentRunnerConfig = Workspace.RunnerConfig(
             runner: "pi",
-            model: "zai/glm-5.1",
+            model: "zai/glm-5.2",
             executionControls: makeExecutionControls()
         )
 

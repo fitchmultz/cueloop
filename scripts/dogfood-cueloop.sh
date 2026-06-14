@@ -11,7 +11,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CUELOOP_BIN="${CUELOOP_BIN:-$ROOT_DIR/target/debug/cueloop}"
 OUT_ROOT="$ROOT_DIR/target/dogfood-cueloop"
 RUNNER="pi"
-MODEL="zai-glm-5.1"
+MODEL="zai-glm-5.2"
 MODEL_NOTE=""
 PHASES="3"
 RUN_REAL_AGENT=1
@@ -30,8 +30,8 @@ Options:
   --cueloop-bin PATH       CueLoop/CueLoop binary to test (default: target/debug/cueloop or $CUELOOP_BIN)
   --out-root DIR         Artifact root (default: target/dogfood-cueloop)
   --runner NAME          Runner for Phase 3 real execution (default: pi)
-  --model ID             Model for Phase 3 real execution (default: zai-glm-5.1;
-                         normalized to zai/glm-5.1 for the pi CLI on this machine)
+  --model ID             Model for Phase 3 real execution (default: zai-glm-5.2;
+                         normalized to zai/glm-5.2 for the pi CLI on this machine)
   --phases N             CueLoop run phases for Phase 3 (default: 3)
   --skip-real-agent      Run setup/workflow checks but skip `cueloop run one`
   --github-private       Create a private GitHub repo for the fixture with gh, then push initial state
@@ -80,9 +80,9 @@ if [[ "$GITHUB_PRIVATE" -eq 1 ]] && ! command -v gh >/dev/null 2>&1; then
 fi
 
 REQUESTED_MODEL="$MODEL"
-if [[ "$RUNNER" == "pi" && "$MODEL" == "zai-glm-5.1" ]]; then
-  MODEL="zai/glm-5.1"
-  MODEL_NOTE="Requested model zai-glm-5.1 is normalized to pi's available zai/glm-5.1 id."
+if [[ "$RUNNER" == "pi" && "$MODEL" == "zai-glm-5.2" ]]; then
+  MODEL="zai/glm-5.2"
+  MODEL_NOTE="Requested model zai-glm-5.2 is normalized to pi's available zai/glm-5.2 id."
 fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"

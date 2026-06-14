@@ -399,7 +399,7 @@ final class SettingsSmokeContractRunner {
             )
         }
 
-        viewModel.model = "zai/glm-5.1"
+        viewModel.model = "zai/glm-5.2"
         await viewModel.saveConfig()
         if let errorMessage = viewModel.errorMessage {
             throw SettingsSmokeContractFailure(
@@ -415,8 +415,8 @@ final class SettingsSmokeContractRunner {
                 message: "Settings save escaped forward slashes in \(configURL.path)"
             )
         }
-        guard savedConfig.contains(#""model" : "zai/glm-5.1""#)
-                || savedConfig.contains(#""model": "zai/glm-5.1""#) else {
+        guard savedConfig.contains(#""model" : "zai/glm-5.2""#)
+                || savedConfig.contains(#""model": "zai/glm-5.2""#) else {
             throw SettingsSmokeContractFailure(
                 message: "Settings save did not persist slash-bearing model in \(configURL.path)"
             )
