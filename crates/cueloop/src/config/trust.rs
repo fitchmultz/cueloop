@@ -22,10 +22,10 @@
 //! - Trust file writes use the same JSONC parse path on read and standard JSON on write.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use time::OffsetDateTime;
 
 use super::resolution::project_runtime_dir;
 use crate::fsutil;
@@ -38,7 +38,12 @@ pub struct RepoTrust {
     pub allow_project_commands: bool,
 
     /// Timestamp for the explicit trust decision.
-    pub trusted_at: Option<DateTime<Utc>>,
+    ///
+    /// Serialized as RFC3339 to stay compatible with the historical chrono
+    /// `DateTime<Utc>` wire format. `None` serializes as `null`, matching the
+    /// prior chrono behavior, and is also tolerated when the field is absent.
+    #[serde(with = "time::serde::rfc3339::option", default)]
+    pub trusted_at: Option<OffsetDateTime>,
 }
 
 impl RepoTrust {
@@ -106,7 +111,7 @@ pub fn initialize_repo_trust_file(repo_root: &Path) -> Result<TrustFileInitStatu
         print_trust_warning();
         let trust = RepoTrust {
             allow_project_commands: true,
-            trusted_at: Some(Utc::now()),
+            trusted_at: Some(OffsetDateTime::now_utc()),
         };
         write_trust_file(&path, &trust)?;
         eprintln!(
@@ -128,7 +133,7 @@ pub fn initialize_repo_trust_file(repo_root: &Path) -> Result<TrustFileInitStatu
     print_trust_warning();
     let trust = RepoTrust {
         allow_project_commands: true,
-        trusted_at: Some(Utc::now()),
+        trusted_at: Some(OffsetDateTime::now_utc()),
     };
     write_trust_file(&path, &trust)?;
     eprintln!(
@@ -212,5 +217,46 @@ mod tests {
         );
         let loaded = load_repo_trust(repo_root.path()).expect("reload");
         assert!(loaded.trusted_at.is_some());
+    }
+
+    /// Regression: trust files previously written by `chrono`'s
+    /// `DateTime<Utc>` serde (e.g. `2024-01-15T12:30:00.120Z`) must still
+    /// deserialize into the `time`-backed `RepoTrust`. time's rfc3339
+    /// deserializer accepts both the `Z` and `+00:00` offset forms and any
+    /// subsecond precision.
+    #[test]
+    fn repo_trust_parses_chrono_rfc3339_offset_form() {
+        let json =
+            r#"{"allow_project_commands":true,"trusted_at":"2024-01-15T12:30:00.123456789+00:00"}"#;
+        let parsed: RepoTrust = serde_json::from_str(json).expect("+00:00 offset form must parse");
+        assert!(parsed.is_trusted());
+        let trusted_at = parsed.trusted_at.expect("trusted_at present");
+        assert_eq!(trusted_at.offset(), time::UtcOffset::UTC);
+    }
+
+    #[test]
+    fn repo_trust_parses_chrono_rfc3339_z_form() {
+        let json =
+            r#"{"allow_project_commands":true,"trusted_at":"2024-01-15T12:30:00.123456789Z"}"#;
+        let parsed: RepoTrust = serde_json::from_str(json).expect("Z shorthand form must parse");
+        assert_eq!(
+            parsed.trusted_at.expect("trusted_at present").offset(),
+            time::UtcOffset::UTC
+        );
+    }
+
+    /// chrono serializes a `None` timestamp as `null`; that must still load
+    /// (and also tolerate the field being absent entirely).
+    #[test]
+    fn repo_trust_parses_null_and_missing_trusted_at() {
+        let with_null: RepoTrust =
+            serde_json::from_str(r#"{"allow_project_commands":true,"trusted_at":null}"#)
+                .expect("null trusted_at must parse as None");
+        assert!(with_null.is_trusted());
+        assert!(with_null.trusted_at.is_none());
+
+        let without_field: RepoTrust = serde_json::from_str(r#"{"allow_project_commands":true}"#)
+            .expect("missing trusted_at must default to None");
+        assert!(without_field.trusted_at.is_none());
     }
 }

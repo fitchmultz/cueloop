@@ -44,7 +44,7 @@ fn cleanup_migration_pending_when_legacy_json_remains_after_rename_migration() {
         .applied_migrations
         .push(history::AppliedMigration {
             id: "file_rename_queue_json_to_jsonc_2026_02".to_string(),
-            applied_at: chrono::Utc::now(),
+            applied_at: time::OffsetDateTime::now_utc(),
             migration_type: "FileRename".to_string(),
         });
 

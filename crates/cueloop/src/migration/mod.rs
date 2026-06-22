@@ -169,7 +169,7 @@ pub fn apply_migration(ctx: &mut MigrationContext, migration: &Migration) -> Res
         .applied_migrations
         .push(history::AppliedMigration {
             id: migration.id.to_string(),
-            applied_at: chrono::Utc::now(),
+            applied_at: time::OffsetDateTime::now_utc(),
             migration_type: format!("{:?}", migration.migration_type),
         });
 

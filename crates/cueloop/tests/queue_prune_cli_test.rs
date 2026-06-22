@@ -22,13 +22,17 @@
 //! - `--keep-last` uses `completed_at` ordering (missing/invalid treated oldest).
 
 use anyhow::Result;
-use chrono::{Duration, SecondsFormat, Utc};
 use cueloop::contracts::TaskStatus;
+use cueloop::timeutil::format_rfc3339;
+use time::{Duration, OffsetDateTime};
 
 mod test_support;
 
 fn rfc3339_days_ago(days: i64) -> String {
-    (Utc::now() - Duration::days(days)).to_rfc3339_opts(SecondsFormat::Secs, true)
+    let dt = OffsetDateTime::now_utc()
+        .checked_sub(Duration::days(days))
+        .expect("valid offset subtraction");
+    format_rfc3339(dt).expect("format rfc3339")
 }
 
 #[test]

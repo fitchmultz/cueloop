@@ -225,7 +225,7 @@ mod tests {
             .applied_migrations
             .push(history::AppliedMigration {
                 id: "test_migration".to_string(),
-                applied_at: chrono::Utc::now(),
+                applied_at: time::OffsetDateTime::now_utc(),
                 migration_type: "test".to_string(),
             });
 

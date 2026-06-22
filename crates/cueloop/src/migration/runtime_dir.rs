@@ -29,9 +29,9 @@ use crate::commands::init::readme;
 use crate::constants::identity::PROJECT_RUNTIME_DIR;
 use crate::migration::history::{self, AppliedMigration};
 use anyhow::{Context, Result, bail};
-use chrono::Utc;
 use std::fs;
 use std::path::{Path, PathBuf};
+use time::OffsetDateTime;
 
 /// Stable migration history ID for the explicit runtime-dir migration.
 pub const RUNTIME_DIR_MIGRATION_ID: &str = "runtime_dir_rename_to_cueloop_2026_05";
@@ -428,7 +428,7 @@ fn record_runtime_dir_migration_history(repo_root: &Path) -> Result<bool> {
     if !already_recorded {
         migration_history.applied_migrations.push(AppliedMigration {
             id: RUNTIME_DIR_MIGRATION_ID.to_string(),
-            applied_at: Utc::now(),
+            applied_at: OffsetDateTime::now_utc(),
             migration_type: "RuntimeDirRename".to_string(),
         });
     }

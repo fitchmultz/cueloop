@@ -21,10 +21,10 @@
 
 use crate::constants::versions::HISTORY_VERSION;
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use time::OffsetDateTime;
 
 /// Migration history tracking all applied migrations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,7 +51,11 @@ pub struct AppliedMigration {
     /// Unique identifier for the migration.
     pub id: String,
     /// Timestamp when the migration was applied.
-    pub applied_at: DateTime<Utc>,
+    ///
+    /// Serialized as RFC3339 to stay compatible with the historical chrono
+    /// `DateTime<Utc>` wire format used in `cache/migrations.jsonc`.
+    #[serde(with = "time::serde::rfc3339")]
+    pub applied_at: OffsetDateTime,
     /// Type of migration (for informational purposes).
     pub migration_type: String,
 }
@@ -145,12 +149,12 @@ mod tests {
         let mut history = MigrationHistory::default();
         history.applied_migrations.push(AppliedMigration {
             id: "test_migration_1".to_string(),
-            applied_at: Utc::now(),
+            applied_at: OffsetDateTime::now_utc(),
             migration_type: "config_key_rename".to_string(),
         });
         history.applied_migrations.push(AppliedMigration {
             id: "test_migration_2".to_string(),
-            applied_at: Utc::now(),
+            applied_at: OffsetDateTime::now_utc(),
             migration_type: "file_rename".to_string(),
         });
 
@@ -199,5 +203,52 @@ mod tests {
 
         // Directory should now exist
         assert!(deep_path.exists());
+    }
+
+    /// Regression: migration history files previously written by `chrono`'s
+    /// `DateTime<Utc>` serde (e.g. `2024-01-15T12:30:00.120Z`) must still
+    /// deserialize into the `time`-backed `AppliedMigration`. time's rfc3339
+    /// deserializer accepts both the `Z` and `+00:00` offset forms and any
+    /// subsecond precision.
+    #[test]
+    fn applied_migration_parses_chrono_rfc3339_offset_form() {
+        let json = r#"{"id":"x","applied_at":"2024-01-15T12:30:00.123456789+00:00","migration_type":"test"}"#;
+        let parsed: AppliedMigration =
+            serde_json::from_str(json).expect("+00:00 offset form must parse");
+        assert_eq!(parsed.id, "x");
+        assert_eq!(parsed.applied_at.offset(), time::UtcOffset::UTC);
+    }
+
+    #[test]
+    fn applied_migration_parses_chrono_rfc3339_z_form() {
+        let json =
+            r#"{"id":"x","applied_at":"2024-01-15T12:30:00.123456789Z","migration_type":"test"}"#;
+        let parsed: AppliedMigration =
+            serde_json::from_str(json).expect("Z shorthand form must parse");
+        assert_eq!(parsed.applied_at.offset(), time::UtcOffset::UTC);
+    }
+
+    /// Pin the actual on-disk wire format: the serializer emits RFC3339 with
+    /// a `Z` suffix and trims trailing fractional zeros (time's behavior, e.g.
+    /// `.12Z` rather than chrono's `.120Z`). The bytes are RFC3339 and
+    /// re-parse cleanly; files written by this binary stay interoperable with
+    /// the previous chrono-written form.
+    #[test]
+    fn applied_migration_serializes_rfc3339_z_and_reparses() {
+        let original = AppliedMigration {
+            id: "pin".to_string(),
+            // 2024-01-15T12:30:00.120 UTC — chrono would emit `.120Z`.
+            applied_at: OffsetDateTime::from_unix_timestamp_nanos(1_705_321_800_120_000_000)
+                .expect("valid timestamp"),
+            migration_type: "test".to_string(),
+        };
+        let serialized = serde_json::to_string(&original).expect("serialize");
+        assert!(
+            serialized.contains(r#""applied_at":"2024-01-15T12:30:00.12Z""#),
+            "unexpected wire format: {serialized}"
+        );
+        let reparsed: AppliedMigration =
+            serde_json::from_str(&serialized).expect("round-trip parse");
+        assert_eq!(reparsed.applied_at, original.applied_at);
     }
 }
