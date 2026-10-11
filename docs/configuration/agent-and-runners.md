@@ -56,7 +56,7 @@ CueLoop resolves `@cursor/sdk` in this order:
 
 Supported install patterns:
 
-- Workspace install: `npm install --save-dev @cursor/sdk`, or `npm install --save-exact @cursor/sdk@1.0.17` when you want the preferred/tested version pinned locally.
+- Workspace install: `npm install --save-dev @cursor/sdk`.
 - Global npm install: `npm install -g @cursor/sdk` when Node can resolve global npm roots.
 - Explicit module path: `CUELOOP_CURSOR_SDK_MODULE_PATH=/path/to/@cursor/sdk/...` for a trusted SDK entrypoint.
 
